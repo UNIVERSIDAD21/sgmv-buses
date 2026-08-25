@@ -286,6 +286,7 @@ No GPS, telemetría, IoT, IA/ML, rutas, recaudo, pasajeros, ERP, contabilidad/n�
 - Usar un `package-lock.json` único en la raíz.
 - Mantener scripts raíz para `dev:frontend`, `dev:backend`, `lint`, `test`, `build`, `format`, `prisma:validate` y `prisma:generate`.
 - Fijar Prisma en `6.12.0` durante el bootstrap para mantener la sintaxis clásica de `schema.prisma` con `DATABASE_URL` y evitar vulnerabilidades reportadas por `npm audit` en la rama instalada inicialmente.
+- Usar ESLint 10 durante el bootstrap para evitar iniciar con ESLint 9, que npm marcó como fuera de soporte.
 - Crear `schema.prisma` base sin modelos para no inventar ni modificar el modelo de datos aprobado antes del bloque de Persistencia.
 - Usar una sola plantilla `.env.example` en la raíz, sin secretos reales.
 
