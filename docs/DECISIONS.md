@@ -270,3 +270,25 @@ No GPS, telemetría, IoT, IA/ML, rutas, recaudo, pasajeros, ERP, contabilidad/n�
 **Impacto:** configurar `VITE_API_URL` en Vercel; `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, cookies/CSRF y demás variables en Render; CORS restringido al dominio real de Vercel.
 
 **Estado:** APROBADA.
+
+---
+
+## 2026-08-25 - Bootstrap técnico del repositorio
+
+**Decisión:** usar un monorepo con npm workspaces:
+
+- `src/frontend` para React + Vite + Tailwind CSS.
+- `src/backend` para Node.js + Express + API REST.
+
+**Decisiones menores de implementación:**
+
+- Usar TypeScript en frontend y backend.
+- Usar un `package-lock.json` único en la raíz.
+- Mantener scripts raíz para `dev:frontend`, `dev:backend`, `lint`, `test`, `build`, `format`, `prisma:validate` y `prisma:generate`.
+- Fijar Prisma en `6.12.0` durante el bootstrap para mantener la sintaxis clásica de `schema.prisma` con `DATABASE_URL` y evitar vulnerabilidades reportadas por `npm audit` en la rama instalada inicialmente.
+- Crear `schema.prisma` base sin modelos para no inventar ni modificar el modelo de datos aprobado antes del bloque de Persistencia.
+- Usar una sola plantilla `.env.example` en la raíz, sin secretos reales.
+
+**Impacto:** no modifica RF, RNF, casos de uso, reglas de negocio, alcance, arquitectura ni modelo de datos aprobado. Solo prepara la base técnica para iniciar la implementación por bloques.
+
+**Estado:** APROBADA.

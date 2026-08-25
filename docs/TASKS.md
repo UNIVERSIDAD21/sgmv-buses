@@ -10,7 +10,7 @@ Este archivo es el tablero operativo del agente.
 
 # Gate 0 — Autorización
 
-- [ ] Recibir autorización explícita del propietario para iniciar Fase 3.
+- [x] Recibir autorización explícita del propietario para iniciar Fase 3.
 - [x] Leer `AGENTS.md` y toda la documentación obligatoria.
 - [x] Guardar resumen estable del proyecto en memoria.
 - [x] Reportar contradicciones o dudas bloqueantes antes de escribir código.
@@ -20,16 +20,16 @@ Este archivo es el tablero operativo del agente.
 
 # 1. Bootstrap del repositorio
 
-- [ ] Definir estructura final `src/frontend` y `src/backend`.
-- [ ] Inicializar frontend React + Vite.
-- [ ] Configurar Tailwind CSS.
-- [ ] Inicializar backend Node.js + Express.
-- [ ] Definir estrategia de dependencias/workspaces.
-- [ ] Configurar Prisma ORM.
-- [ ] Configurar Zod.
-- [ ] Configurar lint/format con ESLint y Prettier.
-- [ ] Crear scripts de desarrollo, test y build.
-- [ ] Documentar decisiones técnicas.
+- [x] Definir estructura final `src/frontend` y `src/backend`.
+- [x] Inicializar frontend React + Vite.
+- [x] Configurar Tailwind CSS.
+- [x] Inicializar backend Node.js + Express.
+- [x] Definir estrategia de dependencias/workspaces.
+- [x] Configurar Prisma ORM.
+- [x] Configurar Zod.
+- [x] Configurar lint/format con ESLint y Prettier.
+- [x] Crear scripts de desarrollo, test y build.
+- [x] Documentar decisiones técnicas.
 
 ### Done cuando
 

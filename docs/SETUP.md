@@ -66,7 +66,7 @@ Variables conceptuales:
 - `VITE_API_URL`
 - `NODE_ENV`
 - `COOKIE_SECURE`
-- `COOKIE_SAME_SITE`
+- `COOKIE_SAMESITE`
 - `CSRF_SECRET` o variable equivalente segun el mecanismo implementado
 - `LOGIN_RATE_LIMIT_WINDOW_MS`
 - `LOGIN_RATE_LIMIT_MAX_ATTEMPTS`
@@ -79,25 +79,40 @@ No registrar contrasenas, hashes ni tokens en logs.
 
 ## 4. Comandos
 
-Los comandos concretos se completarán después del bootstrap.
-
-Objetivo recomendado:
+Instalar dependencias desde la raíz del repositorio:
 
 ```bash
 npm install
-npm run dev
-npm test
-npm run build
 ```
 
-Si el repositorio usa workspaces, documentar también:
+Comandos principales:
 
 ```bash
 npm run dev:frontend
 npm run dev:backend
+npm run lint
+npm run test
+npm run build
+npm run format
+npm run format:check
+npm run prisma:validate
+npm run prisma:generate
 ```
 
-No dejar esta sección desactualizada.
+La estrategia de workspaces está definida en el `package.json` raíz:
+
+- `src/frontend` corresponde a `@sgmv/frontend`.
+- `src/backend` corresponde a `@sgmv/backend`.
+
+Para validar Prisma durante el bootstrap sin una base Neon real configurada, puede usarse una URL PostgreSQL ficticia solo para validar el esquema:
+
+```powershell
+$env:DATABASE_URL='postgresql://user:password@localhost:5432/sgmv?schema=public'
+npm run prisma:validate
+npm run prisma:generate
+```
+
+No usar esa URL como credencial real.
 
 ---
 
@@ -151,3 +166,17 @@ Antes de instalar dependencias:
 5. Si existe, proponer breve plan de bootstrap.
 6. Implementar.
 7. Actualizar este archivo con los comandos reales.
+
+---
+
+## 9. Bootstrap técnico completado
+
+El bootstrap técnico del repositorio quedó completado con:
+
+- npm workspaces.
+- React + Vite + Tailwind CSS en `src/frontend`.
+- Node.js + Express en `src/backend`.
+- Prisma ORM y Zod instalados como base técnica.
+- ESLint, Prettier, Vitest, Supertest y React Testing Library.
+- `.env.example` sin secretos reales.
+- `schema.prisma` base sin modelos, para no anticipar el bloque de Persistencia.

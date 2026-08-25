@@ -1,0 +1,24 @@
+{
+  "name": "sgmv-buses",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prototipo web academico para gestion de mantenimiento vehicular de buses.",
+  "workspaces": [
+    "src/frontend",
+    "src/backend"
+  ],
+  "scripts": {
+    "dev:frontend": "npm --workspace @sgmv/frontend run dev --",
+    "dev:backend": "npm --workspace @sgmv/backend run dev",
+    "build": "npm --workspaces run build",
+    "lint": "npm --workspaces run lint",
+    "test": "npm --workspaces run test",
+    "format": "prettier --write package.json .prettierrc.json \"src/**/*.{ts,tsx,js,cjs,css,json}\"",
+    "format:check": "prettier --check package.json .prettierrc.json \"src/**/*.{ts,tsx,js,cjs,css,json}\"",
+    "prisma:generate": "npm --workspace @sgmv/backend run prisma:generate",
+    "prisma:validate": "npm --workspace @sgmv/backend run prisma:validate"
+  },
+  "devDependencies": {
+    "prettier": "^3.7.4"
+  }
+}

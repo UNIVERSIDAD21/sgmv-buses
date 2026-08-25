@@ -48,7 +48,7 @@
 
 ## Estado de handoff
 
-**DOCUMENTACION PREPARADA Y DECISIONES TECNICAS APROBADAS.**
+**FASE 3 AUTORIZADA. BOOTSTRAP TECNICO DEL REPOSITORIO COMPLETADO.**
 
 Las decisiones tecnicas aprobadas con ajustes finales quedaron registradas en `DECISIONS.md` y consolidadas en la documentacion de soporte.
 
@@ -58,20 +58,17 @@ Resumen:
 - Estados y transiciones de ordenes aprobados; `CERRADA` es terminal.
 - Umbral preventivo aprobado: 7 dias y 500 km.
 - Asignacion conductor-bus: maximo una asignacion activa por conductor y por bus.
+- Bootstrap monorepo con `src/frontend`, `src/backend`, npm workspaces, React/Vite/Tailwind, Node/Express, Prisma/Zod, ESLint/Prettier y pruebas minimas.
 - Prisma ORM, Zod, bcrypt, JWT en cookie `HttpOnly`, Vitest/Supertest/React Testing Library/Playwright, ESLint/Prettier.
 - Despliegue definitivo: frontend en Vercel, API en Render y PostgreSQL en Neon.
 
-### Bloqueo de inicio
+### Estado de inicio
 
-OpenClaw **NO debe programar el producto hasta recibir una orden explícita equivalente a `INICIAR FASE 3`.**
+OpenClaw recibió la orden explícita `INICIAR FASE 3`.
 
-Antes de esa orden puede:
+El primer bloque permitido ya fue ejecutado: bootstrap técnico del repositorio.
 
-- leer;
-- guardar memoria;
-- revisar consistencia;
-- reportar dudas;
-- preparar plan.
+OpenClaw debe detenerse antes de iniciar el bloque de Persistencia hasta recibir la siguiente instrucción del propietario.
 
 ---
 
