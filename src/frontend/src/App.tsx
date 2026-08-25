@@ -1,10 +1,10 @@
 const functionalRequirements = [
-  'RF-01 Gestion de la flota vehicular',
+  'RF-01 Gestión de la flota vehicular',
   'RF-02 Control de novedades operativas',
-  'RF-03 Administracion del mantenimiento preventivo',
-  'RF-04 Seguimiento de ordenes de trabajo',
+  'RF-03 Administración del mantenimiento preventivo',
+  'RF-04 Seguimiento de órdenes de trabajo',
   'RF-05 Central de Repuestos',
-  'RF-06 Consulta de historial e informes',
+  'RF-06 Consulta de historial y generación de informes',
 ]
 
 function App() {
@@ -16,10 +16,10 @@ function App() {
             Fase 3 autorizada
           </p>
           <h1 className="mt-3 text-4xl font-semibold tracking-normal text-zinc-950 md:text-5xl">
-            Software de Gestion de Mantenimiento Vehicular
+            Software de Gestión de Mantenimiento Vehicular
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-700">
-            Bootstrap tecnico del prototipo web academico para flota de buses.
+            Bootstrap técnico del prototipo web académico para flota de buses.
           </p>
         </div>
 

@@ -2,8 +2,8 @@
 
 ## 1. Requisitos de desarrollo
 
-- Node.js en versión LTS/estable compatible con las dependencias elegidas.
-- npm.
+- Node.js 24.x.
+- npm 11.x.
 - Git.
 - Acceso a una base PostgreSQL/Neon para desarrollo.
 - Navegador Chrome/Edge para validación.
@@ -180,3 +180,10 @@ El bootstrap técnico del repositorio quedó completado con:
 - ESLint, Prettier, Vitest, Supertest y React Testing Library.
 - `.env.example` sin secretos reales.
 - `schema.prisma` base sin modelos, para no anticipar el bloque de Persistencia.
+
+Versiones base declaradas en el `package.json` raíz:
+
+- Node.js 24.x.
+- npm 11.x.
+
+Advertencia conocida: npm puede mostrar `allow-scripts` para paquetes con scripts de instalación como Prisma y esbuild. No se desactiva esa protección global solo para ocultar la advertencia; se acepta mientras `npm ci`, Prisma, pruebas y build continúen funcionando correctamente.

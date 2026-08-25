@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "description": "Prototipo web academico para gestion de mantenimiento vehicular de buses.",
+  "engines": {
+    "node": "24.x",
+    "npm": "11.x"
+  },
   "workspaces": [
     "src/frontend",
     "src/backend"
