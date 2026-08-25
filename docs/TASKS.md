@@ -75,7 +75,7 @@ Este archivo es el tablero operativo del agente.
 
 ---
 
-# 4. RF-01 — Flota
+# 4. RF-01 — Gestión de la flota vehicular
 
 - [ ] CRUD no destructivo de buses.
 - [ ] Identificación única.
@@ -90,7 +90,7 @@ Este archivo es el tablero operativo del agente.
 
 ---
 
-# 5. RF-02 — Novedades
+# 5. RF-02 — Control de novedades operativas
 
 - [ ] Formulario de novedad para conductor.
 - [ ] Asociación automática autor/bus/fecha.
@@ -104,7 +104,7 @@ Este archivo es el tablero operativo del agente.
 
 ---
 
-# 6. RF-03 — Mantenimiento preventivo
+# 6. RF-03 — Administración del mantenimiento preventivo
 
 - [ ] Crear programación.
 - [ ] Criterio por fecha.
@@ -120,7 +120,7 @@ Este archivo es el tablero operativo del agente.
 
 ---
 
-# 7. RF-04 — Órdenes de trabajo
+# 7. RF-04 — Seguimiento de órdenes de trabajo
 
 - [ ] Implementar maquina de estados aprobada.
 - [ ] Crear orden correctiva directa.
@@ -147,7 +147,7 @@ Este archivo es el tablero operativo del agente.
 
 ---
 
-# 8. RF-05 — Repuestos
+# 8. RF-05 — Central de Repuestos
 
 - [ ] Catálogo.
 - [ ] Existencias.
@@ -163,7 +163,7 @@ Este archivo es el tablero operativo del agente.
 
 ---
 
-# 9. RF-06 — Historial e informes
+# 9. RF-06 — Consulta de historial y generación de informes
 
 - [ ] Consulta de historial por bus.
 - [ ] Historial derivado de datos validados.

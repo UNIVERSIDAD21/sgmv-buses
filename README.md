@@ -24,10 +24,10 @@ Ver `docs/PROJECT_STATUS.md` antes de iniciar cualquier implementación.
 ## Requerimientos funcionales principales
 
 1. Gestión de la flota vehicular.
-2. Gestión de novedades y fallas.
-3. Gestión del mantenimiento preventivo.
-4. Gestión de órdenes de trabajo y mantenimiento correctivo.
-5. Gestión de repuestos e insumos.
+2. Control de novedades operativas.
+3. Administración del mantenimiento preventivo.
+4. Seguimiento de órdenes de trabajo.
+5. Central de Repuestos.
 6. Consulta de historial y generación de informes.
 
 ## Documentación para el agente

@@ -20,12 +20,12 @@
 
 ### RF: 6
 
-- RF-01 Flota.
-- RF-02 Novedades.
-- RF-03 Preventivo.
-- RF-04 Órdenes/correctivo.
-- RF-05 Repuestos.
-- RF-06 Historial/informes.
+- RF-01 Gestión de la flota vehicular.
+- RF-02 Control de novedades operativas.
+- RF-03 Administración del mantenimiento preventivo.
+- RF-04 Seguimiento de órdenes de trabajo.
+- RF-05 Central de Repuestos.
+- RF-06 Consulta de historial y generación de informes.
 
 ### RNF: 4
 

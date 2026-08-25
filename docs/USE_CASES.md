@@ -52,7 +52,7 @@ La información de flota queda actualizada y trazable.
 
 ---
 
-# CU-02 — Gestionar novedades y fallas
+# CU-02 — Controlar novedades operativas
 
 **RF relacionado:** RF-02  
 **Actor principal inicial:** Conductor / Operador  
@@ -92,7 +92,7 @@ La novedad queda trazada hasta su resolución o hasta la orden originada.
 
 ---
 
-# CU-03 — Gestionar mantenimiento preventivo
+# CU-03 — Administrar mantenimiento preventivo
 
 **RF relacionado:** RF-03  
 **Actor principal:** Administrador / Supervisor  
@@ -129,7 +129,7 @@ Existe programación válida y, si corresponde, una orden preventiva relacionada
 
 ---
 
-# CU-04 — Gestionar órdenes de trabajo y mantenimiento correctivo
+# CU-04 — Dar seguimiento a órdenes de trabajo
 
 **RF relacionado:** RF-04  
 **Actores:** Administrador / Supervisor; Personal Técnico / Mecánico
@@ -177,7 +177,7 @@ Orden cerrada de manera trazable y reflejada en historial.
 
 ---
 
-# CU-05 — Gestionar repuestos e insumos
+# CU-05 — Administrar Central de Repuestos
 
 **RF relacionado:** RF-05  
 **Actores:** Administrador / Supervisor; Personal Técnico / Mecánico

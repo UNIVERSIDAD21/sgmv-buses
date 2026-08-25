@@ -21,13 +21,30 @@ Este archivo registra decisiones cerradas y evita que versiones históricas vuel
 **Decisión:**
 
 1. RF-01 Gestión de la flota vehicular.
-2. RF-02 Gestión de novedades y fallas.
-3. RF-03 Gestión del mantenimiento preventivo.
-4. RF-04 Gestión de órdenes de trabajo y mantenimiento correctivo.
-5. RF-05 Gestión de repuestos e insumos.
+2. RF-02 Control de novedades operativas.
+3. RF-03 Administración del mantenimiento preventivo.
+4. RF-04 Seguimiento de órdenes de trabajo.
+5. RF-05 Central de Repuestos.
 6. RF-06 Consulta de historial y generación de informes.
 
 **Impacto:** no crear RF adicionales sin autorización.
+
+**Estado:** APROBADA / LÍNEA BASE VIGENTE.
+
+---
+
+## 2026-08-25 — Renombrado oficial de RF sin cambio de alcance
+
+**Decisión:** el propietario actualizó los nombres oficiales de los seis requerimientos funcionales de la línea base vigente:
+
+1. RF-01 Gestión de la flota vehicular.
+2. RF-02 Control de novedades operativas.
+3. RF-03 Administración del mantenimiento preventivo.
+4. RF-04 Seguimiento de órdenes de trabajo.
+5. RF-05 Central de Repuestos.
+6. RF-06 Consulta de historial y generación de informes.
+
+**Impacto:** este cambio ajusta la denominación académica y de navegación de los módulos, pero no modifica cantidad de RF, RNF, flujos de casos de uso, reglas de negocio, alcance, arquitectura ni modelo de datos aprobados.
 
 **Estado:** APROBADA / LÍNEA BASE VIGENTE.
 

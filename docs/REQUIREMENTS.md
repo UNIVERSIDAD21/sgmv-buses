@@ -55,7 +55,7 @@ Conductor/Operador:
 
 ---
 
-## RF-02 — Gestión de novedades y fallas
+## RF-02 — Control de novedades operativas
 
 ### Requerimiento
 
@@ -86,7 +86,7 @@ El sistema permitirá al Conductor/Operador registrar fallas o novedades asociad
 
 ---
 
-## RF-03 — Gestión del mantenimiento preventivo
+## RF-03 — Administración del mantenimiento preventivo
 
 ### Requerimiento
 
@@ -118,7 +118,7 @@ El sistema permitirá al Administrador/Supervisor programar mantenimiento preven
 
 ---
 
-## RF-04 — Gestión de órdenes de trabajo y mantenimiento correctivo
+## RF-04 — Seguimiento de órdenes de trabajo
 
 ### Requerimiento
 
@@ -175,7 +175,7 @@ Los nombres exactos del enum de estados deben documentarse como decisión técni
 
 ---
 
-## RF-05 — Gestión de repuestos e insumos
+## RF-05 — Central de Repuestos
 
 ### Requerimiento
 
