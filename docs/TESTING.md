@@ -244,3 +244,23 @@ Estados:
 - PENDIENTE DE AJUSTE
 
 Los errores bloqueantes de los flujos principales deben corregirse antes del cierre del prototipo.
+
+---
+
+## 6. Evidencia del bloque de Persistencia
+
+El 2026-08-26 se agregaron pruebas automatizadas de integridad para el modelo Prisma/PostgreSQL:
+
+- Asignacion activa unica por conductor y por bus.
+- Novedad convertida a una sola orden y coherencia de `origen = NOVEDAD`.
+- Programacion preventiva con varias ordenes historicas y maximo una activa.
+- Consumo de repuestos mediante `ConsumoRepuesto` y movimiento de inventario trazable.
+- Ausencia de campos directos redundantes `ordenTrabajoId` en `MovimientoInventario` y `repuestoId` en `OrdenTrabajo`.
+
+Comando ejecutado:
+
+```bash
+npm --workspace @sgmv/backend run test
+```
+
+Resultado: 2 archivos de prueba aprobados, 5 pruebas aprobadas.

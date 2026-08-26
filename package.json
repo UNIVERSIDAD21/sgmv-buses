@@ -20,6 +20,8 @@
     "format": "prettier --write package.json .prettierrc.json \"src/**/*.{ts,tsx,js,cjs,css,json}\"",
     "format:check": "prettier --check package.json .prettierrc.json \"src/**/*.{ts,tsx,js,cjs,css,json}\"",
     "prisma:generate": "npm --workspace @sgmv/backend run prisma:generate",
+    "prisma:migrate": "npm --workspace @sgmv/backend run prisma:migrate",
+    "prisma:seed": "npm --workspace @sgmv/backend run prisma:seed",
     "prisma:validate": "npm --workspace @sgmv/backend run prisma:validate"
   },
   "devDependencies": {

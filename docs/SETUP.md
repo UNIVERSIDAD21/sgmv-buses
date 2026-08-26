@@ -97,6 +97,8 @@ npm run format
 npm run format:check
 npm run prisma:validate
 npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
 ```
 
 La estrategia de workspaces está definida en el `package.json` raíz:
@@ -120,11 +122,26 @@ No usar esa URL como credencial real.
 
 Procedimiento esperado:
 
-1. Configurar `DATABASE_URL`.
-2. Ejecutar migraciones.
-3. Ejecutar seed solo en entorno de desarrollo/demo cuando corresponda.
-4. Verificar conectividad.
-5. No ejecutar operaciones destructivas en una BD compartida sin confirmación.
+1. Configurar `DATABASE_URL` en `.env` local no versionado.
+2. Ejecutar `npm run prisma:validate`.
+3. Ejecutar `npm run prisma:migrate`.
+4. Ejecutar `npm run prisma:seed` solo en entorno de desarrollo/demo cuando corresponda.
+5. Verificar conectividad.
+6. No ejecutar operaciones destructivas en una BD compartida sin confirmación.
+
+El seed usa usuarios demo y genera hashes bcrypt. Puede cambiarse la clave demo local con:
+
+```bash
+SEED_USER_PASSWORD=otra-clave-demo npm run prisma:seed
+```
+
+En Windows/PowerShell:
+
+```powershell
+$env:SEED_USER_PASSWORD='otra-clave-demo'
+npm run prisma:seed
+Remove-Item Env:\SEED_USER_PASSWORD
+```
 
 ---
 
@@ -179,7 +196,7 @@ El bootstrap técnico del repositorio quedó completado con:
 - Prisma ORM y Zod instalados como base técnica.
 - ESLint, Prettier, Vitest, Supertest y React Testing Library.
 - `.env.example` sin secretos reales.
-- `schema.prisma` base sin modelos, para no anticipar el bloque de Persistencia.
+- `schema.prisma` base sin modelos durante bootstrap, luego reemplazado por el modelo aprobado en el bloque de Persistencia.
 
 Versiones base declaradas en el `package.json` raíz:
 
@@ -187,3 +204,17 @@ Versiones base declaradas en el `package.json` raíz:
 - npm 11.x.
 
 Advertencia conocida: npm puede mostrar `allow-scripts` para paquetes con scripts de instalación como Prisma y esbuild. No se desactiva esa protección global solo para ocultar la advertencia; se acepta mientras `npm ci`, Prisma, pruebas y build continúen funcionando correctamente.
+
+---
+
+## 10. Persistencia implementada
+
+El bloque de Persistencia quedo implementado con:
+
+- Prisma Client 6.12.0.
+- PostgreSQL/Neon mediante `DATABASE_URL`.
+- Migracion inicial `20260826140227_inicial_persistencia`.
+- Seed de desarrollo en `src/backend/prisma/seed.ts`.
+- Pruebas de integridad en `src/backend/test/prisma-integrity.test.ts`.
+
+Los comandos Prisma del workspace backend usan `dotenv-cli` para leer `.env` desde la raiz del repositorio. No copiar secretos a archivos versionados.

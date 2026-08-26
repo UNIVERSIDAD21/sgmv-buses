@@ -1,7 +1,9 @@
-# Propuesta de modelo de persistencia Prisma/PostgreSQL
+# Modelo de persistencia Prisma/PostgreSQL
 
-**Estado:** PROPUESTA DOCUMENTAL ALINEADA CON DIAGRAMAS DE FASE 2
+**Estado:** IMPLEMENTADO COMO BLOQUE DE PERSISTENCIA INICIAL
 **Bloque:** 2 - Persistencia
+**Fecha de implementacion:** 2026-08-26
+**Alcance implementado:** `schema.prisma`, migracion inicial PostgreSQL/Neon, seed minimo de desarrollo y pruebas de integridad. No implementa autenticacion, repositorios, servicios ni RF completos.
 **Fecha de alineación:** 2026-08-26
 **Alcance:** documentación técnica. No modifica `schema.prisma`, no crea migraciones, no conecta Neon, no crea seed y no implementa repositorios ni servicios.
 
@@ -897,3 +899,28 @@ Puntos técnicos a confirmar en esa aprobación:
 6. Decidir si `BusEstadoHistorial` entra en la primera migración o queda como tabla técnica opcional posterior.
 
 No quedan pendientes funcionales para redefinir RF, actores, clases principales ni relaciones oficiales.
+
+---
+
+## 12. Cierre de implementacion del bloque
+
+El propietario autorizo implementar Persistencia el 2026-08-26. El bloque quedo cerrado con:
+
+- UUID como PK tecnica.
+- Enums de dominio y enums tecnicos aprobados.
+- Modelos Prisma para las clases principales del diagrama, excepto `Informe`, que sigue como servicio/consulta/DTO/vista.
+- Tablas tecnicas `LecturaKilometraje`, `OrdenEstadoHistorial`, `OrdenReasignacion` y `BusEstadoHistorial`.
+- Migracion inicial `20260826140227_inicial_persistencia` aplicada en Neon.
+- Indices unicos parciales para asignacion activa por conductor, asignacion activa por bus y orden preventiva activa por programacion.
+- `CHECK` PostgreSQL para coherencia de programaciones, ordenes, cantidades, costos, kilometrajes, fechas, asignaciones y movimientos de inventario.
+- Seed minimo de desarrollo para roles, usuarios demo, buses, asignacion activa, novedad convertida, programacion, ordenes, intervencion, actividad, repuesto, consumo y movimientos.
+- Pruebas de integridad en `src/backend/test/prisma-integrity.test.ts`.
+
+Se mantiene fuera de este bloque:
+
+- Autenticacion y autorizacion.
+- Repositorios y servicios de negocio.
+- Implementacion completa de RF-01 a RF-06.
+- Tabla persistente `Informe`.
+- Relacion directa `OrdenTrabajo`-`Repuesto`.
+- Relacion directa `OrdenTrabajo`-`MovimientoInventario`.

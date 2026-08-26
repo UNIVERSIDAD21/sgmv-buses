@@ -48,7 +48,7 @@
 
 ## Estado de handoff
 
-**FASE 3 AUTORIZADA. BOOTSTRAP TECNICO DEL REPOSITORIO COMPLETADO. PERSISTENCIA AÚN NO IMPLEMENTADA.**
+**FASE 3 AUTORIZADA. BOOTSTRAP TECNICO Y BLOQUE DE PERSISTENCIA COMPLETADOS. AUTENTICACION Y RF COMPLETOS AUN NO IMPLEMENTADOS.**
 
 Las decisiones tecnicas aprobadas con ajustes finales quedaron registradas en `DECISIONS.md` y consolidadas en la documentacion de soporte.
 
@@ -64,6 +64,7 @@ Resumen:
 - Alineación documental oficial con diagramas de Fase 2 recibidos el 2026-08-26.
 - Diagramas oficiales guardados sin alterar en `docs/diagrams/`.
 - `DATA_MODEL.md` y `PERSISTENCE_MODEL_PROPOSAL.md` alineados con la interpretación oficial de clases, actores, relaciones, RF y tablas técnicas permitidas.
+- `schema.prisma`, migracion inicial PostgreSQL/Neon, seed minimo y pruebas de integridad implementados.
 
 ### Estado de inicio
 
@@ -71,7 +72,7 @@ OpenClaw recibió la orden explícita `INICIAR FASE 3`.
 
 El primer bloque permitido ya fue ejecutado: bootstrap técnico del repositorio.
 
-La revisión documental de Persistencia fue autorizada y actualizada. OpenClaw debe detenerse antes de implementar Persistencia hasta recibir aprobación explícita del propietario.
+La revisión documental de Persistencia fue autorizada, actualizada y luego implementada tras aprobación explícita del propietario. OpenClaw debe detenerse antes de implementar autenticacion, servicios, repositorios o RF completos hasta nueva autorización del propietario.
 
 ---
 

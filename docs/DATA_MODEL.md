@@ -519,7 +519,64 @@ Cuando esa aprobación exista, toda modificación de esquema debe:
 
 ---
 
-## 10. Datos semilla
+## 10. Estado de implementacion de Persistencia
+
+El bloque de Persistencia fue autorizado e implementado el 2026-08-26.
+
+Artefactos tecnicos:
+
+- `src/backend/prisma/schema.prisma`
+- `src/backend/prisma/migrations/20260826140227_inicial_persistencia/migration.sql`
+- `src/backend/prisma/seed.ts`
+- `src/backend/test/prisma-integrity.test.ts`
+
+Tablas persistentes creadas:
+
+- `roles`
+- `usuarios`
+- `buses`
+- `asignaciones_conductor`
+- `novedades`
+- `programaciones_mantenimiento`
+- `ordenes_trabajo`
+- `intervenciones`
+- `actividades_orden`
+- `repuestos`
+- `consumos_repuesto`
+- `movimientos_inventario`
+
+Tablas tecnicas creadas:
+
+- `lecturas_kilometraje`
+- `bus_estado_historial`
+- `orden_estado_historial`
+- `orden_reasignaciones`
+
+Restricciones clave implementadas:
+
+- Una asignacion activa por conductor.
+- Una asignacion activa por bus.
+- Una orden por novedad.
+- Varias ordenes preventivas historicas por programacion, con maximo una activa por programacion.
+- Coherencia de origen/tipo en ordenes.
+- Ordenes desde `ASIGNADA` con tecnico obligatorio.
+- Ordenes `CERRADA` con responsable y fecha de cierre.
+- Cantidades, costos y kilometrajes con valores validos.
+- Movimiento tipo `CONSUMO` ligado a `ConsumoRepuesto`.
+
+Diferencias tecnicas frente al diagrama conceptual:
+
+- Los identificadores se implementan como UUID.
+- Fechas operativas usan `timestamptz`; fechas objetivo preventivas usan `date`.
+- Cantidades y costos usan `Decimal`.
+- `VIGENTE`, `PROXIMO` y `VENCIDO` no se guardan como columna persistida.
+- `Informe` no se creo como tabla.
+- No existe relacion directa `OrdenTrabajo`-`Repuesto`; se consulta por `OrdenTrabajo -> ConsumoRepuesto -> Repuesto`.
+- No existe relacion directa `OrdenTrabajo`-`MovimientoInventario`; se consulta por `MovimientoInventario -> ConsumoRepuesto -> OrdenTrabajo` cuando el movimiento es consumo.
+
+---
+
+## 11. Datos semilla
 
 Los datos semilla pertenecen al bloque de implementación de Persistencia, no a esta alineación documental.
 

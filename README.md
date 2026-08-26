@@ -4,7 +4,7 @@ Prototipo web académico para centralizar y estandarizar la gestión del manteni
 
 ## Estado
 
-La documentación de transferencia a desarrollo está preparada. OpenClaw participa únicamente en la **Fase 3: desarrollo, integración y validación**.
+La documentación de transferencia a desarrollo está preparada. OpenClaw participa únicamente en la **Fase 3: desarrollo, integración y validación**. El bootstrap tecnico y el bloque inicial de Persistencia ya estan implementados; autenticacion y RF completos siguen pendientes de autorizacion por bloque.
 
 Ver `docs/PROJECT_STATUS.md` antes de iniciar cualquier implementación.
 

@@ -6,3 +6,459 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum RolCodigo {
+  ADMIN_SUPERVISOR
+  MECANICO
+  CONDUCTOR_OPERADOR
+
+  @@map("rol_codigo")
+}
+
+enum EstadoUsuario {
+  ACTIVO
+  INACTIVO
+
+  @@map("estado_usuario")
+}
+
+enum EstadoBus {
+  OPERATIVO
+  EN_MANTENIMIENTO
+  FUERA_DE_SERVICIO
+  INACTIVO
+
+  @@map("estado_bus")
+}
+
+enum EstadoNovedad {
+  PENDIENTE_REVISION
+  RESUELTA_SIN_ORDEN
+  DESCARTADA
+  CONVERTIDA_A_ORDEN
+
+  @@map("estado_novedad")
+}
+
+enum CriterioMantenimiento {
+  FECHA
+  KILOMETRAJE
+  FECHA_KILOMETRAJE
+
+  @@map("criterio_mantenimiento")
+}
+
+enum TipoOrdenTrabajo {
+  PREVENTIVA
+  CORRECTIVA
+
+  @@map("tipo_orden_trabajo")
+}
+
+enum OrigenOrdenTrabajo {
+  PREVENTIVO
+  CORRECTIVO_DIRECTO
+  NOVEDAD
+
+  @@map("origen_orden_trabajo")
+}
+
+enum PrioridadOrden {
+  BAJA
+  MEDIA
+  ALTA
+
+  @@map("prioridad_orden")
+}
+
+enum EstadoOrdenTrabajo {
+  PENDIENTE_ASIGNACION
+  ASIGNADA
+  EN_EJECUCION
+  COMPLETADA_TECNICO
+  DEVUELTA_CORRECCION
+  CERRADA
+
+  @@map("estado_orden_trabajo")
+}
+
+enum EstadoRepuesto {
+  ACTIVO
+  INACTIVO
+
+  @@map("estado_repuesto")
+}
+
+enum TipoMovimientoInventario {
+  ENTRADA
+  CONSUMO
+  AJUSTE_ENTRADA
+  AJUSTE_SALIDA
+
+  @@map("tipo_movimiento_inventario")
+}
+
+model Rol {
+  id          String    @id @default(uuid()) @db.Uuid
+  codigo      RolCodigo @unique
+  nombre      String    @db.VarChar(120)
+  descripcion String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  usuarios Usuario[]
+
+  @@map("roles")
+}
+
+model Usuario {
+  id                    String        @id @default(uuid()) @db.Uuid
+  nombre                String        @db.VarChar(160)
+  email                 String        @unique @db.VarChar(180)
+  telefono              String?       @db.VarChar(40)
+  contrasenaHash        String        @map("contrasena_hash") @db.VarChar(255)
+  estado                EstadoUsuario @default(ACTIVO)
+  rolId                 String        @map("rol_id") @db.Uuid
+  intentosFallidosLogin Int           @default(0) @map("intentos_fallidos_login")
+  bloqueadoHasta        DateTime?     @map("bloqueado_hasta") @db.Timestamptz(6)
+  ultimoAccesoAt        DateTime?     @map("ultimo_acceso_at") @db.Timestamptz(6)
+  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  rol Rol @relation(fields: [rolId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  actividadesRegistradas            ActividadOrden[]            @relation("ActividadRegistradaPor")
+  asignacionesCreadas               AsignacionConductor[]       @relation("AsignacionAsignadaPor")
+  asignacionesConductor             AsignacionConductor[]       @relation("AsignacionConductorUsuario")
+  busEstadosCambiados               BusEstadoHistorial[]        @relation("BusEstadoCambiadoPor")
+  consumosRepuesto                  ConsumoRepuesto[]           @relation("ConsumoConsumidoPor")
+  intervenciones                    Intervencion[]              @relation("IntervencionTecnico")
+  lecturasKilometraje               LecturaKilometraje[]        @relation("LecturaRegistradaPor")
+  movimientosInventario             MovimientoInventario[]      @relation("MovimientoResponsable")
+  novedades                         Novedad[]                   @relation("NovedadConductor")
+  novedadesRevisadas                Novedad[]                   @relation("NovedadRevisadaPor")
+  ordenEstadoCambios                OrdenEstadoHistorial[]      @relation("OrdenEstadoCambiadoPor")
+  ordenesAsignadas                  OrdenTrabajo[]              @relation("OrdenTecnicoAsignado")
+  ordenesCerradas                   OrdenTrabajo[]              @relation("OrdenCerradaPor")
+  ordenesCreadas                    OrdenTrabajo[]              @relation("OrdenCreadaPor")
+  programacionesCreadas             ProgramacionMantenimiento[] @relation("ProgramacionCreadaPor")
+  reasignacionesComoTecnicoAnterior OrdenReasignacion[]         @relation("OrdenReasignacionTecnicoAnterior")
+  reasignacionesComoTecnicoNuevo    OrdenReasignacion[]         @relation("OrdenReasignacionTecnicoNuevo")
+  reasignacionesHechas              OrdenReasignacion[]         @relation("OrdenReasignadoPor")
+
+  @@index([rolId])
+  @@index([estado])
+  @@map("usuarios")
+}
+
+model Bus {
+  id                String    @id @default(uuid()) @db.Uuid
+  codigoInterno     String    @unique @map("codigo_interno") @db.VarChar(60)
+  placa             String    @unique @db.VarChar(20)
+  marca             String    @db.VarChar(100)
+  modelo            String    @db.VarChar(100)
+  anio              Int
+  kilometrajeActual Int       @default(0) @map("kilometraje_actual")
+  estadoOperativo   EstadoBus @default(OPERATIVO) @map("estado_operativo")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  asignaciones                AsignacionConductor[]
+  estadosHistorial            BusEstadoHistorial[]
+  lecturasKilometraje         LecturaKilometraje[]
+  novedades                   Novedad[]
+  ordenesTrabajo              OrdenTrabajo[]
+  programacionesMantenimiento ProgramacionMantenimiento[]
+
+  @@index([estadoOperativo])
+  @@map("buses")
+}
+
+model LecturaKilometraje {
+  id                  String   @id @default(uuid()) @db.Uuid
+  busId               String   @map("bus_id") @db.Uuid
+  kilometrajeAnterior Int      @map("kilometraje_anterior")
+  kilometrajeNuevo    Int      @map("kilometraje_nuevo")
+  registradoPorId     String   @map("registrado_por_id") @db.Uuid
+  fechaRegistro       DateTime @default(now()) @map("fecha_registro") @db.Timestamptz(6)
+  motivo              String?  @db.Text
+
+  bus           Bus     @relation(fields: [busId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  registradoPor Usuario @relation("LecturaRegistradaPor", fields: [registradoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([busId, fechaRegistro])
+  @@index([registradoPorId])
+  @@map("lecturas_kilometraje")
+}
+
+model BusEstadoHistorial {
+  id             String     @id @default(uuid()) @db.Uuid
+  busId          String     @map("bus_id") @db.Uuid
+  estadoAnterior EstadoBus? @map("estado_anterior")
+  estadoNuevo    EstadoBus  @map("estado_nuevo")
+  cambiadoPorId  String     @map("cambiado_por_id") @db.Uuid
+  fechaCambio    DateTime   @default(now()) @map("fecha_cambio") @db.Timestamptz(6)
+  motivo         String?    @db.Text
+
+  bus         Bus     @relation(fields: [busId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  cambiadoPor Usuario @relation("BusEstadoCambiadoPor", fields: [cambiadoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([busId, fechaCambio])
+  @@index([cambiadoPorId])
+  @@map("bus_estado_historial")
+}
+
+model AsignacionConductor {
+  id            String    @id @default(uuid()) @db.Uuid
+  conductorId   String    @map("conductor_id") @db.Uuid
+  busId         String    @map("bus_id") @db.Uuid
+  fechaInicio   DateTime  @default(now()) @map("fecha_inicio") @db.Timestamptz(6)
+  fechaFin      DateTime? @map("fecha_fin") @db.Timestamptz(6)
+  activa        Boolean   @default(true)
+  asignadoPorId String    @map("asignado_por_id") @db.Uuid
+  motivo        String?   @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  asignadoPor Usuario @relation("AsignacionAsignadaPor", fields: [asignadoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  bus         Bus     @relation(fields: [busId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  conductor   Usuario @relation("AsignacionConductorUsuario", fields: [conductorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([busId])
+  @@index([conductorId])
+  @@index([asignadoPorId])
+  @@map("asignaciones_conductor")
+}
+
+model Novedad {
+  id                  String        @id @default(uuid()) @db.Uuid
+  conductorId         String        @map("conductor_id") @db.Uuid
+  busId               String        @map("bus_id") @db.Uuid
+  fechaReporte        DateTime      @default(now()) @map("fecha_reporte") @db.Timestamptz(6)
+  tipo                String        @db.VarChar(120)
+  descripcion         String        @db.Text
+  clasificacion       String?       @db.VarChar(120)
+  estado              EstadoNovedad @default(PENDIENTE_REVISION)
+  revisadaPorId       String?       @map("revisada_por_id") @db.Uuid
+  fechaRevision       DateTime?     @map("fecha_revision") @db.Timestamptz(6)
+  observacionRevision String?       @map("observacion_revision") @db.Text
+  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  bus          Bus           @relation(fields: [busId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  conductor    Usuario       @relation("NovedadConductor", fields: [conductorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  revisadaPor  Usuario?      @relation("NovedadRevisadaPor", fields: [revisadaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  ordenTrabajo OrdenTrabajo?
+
+  @@index([busId, fechaReporte])
+  @@index([conductorId, fechaReporte])
+  @@index([estado])
+  @@index([revisadaPorId])
+  @@map("novedades")
+}
+
+model ProgramacionMantenimiento {
+  id                  String                @id @default(uuid()) @db.Uuid
+  busId               String                @map("bus_id") @db.Uuid
+  tipo                String                @db.VarChar(120)
+  actividad           String                @db.Text
+  criterio            CriterioMantenimiento
+  fechaProgramada     DateTime?             @map("fecha_programada") @db.Date
+  kilometrajeObjetivo Int?                  @map("kilometraje_objetivo")
+  activa              Boolean               @default(true)
+  creadaPorId         String                @map("creada_por_id") @db.Uuid
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  bus            Bus            @relation(fields: [busId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  creadaPor      Usuario        @relation("ProgramacionCreadaPor", fields: [creadaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  ordenesTrabajo OrdenTrabajo[]
+
+  @@index([busId, activa])
+  @@index([creadaPorId])
+  @@map("programaciones_mantenimiento")
+}
+
+model OrdenTrabajo {
+  id                            String             @id @default(uuid()) @db.Uuid
+  codigo                        String             @unique @db.VarChar(80)
+  busId                         String             @map("bus_id") @db.Uuid
+  tipo                          TipoOrdenTrabajo
+  origen                        OrigenOrdenTrabajo
+  prioridad                     PrioridadOrden     @default(MEDIA)
+  descripcion                   String             @db.Text
+  estado                        EstadoOrdenTrabajo @default(PENDIENTE_ASIGNACION)
+  tecnicoAsignadoId             String?            @map("tecnico_asignado_id") @db.Uuid
+  creadaPorId                   String             @map("creada_por_id") @db.Uuid
+  fechaCreacion                 DateTime           @default(now()) @map("fecha_creacion") @db.Timestamptz(6)
+  fechaAsignacion               DateTime?          @map("fecha_asignacion") @db.Timestamptz(6)
+  fechaInicioEjecucion          DateTime?          @map("fecha_inicio_ejecucion") @db.Timestamptz(6)
+  fechaCompletadaTecnico        DateTime?          @map("fecha_completada_tecnico") @db.Timestamptz(6)
+  fechaCierre                   DateTime?          @map("fecha_cierre") @db.Timestamptz(6)
+  cerradaPorId                  String?            @map("cerrada_por_id") @db.Uuid
+  novedadId                     String?            @unique @map("novedad_id") @db.Uuid
+  programacionMantenimientoId   String?            @map("programacion_mantenimiento_id") @db.Uuid
+  fechaObjetivoPreventivo       DateTime?          @map("fecha_objetivo_preventivo") @db.Date
+  kilometrajeObjetivoPreventivo Int?               @map("kilometraje_objetivo_preventivo")
+  costoTotal                    Decimal            @default(0) @map("costo_total") @db.Decimal(12, 2)
+  createdAt                     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  bus                       Bus                        @relation(fields: [busId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  cerradaPor                Usuario?                   @relation("OrdenCerradaPor", fields: [cerradaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  creadaPor                 Usuario                    @relation("OrdenCreadaPor", fields: [creadaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  novedad                   Novedad?                   @relation(fields: [novedadId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  programacionMantenimiento ProgramacionMantenimiento? @relation(fields: [programacionMantenimientoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tecnicoAsignado           Usuario?                   @relation("OrdenTecnicoAsignado", fields: [tecnicoAsignadoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  consumosRepuesto ConsumoRepuesto[]
+  estadosHistorial OrdenEstadoHistorial[]
+  intervenciones   Intervencion[]
+  reasignaciones   OrdenReasignacion[]
+
+  @@index([busId, estado])
+  @@index([cerradaPorId])
+  @@index([creadaPorId])
+  @@index([programacionMantenimientoId, estado])
+  @@index([tecnicoAsignadoId, estado])
+  @@map("ordenes_trabajo")
+}
+
+model Intervencion {
+  id             String    @id @default(uuid()) @db.Uuid
+  ordenTrabajoId String    @map("orden_trabajo_id") @db.Uuid
+  tecnicoId      String    @map("tecnico_id") @db.Uuid
+  fechaInicio    DateTime  @default(now()) @map("fecha_inicio") @db.Timestamptz(6)
+  fechaFin       DateTime? @map("fecha_fin") @db.Timestamptz(6)
+  diagnostico    String?   @db.Text
+  observaciones  String?   @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  ordenTrabajo OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tecnico      Usuario      @relation("IntervencionTecnico", fields: [tecnicoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  actividades ActividadOrden[]
+
+  @@index([ordenTrabajoId])
+  @@index([tecnicoId])
+  @@map("intervenciones")
+}
+
+model ActividadOrden {
+  id              String   @id @default(uuid()) @db.Uuid
+  intervencionId  String   @map("intervencion_id") @db.Uuid
+  descripcion     String   @db.Text
+  fechaRegistro   DateTime @default(now()) @map("fecha_registro") @db.Timestamptz(6)
+  registradaPorId String   @map("registrada_por_id") @db.Uuid
+
+  intervencion  Intervencion @relation(fields: [intervencionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  registradaPor Usuario      @relation("ActividadRegistradaPor", fields: [registradaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([intervencionId, fechaRegistro])
+  @@index([registradaPorId])
+  @@map("actividades_orden")
+}
+
+model OrdenEstadoHistorial {
+  id             String              @id @default(uuid()) @db.Uuid
+  ordenTrabajoId String              @map("orden_trabajo_id") @db.Uuid
+  estadoAnterior EstadoOrdenTrabajo? @map("estado_anterior")
+  estadoNuevo    EstadoOrdenTrabajo  @map("estado_nuevo")
+  cambiadoPorId  String              @map("cambiado_por_id") @db.Uuid
+  fechaCambio    DateTime            @default(now()) @map("fecha_cambio") @db.Timestamptz(6)
+  observacion    String?             @db.Text
+
+  cambiadoPor  Usuario      @relation("OrdenEstadoCambiadoPor", fields: [cambiadoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  ordenTrabajo OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([cambiadoPorId])
+  @@index([ordenTrabajoId, fechaCambio])
+  @@map("orden_estado_historial")
+}
+
+model OrdenReasignacion {
+  id                String   @id @default(uuid()) @db.Uuid
+  ordenTrabajoId    String   @map("orden_trabajo_id") @db.Uuid
+  tecnicoAnteriorId String?  @map("tecnico_anterior_id") @db.Uuid
+  tecnicoNuevoId    String   @map("tecnico_nuevo_id") @db.Uuid
+  reasignadoPorId   String   @map("reasignado_por_id") @db.Uuid
+  fechaReasignacion DateTime @default(now()) @map("fecha_reasignacion") @db.Timestamptz(6)
+  motivo            String?  @db.Text
+
+  ordenTrabajo    OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  reasignadoPor   Usuario      @relation("OrdenReasignadoPor", fields: [reasignadoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tecnicoAnterior Usuario?     @relation("OrdenReasignacionTecnicoAnterior", fields: [tecnicoAnteriorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tecnicoNuevo    Usuario      @relation("OrdenReasignacionTecnicoNuevo", fields: [tecnicoNuevoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([ordenTrabajoId, fechaReasignacion])
+  @@index([reasignadoPorId])
+  @@index([tecnicoAnteriorId])
+  @@index([tecnicoNuevoId])
+  @@map("orden_reasignaciones")
+}
+
+model Repuesto {
+  id            String         @id @default(uuid()) @db.Uuid
+  codigo        String         @unique @db.VarChar(80)
+  nombre        String         @db.VarChar(160)
+  categoria     String?        @db.VarChar(120)
+  unidadMedida  String         @map("unidad_medida") @db.VarChar(40)
+  stockActual   Decimal        @default(0) @map("stock_actual") @db.Decimal(12, 2)
+  stockMinimo   Decimal        @default(0) @map("stock_minimo") @db.Decimal(12, 2)
+  costoUnitario Decimal        @default(0) @map("costo_unitario") @db.Decimal(12, 2)
+  estado        EstadoRepuesto @default(ACTIVO)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  consumosRepuesto      ConsumoRepuesto[]
+  movimientosInventario MovimientoInventario[]
+
+  @@index([estado])
+  @@map("repuestos")
+}
+
+model ConsumoRepuesto {
+  id             String   @id @default(uuid()) @db.Uuid
+  ordenTrabajoId String   @map("orden_trabajo_id") @db.Uuid
+  repuestoId     String   @map("repuesto_id") @db.Uuid
+  cantidad       Decimal  @db.Decimal(12, 2)
+  costoUnitario  Decimal  @map("costo_unitario") @db.Decimal(12, 2)
+  subtotal       Decimal  @db.Decimal(12, 2)
+  consumidoPorId String   @map("consumido_por_id") @db.Uuid
+  fechaConsumo   DateTime @default(now()) @map("fecha_consumo") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  consumidoPor Usuario      @relation("ConsumoConsumidoPor", fields: [consumidoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  ordenTrabajo OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  repuesto     Repuesto     @relation(fields: [repuestoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  movimientoInventario MovimientoInventario?
+
+  @@index([consumidoPorId])
+  @@index([ordenTrabajoId])
+  @@index([repuestoId])
+  @@map("consumos_repuesto")
+}
+
+model MovimientoInventario {
+  id                String                   @id @default(uuid()) @db.Uuid
+  repuestoId        String                   @map("repuesto_id") @db.Uuid
+  tipo              TipoMovimientoInventario
+  cantidad          Decimal                  @db.Decimal(12, 2)
+  costoUnitario     Decimal?                 @map("costo_unitario") @db.Decimal(12, 2)
+  motivo            String?                  @db.Text
+  responsableId     String                   @map("responsable_id") @db.Uuid
+  consumoRepuestoId String?                  @unique @map("consumo_repuesto_id") @db.Uuid
+  fechaMovimiento   DateTime                 @default(now()) @map("fecha_movimiento") @db.Timestamptz(6)
+  createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  consumoRepuesto ConsumoRepuesto? @relation(fields: [consumoRepuestoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  repuesto        Repuesto         @relation(fields: [repuestoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  responsable     Usuario          @relation("MovimientoResponsable", fields: [responsableId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([fechaMovimiento])
+  @@index([repuestoId, fechaMovimiento])
+  @@index([responsableId])
+  @@map("movimientos_inventario")
+}

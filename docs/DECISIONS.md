@@ -363,3 +363,34 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 **Impacto:** `DATA_MODEL.md` y `PERSISTENCE_MODEL_PROPOSAL.md` quedan alineados con la interpretación oficial antes de iniciar implementación de Persistencia.
 
 **Estado:** APROBADA / LÍNEA BASE VIGENTE PARA PERSISTENCIA.
+
+---
+
+## 2026-08-26 - Implementacion inicial de Persistencia
+
+**Decision:** implementar el bloque de Persistencia aprobado con Prisma ORM sobre PostgreSQL/Neon.
+
+**Implementado:**
+
+- Modelos Prisma para las clases principales del diagrama, excepto `Informe`.
+- Tablas tecnicas `LecturaKilometraje`, `BusEstadoHistorial`, `OrdenEstadoHistorial` y `OrdenReasignacion`.
+- Enums para roles, estados, criterios, origen/tipo/prioridad de orden y movimientos de inventario.
+- Migracion inicial `20260826140227_inicial_persistencia` aplicada en Neon.
+- Indices unicos parciales y `CHECK` PostgreSQL para reglas que Prisma no expresa directamente.
+- Seed minimo de desarrollo con usuarios demo y hash bcrypt, sin implementar autenticacion.
+- Pruebas de integridad de relaciones y restricciones principales.
+
+**Decisiones tecnicas complementarias:**
+
+- Usar `dotenv-cli` para que los comandos Prisma del workspace backend lean `.env` desde la raiz del repositorio sin versionar secretos.
+- Usar `bcryptjs` en el seed para generar hashes demo; esto no implementa login ni autorizacion.
+- Incluir `BusEstadoHistorial` en la primera migracion para auditar cambios de estado del bus desde el inicio.
+
+**No implementado en este bloque:**
+
+- Tabla `Informe`.
+- Relacion directa `OrdenTrabajo`-`Repuesto`.
+- Relacion directa `OrdenTrabajo`-`MovimientoInventario`.
+- Autenticacion, repositorios, servicios o RF completos.
+
+**Estado:** APROBADA / IMPLEMENTADA COMO BLOQUE DE PERSISTENCIA.

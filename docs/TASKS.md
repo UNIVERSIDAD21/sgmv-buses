@@ -6,7 +6,7 @@ Este archivo es el tablero operativo del agente.
 
 **No marcar el inicio de implementación hasta recibir la orden explícita `INICIAR FASE 3`.**
 
-**Estado actual:** revisión documental de Persistencia alineada con diagramas de Fase 2. Todavía no implementar `schema.prisma`, migraciones, Neon, seed, repositorios, servicios, autenticación ni RF-01 a RF-06.
+**Estado actual:** bloque de Persistencia implementado y cerrado. Todavia no implementar repositorios, servicios, autenticacion ni RF-01 a RF-06 completos sin nueva autorizacion del propietario.
 
 ---
 
@@ -51,14 +51,14 @@ Este archivo es el tablero operativo del agente.
 - [x] Corregir `docs/PERSISTENCE_MODEL_PROPOSAL.md` sin tocar `schema.prisma`.
 - [x] Crear trazabilidad actor/RF/clases/tablas técnicas.
 - [x] Verificar nombres oficiales de los seis RF en la documentación actualizada.
-- [ ] Recibir aprobación explícita del propietario para implementar Persistencia.
-- [ ] Configurar conexión PostgreSQL/Neon.
-- [ ] Implementar Prisma ORM como estrategia SQL/ORM aprobada.
-- [ ] Crear migraciones.
-- [ ] Implementar tablas/relaciones del modelo vigente.
-- [ ] Aplicar PK/FK/UNIQUE/CHECK.
-- [ ] Crear seed de desarrollo.
-- [ ] Probar transacciones críticas.
+- [x] Recibir aprobación explícita del propietario para implementar Persistencia.
+- [x] Configurar conexión PostgreSQL/Neon.
+- [x] Implementar Prisma ORM como estrategia SQL/ORM aprobada.
+- [x] Crear migraciones.
+- [x] Implementar tablas/relaciones del modelo vigente.
+- [x] Aplicar PK/FK/UNIQUE/CHECK.
+- [x] Crear seed de desarrollo.
+- [x] Probar integridad y relaciones críticas de persistencia.
 
 ---
 
