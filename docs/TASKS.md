@@ -6,6 +6,8 @@ Este archivo es el tablero operativo del agente.
 
 **No marcar el inicio de implementación hasta recibir la orden explícita `INICIAR FASE 3`.**
 
+**Estado actual:** revisión documental de Persistencia alineada con diagramas de Fase 2. Todavía no implementar `schema.prisma`, migraciones, Neon, seed, repositorios, servicios, autenticación ni RF-01 a RF-06.
+
 ---
 
 # Gate 0 — Autorización
@@ -42,6 +44,14 @@ Este archivo es el tablero operativo del agente.
 
 # 2. Persistencia
 
+- [x] Guardar diagramas oficiales de Fase 2 en `docs/diagrams/` sin alterar contenido.
+- [x] Analizar diagrama de casos de uso general y diagrama de clases del sistema.
+- [x] Registrar interpretación oficial de los diagramas en `docs/DECISIONS.md`.
+- [x] Actualizar `docs/DATA_MODEL.md` con relaciones oficiales.
+- [x] Corregir `docs/PERSISTENCE_MODEL_PROPOSAL.md` sin tocar `schema.prisma`.
+- [x] Crear trazabilidad actor/RF/clases/tablas técnicas.
+- [x] Verificar nombres oficiales de los seis RF en la documentación actualizada.
+- [ ] Recibir aprobación explícita del propietario para implementar Persistencia.
 - [ ] Configurar conexión PostgreSQL/Neon.
 - [ ] Implementar Prisma ORM como estrategia SQL/ORM aprobada.
 - [ ] Crear migraciones.

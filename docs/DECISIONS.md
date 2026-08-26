@@ -20,12 +20,12 @@ Este archivo registra decisiones cerradas y evita que versiones históricas vuel
 
 **Decisión:**
 
-1. RF-01 Gestión de la flota vehicular.
-2. RF-02 Control de novedades operativas.
-3. RF-03 Administración del mantenimiento preventivo.
-4. RF-04 Seguimiento de órdenes de trabajo.
-5. RF-05 Central de Repuestos.
-6. RF-06 Consulta de historial y generación de informes.
+1. RF-01 — Gestión de la flota vehicular.
+2. RF-02 — Control de novedades operativas.
+3. RF-03 — Administración del mantenimiento preventivo.
+4. RF-04 — Seguimiento de órdenes de trabajo.
+5. RF-05 — Central de Repuestos.
+6. RF-06 — Consulta de historial y generación de informes.
 
 **Impacto:** no crear RF adicionales sin autorización.
 
@@ -37,12 +37,12 @@ Este archivo registra decisiones cerradas y evita que versiones históricas vuel
 
 **Decisión:** el propietario actualizó los nombres oficiales de los seis requerimientos funcionales de la línea base vigente:
 
-1. RF-01 Gestión de la flota vehicular.
-2. RF-02 Control de novedades operativas.
-3. RF-03 Administración del mantenimiento preventivo.
-4. RF-04 Seguimiento de órdenes de trabajo.
-5. RF-05 Central de Repuestos.
-6. RF-06 Consulta de historial y generación de informes.
+1. RF-01 — Gestión de la flota vehicular.
+2. RF-02 — Control de novedades operativas.
+3. RF-03 — Administración del mantenimiento preventivo.
+4. RF-04 — Seguimiento de órdenes de trabajo.
+5. RF-05 — Central de Repuestos.
+6. RF-06 — Consulta de historial y generación de informes.
 
 **Impacto:** este cambio ajusta la denominación académica y de navegación de los módulos, pero no modifica cantidad de RF, RNF, flujos de casos de uso, reglas de negocio, alcance, arquitectura ni modelo de datos aprobados.
 
@@ -293,3 +293,73 @@ No GPS, telemetría, IoT, IA/ML, rutas, recaudo, pasajeros, ERP, contabilidad/n�
 **Impacto:** no modifica RF, RNF, casos de uso, reglas de negocio, alcance, arquitectura ni modelo de datos aprobado. Solo prepara la base técnica para iniciar la implementación por bloques.
 
 **Estado:** APROBADA.
+
+---
+
+## 2026-08-26 — Interpretación oficial de diagramas de Fase 2
+
+**Decisión:** los diagramas oficiales de casos de uso y clases recibidos el 2026-08-26 son artefactos base de Fase 2 para orientar la implementación de Fase 3. Quedaron guardados sin alterar en:
+
+- `docs/diagrams/diagrama-casos-uso-fase-2.png` (`SHA256: 83F6C2A0E8440D7E32FF3503FD2A90D8A7A0B587227F4023ECC3F0ADA2E20A00`)
+- `docs/diagrams/diagrama-clases-fase-2.png` (`SHA256: D72849DD46451AAB5C82525750819DABF4ECF55AA4BCDFB47ADA2B77AB65FD85`)
+
+Si una línea visual resulta ambigua por cruces, distribución o diferencias de rotulado, prevalece la interpretación textual oficial indicada por el propietario y esta documentación versionada.
+
+**Casos de uso/RF oficiales:**
+
+1. RF-01 — Gestión de la flota vehicular.
+2. RF-02 — Control de novedades operativas.
+3. RF-03 — Administración del mantenimiento preventivo.
+4. RF-04 — Seguimiento de órdenes de trabajo.
+5. RF-05 — Central de Repuestos.
+6. RF-06 — Consulta de historial y generación de informes.
+
+No crear RF adicionales. Autenticación, autorización, cierre de sesión, gestión mínima de cuentas y protección de rutas son capacidades transversales.
+
+**Participación de actores:**
+
+- Administrador/Supervisor participa en RF-01, RF-02, RF-03, RF-04, RF-05 y RF-06.
+- Personal Técnico/Mecánico participa en RF-04, RF-05 con consulta de existencias y consumos autorizados, y RF-06 con historial técnico necesario.
+- Conductor/Operador participa en RF-01 solo para consultar su bus asignado, RF-02 para registrar/consultar sus novedades y RF-06 mediante resumen autorizado de su bus.
+
+**Clases principales del dominio:**
+
+- Rol.
+- Usuario.
+- Bus.
+- AsignacionConductor.
+- Novedad.
+- ProgramacionMantenimiento.
+- OrdenTrabajo.
+- Intervencion.
+- ActividadOrden.
+- Repuesto.
+- ConsumoRepuesto.
+- MovimientoInventario.
+- Informe como servicio de consulta.
+
+**Interpretaciones obligatorias para persistencia:**
+
+- Cada Usuario tiene exactamente un Rol; solo existen los tres roles funcionales aprobados.
+- Un conductor y un bus pueden tener muchas asignaciones históricas, pero máximo una asignación activa cada uno.
+- La Novedad toma autor desde sesión y bus desde la asignación activa.
+- Una Novedad puede generar cero o una OrdenTrabajo; si `origen = NOVEDAD`, la orden debe tener exactamente una Novedad y no duplicarla.
+- ProgramacionMantenimiento puede generar cero o muchas órdenes preventivas históricas, con máximo una orden activa simultánea por programación.
+- Al generar orden preventiva se conserva copia de la fecha y/o kilometraje objetivo que la originó.
+- Los estados preventivos `VIGENTE`, `PROXIMO` y `VENCIDO` son calculados y no deben quedar desactualizados como columna persistida.
+- OrdenTrabajo pertenece a Bus; puede estar inicialmente sin técnico y desde `ASIGNADA` debe tener exactamente un técnico.
+- La asignación y reasignación de técnico corresponde al Administrador/Supervisor y queda auditada.
+- Intervencion identifica al Mecánico responsable y contiene ActividadOrden.
+- Para `COMPLETADA_TECNICO` debe existir al menos una actividad; en correctivas, diagnóstico obligatorio.
+- La relación correcta de repuestos es `OrdenTrabajo → ConsumoRepuesto → Repuesto`.
+- No implementar una relación directa OrdenTrabajo-Repuesto que ignore ConsumoRepuesto.
+- MovimientoInventario pertenece a Repuesto e identifica Usuario responsable.
+- Cada ConsumoRepuesto genera exactamente un MovimientoInventario de tipo consumo; entradas y ajustes no requieren ConsumoRepuesto.
+- No interpretar "técnico asignado" de OrdenTrabajo y "responsable del movimiento" de MovimientoInventario como relación directa OrdenTrabajo-MovimientoInventario.
+- Informe se implementa inicialmente como servicio, consulta, DTO o vista de reporte; no crear tabla `Informe`.
+
+**Tablas técnicas permitidas:** `LecturaKilometraje`, `OrdenEstadoHistorial`, `OrdenReasignacion`, `BusEstadoHistorial` si se usa para auditar estado del bus, y otras estructuras estrictamente técnicas justificadas. No son nuevos módulos ni nuevos RF.
+
+**Impacto:** `DATA_MODEL.md` y `PERSISTENCE_MODEL_PROPOSAL.md` quedan alineados con la interpretación oficial antes de iniciar implementación de Persistencia.
+
+**Estado:** APROBADA / LÍNEA BASE VIGENTE PARA PERSISTENCIA.

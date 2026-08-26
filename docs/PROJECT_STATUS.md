@@ -1,6 +1,6 @@
 # Project Status
 
-**Última consolidación documental:** 2026-08-25
+**Última consolidación documental:** 2026-08-26
 
 ## Fase académica
 
@@ -20,12 +20,12 @@
 
 ### RF: 6
 
-- RF-01 Gestión de la flota vehicular.
-- RF-02 Control de novedades operativas.
-- RF-03 Administración del mantenimiento preventivo.
-- RF-04 Seguimiento de órdenes de trabajo.
-- RF-05 Central de Repuestos.
-- RF-06 Consulta de historial y generación de informes.
+- RF-01 — Gestión de la flota vehicular.
+- RF-02 — Control de novedades operativas.
+- RF-03 — Administración del mantenimiento preventivo.
+- RF-04 — Seguimiento de órdenes de trabajo.
+- RF-05 — Central de Repuestos.
+- RF-06 — Consulta de historial y generación de informes.
 
 ### RNF: 4
 
@@ -48,7 +48,7 @@
 
 ## Estado de handoff
 
-**FASE 3 AUTORIZADA. BOOTSTRAP TECNICO DEL REPOSITORIO COMPLETADO.**
+**FASE 3 AUTORIZADA. BOOTSTRAP TECNICO DEL REPOSITORIO COMPLETADO. PERSISTENCIA AÚN NO IMPLEMENTADA.**
 
 Las decisiones tecnicas aprobadas con ajustes finales quedaron registradas en `DECISIONS.md` y consolidadas en la documentacion de soporte.
 
@@ -61,6 +61,9 @@ Resumen:
 - Bootstrap monorepo con `src/frontend`, `src/backend`, npm workspaces, React/Vite/Tailwind, Node/Express, Prisma/Zod, ESLint/Prettier y pruebas minimas.
 - Prisma ORM, Zod, bcrypt, JWT en cookie `HttpOnly`, Vitest/Supertest/React Testing Library/Playwright, ESLint/Prettier.
 - Despliegue definitivo: frontend en Vercel, API en Render y PostgreSQL en Neon.
+- Alineación documental oficial con diagramas de Fase 2 recibidos el 2026-08-26.
+- Diagramas oficiales guardados sin alterar en `docs/diagrams/`.
+- `DATA_MODEL.md` y `PERSISTENCE_MODEL_PROPOSAL.md` alineados con la interpretación oficial de clases, actores, relaciones, RF y tablas técnicas permitidas.
 
 ### Estado de inicio
 
@@ -68,7 +71,7 @@ OpenClaw recibió la orden explícita `INICIAR FASE 3`.
 
 El primer bloque permitido ya fue ejecutado: bootstrap técnico del repositorio.
 
-OpenClaw debe detenerse antes de iniciar el bloque de Persistencia hasta recibir la siguiente instrucción del propietario.
+La revisión documental de Persistencia fue autorizada y actualizada. OpenClaw debe detenerse antes de implementar Persistencia hasta recibir aprobación explícita del propietario.
 
 ---
 
@@ -92,6 +95,10 @@ Las decisiones adoptadas estan registradas en `DECISIONS.md`.
 - Implementar exactamente la maquina de estados aprobada para ordenes.
 - Aplicar el umbral aprobado de "mantenimiento proximo": 7 dias y 500 km.
 - Aplicar restricciones aprobadas de asignacion conductor-bus.
+- Aplicar la interpretación oficial de ProgramacionMantenimiento: muchas órdenes preventivas históricas con máximo una activa.
+- Calcular `VIGENTE`, `PROXIMO` y `VENCIDO` sin persistirlos como estado durable que pueda quedar desactualizado.
+- Mantener `Informe` como servicio/consulta/DTO/vista inicial, no como tabla.
+- Mantener la relación de repuestos como `OrdenTrabajo -> ConsumoRepuesto -> Repuesto`.
 - Configurar correctamente despliegue Vercel/Render/Neon, CORS, cookies y CSRF.
 
 Si aparece una contradiccion con un artefacto posterior, detener, documentar impacto y consultar al propietario antes de implementar.

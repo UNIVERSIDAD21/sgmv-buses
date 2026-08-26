@@ -2,13 +2,57 @@
 
 ## 1. Propósito
 
-Este documento traduce el diseño de clases aprobado a una guía de persistencia para PostgreSQL/Neon.
+Este documento traduce el diagrama de clases oficial de Fase 2 a una guía de persistencia para PostgreSQL/Neon y Prisma.
 
-No pretende reemplazar el diagrama de clases. Si el diagrama aprobado cambia, actualizar este documento antes de migrar el esquema afectado.
+No reemplaza los diagramas de Fase 2. Los artefactos oficiales recibidos el 2026-08-26 quedaron guardados sin alterar en:
+
+- `docs/diagrams/diagrama-casos-uso-fase-2.png`
+- `docs/diagrams/diagrama-clases-fase-2.png`
+
+Si una línea visual del diagrama resulta ambigua por cruces o distribución, prevalece la interpretación textual aprobada por el propietario y las decisiones registradas en `docs/DECISIONS.md` y `docs/BUSINESS_RULES.md`.
+
+Los tipos `int`, `String` y `boolean` del diagrama son conceptuales. La implementación puede usar UUID, enums, `Decimal`, `date` y `timestamptz` cuando sea técnicamente conveniente, siempre que no cambie el significado del diseño.
 
 ---
 
-## 2. Entidades/clases nucleares
+## 2. Casos de uso/RF oficiales
+
+El sistema conserva exactamente seis RF principales:
+
+1. RF-01 — Gestión de la flota vehicular.
+2. RF-02 — Control de novedades operativas.
+3. RF-03 — Administración del mantenimiento preventivo.
+4. RF-04 — Seguimiento de órdenes de trabajo.
+5. RF-05 — Central de Repuestos.
+6. RF-06 — Consulta de historial y generación de informes.
+
+Autenticación, autorización, cierre de sesión, gestión mínima de cuentas y protección de rutas son capacidades transversales. No constituyen un séptimo RF.
+
+---
+
+## 3. Clases principales del dominio
+
+Las clases principales del diagrama oficial son:
+
+- Rol.
+- Usuario.
+- Bus.
+- AsignacionConductor.
+- Novedad.
+- ProgramacionMantenimiento.
+- OrdenTrabajo.
+- Intervencion.
+- ActividadOrden.
+- Repuesto.
+- ConsumoRepuesto.
+- MovimientoInventario.
+- Informe como servicio de consulta.
+
+Las tablas técnicas permitidas solo pueden complementar trazabilidad o integridad. No son nuevos módulos ni nuevos RF.
+
+---
+
+## 4. Entidades/clases nucleares
 
 ### Rol
 
@@ -18,18 +62,14 @@ Atributos conceptuales:
 - `nombre`
 - `descripcion`
 
-Relación:
+Relaciones:
 
-- Un Rol puede estar asociado a múltiples Usuarios.
-- Cada Usuario utiliza el rol necesario para control de acceso según el diseño vigente.
+- Un Rol puede relacionarse con cero o muchos Usuarios.
+- Cada Usuario tiene exactamente un Rol.
 
-Roles funcionales esperados:
+Regla:
 
-- ADMIN_SUPERVISOR
-- MECANICO
-- CONDUCTOR_OPERADOR
-
-Los nombres técnicos pueden variar, pero el significado no.
+- Solo existen los tres roles funcionales aprobados: Administrador/Supervisor, Personal Técnico/Mecánico y Conductor/Operador.
 
 ---
 
@@ -44,13 +84,19 @@ Atributos conceptuales:
 - `contrasenaHash`
 - `estado`
 
-Debe incluir relación con Rol.
+Relaciones:
+
+- Pertenece exactamente a un Rol.
+- Como Conductor/Operador puede tener muchas AsignacionConductor históricas.
+- Como Conductor/Operador puede registrar muchas Novedades.
+- Como Personal Técnico/Mecánico puede tener muchas OrdenTrabajo asignadas.
+- Puede aparecer como responsable en operaciones auditadas según la regla de negocio.
 
 Restricciones mínimas:
 
-- email único;
-- contraseña solo como hash;
-- estado activo/inactivo.
+- Email único.
+- Contraseña almacenada únicamente como hash.
+- Estado activo/inactivo.
 
 ---
 
@@ -67,7 +113,17 @@ Atributos conceptuales:
 - `kilometrajeActual`
 - `estadoOperativo`
 
-Restricciones de identificación única según migración final.
+Relaciones:
+
+- Puede tener muchas AsignacionConductor históricas.
+- Puede tener muchas Novedades.
+- Puede tener muchas ProgramacionMantenimiento.
+- Puede tener muchas OrdenTrabajo.
+
+Restricciones:
+
+- La identificación definida como única, placa y/o código interno según migración final, no admite duplicados.
+- No debe eliminarse si eso destruye trazabilidad histórica.
 
 ---
 
@@ -82,18 +138,17 @@ Atributos conceptuales:
 
 Relaciones:
 
-- pertenece a un Usuario con rol Conductor/Operador;
-- pertenece a un Bus;
-- conserva historial.
+- Pertenece exactamente a un Usuario conductor.
+- Pertenece exactamente a un Bus.
+- Un Conductor puede tener muchas asignaciones históricas.
+- Un Bus puede tener muchas asignaciones históricas.
 
-El backend usa la asignación activa para limitar el acceso del conductor.
+Reglas aprobadas:
 
-Reglas aprobadas de integridad:
-
-- maximo una asignacion activa por conductor;
-- maximo una asignacion activa por bus;
-- reasignacion transaccional que cierre la asignacion anterior con `fechaFin` y `activa=false`;
-- conservar historial de asignaciones.
+- Un conductor tiene máximo una asignación activa.
+- Un bus tiene máximo una asignación activa.
+- Cada reasignación cierra la anterior sin destruir el historial.
+- El backend usa la asignación activa para limitar el acceso del conductor.
 
 ---
 
@@ -109,9 +164,16 @@ Atributos conceptuales:
 
 Relaciones:
 
-- pertenece al Conductor/Operador que reporta;
-- pertenece al Bus;
-- puede originar 0..1 OrdenTrabajo.
+- Pertenece exactamente al conductor autor.
+- Pertenece exactamente a un Bus.
+- Una Novedad puede generar cero o una OrdenTrabajo.
+
+Reglas aprobadas:
+
+- El autor se obtiene de la sesión.
+- El bus se obtiene de la asignación activa.
+- Si `origen = NOVEDAD`, la OrdenTrabajo debe relacionarse exactamente con una Novedad.
+- Una novedad no puede producir órdenes duplicadas.
 
 Estados aprobados:
 
@@ -119,8 +181,6 @@ Estados aprobados:
 - `RESUELTA_SIN_ORDEN`
 - `DESCARTADA`
 - `CONVERTIDA_A_ORDEN`
-
-La clasificacion de la novedad se maneja como dato separado del estado cuando aplique.
 
 ---
 
@@ -137,23 +197,19 @@ Atributos conceptuales:
 
 Relaciones:
 
-- pertenece a un Bus;
-- puede originar 0..1 OrdenTrabajo.
+- Pertenece exactamente a un Bus.
+- Puede generar cero o muchas OrdenTrabajo preventivas históricas.
+- Cada OrdenTrabajo preventiva pertenece exactamente a una ProgramacionMantenimiento.
 
-Según criterio, fecha o kilometraje pueden ser opcionales individualmente, pero no deben quedar ambos ausentes en una programación válida.
+Reglas aprobadas:
 
-Estados calculados/aprobados:
+- El criterio puede ser fecha, kilometraje o ambos.
+- Los estados `VIGENTE`, `PROXIMO` y `VENCIDO` se calculan; no deben quedar desactualizados en una columna persistida.
+- Solo puede existir una orden activa simultáneamente por programación.
+- Al generar una orden preventiva se conserva una copia de la fecha y/o kilometraje objetivo que la originó.
+- Al cerrar una orden preventiva se registra el siguiente objetivo si la programación continúa activa.
 
-- `VIGENTE`
-- `PROXIMO`
-- `VENCIDO`
-
-Umbrales aprobados:
-
-- 7 dias calendario para proximidad por fecha.
-- 500 km para proximidad por kilometraje.
-
-No puede existir mas de una orden activa para la misma programacion preventiva. Al cerrar una orden preventiva deben actualizarse la proxima fecha o el proximo kilometraje objetivo antes de permitir nueva generacion.
+Esta interpretación de varias órdenes históricas con máximo una activa reemplaza cualquier lectura visual de máximo una orden total.
 
 ---
 
@@ -170,16 +226,24 @@ Atributos conceptuales:
 - `estado`
 - `costoTotal`
 
-Relaciones necesarias:
+Relaciones:
 
-- pertenece a un Bus;
-- puede estar vinculada a Novedad;
-- puede estar vinculada a ProgramacionMantenimiento;
-- tiene técnico responsable cuando está asignada;
-- compone/posee 0..* Intervenciones;
-- compone/posee 0..* ConsumosRepuesto.
+- Pertenece exactamente a un Bus.
+- Puede no tener Novedad porque también puede ser preventiva o correctiva directa.
+- Puede pertenecer a una ProgramacionMantenimiento cuando es preventiva.
+- Puede estar inicialmente sin técnico.
+- Desde `ASIGNADA` debe tener exactamente un técnico.
+- Contiene cero o muchas Intervencion.
+- Puede tener cero o muchos ConsumoRepuesto.
 
-Se recomienda representar los vínculos de origen mediante FKs opcionales y restricciones coherentes, no mediante texto sin trazabilidad.
+Reglas aprobadas:
+
+- Las órdenes cerradas e intervenciones alimentan el historial del bus.
+- La asignación y reasignación de técnico son responsabilidad del Administrador/Supervisor.
+- La reasignación debe quedar auditada.
+- `CERRADA` es terminal.
+- Solo el Supervisor cierra órdenes.
+- Solo el Mecánico marca la ejecución como completada.
 
 Estados aprobados:
 
@@ -189,10 +253,6 @@ Estados aprobados:
 - `COMPLETADA_TECNICO`
 - `DEVUELTA_CORRECCION`
 - `CERRADA`
-
-`CERRADA` es terminal. No se permite cerrar desde `ASIGNADA` ni desde `EN_EJECUCION`.
-
-La reasignacion de mecanico debe quedar auditada con responsable y fecha.
 
 ---
 
@@ -209,10 +269,33 @@ Atributos conceptuales:
 
 Relaciones:
 
-- pertenece a OrdenTrabajo;
-- debe permitir identificar al técnico responsable, directamente o por la relación de la orden.
+- Pertenece exactamente a una OrdenTrabajo.
+- Identifica exactamente al Mecánico responsable.
+- Contiene cero o muchas ActividadOrden.
 
-Para permitir marcar una orden como `COMPLETADA_TECNICO`, deben existir fechas de ejecucion y actividades realizadas. En ordenes correctivas, el diagnostico es obligatorio. El consumo de repuestos es opcional.
+Reglas aprobadas:
+
+- Una nueva intervención puede registrar el trabajo de corrección si la orden es devuelta.
+- Para marcar una orden como `COMPLETADA_TECNICO` debe existir como mínimo una actividad registrada.
+- En órdenes correctivas el diagnóstico es obligatorio.
+
+---
+
+### ActividadOrden
+
+Atributos conceptuales:
+
+- `idActividad`
+- `descripcion`
+- `fechaRegistro`
+
+Relaciones:
+
+- Pertenece exactamente a una Intervencion.
+
+Regla:
+
+- La actividad es el registro estructurado que soporta la validación mínima de ejecución técnica.
 
 ---
 
@@ -230,12 +313,17 @@ Atributos conceptuales:
 - `costoUnitario`
 - `estado`
 
+Relaciones:
+
+- Puede aparecer en muchos ConsumoRepuesto.
+- Puede tener muchos MovimientoInventario.
+
 Restricciones mínimas:
 
-- código único;
-- cantidades válidas;
-- costo no negativo;
-- estado activo/inactivo.
+- Código único.
+- Cantidades válidas.
+- Costo no negativo.
+- Estado activo/inactivo.
 
 ---
 
@@ -248,16 +336,19 @@ Atributos conceptuales:
 - `costoUnitario`
 - `subtotal`
 
-Relaciones:
+Relaciones oficiales:
 
-- pertenece a OrdenTrabajo;
-- pertenece a Repuesto.
+- Pertenece exactamente a una OrdenTrabajo.
+- Corresponde exactamente a un Repuesto.
+- Genera exactamente un MovimientoInventario de tipo consumo.
 
-El subtotal se deriva de cantidad × costo unitario de la transacción.
+Reglas aprobadas:
 
-El costo unitario utilizado en el consumo debe conservar el valor histórico de ese momento si el costo del catálogo cambia después.
-
-El consumo de repuestos es opcional dentro de una orden; cuando exista, debe mantener relacion con la orden y el repuesto.
+- La relación correcta es `OrdenTrabajo → ConsumoRepuesto → Repuesto`.
+- No implementar una relación directa OrdenTrabajo-Repuesto que ignore ConsumoRepuesto.
+- El consumo de repuestos es opcional.
+- Consumo, movimiento y descuento de stock se ejecutan en una sola transacción.
+- El costo unitario usado en el consumo conserva el valor histórico del momento.
 
 ---
 
@@ -273,105 +364,111 @@ Atributos conceptuales:
 
 Relaciones:
 
-- pertenece a Repuesto;
-- identifica usuario responsable cuando aplique.
+- Pertenece exactamente a un Repuesto.
+- Identifica exactamente al Usuario responsable.
+- Puede relacionarse con un ConsumoRepuesto cuando el movimiento es de tipo consumo.
 
-Tipos esperados conceptualmente:
+Reglas aprobadas:
 
-- ENTRADA
-- SALIDA/CONSUMO
-- AJUSTE
-
-La nomenclatura final se documenta en `DECISIONS.md`.
+- Los movimientos incluyen entradas, consumos y ajustes.
+- Administrador/Supervisor registra entradas y ajustes.
+- Mecánico registra únicamente consumos autorizados.
+- Un MovimientoInventario de entrada o ajuste no necesita ConsumoRepuesto.
+- "Técnico asignado" corresponde a Usuario-OrdenTrabajo.
+- "Responsable del movimiento" corresponde a Usuario-MovimientoInventario.
+- No interpretar esas dos responsabilidades como una relación directa OrdenTrabajo-MovimientoInventario.
 
 ---
 
 ### Informe
 
-El diagrama de clases contempla `Informe` con conceptos como:
+El diagrama contempla `Informe`, pero la interpretación oficial es:
 
-- tipo;
-- fechaInicio;
-- fechaFin;
-- fechaGeneracion;
-- aplicar filtros;
-- generar.
+- Servicio.
+- Consulta.
+- DTO.
+- Vista de reporte.
 
-**No se requiere convertir Informe automáticamente en una tabla.**
+No crear inicialmente una tabla `Informe`.
 
-Para el prototipo puede implementarse como:
+Informe consulta información existente de buses, novedades, programaciones, órdenes, intervenciones, actividades, consumos, repuestos y movimientos.
 
-- servicio;
-- consulta;
-- DTO/view model;
-- endpoint de reporte.
+AsignacionConductor no "genera" informes; sus datos únicamente pueden ser consultados como parte de un reporte.
 
-Solo persistir informes si existe un requisito explícito de historial de informes generados.
+La generación de informes nunca modifica datos históricos.
 
 ---
 
-## 3. Historial del bus
+## 5. Tablas técnicas permitidas
 
-No crear una tabla editable llamada "historial" únicamente para duplicar datos.
+La persistencia puede añadir tablas técnicas estrictamente justificadas para trazabilidad. Las autorizadas conceptualmente son:
 
-El historial debe poder componerse mediante consultas sobre:
+- `LecturaKilometraje`.
+- `OrdenEstadoHistorial`.
+- `OrdenReasignacion`.
+- `BusEstadoHistorial`, si se utiliza para auditar estados del bus.
 
-- Bus.
-- OrdenTrabajo.
-- Intervencion.
-- ConsumoRepuesto.
-- Novedad cuando aporte trazabilidad.
-- ProgramacionMantenimiento cuando aporte contexto.
-
-Puede utilizarse una vista SQL o una consulta de servicio si facilita el acceso.
+Estas tablas no son nuevos módulos ni nuevos RF. Deben relacionarse con las clases principales y conservar responsable y fecha.
 
 ---
 
-## 4. Relaciones principales
+## 6. Relaciones principales
 
-Representación conceptual:
+Representación conceptual oficial:
 
 ```text
-Rol 1 ───── 0..* Usuario
+Rol 1 -> 0..* Usuario
 
-Usuario(Conductor) 1 ───── 0..* AsignacionConductor
-Bus                 1 ───── 0..* AsignacionConductor
+Usuario(Conductor) 1 -> 0..* AsignacionConductor
+Bus                 1 -> 0..* AsignacionConductor
 
-Usuario(Conductor) 1 ───── 0..* Novedad
-Bus                 1 ───── 0..* Novedad
-Novedad             1 ───── 0..1 OrdenTrabajo
+Usuario(Conductor) 1 -> 0..* Novedad
+Bus                 1 -> 0..* Novedad
+Novedad             1 -> 0..1 OrdenTrabajo
 
-Bus                 1 ───── 0..* ProgramacionMantenimiento
-Programacion        1 ───── 0..1 OrdenTrabajo
+Bus                         1 -> 0..* ProgramacionMantenimiento
+ProgramacionMantenimiento   1 -> 0..* OrdenTrabajo preventivas históricas
+ProgramacionMantenimiento   1 -> 0..1 OrdenTrabajo preventiva activa
 
-Bus                 1 ───── 0..* OrdenTrabajo
-Usuario(Mecánico)   1 ───── 0..* OrdenTrabajo asignadas
+Bus                 1 -> 0..* OrdenTrabajo
+Usuario(Mecánico)   1 -> 0..* OrdenTrabajo asignadas
 
-OrdenTrabajo        1 ◆───── 0..* Intervencion
-OrdenTrabajo        1 ◆───── 0..* ConsumoRepuesto
+OrdenTrabajo        1 -> 0..* Intervencion
+Intervencion        1 -> 0..* ActividadOrden
 
-Repuesto            1 ───── 0..* ConsumoRepuesto
-Repuesto            1 ───── 0..* MovimientoInventario
+OrdenTrabajo        1 -> 0..* ConsumoRepuesto
+ConsumoRepuesto     * -> 1 Repuesto
+Repuesto            1 -> 0..* MovimientoInventario
+ConsumoRepuesto     1 -> 1 MovimientoInventario de consumo
+
+Usuario             1 -> 0..* MovimientoInventario como responsable
 ```
 
 ---
 
-## 5. Metadatos transversales
+## 7. Historial del bus
 
-RNF-01 exige trazabilidad básica.
+No crear una tabla editable llamada "historial" para duplicar datos.
 
-Agregar cuando aplique:
+El historial debe componerse desde datos reales y validados:
 
-- `created_at`
-- `updated_at`
-- `created_by`
-- `updated_by`
+- Bus.
+- AsignacionConductor cuando aporte contexto.
+- LecturaKilometraje si se implementa.
+- Novedad.
+- ProgramacionMantenimiento.
+- OrdenTrabajo.
+- Intervencion.
+- ActividadOrden.
+- ConsumoRepuesto.
+- Repuesto.
+- MovimientoInventario.
 
-No es obligatorio usar exactamente esos nombres, pero sí conservar el significado.
+Los informes consultan estos datos; no los modifican.
 
 ---
 
-## 6. Integridad
+## 8. Integridad mínima
 
 PostgreSQL debe usar:
 
@@ -379,59 +476,51 @@ PostgreSQL debe usar:
 - FK.
 - NOT NULL donde corresponda.
 - UNIQUE.
-- CHECK para cantidades/estados cuando aporte seguridad.
-- transacciones para operaciones múltiples.
+- CHECK para cantidades, estados y coherencia cuando aporte seguridad.
+- Índices únicos parciales cuando se necesiten reglas como "máximo una activa".
+- Transacciones para operaciones múltiples.
 
 Integridad aprobada adicional:
 
-- indices unicos parciales o restriccion equivalente para una asignacion activa por conductor y por bus;
-- restriccion/validacion para una sola orden activa por programacion preventiva;
-- estados controlados para novedades, programaciones y ordenes;
-- auditoria de reasignacion de mecanico.
+- Una asignación activa por conductor.
+- Una asignación activa por bus.
+- Una orden preventiva activa por programación.
+- Una orden por novedad.
+- Estados controlados para novedades y órdenes.
+- Estados preventivos calculados, no persistidos como verdad durable.
+- Auditoría de cambios de estado de orden.
+- Auditoría de reasignación de técnico.
+- Movimiento de inventario responsable y trazable.
 
-### Operación crítica
+Operación crítica de consumo:
 
-Registrar consumo de repuesto:
-
-1. validar orden;
-2. validar permisos;
-3. bloquear/leer existencia de forma segura;
-4. validar cantidad;
-5. crear consumo;
-6. crear movimiento;
-7. actualizar stock;
-8. commit.
+1. Validar orden.
+2. Validar permisos.
+3. Validar repuesto y existencia.
+4. Crear ConsumoRepuesto.
+5. Crear MovimientoInventario de tipo consumo.
+6. Descontar stock.
+7. Confirmar transacción.
 
 Ante fallo, rollback completo.
 
 ---
 
-## 7. Migraciones
+## 9. Migraciones
 
-Nunca editar manualmente producción como mecanismo principal de evolución.
+No modificar `schema.prisma`, crear migraciones, conectar Neon ni implementar servicios hasta recibir aprobación explícita del propietario para iniciar Persistencia.
 
-Toda modificación de esquema debe:
+Cuando esa aprobación exista, toda modificación de esquema debe:
 
-1. estar versionada;
-2. ser reproducible;
-3. actualizar este documento si cambia el modelo;
-4. incluir rollback o estrategia clara de corrección cuando aplique.
+1. Estar versionada.
+2. Ser reproducible.
+3. Actualizar este documento si cambia el modelo.
+4. Mantener la alineación con los diagramas y decisiones oficiales.
 
 ---
 
-## 8. Datos semilla
+## 10. Datos semilla
 
-Crear datos de desarrollo/prueba que permitan probar los tres roles.
+Los datos semilla pertenecen al bloque de implementación de Persistencia, no a esta alineación documental.
 
-No presentar datos simulados como personas reales.
-
-Como mínimo:
-
-- 1 Administrador/Supervisor.
-- 1 Mecánico.
-- 1 Conductor/Operador.
-- buses de prueba;
-- repuestos de prueba;
-- escenarios de novedad/preventivo/orden.
-
-Nunca incluir contraseñas reales en el repositorio.
+Cuando se autoricen, deben incluir datos de desarrollo/prueba para los tres roles sin presentar personas reales ni contraseñas reales.

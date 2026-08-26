@@ -97,12 +97,12 @@ No uses listas históricas de 24 RF, 52 RF u otras versiones como lista de imple
 
 La línea vigente es exactamente:
 
-- RF-01 Gestión de la flota vehicular
-- RF-02 Control de novedades operativas
-- RF-03 Administración del mantenimiento preventivo
-- RF-04 Seguimiento de órdenes de trabajo
-- RF-05 Central de Repuestos
-- RF-06 Consulta de historial y generación de informes
+- RF-01 — Gestión de la flota vehicular
+- RF-02 — Control de novedades operativas
+- RF-03 — Administración del mantenimiento preventivo
+- RF-04 — Seguimiento de órdenes de trabajo
+- RF-05 — Central de Repuestos
+- RF-06 — Consulta de historial y generación de informes
 
 Autenticación y gestión de acceso se programan, pero son capacidades transversales, NO un séptimo RF ni un RF principal de "Iniciar sesión".
 

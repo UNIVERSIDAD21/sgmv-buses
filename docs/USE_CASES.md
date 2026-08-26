@@ -2,7 +2,14 @@
 
 ## 1. Regla general
 
-El diagrama/generalización funcional del sistema se mantiene en **seis casos de uso principales**, alineados con los seis RF.
+El diagrama/generalización funcional del sistema se mantiene en **seis casos de uso principales**, alineados con los seis RF oficiales:
+
+1. RF-01 — Gestión de la flota vehicular.
+2. RF-02 — Control de novedades operativas.
+3. RF-03 — Administración del mantenimiento preventivo.
+4. RF-04 — Seguimiento de órdenes de trabajo.
+5. RF-05 — Central de Repuestos.
+6. RF-06 — Consulta de historial y generación de informes.
 
 No convertir acciones genéricas como iniciar sesión, cerrar sesión, guardar, buscar o filtrar en casos de uso principales.
 
@@ -12,7 +19,7 @@ Para ejecutar funciones protegidas, el actor debe estar autenticado y autorizado
 
 ---
 
-# CU-01 — Gestionar flota vehicular
+# CU-01 — RF-01 — Gestión de la flota vehicular
 
 **RF relacionado:** RF-01  
 **Actor principal:** Administrador / Supervisor  
@@ -52,7 +59,7 @@ La información de flota queda actualizada y trazable.
 
 ---
 
-# CU-02 — Controlar novedades operativas
+# CU-02 — RF-02 — Control de novedades operativas
 
 **RF relacionado:** RF-02  
 **Actor principal inicial:** Conductor / Operador  
@@ -92,11 +99,13 @@ La novedad queda trazada hasta su resolución o hasta la orden originada.
 
 ---
 
-# CU-03 — Administrar mantenimiento preventivo
+# CU-03 — RF-03 — Administración del mantenimiento preventivo
 
 **RF relacionado:** RF-03  
 **Actor principal:** Administrador / Supervisor  
 **Actor secundario:** Sistema
+
+El Personal Técnico/Mecánico no administra programaciones preventivas. Las órdenes preventivas generadas desde este RF se ejecutan dentro de RF-04.
 
 ## Objetivo
 
@@ -120,7 +129,8 @@ Programar y controlar mantenimiento preventivo usando fecha y/o kilometraje.
 ## Alternativas
 
 - Fecha/kilometraje inválido → rechazar.
-- Programación ya convertida → no duplicar orden.
+- Ya existe orden preventiva activa para la programación → no duplicar orden activa.
+- Órdenes preventivas cerradas → conservar como historial de la programación.
 - Cambio de programación → conservar trazabilidad relevante.
 
 ## Postcondición
@@ -129,7 +139,7 @@ Existe programación válida y, si corresponde, una orden preventiva relacionada
 
 ---
 
-# CU-04 — Dar seguimiento a órdenes de trabajo
+# CU-04 — RF-04 — Seguimiento de órdenes de trabajo
 
 **RF relacionado:** RF-04  
 **Actores:** Administrador / Supervisor; Personal Técnico / Mecánico
@@ -177,7 +187,7 @@ Orden cerrada de manera trazable y reflejada en historial.
 
 ---
 
-# CU-05 — Administrar Central de Repuestos
+# CU-05 — RF-05 — Central de Repuestos
 
 **RF relacionado:** RF-05  
 **Actores:** Administrador / Supervisor; Personal Técnico / Mecánico
@@ -218,7 +228,7 @@ Existencias y movimientos permanecen consistentes y trazables.
 
 ---
 
-# CU-06 — Consultar historial y generar informes
+# CU-06 — RF-06 — Consulta de historial y generación de informes
 
 **RF relacionado:** RF-06  
 **Actores:** Administrador / Supervisor; Personal Técnico / Mecánico; Conductor / Operador limitado
