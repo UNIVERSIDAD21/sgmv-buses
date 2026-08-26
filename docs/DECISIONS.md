@@ -394,3 +394,43 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 - Autenticacion, repositorios, servicios o RF completos.
 
 **Estado:** APROBADA / IMPLEMENTADA COMO BLOQUE DE PERSISTENCIA.
+
+---
+
+## 2026-08-26 - Auditoria final de estructura de base de datos
+
+**Decision:** antes de iniciar autenticacion, repositorios, servicios o RF completos, endurecer y documentar la estructura fisica de PostgreSQL/Prisma sin modificar retroactivamente la migracion inicial.
+
+**Implementado en migracion correctiva aditiva:**
+
+- Coherencia obligatoria entre bus de `OrdenTrabajo` y bus de `Novedad`.
+- Coherencia obligatoria entre bus de `OrdenTrabajo` preventiva y bus de `ProgramacionMantenimiento`.
+- Coherencia obligatoria entre repuesto de `MovimientoInventario` tipo `CONSUMO` y repuesto de `ConsumoRepuesto`.
+- Regla diferible para que cada `ConsumoRepuesto` tenga exactamente un `MovimientoInventario` tipo `CONSUMO`.
+- `subtotal` validado como `cantidad * costoUnitario`.
+- `costoTotal` de la orden recalculado por PostgreSQL desde consumos reales.
+- Fechas cronologicas de asignacion, inicio, completado tecnico y cierre.
+- `CERRADA` como estado terminal a nivel de trigger.
+- Motivo obligatorio para entradas y ajustes de inventario.
+- Normalizacion de `email`, placas y codigos, con indices funcionales case-insensitive.
+- Funciones PL/pgSQL de triggers con `search_path` fijado al schema de migracion para validar desde schemas desechables de Neon sin contaminar `public`.
+
+**Seed:** se elimino la contraseña demo predeterminada en codigo. `SEED_USER_PASSWORD` es obligatoria y debe definirse solo en entorno local o variable de proceso.
+
+**Documentacion academica creada:**
+
+- `docs/DATABASE_STRUCTURE.md`.
+- `docs/DATA_DICTIONARY.md`.
+- `docs/diagrams/modelo-relacional-fisico.drawio`.
+- `docs/diagrams/modelo-relacional-fisico.png`.
+
+**No implementado en este bloque:**
+
+- Autenticacion.
+- Repositorios o servicios de negocio.
+- Frontend visible.
+- RF-01 a RF-06 completos.
+- Tabla persistente `Informe`.
+- Relaciones directas redundantes `OrdenTrabajo`-`Repuesto` u `OrdenTrabajo`-`MovimientoInventario`.
+
+**Estado:** APROBADA / IMPLEMENTADA COMO CIERRE DE PERSISTENCIA.

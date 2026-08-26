@@ -1,0 +1,127 @@
+<mxfile host="app.diagrams.net" modified="2026-08-26T00:00:00.000Z" agent="OpenClaw-Codex" version="24.7.17">
+  <diagram id="sgmv-db-physical" name="Modelo relacional fisico">
+    <mxGraphModel dx="1420" dy="980" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1320" pageHeight="980" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="Modelo relacional fisico - SGMV Buses (16 tablas, sin tabla Informe)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="760" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="roles" value="&lt;b&gt;roles&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;UQ codigo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef6ff;strokeColor=#4d88c7;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="20" y="70" width="180" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="usuarios" value="&lt;b&gt;usuarios&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;FK rol_id&lt;br/&gt;UQ email + lower(email)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef6ff;strokeColor=#4d88c7;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="260" y="70" width="210" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="buses" value="&lt;b&gt;buses&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;UQ codigo_interno + upper&lt;br/&gt;UQ placa + upper" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f2fff3;strokeColor=#5b9b61;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="530" y="70" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="asignaciones" value="&lt;b&gt;asignaciones_conductor&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;FK conductor_id, bus_id&lt;br/&gt;UQ parcial activa por conductor/bus" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7e8;strokeColor=#cf8d2e;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="820" y="70" width="260" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="lecturas" value="&lt;b&gt;lecturas_kilometraje&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;FK bus_id&lt;br/&gt;FK registrado_por_id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7e8;strokeColor=#cf8d2e;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="530" y="240" width="220" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="bus_estado" value="&lt;b&gt;bus_estado_historial&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;FK bus_id&lt;br/&gt;FK cambiado_por_id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7e8;strokeColor=#cf8d2e;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="820" y="240" width="240" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="novedades" value="&lt;b&gt;novedades&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;FK conductor_id, bus_id&lt;br/&gt;UQ (id, bus_id)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4f0ff;strokeColor=#7b63c7;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="20" y="420" width="220" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="programaciones" value="&lt;b&gt;programaciones_mantenimiento&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;FK bus_id&lt;br/&gt;UQ (id, bus_id)&lt;br/&gt;estado preventivo calculado" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4f0ff;strokeColor=#7b63c7;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="280" y="420" width="250" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="ordenes" value="&lt;b&gt;ordenes_trabajo&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;FK bus_id, tecnico_asignado_id&lt;br/&gt;FK novedad_id, programacion_id&lt;br/&gt;costo_total derivado&lt;br/&gt;CERRADA terminal" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff0f0;strokeColor=#c75d5d;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="570" y="400" width="260" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="orden_estado" value="&lt;b&gt;orden_estado_historial&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;FK orden_trabajo_id&lt;br/&gt;FK cambiado_por_id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7e8;strokeColor=#cf8d2e;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="880" y="400" width="240" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="orden_reasignaciones" value="&lt;b&gt;orden_reasignaciones&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;FK orden_trabajo_id&lt;br/&gt;FK tecnico_anterior/nuevo&lt;br/&gt;FK reasignado_por_id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7e8;strokeColor=#cf8d2e;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="880" y="550" width="260" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="intervenciones" value="&lt;b&gt;intervenciones&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;FK orden_trabajo_id&lt;br/&gt;FK tecnico_id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff0f0;strokeColor=#c75d5d;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="570" y="620" width="230" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="actividades" value="&lt;b&gt;actividades_orden&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;FK intervencion_id&lt;br/&gt;FK registrada_por_id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff0f0;strokeColor=#c75d5d;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="860" y="730" width="230" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="repuestos" value="&lt;b&gt;repuestos&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;UQ codigo + upper&lt;br/&gt;stock_actual no negativo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eefcfb;strokeColor=#3d9a91;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="20" y="760" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="consumos" value="&lt;b&gt;consumos_repuesto&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;FK orden_trabajo_id&lt;br/&gt;FK repuesto_id&lt;br/&gt;UQ (id, repuesto_id)&lt;br/&gt;subtotal calculado" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eefcfb;strokeColor=#3d9a91;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="300" y="760" width="240" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="movimientos" value="&lt;b&gt;movimientos_inventario&lt;/b&gt;&lt;br/&gt;PK id&lt;br/&gt;FK repuesto_id&lt;br/&gt;FK responsable_id&lt;br/&gt;UQ consumo_repuesto_id&lt;br/&gt;FK compuesta mismo repuesto" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eefcfb;strokeColor=#3d9a91;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="600" y="790" width="260" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" value="Colores: azul usuarios/roles, verde flota, morado novedades/preventivo, rojo ordenes, turquesa repuestos, naranja auditoria/tecnicas." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f7f7;strokeColor=#999999;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="20" y="920" width="760" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e_roles_usuarios" style="endArrow=block;html=1;rounded=0;strokeColor=#4d88c7;" edge="1" parent="1" source="roles" target="usuarios">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_usuarios_asignaciones" style="endArrow=block;html=1;rounded=0;strokeColor=#cf8d2e;" edge="1" parent="1" source="usuarios" target="asignaciones">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_buses_asignaciones" style="endArrow=block;html=1;rounded=0;strokeColor=#cf8d2e;" edge="1" parent="1" source="buses" target="asignaciones">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_buses_lecturas" style="endArrow=block;html=1;rounded=0;strokeColor=#cf8d2e;" edge="1" parent="1" source="buses" target="lecturas">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_buses_estado" style="endArrow=block;html=1;rounded=0;strokeColor=#cf8d2e;" edge="1" parent="1" source="buses" target="bus_estado">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_usuarios_novedades" style="endArrow=block;html=1;rounded=0;strokeColor=#7b63c7;" edge="1" parent="1" source="usuarios" target="novedades">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_buses_novedades" style="endArrow=block;html=1;rounded=0;strokeColor=#7b63c7;" edge="1" parent="1" source="buses" target="novedades">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_buses_programaciones" style="endArrow=block;html=1;rounded=0;strokeColor=#7b63c7;" edge="1" parent="1" source="buses" target="programaciones">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_buses_ordenes" style="endArrow=block;html=1;rounded=0;strokeColor=#c75d5d;" edge="1" parent="1" source="buses" target="ordenes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_novedades_ordenes" value="0..1" style="endArrow=block;html=1;rounded=0;strokeColor=#7b63c7;" edge="1" parent="1" source="novedades" target="ordenes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_programaciones_ordenes" value="0..*" style="endArrow=block;html=1;rounded=0;strokeColor=#7b63c7;" edge="1" parent="1" source="programaciones" target="ordenes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_usuarios_ordenes" style="endArrow=block;html=1;rounded=0;strokeColor=#c75d5d;" edge="1" parent="1" source="usuarios" target="ordenes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ordenes_historial" style="endArrow=block;html=1;rounded=0;strokeColor=#cf8d2e;" edge="1" parent="1" source="ordenes" target="orden_estado">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ordenes_reasig" style="endArrow=block;html=1;rounded=0;strokeColor=#cf8d2e;" edge="1" parent="1" source="ordenes" target="orden_reasignaciones">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ordenes_intervenciones" style="endArrow=block;html=1;rounded=0;strokeColor=#c75d5d;" edge="1" parent="1" source="ordenes" target="intervenciones">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_intervenciones_actividades" style="endArrow=block;html=1;rounded=0;strokeColor=#c75d5d;" edge="1" parent="1" source="intervenciones" target="actividades">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ordenes_consumos" style="endArrow=block;html=1;rounded=0;strokeColor=#3d9a91;" edge="1" parent="1" source="ordenes" target="consumos">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_repuestos_consumos" style="endArrow=block;html=1;rounded=0;strokeColor=#3d9a91;" edge="1" parent="1" source="repuestos" target="consumos">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_repuestos_movimientos" style="endArrow=block;html=1;rounded=0;strokeColor=#3d9a91;" edge="1" parent="1" source="repuestos" target="movimientos">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_consumos_movimientos" value="1..1" style="endArrow=block;html=1;rounded=0;strokeColor=#3d9a91;strokeWidth=2;" edge="1" parent="1" source="consumos" target="movimientos">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_usuarios_movimientos" style="endArrow=block;html=1;rounded=0;strokeColor=#3d9a91;" edge="1" parent="1" source="usuarios" target="movimientos">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

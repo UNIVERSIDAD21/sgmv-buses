@@ -59,6 +59,7 @@ Nunca subir secretos.
 Variables conceptuales:
 
 - `DATABASE_URL`
+- `SEED_USER_PASSWORD`
 - `JWT_SECRET`
 - `JWT_EXPIRES_IN`
 - `PORT`
@@ -74,6 +75,12 @@ Variables conceptuales:
 - `PREVENTIVE_SOON_KM=500`
 
 No registrar contrasenas, hashes ni tokens en logs.
+
+En Neon se recomienda incluir `schema=public` en `DATABASE_URL` durante desarrollo para evitar que el pooler reutilice sesiones con un `search_path` temporal:
+
+```text
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require&schema=public
+```
 
 ---
 
@@ -129,7 +136,7 @@ Procedimiento esperado:
 5. Verificar conectividad.
 6. No ejecutar operaciones destructivas en una BD compartida sin confirmación.
 
-El seed usa usuarios demo y genera hashes bcrypt. Puede cambiarse la clave demo local con:
+El seed usa usuarios demo y genera hashes bcrypt. `SEED_USER_PASSWORD` es obligatoria, debe tener minimo 12 caracteres y no se versiona. Configurar una clave demo local con:
 
 ```bash
 SEED_USER_PASSWORD=otra-clave-demo npm run prisma:seed
@@ -207,14 +214,18 @@ Advertencia conocida: npm puede mostrar `allow-scripts` para paquetes con script
 
 ---
 
-## 10. Persistencia implementada
+## 10. Persistencia implementada y auditada
 
-El bloque de Persistencia quedo implementado con:
+El bloque de Persistencia quedo implementado y auditado con:
 
 - Prisma Client 6.12.0.
 - PostgreSQL/Neon mediante `DATABASE_URL`.
 - Migracion inicial `20260826140227_inicial_persistencia`.
+- Migracion correctiva/aditiva `20260826154500_auditoria_integridad_db`.
+- Migracion correctiva/aditiva `20260826163500_fija_search_path_triggers`.
 - Seed de desarrollo en `src/backend/prisma/seed.ts`.
 - Pruebas de integridad en `src/backend/test/prisma-integrity.test.ts`.
+- Documentacion fisica en `docs/DATABASE_STRUCTURE.md` y `docs/DATA_DICTIONARY.md`.
+- Diagrama fisico editable y PNG en `docs/diagrams/`.
 
 Los comandos Prisma del workspace backend usan `dotenv-cli` para leer `.env` desde la raiz del repositorio. No copiar secretos a archivos versionados.

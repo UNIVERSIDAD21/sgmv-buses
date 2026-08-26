@@ -249,13 +249,22 @@ Los errores bloqueantes de los flujos principales deben corregirse antes del cie
 
 ## 6. Evidencia del bloque de Persistencia
 
-El 2026-08-26 se agregaron pruebas automatizadas de integridad para el modelo Prisma/PostgreSQL:
+El 2026-08-26 se agregaron y ampliaron pruebas automatizadas de integridad para el modelo Prisma/PostgreSQL:
 
 - Asignacion activa unica por conductor y por bus.
 - Novedad convertida a una sola orden y coherencia de `origen = NOVEDAD`.
 - Programacion preventiva con varias ordenes historicas y maximo una activa.
 - Consumo de repuestos mediante `ConsumoRepuesto` y movimiento de inventario trazable.
 - Ausencia de campos directos redundantes `ordenTrabajoId` en `MovimientoInventario` y `repuestoId` en `OrdenTrabajo`.
+- Rechazo de orden originada por novedad de otro bus.
+- Rechazo de orden preventiva asociada a programacion de otro bus.
+- Rechazo de movimiento de consumo con repuesto distinto al consumo.
+- Rechazo de consumos sin movimiento tipo `CONSUMO`.
+- Rechazo de subtotales manipulados.
+- Fechas cronologicas de orden y `CERRADA` terminal.
+- Motivo obligatorio para entradas y ajustes administrativos.
+- Normalizacion de correo, placas y codigos.
+- Patron transaccional para impedir stock negativo y cambios parciales.
 
 Comando ejecutado:
 
@@ -263,4 +272,12 @@ Comando ejecutado:
 npm --workspace @sgmv/backend run test
 ```
 
-Resultado: 2 archivos de prueba aprobados, 5 pruebas aprobadas.
+Resultado: 2 archivos de prueba aprobados, 9 pruebas aprobadas.
+
+Validacion adicional del bloque:
+
+- Migraciones aplicadas desde cero en schema temporal de Neon.
+- Seed ejecutado en ese schema temporal con `SEED_USER_PASSWORD` de proceso.
+- Pruebas ejecutadas contra ese schema temporal.
+- Schema temporal eliminado al finalizar.
+- Auditoria SQL final en Neon actual con cero inconsistencias en coherencia bus-orden, consumo-movimiento, subtotal, `costoTotal`, motivos administrativos, fechas y normalizacion.

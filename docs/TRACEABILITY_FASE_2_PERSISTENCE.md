@@ -46,3 +46,18 @@ Autenticación, autorización, cierre de sesión, gestión mínima de cuentas y 
 - La relación de repuestos es `OrdenTrabajo → ConsumoRepuesto → Repuesto`.
 - `MovimientoInventario` no crea una relación directa OrdenTrabajo-MovimientoInventario; en consumos se llega a la orden por ConsumoRepuesto.
 - Las tablas técnicas se justifican por trazabilidad y no agregan RF ni roles.
+
+---
+
+## Matriz RF -> clases -> tablas fisicas
+
+| RF oficial | Clases del diagrama | Tablas fisicas implementadas | Soporte tecnico/auditoria |
+|---|---|---|---|
+| RF-01 — Gestión de la flota vehicular | `Bus`, `AsignacionConductor`, `Usuario`, `Rol` | `buses`, `asignaciones_conductor`, `usuarios`, `roles` | `lecturas_kilometraje`, `bus_estado_historial` |
+| RF-02 — Control de novedades operativas | `Novedad`, `Usuario`, `Bus`, `OrdenTrabajo` | `novedades`, `usuarios`, `buses`, `ordenes_trabajo` | `orden_estado_historial` |
+| RF-03 — Administración del mantenimiento preventivo | `ProgramacionMantenimiento`, `OrdenTrabajo`, `Bus` | `programaciones_mantenimiento`, `ordenes_trabajo`, `buses` | `lecturas_kilometraje`, `orden_estado_historial` |
+| RF-04 — Seguimiento de órdenes de trabajo | `OrdenTrabajo`, `Intervencion`, `ActividadOrden`, `Usuario` | `ordenes_trabajo`, `intervenciones`, `actividades_orden`, `usuarios` | `orden_estado_historial`, `orden_reasignaciones` |
+| RF-05 — Central de Repuestos | `Repuesto`, `ConsumoRepuesto`, `MovimientoInventario`, `OrdenTrabajo`, `Usuario` | `repuestos`, `consumos_repuesto`, `movimientos_inventario`, `ordenes_trabajo`, `usuarios` | Reglas transaccionales de consumo y stock en servicios |
+| RF-06 — Consulta de historial y generación de informes | `Informe` como servicio y clases consultadas | No existe tabla `Informe`; consulta tablas de flota, novedades, preventivos, ordenes, actividades, consumos, repuestos y movimientos | Vistas/DTO/servicios futuros sin modificar datos historicos |
+
+Ver tambien `docs/DATABASE_STRUCTURE.md` y `docs/DATA_DICTIONARY.md` para el detalle fisico de claves, indices y restricciones.

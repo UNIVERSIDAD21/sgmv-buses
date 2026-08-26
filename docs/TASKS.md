@@ -6,7 +6,7 @@ Este archivo es el tablero operativo del agente.
 
 **No marcar el inicio de implementación hasta recibir la orden explícita `INICIAR FASE 3`.**
 
-**Estado actual:** bloque de Persistencia implementado y cerrado. Todavia no implementar repositorios, servicios, autenticacion ni RF-01 a RF-06 completos sin nueva autorizacion del propietario.
+**Estado actual:** bloque de Persistencia implementado, auditado, documentado y cerrado. Todavia no implementar repositorios, servicios, autenticacion ni RF-01 a RF-06 completos sin nueva autorizacion del propietario.
 
 ---
 
@@ -58,6 +58,20 @@ Este archivo es el tablero operativo del agente.
 - [x] Implementar tablas/relaciones del modelo vigente.
 - [x] Aplicar PK/FK/UNIQUE/CHECK.
 - [x] Crear seed de desarrollo.
+- [x] Crear migracion correctiva/aditiva sin modificar retroactivamente la migracion inicial.
+- [x] Validar coherencia bus-orden para novedades y programaciones preventivas.
+- [x] Validar coherencia consumo-movimiento-repuesto.
+- [x] Exigir un movimiento de inventario tipo `CONSUMO` por cada consumo de repuesto.
+- [x] Calcular `subtotal` y `costoTotal` sin depender de valores enviados por cliente.
+- [x] Validar fechas cronologicas de ordenes y `CERRADA` terminal.
+- [x] Exigir motivo para entradas y ajustes de inventario.
+- [x] Normalizar emails, placas y codigos contra duplicados por mayusculas/minusculas.
+- [x] Fijar `search_path` en funciones PL/pgSQL de triggers para validacion multi-schema en Neon.
+- [x] Exigir `SEED_USER_PASSWORD` y eliminar contrasena demo predeterminada del codigo.
+- [x] Crear `docs/DATABASE_STRUCTURE.md`.
+- [x] Crear `docs/DATA_DICTIONARY.md`.
+- [x] Crear diagrama relacional fisico editable `.drawio` y PNG.
+- [x] Ampliar pruebas negativas de integridad.
 - [x] Probar integridad y relaciones críticas de persistencia.
 
 ---

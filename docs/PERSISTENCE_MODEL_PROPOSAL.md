@@ -1,9 +1,9 @@
 # Modelo de persistencia Prisma/PostgreSQL
 
-**Estado:** IMPLEMENTADO COMO BLOQUE DE PERSISTENCIA INICIAL
+**Estado:** IMPLEMENTADO, AUDITADO Y DOCUMENTADO COMO BLOQUE DE PERSISTENCIA
 **Bloque:** 2 - Persistencia
 **Fecha de implementacion:** 2026-08-26
-**Alcance implementado:** `schema.prisma`, migracion inicial PostgreSQL/Neon, seed minimo de desarrollo y pruebas de integridad. No implementa autenticacion, repositorios, servicios ni RF completos.
+**Alcance implementado:** `schema.prisma`, migracion inicial PostgreSQL/Neon, migracion correctiva de auditoria, seed minimo seguro, pruebas de integridad ampliadas y documentacion fisica. No implementa autenticacion, repositorios, servicios ni RF completos.
 **Fecha de alineación:** 2026-08-26
 **Alcance:** documentación técnica. No modifica `schema.prisma`, no crea migraciones, no conecta Neon, no crea seed y no implementa repositorios ni servicios.
 
@@ -883,13 +883,13 @@ Backend con Zod y servicios modelará:
 
 ---
 
-## 11. Pendiente antes de implementar
+## 11. Nota historica previa a implementacion
 
-Esta propuesta queda lista para revisión documental, pero no autoriza implementación.
+Esta seccion documenta el gate que existia antes de implementar Persistencia. La aprobacion explicita del propietario fue recibida el 2026-08-26 y el bloque ya fue implementado, auditado y documentado.
 
-Antes de tocar `schema.prisma`, crear migraciones, conectar Neon, crear seed o implementar repositorios/servicios, se requiere aprobación explícita del propietario para iniciar Persistencia.
+El contenido siguiente queda como trazabilidad de la decision, no como pendiente vigente.
 
-Puntos técnicos a confirmar en esa aprobación:
+Puntos tecnicos que fueron confirmados o resueltos en esa aprobacion:
 
 1. Usar UUID como PK técnica.
 2. Usar los enums técnicos propuestos.
@@ -911,10 +911,15 @@ El propietario autorizo implementar Persistencia el 2026-08-26. El bloque quedo 
 - Modelos Prisma para las clases principales del diagrama, excepto `Informe`, que sigue como servicio/consulta/DTO/vista.
 - Tablas tecnicas `LecturaKilometraje`, `OrdenEstadoHistorial`, `OrdenReasignacion` y `BusEstadoHistorial`.
 - Migracion inicial `20260826140227_inicial_persistencia` aplicada en Neon.
+- Migracion correctiva/aditiva `20260826154500_auditoria_integridad_db` aplicada sin modificar retroactivamente la migracion inicial.
+- Migracion correctiva/aditiva `20260826163500_fija_search_path_triggers` para fijar `search_path` en funciones PL/pgSQL y soportar validacion multi-schema en Neon.
 - Indices unicos parciales para asignacion activa por conductor, asignacion activa por bus y orden preventiva activa por programacion.
-- `CHECK` PostgreSQL para coherencia de programaciones, ordenes, cantidades, costos, kilometrajes, fechas, asignaciones y movimientos de inventario.
+- `CHECK`, FKs compuestas y triggers PostgreSQL para coherencia de programaciones, ordenes, buses, cantidades, costos, kilometrajes, fechas, asignaciones, consumos y movimientos de inventario.
 - Seed minimo de desarrollo para roles, usuarios demo, buses, asignacion activa, novedad convertida, programacion, ordenes, intervencion, actividad, repuesto, consumo y movimientos.
-- Pruebas de integridad en `src/backend/test/prisma-integrity.test.ts`.
+- Seed sin contraseña demo predeterminada; requiere `SEED_USER_PASSWORD` local.
+- Pruebas de integridad y casos negativos en `src/backend/test/prisma-integrity.test.ts`.
+- Documentos finales `docs/DATABASE_STRUCTURE.md` y `docs/DATA_DICTIONARY.md`.
+- Diagrama fisico `docs/diagrams/modelo-relacional-fisico.drawio` y `docs/diagrams/modelo-relacional-fisico.png`.
 
 Se mantiene fuera de este bloque:
 

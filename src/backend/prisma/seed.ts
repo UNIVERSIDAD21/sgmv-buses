@@ -45,7 +45,14 @@ const ids = {
 }
 
 async function main() {
-  const demoPassword = process.env.SEED_USER_PASSWORD ?? 'SgmvDemo2026!'
+  const demoPassword = process.env.SEED_USER_PASSWORD
+
+  if (!demoPassword || demoPassword.length < 12) {
+    throw new Error(
+      'SEED_USER_PASSWORD debe estar configurada con minimo 12 caracteres para ejecutar el seed.',
+    )
+  }
+
   const contrasenaHash = await hash(demoPassword, 10)
   const now = new Date()
   const fechaPreventivo = new Date(Date.UTC(2026, 8, 2))
@@ -290,14 +297,20 @@ async function main() {
         },
       })
 
+      const fechaCorrectivaCreacion = new Date()
+      const fechaCorrectivaAsignacion = new Date(fechaCorrectivaCreacion.getTime() + 1000)
+      const fechaCorrectivaInicio = new Date(fechaCorrectivaCreacion.getTime() + 2000)
+      const fechaCorrectivaCompletada = new Date(fechaCorrectivaCreacion.getTime() + 3000)
+
       await tx.ordenTrabajo.upsert({
         where: { codigo: 'OT-DEMO-CORR-001' },
         update: {
           estado: 'COMPLETADA_TECNICO',
           tecnicoAsignadoId: ids.usuarios.mecanico,
-          fechaInicioEjecucion: now,
-          fechaCompletadaTecnico: now,
-          costoTotal: '160000',
+          fechaCreacion: fechaCorrectivaCreacion,
+          fechaAsignacion: fechaCorrectivaAsignacion,
+          fechaInicioEjecucion: fechaCorrectivaInicio,
+          fechaCompletadaTecnico: fechaCorrectivaCompletada,
         },
         create: {
           id: ids.ordenes.correctiva,
@@ -310,19 +323,24 @@ async function main() {
           estado: 'COMPLETADA_TECNICO',
           tecnicoAsignadoId: ids.usuarios.mecanico,
           creadaPorId: ids.usuarios.admin,
-          fechaAsignacion: now,
-          fechaInicioEjecucion: now,
-          fechaCompletadaTecnico: now,
+          fechaCreacion: fechaCorrectivaCreacion,
+          fechaAsignacion: fechaCorrectivaAsignacion,
+          fechaInicioEjecucion: fechaCorrectivaInicio,
+          fechaCompletadaTecnico: fechaCorrectivaCompletada,
           novedadId: ids.novedad,
-          costoTotal: '160000',
         },
       })
+
+      const fechaPreventivaCreacion = new Date()
+      const fechaPreventivaAsignacion = new Date(fechaPreventivaCreacion.getTime() + 1000)
 
       await tx.ordenTrabajo.upsert({
         where: { codigo: 'OT-DEMO-PREV-001' },
         update: {
           estado: 'ASIGNADA',
           tecnicoAsignadoId: ids.usuarios.mecanico,
+          fechaCreacion: fechaPreventivaCreacion,
+          fechaAsignacion: fechaPreventivaAsignacion,
           fechaObjetivoPreventivo: fechaPreventivo,
           kilometrajeObjetivoPreventivo: 45500,
         },
@@ -337,7 +355,8 @@ async function main() {
           estado: 'ASIGNADA',
           tecnicoAsignadoId: ids.usuarios.mecanico,
           creadaPorId: ids.usuarios.admin,
-          fechaAsignacion: now,
+          fechaCreacion: fechaPreventivaCreacion,
+          fechaAsignacion: fechaPreventivaAsignacion,
           programacionMantenimientoId: ids.programacion,
           fechaObjetivoPreventivo: fechaPreventivo,
           kilometrajeObjetivoPreventivo: 45500,
@@ -354,8 +373,8 @@ async function main() {
           id: ids.intervencion,
           ordenTrabajoId: ids.ordenes.correctiva,
           tecnicoId: ids.usuarios.mecanico,
-          fechaInicio: now,
-          fechaFin: now,
+          fechaInicio: fechaCorrectivaInicio,
+          fechaFin: fechaCorrectivaCompletada,
           diagnostico: 'Se identifica desgaste en componente de freno.',
           observaciones: 'Trabajo tecnico demo completado.',
         },

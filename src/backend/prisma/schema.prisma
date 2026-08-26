@@ -250,6 +250,7 @@ model Novedad {
   revisadaPor  Usuario?      @relation("NovedadRevisadaPor", fields: [revisadaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   ordenTrabajo OrdenTrabajo?
 
+  @@unique([id, busId])
   @@index([busId, fechaReporte])
   @@index([conductorId, fechaReporte])
   @@index([estado])
@@ -274,6 +275,7 @@ model ProgramacionMantenimiento {
   creadaPor      Usuario        @relation("ProgramacionCreadaPor", fields: [creadaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   ordenesTrabajo OrdenTrabajo[]
 
+  @@unique([id, busId])
   @@index([busId, activa])
   @@index([creadaPorId])
   @@map("programaciones_mantenimiento")
@@ -435,6 +437,7 @@ model ConsumoRepuesto {
 
   movimientoInventario MovimientoInventario?
 
+  @@unique([id, repuestoId])
   @@index([consumidoPorId])
   @@index([ordenTrabajoId])
   @@index([repuestoId])

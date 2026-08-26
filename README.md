@@ -4,7 +4,7 @@ Prototipo web académico para centralizar y estandarizar la gestión del manteni
 
 ## Estado
 
-La documentación de transferencia a desarrollo está preparada. OpenClaw participa únicamente en la **Fase 3: desarrollo, integración y validación**. El bootstrap tecnico y el bloque inicial de Persistencia ya estan implementados; autenticacion y RF completos siguen pendientes de autorizacion por bloque.
+La documentación de transferencia a desarrollo está preparada. OpenClaw participa únicamente en la **Fase 3: desarrollo, integración y validación**. El bootstrap tecnico y el bloque de Persistencia ya estan implementados, auditados y documentados; autenticacion y RF completos siguen pendientes de autorizacion por bloque.
 
 Ver `docs/PROJECT_STATUS.md` antes de iniciar cualquier implementación.
 
@@ -41,6 +41,8 @@ Documentos principales:
 - `docs/USE_CASES.md` — seis casos de uso principales.
 - `docs/BUSINESS_RULES.md` — reglas que el código debe respetar.
 - `docs/DATA_MODEL.md` — modelo conceptual derivado del diseño aprobado.
+- `docs/DATABASE_STRUCTURE.md` — estructura fisica PostgreSQL/Prisma implementada.
+- `docs/DATA_DICTIONARY.md` — diccionario de datos de las 16 tablas.
 - `docs/ARCHITECTURE.md` — arquitectura y límites técnicos.
 - `docs/TASKS.md` — plan vivo de Fase 3.
 - `docs/DECISIONS.md` — decisiones y versiones reemplazadas.

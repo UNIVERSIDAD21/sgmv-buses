@@ -508,14 +508,15 @@ Ante fallo, rollback completo.
 
 ## 9. Migraciones
 
-No modificar `schema.prisma`, crear migraciones, conectar Neon ni implementar servicios hasta recibir aprobación explícita del propietario para iniciar Persistencia.
+Persistencia fue autorizada e implementada el 2026-08-26. La migracion inicial no debe modificarse retroactivamente.
 
-Cuando esa aprobación exista, toda modificación de esquema debe:
+Toda modificacion futura de esquema debe:
 
 1. Estar versionada.
 2. Ser reproducible.
 3. Actualizar este documento si cambia el modelo.
 4. Mantener la alineación con los diagramas y decisiones oficiales.
+5. Crear una migracion nueva, aditiva/correctiva cuando aplique, sin borrar historial aplicado.
 
 ---
 
@@ -527,8 +528,14 @@ Artefactos tecnicos:
 
 - `src/backend/prisma/schema.prisma`
 - `src/backend/prisma/migrations/20260826140227_inicial_persistencia/migration.sql`
+- `src/backend/prisma/migrations/20260826154500_auditoria_integridad_db/migration.sql`
+- `src/backend/prisma/migrations/20260826163500_fija_search_path_triggers/migration.sql`
 - `src/backend/prisma/seed.ts`
 - `src/backend/test/prisma-integrity.test.ts`
+- `docs/DATABASE_STRUCTURE.md`
+- `docs/DATA_DICTIONARY.md`
+- `docs/diagrams/modelo-relacional-fisico.drawio`
+- `docs/diagrams/modelo-relacional-fisico.png`
 
 Tablas persistentes creadas:
 
@@ -563,6 +570,12 @@ Restricciones clave implementadas:
 - Ordenes `CERRADA` con responsable y fecha de cierre.
 - Cantidades, costos y kilometrajes con valores validos.
 - Movimiento tipo `CONSUMO` ligado a `ConsumoRepuesto`.
+- Coherencia bus-orden para novedades y programaciones preventivas mediante FKs compuestas.
+- Coherencia repuesto-consumo-movimiento mediante FK compuesta.
+- Cada `ConsumoRepuesto` con exactamente un `MovimientoInventario` tipo `CONSUMO`.
+- `subtotal` validado por PostgreSQL y `costoTotal` derivado por triggers.
+- Fechas de orden cronologicas y `CERRADA` terminal.
+- Email, placa y codigos normalizados para evitar duplicados por mayusculas/minusculas.
 
 Diferencias tecnicas frente al diagrama conceptual:
 
@@ -573,11 +586,13 @@ Diferencias tecnicas frente al diagrama conceptual:
 - `Informe` no se creo como tabla.
 - No existe relacion directa `OrdenTrabajo`-`Repuesto`; se consulta por `OrdenTrabajo -> ConsumoRepuesto -> Repuesto`.
 - No existe relacion directa `OrdenTrabajo`-`MovimientoInventario`; se consulta por `MovimientoInventario -> ConsumoRepuesto -> OrdenTrabajo` cuando el movimiento es consumo.
+- Las reglas que Prisma no expresa de forma declarativa se implementan con SQL PostgreSQL en migraciones versionadas: indices parciales, checks, FKs compuestas y triggers.
+- Las funciones de triggers fijan `search_path` para que las validaciones desde schemas temporales de Neon sean reproducibles.
 
 ---
 
 ## 11. Datos semilla
 
-Los datos semilla pertenecen al bloque de implementación de Persistencia, no a esta alineación documental.
+Los datos semilla pertenecen al bloque de implementacion de Persistencia y ya estan implementados en `src/backend/prisma/seed.ts`.
 
-Cuando se autoricen, deben incluir datos de desarrollo/prueba para los tres roles sin presentar personas reales ni contraseñas reales.
+Incluyen datos de desarrollo/prueba para los tres roles sin presentar personas reales ni contraseñas reales. El seed exige `SEED_USER_PASSWORD` en entorno local o variable de proceso; no existe contraseña demo predeterminada en codigo.

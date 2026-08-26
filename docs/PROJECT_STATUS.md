@@ -48,7 +48,7 @@
 
 ## Estado de handoff
 
-**FASE 3 AUTORIZADA. BOOTSTRAP TECNICO Y BLOQUE DE PERSISTENCIA COMPLETADOS. AUTENTICACION Y RF COMPLETOS AUN NO IMPLEMENTADOS.**
+**FASE 3 AUTORIZADA. BOOTSTRAP TECNICO Y BLOQUE DE PERSISTENCIA COMPLETADOS, AUDITADOS Y DOCUMENTADOS. AUTENTICACION Y RF COMPLETOS AUN NO IMPLEMENTADOS.**
 
 Las decisiones tecnicas aprobadas con ajustes finales quedaron registradas en `DECISIONS.md` y consolidadas en la documentacion de soporte.
 
@@ -64,7 +64,8 @@ Resumen:
 - Alineación documental oficial con diagramas de Fase 2 recibidos el 2026-08-26.
 - Diagramas oficiales guardados sin alterar en `docs/diagrams/`.
 - `DATA_MODEL.md` y `PERSISTENCE_MODEL_PROPOSAL.md` alineados con la interpretación oficial de clases, actores, relaciones, RF y tablas técnicas permitidas.
-- `schema.prisma`, migracion inicial PostgreSQL/Neon, seed minimo y pruebas de integridad implementados.
+- `schema.prisma`, migracion inicial PostgreSQL/Neon, migraciones correctivas de auditoria/search_path, seed minimo seguro y pruebas de integridad implementados.
+- Entregables academicos de base de datos creados: `DATABASE_STRUCTURE.md`, `DATA_DICTIONARY.md`, diagrama relacional fisico editable `.drawio` y PNG.
 
 ### Estado de inicio
 
@@ -72,7 +73,7 @@ OpenClaw recibió la orden explícita `INICIAR FASE 3`.
 
 El primer bloque permitido ya fue ejecutado: bootstrap técnico del repositorio.
 
-La revisión documental de Persistencia fue autorizada, actualizada y luego implementada tras aprobación explícita del propietario. OpenClaw debe detenerse antes de implementar autenticacion, servicios, repositorios o RF completos hasta nueva autorización del propietario.
+La revisión documental de Persistencia fue autorizada, actualizada, implementada y auditada tras aprobación explícita del propietario. OpenClaw debe detenerse antes de implementar autenticacion, servicios, repositorios o RF completos hasta nueva autorización del propietario.
 
 ---
 
@@ -103,6 +104,25 @@ Las decisiones adoptadas estan registradas en `DECISIONS.md`.
 - Configurar correctamente despliegue Vercel/Render/Neon, CORS, cookies y CSRF.
 
 Si aparece una contradiccion con un artefacto posterior, detener, documentar impacto y consultar al propietario antes de implementar.
+
+---
+
+## Validacion del cierre de Persistencia
+
+El cierre auditado de Persistencia quedo validado el 2026-08-26 con:
+
+- `prisma validate`.
+- `prisma generate`.
+- `prisma migrate status`.
+- `prisma migrate deploy` sin migraciones pendientes.
+- Seed de desarrollo con `SEED_USER_PASSWORD` temporal de proceso.
+- Pruebas automatizadas: frontend 1/1, backend 9/9.
+- `lint`.
+- `format:check`.
+- `build`.
+- `npm audit --audit-level=moderate` sin vulnerabilidades.
+- Validacion desde cero en schema temporal de Neon, eliminado al finalizar.
+- Auditoria SQL con cero inconsistencias en bus-orden, consumo-movimiento, subtotales, costos, motivos, fechas y normalizacion.
 
 ---
 
