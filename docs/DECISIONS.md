@@ -434,3 +434,49 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 - Relaciones directas redundantes `OrdenTrabajo`-`Repuesto` u `OrdenTrabajo`-`MovimientoInventario`.
 
 **Estado:** APROBADA / IMPLEMENTADA COMO CIERRE DE PERSISTENCIA.
+
+---
+
+## 2026-08-26 - Interfaz oficial y autenticacion por roles
+
+**Decision:** integrar la interfaz seleccionada desde Figma Make como estructura visual oficial del SGMV e implementar autenticacion real como capacidad transversal, sin iniciar RF-01 a RF-06 completos.
+
+**Base visual autorizada:**
+
+- ZIP original: `C:\Users\ING-ERIK\Downloads\Create it.zip`.
+- SHA-256: `F1A2FD90D27FA735A95E8E8C1BC4EE28F3D5C858C6D1717524C6F73B5F78759F`.
+- La exportacion de Figma Make se usa como referencia visual y fuente selectiva de componentes.
+
+**Implementado:**
+
+- Frontend con React Router, rutas protegidas, recuperacion de sesion por `/auth/me` y cierre por `/auth/logout`.
+- Cliente HTTP centralizado con `credentials: 'include'`.
+- Estado de sesion centralizado y redireccion por autenticacion.
+- Menus y paneles diferenciados por los tres roles oficiales.
+- Pantalla de acceso denegado.
+- Login real sin botones de acceso por rol, sin usuarios codificados, sin `localStorage` y sin exitos simulados.
+- Shell visual con menu colapsable, tooltips accesibles, encabezado contextual, estados vacios/carga/error y fecha dinamica `es-CO`.
+- Vista base de flota y formulario visual de buses sin CRUD RF-01 completo.
+- Backend `POST /auth/login`, `GET /auth/me`, `POST /auth/logout`.
+- Repositorio, servicio, controlador, rutas, middleware de autenticacion y middleware de autorizacion por rol.
+- Verificacion `bcrypt`, validacion Zod, rechazo de usuarios inactivos, errores seguros y bloqueo temporal por intentos fallidos.
+- CORS con credenciales limitado a `CORS_ORIGIN`; escrituras de autenticacion con validacion de `Origin`.
+
+**No copiado del ZIP:**
+
+- Configuracion Figma Make, `.figma/`, agentes, planes, `package.json`, lockfile, Vite/TypeScript config, tipos conceptuales, mock data, fechas estaticas o dependencias vulnerables.
+
+**Diferencias tecnicas necesarias frente al prototipo:**
+
+- La navegacion ya no depende solo de `useState`; usa React Router.
+- Los roles y permisos derivan del backend real y de `schema.prisma`.
+- Los modulos RF pendientes muestran estados vacios honestos, no datos falsos.
+- La sesion vive en cookie `HttpOnly`; no se almacena token en frontend.
+- La autorizacion final queda en backend; ocultar opciones en UI no sustituye permisos de servidor.
+
+**Documentacion creada:**
+
+- `docs/AUTHENTICATION.md`.
+- `docs/VISUAL_DESIGN.md`.
+
+**Estado:** APROBADA / IMPLEMENTADA COMO FUNDACION VISUAL Y AUTENTICACION TRANSVERSAL.

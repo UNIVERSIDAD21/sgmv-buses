@@ -20,6 +20,8 @@ const envSchema = z.object({
   COOKIE_SECURE: z.coerce.boolean().default(false),
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   CSRF_SECRET: z.string().min(32).optional(),
+  LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  LOGIN_RATE_LIMIT_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
 })
 
 const parsedEnv = envSchema.safeParse(process.env)
@@ -30,6 +32,10 @@ if (!parsedEnv.success) {
 }
 
 const env = parsedEnv.data
+
+if (env.NODE_ENV === 'test' && !env.JWT_SECRET) {
+  env.JWT_SECRET = 'test-only-jwt-secret-for-sgmv-auth-suite-32'
+}
 
 if (env.NODE_ENV === 'production') {
   const missing = ['DATABASE_URL', 'JWT_SECRET', 'CSRF_SECRET'].filter(
