@@ -1,6 +1,6 @@
 # Project Status
 
-**Última consolidación documental:** 2026-08-26
+**Última consolidación documental:** 2026-08-27
 
 ## Fase académica
 
@@ -14,9 +14,9 @@
 
 ### Roles: 3
 
-- Administrador / Supervisor.
-- Personal Técnico / Mecánico.
-- Conductor / Operador.
+- Administrador.
+- Mecánico.
+- Conductor.
 
 ### RF: 6
 
@@ -48,7 +48,7 @@
 
 ## Estado de handoff
 
-**FASE 3 AUTORIZADA. BOOTSTRAP TÉCNICO, PERSISTENCIA, AUDITORÍA DE BASE DE DATOS, INTERFAZ OFICIAL, AUTENTICACIÓN TRANSVERSAL, RF-01 GESTIÓN DE LA FLOTA VEHICULAR Y RF-02 CONTROL DE NOVEDADES OPERATIVAS COMPLETADOS. RF-03 A RF-06 AÚN NO IMPLEMENTADOS.**
+**FASE 3 AUTORIZADA. BOOTSTRAP TÉCNICO, PERSISTENCIA, AUDITORÍA DE BASE DE DATOS, INTERFAZ OFICIAL, AUTENTICACIÓN TRANSVERSAL, RF-01 GESTIÓN DE LA FLOTA VEHICULAR, RF-02 CONTROL DE NOVEDADES OPERATIVAS Y NORMALIZACIÓN TRANSVERSAL DE ROLES COMPLETADOS. RF-03 A RF-06 AÚN NO IMPLEMENTADOS.**
 
 Las decisiones técnicas aprobadas con ajustes finales quedaron registradas en `DECISIONS.md` y consolidadas en la documentación de soporte.
 
@@ -68,6 +68,7 @@ Resumen:
 - Entregables académicos de base de datos creados: `DATABASE_STRUCTURE.md`, `DATA_DICTIONARY.md`, diagrama relacional físico editable `.drawio` y PNG.
 - Autenticación real implementada con email/contraseña, bcrypt, JWT en cookie `HttpOnly`, rutas `/auth/login`, `/auth/me` y `/auth/logout`.
 - Interfaz visual seleccionada integrada como estructura oficial: login, menú lateral colapsable, encabezado contextual, paneles por rol, vista base de flota, formulario visual de buses y estados pendientes.
+- Roles canónicos normalizados transversalmente a `ADMINISTRADOR`, `CONDUCTOR` y `MECANICO`; las etiquetas visibles son Administrador, Conductor y Mecánico.
 
 ### Estado de inicio
 
@@ -75,7 +76,7 @@ OpenClaw recibió la orden explícita `INICIAR FASE 3`.
 
 El primer bloque permitido ya fue ejecutado: bootstrap técnico del repositorio.
 
-La revisión documental de Persistencia fue autorizada, actualizada, implementada y auditada tras aprobación explícita del propietario. La interfaz oficial y la autenticación transversal también fueron autorizadas e implementadas. El propietario autorizo RF-01 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-02 el 2026-08-27 y quedo implementado end-to-end. OpenClaw debe detenerse antes de implementar RF-03, RF-04, RF-05 o RF-06 hasta nueva autorización del propietario.
+La revisión documental de Persistencia fue autorizada, actualizada, implementada y auditada tras aprobación explícita del propietario. La interfaz oficial y la autenticación transversal también fueron autorizadas e implementadas. El propietario autorizo RF-01 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-02 el 2026-08-27 y quedo implementado end-to-end. La normalización transversal de roles canónicos quedo completada después de RF-02 y antes de RF-03. OpenClaw debe detenerse antes de implementar RF-03, RF-04, RF-05 o RF-06 hasta nueva autorización del propietario.
 
 ---
 

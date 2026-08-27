@@ -12,11 +12,11 @@ No se modifico `schema.prisma` ni se crearon migraciones para este bloque.
 
 ## Alcance implementado
 
-- Registro real de novedades por Conductor/Operador.
+- Registro real de novedades por Conductor.
 - Asociacion automatica de autor, bus y fecha desde sesion/asignacion activa.
 - Consulta de novedades propias del conductor con paginacion y filtro por estado.
 - Consulta administrativa de todas las novedades con busqueda, paginacion y filtros por estado, clasificacion y prioridad de orden asociada.
-- Detalle autorizado para conductor y detalle administrativo para Administrador/Supervisor.
+- Detalle autorizado para conductor y detalle administrativo para Administrador.
 - Revision controlada mediante acciones: clasificar, resolver sin orden y descartar.
 - Conversion transaccional de novedad elegible en orden correctiva.
 - Prevencion de orden duplicada por restriccion unica y manejo idempotente de reintentos/concurrencia.
@@ -34,14 +34,14 @@ Todos los endpoints requieren sesion por cookie `HttpOnly`.
 
 | Metodo | Ruta | Roles | Descripcion |
 | --- | --- | --- | --- |
-| `POST` | `/novedades` | Conductor/Operador | Registra una novedad para el bus asignado activo. No acepta `busId`, `conductorId` ni campos internos. |
-| `GET` | `/novedades/mis-novedades` | Conductor/Operador | Lista novedades propias con `pagina`, `limite`, `busqueda`, `estado`, `tipo` y `clasificacion`. |
-| `GET` | `/novedades/mis-novedades/:novedadId` | Conductor/Operador | Consulta detalle autorizado de una novedad propia. |
-| `GET` | `/novedades/resumen` | Administrador/Supervisor | Devuelve totales por estado, pendientes y ordenes generadas. |
-| `GET` | `/novedades` | Administrador/Supervisor | Lista todas las novedades con `pagina`, `limite`, `busqueda`, `estado`, `tipo`, `clasificacion` y `prioridad`. |
-| `GET` | `/novedades/:novedadId` | Administrador/Supervisor | Consulta detalle administrativo de una novedad. |
-| `POST` | `/novedades/:novedadId/revision` | Administrador/Supervisor | Ejecuta una accion controlada de revision. |
-| `POST` | `/novedades/:novedadId/convertir-orden` | Administrador/Supervisor | Convierte una novedad pendiente en orden correctiva y crea historial inicial. |
+| `POST` | `/novedades` | Conductor | Registra una novedad para el bus asignado activo. No acepta `busId`, `conductorId` ni campos internos. |
+| `GET` | `/novedades/mis-novedades` | Conductor | Lista novedades propias con `pagina`, `limite`, `busqueda`, `estado`, `tipo` y `clasificacion`. |
+| `GET` | `/novedades/mis-novedades/:novedadId` | Conductor | Consulta detalle autorizado de una novedad propia. |
+| `GET` | `/novedades/resumen` | Administrador | Devuelve totales por estado, pendientes y ordenes generadas. |
+| `GET` | `/novedades` | Administrador | Lista todas las novedades con `pagina`, `limite`, `busqueda`, `estado`, `tipo`, `clasificacion` y `prioridad`. |
+| `GET` | `/novedades/:novedadId` | Administrador | Consulta detalle administrativo de una novedad. |
+| `POST` | `/novedades/:novedadId/revision` | Administrador | Ejecuta una accion controlada de revision. |
+| `POST` | `/novedades/:novedadId/convertir-orden` | Administrador | Convierte una novedad pendiente en orden correctiva y crea historial inicial. |
 
 Las rutas de escritura aplican validacion de `Origin` mediante `enforceAllowedOrigin`.
 
@@ -108,7 +108,7 @@ Si `descripcionOrden` se omite, el servicio usa una descripcion segura basada en
 
 ## Reglas aplicadas
 
-- Solo un Conductor/Operador activo puede registrar novedades.
+- Solo un Conductor activo puede registrar novedades.
 - El autor se obtiene de la sesion autenticada.
 - El bus se obtiene de la asignacion activa del conductor.
 - Si no hay asignacion activa, el registro se rechaza con un mensaje claro.

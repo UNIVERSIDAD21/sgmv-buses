@@ -146,9 +146,9 @@ No llenar la memoria con logs efímeros, errores temporales o cada tarea menor. 
 
 Existen exactamente tres perfiles funcionales:
 
-1. **Administrador / Supervisor**
-2. **Personal Técnico / Mecánico**
-3. **Conductor / Operador**
+1. **Administrador**
+2. **Mecánico**
+3. **Conductor**
 
 No crear roles funcionales adicionales sin autorización.
 
@@ -230,7 +230,7 @@ No hacer commits parciales de código roto salvo que el propietario lo solicite 
 - No mostrar stack traces o secretos al cliente.
 - Aplicar claves primarias, foráneas, unicidad y nulabilidad donde corresponda.
 - Registrar responsable y fecha en operaciones críticas.
-- El Conductor/Operador nunca puede obtener información de buses no asignados ni costos/inventario/gestión administrativa.
+- El Conductor nunca puede obtener información de buses no asignados ni costos/inventario/gestión administrativa.
 
 ---
 

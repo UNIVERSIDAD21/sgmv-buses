@@ -8,9 +8,9 @@ datasource db {
 }
 
 enum RolCodigo {
-  ADMIN_SUPERVISOR
+  ADMINISTRADOR
   MECANICO
-  CONDUCTOR_OPERADOR
+  CONDUCTOR
 
   @@map("rol_codigo")
 }

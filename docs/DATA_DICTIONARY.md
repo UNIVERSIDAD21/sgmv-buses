@@ -1,7 +1,7 @@
 # Diccionario de datos fisico
 
-**Fecha:** 2026-08-26  
-**Base:** `schema.prisma` y migraciones `20260826140227_inicial_persistencia` + `20260826154500_auditoria_integridad_db` + `20260826163500_fija_search_path_triggers`  
+**Fecha:** 2026-08-26
+**Base:** `schema.prisma` y migraciones `20260826140227_inicial_persistencia` + `20260826154500_auditoria_integridad_db` + `20260826163500_fija_search_path_triggers` + `20260827123000_normaliza_roles_canonicos` + `20260827124500_normaliza_usuario_demo_admin`
 **Motor:** PostgreSQL/Neon mediante Prisma ORM
 
 Convenciones:
@@ -23,7 +23,7 @@ Representa los tres roles funcionales oficiales.
 | Campo | Tipo | Nulo | Clave/default | Descripcion |
 |---|---|---:|---|---|
 | `id` | `uuid` | No | PK, `uuid()` | Identificador tecnico. |
-| `codigo` | `rol_codigo` | No | UQ | `ADMIN_SUPERVISOR`, `MECANICO`, `CONDUCTOR_OPERADOR`. |
+| `codigo` | `rol_codigo` | No | UQ | `ADMINISTRADOR`, `MECANICO`, `CONDUCTOR`. |
 | `nombre` | `varchar(120)` | No |  | Nombre visible del rol. |
 | `descripcion` | `text` | Si |  | Alcance funcional del rol. |
 | `created_at` | `timestamptz(6)` | No | `CURRENT_TIMESTAMP` | Fecha de creacion. |
@@ -157,7 +157,7 @@ Historial conductor-bus y base de permisos del conductor.
 | `fecha_inicio` | `timestamptz(6)` | No | `CURRENT_TIMESTAMP` | Inicio de asignacion. |
 | `fecha_fin` | `timestamptz(6)` | Si |  | Cierre historico. |
 | `activa` | `boolean` | No | `true` | Indica asignacion vigente. |
-| `asignado_por_id` | `uuid` | No | FK -> `usuarios.id` | Supervisor responsable. |
+| `asignado_por_id` | `uuid` | No | FK -> `usuarios.id` | Administrador responsable. |
 | `motivo` | `text` | Si |  | Motivo de asignacion/reasignacion. |
 | `created_at` | `timestamptz(6)` | No | `CURRENT_TIMESTAMP` | Fecha de creacion. |
 | `updated_at` | `timestamptz(6)` | No | Prisma `@updatedAt` | Ultima actualizacion. |
@@ -186,9 +186,9 @@ RF-02, novedades operativas reportadas por conductor.
 | `fecha_reporte` | `timestamptz(6)` | No | `CURRENT_TIMESTAMP` | Fecha del reporte. |
 | `tipo` | `varchar(120)` | No |  | Tipo textual de novedad. |
 | `descripcion` | `text` | No |  | Descripcion reportada. |
-| `clasificacion` | `varchar(120)` | Si |  | Clasificacion del supervisor. |
+| `clasificacion` | `varchar(120)` | Si |  | Clasificacion del administrador. |
 | `estado` | `estado_novedad` | No | `PENDIENTE_REVISION` | Estado de revision. |
-| `revisada_por_id` | `uuid` | Si | FK -> `usuarios.id` | Supervisor que revisa. |
+| `revisada_por_id` | `uuid` | Si | FK -> `usuarios.id` | Administrador que revisa. |
 | `fecha_revision` | `timestamptz(6)` | Si |  | Fecha de revision. |
 | `observacion_revision` | `text` | Si |  | Observacion de revision. |
 | `created_at` | `timestamptz(6)` | No | `CURRENT_TIMESTAMP` | Fecha de creacion. |
@@ -217,7 +217,7 @@ RF-03, programaciones preventivas.
 | `fecha_programada` | `date` | Si |  | Fecha objetivo si aplica. |
 | `kilometraje_objetivo` | `integer` | Si |  | Kilometraje objetivo si aplica. |
 | `activa` | `boolean` | No | `true` | Vigencia de la programacion. |
-| `creada_por_id` | `uuid` | No | FK -> `usuarios.id` | Supervisor creador. |
+| `creada_por_id` | `uuid` | No | FK -> `usuarios.id` | Administrador creador. |
 | `created_at` | `timestamptz(6)` | No | `CURRENT_TIMESTAMP` | Fecha de creacion. |
 | `updated_at` | `timestamptz(6)` | No | Prisma `@updatedAt` | Ultima actualizacion. |
 
@@ -252,8 +252,8 @@ RF-04, ordenes correctivas y preventivas.
 | `fecha_asignacion` | `timestamptz(6)` | Si |  | Fecha de asignacion tecnica. |
 | `fecha_inicio_ejecucion` | `timestamptz(6)` | Si |  | Inicio de trabajo tecnico. |
 | `fecha_completada_tecnico` | `timestamptz(6)` | Si |  | Marca de completado por tecnico. |
-| `fecha_cierre` | `timestamptz(6)` | Si |  | Cierre por supervisor. |
-| `cerrada_por_id` | `uuid` | Si | FK -> `usuarios.id` | Supervisor que cierra. |
+| `fecha_cierre` | `timestamptz(6)` | Si |  | Cierre por administrador. |
+| `cerrada_por_id` | `uuid` | Si | FK -> `usuarios.id` | Administrador que cierra. |
 | `novedad_id` | `uuid` | Si | UQ, FK -> `novedades.id` | Novedad originadora. |
 | `programacion_mantenimiento_id` | `uuid` | Si | FK -> `programaciones_mantenimiento.id` | Programacion originadora. |
 | `fecha_objetivo_preventivo` | `date` | Si |  | Copia de fecha objetivo. |
@@ -366,7 +366,7 @@ Tabla tecnica para auditoria de reasignacion de mecanico.
 | `orden_trabajo_id` | `uuid` | No | FK -> `ordenes_trabajo.id` | Orden reasignada. |
 | `tecnico_anterior_id` | `uuid` | Si | FK -> `usuarios.id` | Mecanico anterior. |
 | `tecnico_nuevo_id` | `uuid` | No | FK -> `usuarios.id` | Mecanico nuevo. |
-| `reasignado_por_id` | `uuid` | No | FK -> `usuarios.id` | Supervisor responsable. |
+| `reasignado_por_id` | `uuid` | No | FK -> `usuarios.id` | Administrador responsable. |
 | `fecha_reasignacion` | `timestamptz(6)` | No | `CURRENT_TIMESTAMP` | Fecha de reasignacion. |
 | `motivo` | `text` | Si |  | Justificacion. |
 
@@ -480,7 +480,7 @@ Indices y restricciones:
 
 | Enum | Valores |
 |---|---|
-| `rol_codigo` | `ADMIN_SUPERVISOR`, `MECANICO`, `CONDUCTOR_OPERADOR` |
+| `rol_codigo` | `ADMINISTRADOR`, `MECANICO`, `CONDUCTOR` |
 | `estado_usuario` | `ACTIVO`, `INACTIVO` |
 | `estado_bus` | `OPERATIVO`, `EN_MANTENIMIENTO`, `FUERA_DE_SERVICIO`, `INACTIVO` |
 | `estado_novedad` | `PENDIENTE_REVISION`, `RESUELTA_SIN_ORDEN`, `DESCARTADA`, `CONVERTIDA_A_ORDEN` |

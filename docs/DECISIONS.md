@@ -62,7 +62,7 @@ Este archivo registra decisiones cerradas y evita que versiones históricas vuel
 
 ---
 
-## 2026-08-25 — El Conductor/Operador tiene RF de negocio real
+## 2026-08-25 — El Conductor tiene RF de negocio real
 
 **Decisión:** el reporte y seguimiento de fallas/novedades se conserva como RF-02.
 
@@ -78,7 +78,7 @@ Este archivo registra decisiones cerradas y evita que versiones históricas vuel
 
 **Decisión:**
 
-Conductor reporta → Supervisor revisa → resuelve/descarta o convierte a orden → asigna Mecánico → Mecánico ejecuta → Supervisor valida/cierra → historial se actualiza → Conductor ve seguimiento permitido.
+Conductor reporta → Administrador revisa → resuelve/descarta o convierte a orden → asigna Mecánico → Mecánico ejecuta → Administrador valida/cierra → historial se actualiza → Conductor ve seguimiento permitido.
 
 **Estado:** APROBADA.
 
@@ -113,9 +113,9 @@ Conductor reporta → Supervisor revisa → resuelve/descarta o convierte a orde
 
 ## 2026-08-25 — Tres roles definitivos
 
-- Administrador / Supervisor.
-- Personal Técnico / Mecánico.
-- Conductor / Operador.
+- Administrador.
+- Mecánico.
+- Conductor.
 
 **Estado:** APROBADA.
 
@@ -201,7 +201,7 @@ No GPS, telemetría, IoT, IA/ML, rutas, recaudo, pasajeros, ERP, contabilidad/n�
 
 **Transiciones:** nueva orden sin técnico -> `PENDIENTE_ASIGNACION`; nueva orden con técnico -> `ASIGNADA`; `PENDIENTE_ASIGNACION` -> `ASIGNADA`; `ASIGNADA` -> `EN_EJECUCION`; `EN_EJECUCION` -> `COMPLETADA_TECNICO`; `COMPLETADA_TECNICO` -> `CERRADA` o `DEVUELTA_CORRECCION`; `DEVUELTA_CORRECCION` -> `EN_EJECUCION`.
 
-**Reglas:** `CERRADA` es terminal. No se cierra desde `ASIGNADA` ni `EN_EJECUCION`. La reasignación de mecánico es exclusiva del Administrador/Supervisor y queda auditada. Para `COMPLETADA_TECNICO` deben existir fechas de ejecución y actividades realizadas. En órdenes correctivas, diagnóstico obligatorio. Consumo de repuestos opcional. Cierre definitivo exclusivo del Administrador/Supervisor.
+**Reglas:** `CERRADA` es terminal. No se cierra desde `ASIGNADA` ni `EN_EJECUCION`. La reasignación de mecánico es exclusiva del Administrador y queda auditada. Para `COMPLETADA_TECNICO` deben existir fechas de ejecución y actividades realizadas. En órdenes correctivas, diagnóstico obligatorio. Consumo de repuestos opcional. Cierre definitivo exclusivo del Administrador.
 
 **Estado:** APROBADA.
 
@@ -318,9 +318,9 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 
 **Participación de actores:**
 
-- Administrador/Supervisor participa en RF-01, RF-02, RF-03, RF-04, RF-05 y RF-06.
-- Personal Técnico/Mecánico participa en RF-04, RF-05 con consulta de existencias y consumos autorizados, y RF-06 con historial técnico necesario.
-- Conductor/Operador participa en RF-01 solo para consultar su bus asignado, RF-02 para registrar/consultar sus novedades y RF-06 mediante resumen autorizado de su bus.
+- Administrador participa en RF-01, RF-02, RF-03, RF-04, RF-05 y RF-06.
+- Mecánico participa en RF-04, RF-05 con consulta de existencias y consumos autorizados, y RF-06 con historial técnico necesario.
+- Conductor participa en RF-01 solo para consultar su bus asignado, RF-02 para registrar/consultar sus novedades y RF-06 mediante resumen autorizado de su bus.
 
 **Clases principales del dominio:**
 
@@ -348,7 +348,7 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 - Al generar orden preventiva se conserva copia de la fecha y/o kilometraje objetivo que la originó.
 - Los estados preventivos `VIGENTE`, `PROXIMO` y `VENCIDO` son calculados y no deben quedar desactualizados como columna persistida.
 - OrdenTrabajo pertenece a Bus; puede estar inicialmente sin técnico y desde `ASIGNADA` debe tener exactamente un técnico.
-- La asignación y reasignación de técnico corresponde al Administrador/Supervisor y queda auditada.
+- La asignación y reasignación de técnico corresponde al Administrador y queda auditada.
 - Intervencion identifica al Mecánico responsable y contiene ActividadOrden.
 - Para `COMPLETADA_TECNICO` debe existir al menos una actividad; en correctivas, diagnóstico obligatorio.
 - La relación correcta de repuestos es `OrdenTrabajo → ConsumoRepuesto → Repuesto`.
@@ -541,9 +541,9 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 
 - Endpoints `/novedades/*` protegidos por sesion y roles.
 - DTOs de entrada/salida y validacion Zod estricta.
-- Registro de novedad por Conductor/Operador con autor desde sesion, bus desde asignacion activa y fecha generada por servidor.
+- Registro de novedad por Conductor con autor desde sesion, bus desde asignacion activa y fecha generada por servidor.
 - Listado y detalle de novedades propias para el conductor.
-- Listado, detalle, resumen y filtros administrativos para Administrador/Supervisor.
+- Listado, detalle, resumen y filtros administrativos para Administrador.
 - Revision controlada mediante acciones `CLASIFICAR`, `RESOLVER_SIN_ORDEN` y `DESCARTAR`.
 - Conversion transaccional de novedad pendiente en orden correctiva de origen `NOVEDAD`.
 - Creacion del primer `OrdenEstadoHistorial` al generar la orden.
@@ -561,3 +561,17 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 **No implementado:** RF-03, RF-04, RF-05 y RF-06.
 
 **Estado:** APROBADA / IMPLEMENTADA COMO RF-02.
+
+---
+
+## 2026-08-27 - Normalizacion transversal de roles canonicos
+
+**Decision:** Se establecen como roles canonicos del prototipo Administrador, Conductor y Mecánico. Las denominaciones supervisor, operador, operario, personal tecnico, tecnico automotriz, jefe de taller y auxiliar de taller representan posibles cargos laborales o categorias ocupacionales, pero no roles independientes de autenticacion. Las funciones de supervision se integran en el rol Administrador; las funciones de conduccion en el rol Conductor; y las actividades tecnicas de mantenimiento en el rol Mecánico.
+
+**Motivo:** despues del cierre de RF-02 se detecto que el enum fisico `rol_codigo`, seeds, pruebas, frontend y documentacion aun usaban nombres compuestos como `ADMIN_SUPERVISOR`, `CONDUCTOR_OPERADOR`, `Administrador / Supervisor`, `Conductor / Operador` y `Personal Tecnico / Mecanico`.
+
+**Implementacion:** se agregan las migraciones correctivas `20260827123000_normaliza_roles_canonicos` y `20260827124500_normaliza_usuario_demo_admin`, sin modificar migraciones aplicadas, para renombrar los valores fisicos del enum a `ADMINISTRADOR`, `CONDUCTOR` y conservar `MECANICO`, actualizar etiquetas de `roles` y normalizar la cuenta demo heredada del administrador. La tabla `roles`, autenticacion, autorizacion, etiquetas visibles, fixtures, seed, pruebas automatizadas y documentacion quedan alineados con el catalogo canonico.
+
+**Alcance:** correccion transversal de nomenclatura y autorizacion. No reimplementa RF-01 ni RF-02, no inicia RF-03 y no agrega funciones de RF-04.
+
+**Estado:** APROBADA / IMPLEMENTADA COMO NORMALIZACION TRANSVERSAL PREVIA A RF-03.

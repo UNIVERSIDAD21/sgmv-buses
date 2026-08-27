@@ -89,13 +89,13 @@ function mapNovelty(novelty: NoveltyRecord, includeAdministrativeData: boolean):
 }
 
 function ensureAdmin(actor: AuthenticatedUser) {
-  if (actor.rol.codigo !== 'ADMIN_SUPERVISOR') {
+  if (actor.rol.codigo !== 'ADMINISTRADOR') {
     throw new AppError(403, 'FORBIDDEN', 'No tiene permisos para realizar esta operacion')
   }
 }
 
 function ensureDriver(actor: AuthenticatedUser) {
-  if (actor.rol.codigo !== 'CONDUCTOR_OPERADOR') {
+  if (actor.rol.codigo !== 'CONDUCTOR') {
     throw new AppError(403, 'FORBIDDEN', 'No tiene permisos para realizar esta operacion')
   }
 }

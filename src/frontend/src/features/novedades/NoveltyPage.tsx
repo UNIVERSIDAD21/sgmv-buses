@@ -1256,11 +1256,11 @@ function AdminView() {
 export default function NoveltyPage() {
   const { user } = useSession()
 
-  if (user?.rol.codigo === 'CONDUCTOR_OPERADOR') {
+  if (user?.rol.codigo === 'CONDUCTOR') {
     return <DriverView />
   }
 
-  if (user?.rol.codigo === 'ADMIN_SUPERVISOR') {
+  if (user?.rol.codigo === 'ADMINISTRADOR') {
     return <AdminView />
   }
 

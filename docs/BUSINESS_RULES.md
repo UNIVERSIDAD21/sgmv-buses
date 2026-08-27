@@ -4,9 +4,9 @@
 
 El sistema trabaja con exactamente tres perfiles funcionales:
 
-- Administrador / Supervisor
-- Personal Técnico / Mecánico
-- Conductor / Operador
+- Administrador
+- Mecánico
+- Conductor
 
 ---
 
@@ -32,7 +32,7 @@ Toda operación restringida debe validarse también en backend.
 
 ## BR-04 — Mínimo privilegio del conductor
 
-El Conductor/Operador solo puede consultar información autorizada del bus asociado a su asignación activa y sus propias novedades.
+El Conductor solo puede consultar información autorizada del bus asociado a su asignación activa y sus propias novedades.
 
 No puede consultar:
 
@@ -158,7 +158,7 @@ El origen debe quedar almacenado.
 
 ## BR-14 — Separación de responsabilidades en orden
 
-Administrador/Supervisor:
+Administrador:
 
 - crea/asigna/supervisa;
 - valida;
@@ -202,7 +202,7 @@ Transiciones permitidas:
 
 `CERRADA` es terminal. No se permite cerrar desde `ASIGNADA` ni desde `EN_EJECUCION`.
 
-La reasignacion de mecanico es exclusiva del Administrador/Supervisor y queda auditada.
+La reasignacion de mecanico es exclusiva del Administrador y queda auditada.
 
 ---
 
@@ -218,7 +218,7 @@ En ordenes correctivas, el diagnostico es obligatorio.
 
 El consumo de repuestos es opcional.
 
-El cierre definitivo es exclusivo del Administrador/Supervisor.
+El cierre definitivo es exclusivo del Administrador.
 
 ---
 
@@ -255,7 +255,7 @@ El consumo y el descuento de stock deben ocurrir en una operación consistente/a
 
 ## BR-20 — Permisos de inventario
 
-Administrador/Supervisor puede registrar entradas y ajustes.
+Administrador puede registrar entradas y ajustes.
 
 Mecánico puede consultar y registrar consumo durante una intervención autorizada, pero no realizar ajustes administrativos.
 

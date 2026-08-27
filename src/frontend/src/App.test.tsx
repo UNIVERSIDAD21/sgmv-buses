@@ -5,9 +5,9 @@ import type { RoleCode } from './domain/labels'
 import App from './App'
 
 const roleNames: Record<RoleCode, string> = {
-  ADMIN_SUPERVISOR: 'Administrador / Supervisor',
-  CONDUCTOR_OPERADOR: 'Conductor / Operador',
-  MECANICO: 'Personal Tecnico / Mecanico',
+  ADMINISTRADOR: 'Administrador',
+  CONDUCTOR: 'Conductor',
+  MECANICO: 'Mecánico',
 }
 
 function userForRole(role: RoleCode) {
@@ -71,7 +71,7 @@ afterEach(() => {
 describe('App authentication and role navigation', () => {
   it('shows a loading state while the session is being recovered', async () => {
     window.history.pushState({}, '', '/inicio')
-    const admin = userForRole('ADMIN_SUPERVISOR')
+    const admin = userForRole('ADMINISTRADOR')
     let resolveSession!: (response: Response) => void
 
     mockApi(async (path) => {
@@ -88,7 +88,10 @@ describe('App authentication and role navigation', () => {
 
     expect(await screen.findByText(/Cargando sesi.n/i)).toBeInTheDocument()
     resolveSession(ok({ user: admin }))
-    expect((await screen.findAllByText(/Administrador \/ Supervisor/i)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/^Administrador$/i)).length).toBeGreaterThan(0)
+    expect(
+      screen.queryByText(/Administrador\s*\/|Conductor\s*\/|Personal T[eé]cnico/i),
+    ).not.toBeInTheDocument()
   })
 
   it('protects private routes when there is no active session', async () => {
@@ -127,7 +130,7 @@ describe('App authentication and role navigation', () => {
     window.history.pushState({}, '', '/ruta-inexistente')
     mockApi(async (path) => {
       if (path === '/auth/me') {
-        return ok({ user: userForRole('ADMIN_SUPERVISOR') })
+        return ok({ user: userForRole('ADMINISTRADOR') })
       }
 
       return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
@@ -143,7 +146,7 @@ describe('App authentication and role navigation', () => {
 
   it('starts a real session through POST /auth/login', async () => {
     window.history.pushState({}, '', '/login')
-    const admin = userForRole('ADMIN_SUPERVISOR')
+    const admin = userForRole('ADMINISTRADOR')
     const fetchMock = mockApi(async (path, init) => {
       if (path === '/auth/me') {
         return apiError(401, 'UNAUTHORIZED', 'Sesion invalida o expirada')
@@ -166,7 +169,10 @@ describe('App authentication and role navigation', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Ingresar/i }))
 
-    expect((await screen.findAllByText(/Administrador \/ Supervisor/i)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/^Administrador$/i)).length).toBeGreaterThan(0)
+    expect(
+      screen.queryByText(/Administrador\s*\/|Conductor\s*\/|Personal T[eé]cnico/i),
+    ).not.toBeInTheDocument()
     expect(screen.getAllByText(/RF-03/i).length).toBeGreaterThan(0)
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/auth/login'),
@@ -231,7 +237,7 @@ describe('App authentication and role navigation', () => {
     window.history.pushState({}, '', '/inicio')
     mockApi(async (path) => {
       if (path === '/auth/me') {
-        return ok({ user: userForRole('CONDUCTOR_OPERADOR') })
+        return ok({ user: userForRole('CONDUCTOR') })
       }
 
       return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
@@ -252,7 +258,7 @@ describe('App authentication and role navigation', () => {
     window.history.pushState({}, '', '/mantenimiento-preventivo')
     mockApi(async (path) => {
       if (path === '/auth/me') {
-        return ok({ user: userForRole('CONDUCTOR_OPERADOR') })
+        return ok({ user: userForRole('CONDUCTOR') })
       }
 
       return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
@@ -267,7 +273,7 @@ describe('App authentication and role navigation', () => {
     window.history.pushState({}, '', '/inicio')
     mockApi(async (path) => {
       if (path === '/auth/me') {
-        return ok({ user: userForRole('ADMIN_SUPERVISOR') })
+        return ok({ user: userForRole('ADMINISTRADOR') })
       }
 
       if (path === '/auth/logout') {
@@ -296,7 +302,7 @@ const fleetBus = {
       asignadoPor: {
         email: 'admin@sgmv.local',
         id: 'admin-1',
-        nombre: 'Supervisor Uno',
+        nombre: 'Administrador Uno',
         telefono: null,
       },
       conductor: {
@@ -324,7 +330,7 @@ const fleetBus = {
       cambiadoPor: {
         email: 'admin@sgmv.local',
         id: 'admin-1',
-        nombre: 'Supervisor Uno',
+        nombre: 'Administrador Uno',
         telefono: null,
       },
       estadoAnterior: null,
@@ -346,7 +352,7 @@ const fleetBus = {
       registradoPor: {
         email: 'admin@sgmv.local',
         id: 'admin-1',
-        nombre: 'Supervisor Uno',
+        nombre: 'Administrador Uno',
         telefono: null,
       },
     },
@@ -424,10 +430,10 @@ const reviewedNovelty = {
   ...noveltyOne,
   clasificacion: 'Falla mecanica',
   fechaRevision: '2026-08-27T12:10:00.000Z',
-  observacionRevision: 'Revisada por supervisor',
+  observacionRevision: 'Revisada por administrador',
   revisadaPor: {
     id: 'admin-1',
-    nombre: 'Supervisor Uno',
+    nombre: 'Administrador Uno',
   },
 }
 
@@ -463,7 +469,7 @@ function noveltyList(novedades: unknown[] = [noveltyOne], totalPaginas = 2) {
   }
 }
 
-function fleetHandler(role: RoleCode = 'ADMIN_SUPERVISOR') {
+function fleetHandler(role: RoleCode = 'ADMINISTRADOR') {
   return async (path: string, init?: RequestInit) => {
     if (path === '/auth/me') {
       return ok({ user: userForRole(role) })
@@ -535,7 +541,7 @@ function fleetHandler(role: RoleCode = 'ADMIN_SUPERVISOR') {
 }
 
 function noveltyHandler(
-  role: RoleCode = 'ADMIN_SUPERVISOR',
+  role: RoleCode = 'ADMINISTRADOR',
   options: Partial<{ empty: boolean; failList: boolean; noBus: boolean }> = {},
 ) {
   let converted = false
@@ -689,7 +695,7 @@ describe('RF-01 fleet frontend', () => {
     window.history.pushState({}, '', '/flota')
     mockApi(async (path) => {
       if (path === '/auth/me') {
-        return ok({ user: userForRole('ADMIN_SUPERVISOR') })
+        return ok({ user: userForRole('ADMINISTRADOR') })
       }
 
       if (path === '/flota/resumen') {
@@ -711,7 +717,7 @@ describe('RF-01 fleet frontend', () => {
     window.history.pushState({}, '', '/flota')
     mockApi(async (path) => {
       if (path === '/auth/me') {
-        return ok({ user: userForRole('ADMIN_SUPERVISOR') })
+        return ok({ user: userForRole('ADMINISTRADOR') })
       }
 
       if (path === '/flota/resumen') {
@@ -735,7 +741,7 @@ describe('RF-01 fleet frontend', () => {
     let duplicate = false
     mockApi(async (path, init) => {
       if (path === '/auth/me') {
-        return ok({ user: userForRole('ADMIN_SUPERVISOR') })
+        return ok({ user: userForRole('ADMINISTRADOR') })
       }
 
       if (path === '/flota/resumen') {
@@ -792,7 +798,7 @@ describe('RF-01 fleet frontend', () => {
 
   it('limits the driver fleet view to the assigned bus', async () => {
     window.history.pushState({}, '', '/flota')
-    mockApi(fleetHandler('CONDUCTOR_OPERADOR'))
+    mockApi(fleetHandler('CONDUCTOR'))
 
     render(<App />)
 
@@ -806,7 +812,7 @@ describe('RF-01 fleet frontend', () => {
     window.history.pushState({}, '', '/flota')
     mockApi(async (path) => {
       if (path === '/auth/me') {
-        return ok({ user: userForRole('CONDUCTOR_OPERADOR') })
+        return ok({ user: userForRole('CONDUCTOR') })
       }
 
       if (path === '/flota/mi-bus') {
@@ -839,7 +845,7 @@ describe('RF-01 fleet frontend', () => {
 describe('RF-02 novelty frontend', () => {
   it('lets a driver register a novelty only for the assigned bus', async () => {
     window.history.pushState({}, '', '/novedades')
-    const fetchMock = mockApi(noveltyHandler('CONDUCTOR_OPERADOR'))
+    const fetchMock = mockApi(noveltyHandler('CONDUCTOR'))
 
     render(<App />)
 
@@ -874,7 +880,7 @@ describe('RF-02 novelty frontend', () => {
 
   it('shows a clear empty state when a driver has no active bus assignment', async () => {
     window.history.pushState({}, '', '/novedades')
-    mockApi(noveltyHandler('CONDUCTOR_OPERADOR', { noBus: true }))
+    mockApi(noveltyHandler('CONDUCTOR', { noBus: true }))
 
     render(<App />)
 
@@ -884,7 +890,7 @@ describe('RF-02 novelty frontend', () => {
 
   it('loads own novelty list and authorized detail for a driver', async () => {
     window.history.pushState({}, '', '/novedades')
-    mockApi(noveltyHandler('CONDUCTOR_OPERADOR'))
+    mockApi(noveltyHandler('CONDUCTOR'))
 
     render(<App />)
 
@@ -898,7 +904,7 @@ describe('RF-02 novelty frontend', () => {
 
   it('loads the administrative list with search, status, priority and pagination', async () => {
     window.history.pushState({}, '', '/novedades')
-    const fetchMock = mockApi(noveltyHandler('ADMIN_SUPERVISOR'))
+    const fetchMock = mockApi(noveltyHandler('ADMINISTRADOR'))
 
     render(<App />)
 
@@ -948,7 +954,7 @@ describe('RF-02 novelty frontend', () => {
 
   it('reviews a novelty and converts it into a corrective order with confirmation dialog', async () => {
     window.history.pushState({}, '', '/novedades')
-    const fetchMock = mockApi(noveltyHandler('ADMIN_SUPERVISOR'))
+    const fetchMock = mockApi(noveltyHandler('ADMINISTRADOR'))
 
     render(<App />)
 
@@ -991,7 +997,7 @@ describe('RF-02 novelty frontend', () => {
 
   it('shows administrative empty and error states', async () => {
     window.history.pushState({}, '', '/novedades')
-    mockApi(noveltyHandler('ADMIN_SUPERVISOR', { empty: true }))
+    mockApi(noveltyHandler('ADMINISTRADOR', { empty: true }))
 
     render(<App />)
 
@@ -999,7 +1005,7 @@ describe('RF-02 novelty frontend', () => {
 
     vi.restoreAllMocks()
     window.history.pushState({}, '', '/novedades')
-    mockApi(noveltyHandler('ADMIN_SUPERVISOR', { failList: true }))
+    mockApi(noveltyHandler('ADMINISTRADOR', { failList: true }))
 
     render(<App />)
 

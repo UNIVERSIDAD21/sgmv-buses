@@ -173,7 +173,7 @@ Especialmente:
 
 - Conductor: filtrar por identidad/asignación.
 - Mecánico: filtrar órdenes asignadas/autorizadas.
-- Admin/Supervisor: permisos administrativos.
+- Administrador: permisos administrativos.
 
 ---
 

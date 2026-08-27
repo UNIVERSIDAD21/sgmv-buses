@@ -1,7 +1,7 @@
 # Estructura fisica de base de datos
 
-**Fecha:** 2026-08-26  
-**Bloque:** auditoria final de Persistencia y modelo de datos  
+**Fecha:** 2026-08-26
+**Bloque:** auditoria final de Persistencia y modelo de datos
 **Estado:** implementado, validado localmente con Prisma y pendiente de seguir sin autenticacion hasta aprobacion explicita.
 
 Este documento describe la estructura fisica implementada en PostgreSQL/Neon desde `src/backend/prisma/schema.prisma` y las migraciones Prisma. El modelo respeta los diagramas oficiales de Fase 2 y la interpretacion textual aprobada en `DATA_MODEL.md`, `PERSISTENCE_MODEL_PROPOSAL.md`, `DECISIONS.md`, `BUSINESS_RULES.md` y `TRACEABILITY_FASE_2_PERSISTENCE.md`.
@@ -17,6 +17,8 @@ No existe tabla `Informe`. RF-06 se resuelve mediante consultas, DTO, servicios 
 | `20260826140227_inicial_persistencia` | Crea enums, 16 tablas, PK, FK, indices principales, indices parciales y checks base. | Inicial |
 | `20260826154500_auditoria_integridad_db` | Agrega endurecimiento no destructivo: coherencia bus-orden, coherencia consumo-movimiento, normalizacion, fechas cronologicas, costos derivados, motivo administrativo y orden cerrada terminal. | Correctiva/aditiva |
 | `20260826163500_fija_search_path_triggers` | Reemplaza funciones de triggers fijando `search_path` al schema de migracion para validaciones multi-schema seguras. | Correctiva/aditiva |
+| `20260827123000_normaliza_roles_canonicos` | Renombra valores fisicos del enum `rol_codigo` a `ADMINISTRADOR`, `CONDUCTOR` y `MECANICO`, y actualiza etiquetas de la tabla `roles`. | Correctiva/aditiva |
+| `20260827124500_normaliza_usuario_demo_admin` | Normaliza la cuenta demo heredada `supervisor.demo@sgmv.local` a `administrador.demo@sgmv.local` sin tocar usuarios reales. | Correctiva/aditiva |
 
 La migracion inicial no fue modificada retroactivamente. Los ajustes fisicos posteriores quedaron en migraciones correctivas/aditivas separadas.
 
@@ -107,7 +109,7 @@ No se implemento relacion directa redundante entre `OrdenTrabajo` y `MovimientoI
 
 Estas reglas requieren contexto de sesion, rol, flujo o varias consultas. Quedan documentadas para el bloque posterior de servicios/autenticacion:
 
-- Validar que solo `ADMIN_SUPERVISOR` gestione buses, programaciones, reasignaciones, entradas, ajustes y cierres.
+- Validar que solo `ADMINISTRADOR` gestione buses, programaciones, reasignaciones, entradas, ajustes y cierres.
 - Validar que solo `MECANICO` marque ejecucion tecnica como `COMPLETADA_TECNICO`.
 - Validar que el conductor solo registre novedades de su bus activo y consulte solo su resumen autorizado.
 - Calcular estados preventivos `VIGENTE`, `PROXIMO` y `VENCIDO` con umbral de 7 dias y 500 km, sin persistirlos como verdad durable.

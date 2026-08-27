@@ -11,72 +11,68 @@ fleetRoutes.use(authenticate)
 
 fleetRoutes.get(
   '/resumen',
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(fleetController.summarize),
 )
 fleetRoutes.get(
   '/mi-bus',
-  authorizeRoles('CONDUCTOR_OPERADOR'),
+  authorizeRoles('CONDUCTOR'),
   asyncHandler(fleetController.getAssignedBus),
 )
 fleetRoutes.get(
   '/conductores-disponibles',
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(fleetController.getAvailableDrivers),
 )
-fleetRoutes.get(
-  '/buses',
-  authorizeRoles('ADMIN_SUPERVISOR'),
-  asyncHandler(fleetController.listBuses),
-)
+fleetRoutes.get('/buses', authorizeRoles('ADMINISTRADOR'), asyncHandler(fleetController.listBuses))
 fleetRoutes.post(
   '/buses',
   enforceAllowedOrigin,
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(fleetController.createBus),
 )
 fleetRoutes.get(
   '/buses/:busId',
-  authorizeRoles('ADMIN_SUPERVISOR', 'CONDUCTOR_OPERADOR'),
+  authorizeRoles('ADMINISTRADOR', 'CONDUCTOR'),
   asyncHandler(fleetController.getBus),
 )
 fleetRoutes.patch(
   '/buses/:busId',
   enforceAllowedOrigin,
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(fleetController.updateBus),
 )
 fleetRoutes.post(
   '/buses/:busId/kilometraje',
   enforceAllowedOrigin,
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(fleetController.registerMileage),
 )
 fleetRoutes.get(
   '/buses/:busId/kilometraje',
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(fleetController.getMileageReadings),
 )
 fleetRoutes.post(
   '/buses/:busId/estado',
   enforceAllowedOrigin,
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(fleetController.changeState),
 )
 fleetRoutes.get(
   '/buses/:busId/estados',
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(fleetController.getStateHistory),
 )
 fleetRoutes.post(
   '/buses/:busId/asignaciones',
   enforceAllowedOrigin,
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(fleetController.assignDriver),
 )
 fleetRoutes.get(
   '/buses/:busId/asignaciones',
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(fleetController.getAssignments),
 )
 

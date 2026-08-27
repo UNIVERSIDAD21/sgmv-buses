@@ -51,9 +51,11 @@ Las respuestas de usuario no incluyen `contrasenaHash`, contrasenas ni tokens.
 
 La autorizacion final vive en backend con `authorizeRoles(...)`. El frontend tambien filtra rutas, menus y vistas por rol, pero solo como experiencia de usuario.
 
-- `ADMIN_SUPERVISOR`: RF-01 a RF-06.
+- `ADMINISTRADOR`: RF-01 a RF-06.
 - `MECANICO`: RF-04, RF-05 y RF-06 tecnico.
-- `CONDUCTOR_OPERADOR`: RF-01 limitado a bus asignado, RF-02 propio y RF-06 resumen autorizado.
+- `CONDUCTOR`: RF-01 limitado a bus asignado, RF-02 propio y RF-06 resumen autorizado.
+
+No se aceptan alias como `SUPERVISOR`, `OPERADOR`, `OPERARIO`, `TECNICO`, `ADMIN_SUPERVISOR` o `CONDUCTOR_OPERADOR` en tokens, DTO ni reglas de autorizacion.
 
 ## Reglas de seguridad implementadas
 
@@ -80,6 +82,7 @@ La autorizacion final vive en backend con `authorizeRoles(...)`. El frontend tam
 - cookie de sesion malformada;
 - cookie de sesion expirada;
 - consulta de sesion;
+- existencia de solo tres roles canonicos y rechazo de alias heredados;
 - rol no autorizado;
 - cierre de sesion;
 - respuestas sin contrasena ni hash.

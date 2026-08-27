@@ -47,11 +47,11 @@ function uniqueBusCode(prefix = 'NOV-BUS') {
 async function ensureRoles() {
   const [admin, mecanico, conductor] = await Promise.all([
     prisma.rol.upsert({
-      where: { codigo: 'ADMIN_SUPERVISOR' },
+      where: { codigo: 'ADMINISTRADOR' },
       update: {},
       create: {
-        codigo: 'ADMIN_SUPERVISOR',
-        nombre: 'Administrador / Supervisor',
+        codigo: 'ADMINISTRADOR',
+        nombre: 'Administrador',
       },
     }),
     prisma.rol.upsert({
@@ -59,15 +59,15 @@ async function ensureRoles() {
       update: {},
       create: {
         codigo: 'MECANICO',
-        nombre: 'Personal Tecnico / Mecanico',
+        nombre: 'Mecánico',
       },
     }),
     prisma.rol.upsert({
-      where: { codigo: 'CONDUCTOR_OPERADOR' },
+      where: { codigo: 'CONDUCTOR' },
       update: {},
       create: {
-        codigo: 'CONDUCTOR_OPERADOR',
-        nombre: 'Conductor / Operador',
+        codigo: 'CONDUCTOR',
+        nombre: 'Conductor',
       },
     }),
   ])
@@ -530,9 +530,9 @@ describeDb('RF-02 Novelty API', () => {
       id: randomUUID(),
       nombre: 'Fake Admin',
       rol: {
-        codigo: 'ADMIN_SUPERVISOR',
+        codigo: 'ADMINISTRADOR',
         id: randomUUID(),
-        nombre: 'Administrador / Supervisor',
+        nombre: 'Administrador',
       },
     }
     const service = new NoveltyService()

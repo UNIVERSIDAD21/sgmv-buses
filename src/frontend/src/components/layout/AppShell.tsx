@@ -55,7 +55,7 @@ const iconById: Record<RequirementRouteId, ReactNode> = {
   repuestos: <Package size={18} />,
 }
 
-const allRoles: RoleCode[] = ['ADMIN_SUPERVISOR', 'MECANICO', 'CONDUCTOR_OPERADOR']
+const allRoles: RoleCode[] = ['ADMINISTRADOR', 'MECANICO', 'CONDUCTOR']
 
 function initials(name: string) {
   return name

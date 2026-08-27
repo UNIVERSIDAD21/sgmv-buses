@@ -19,16 +19,16 @@ La versión vigente mantiene exactamente:
 
 ### Requerimiento
 
-El sistema permitirá registrar, consultar y actualizar buses de la flota, incluyendo sus datos de identificación, estado operativo, kilometraje y asignación de conductor. El Conductor/Operador solo podrá consultar la información autorizada del bus que tenga asignado.
+El sistema permitirá registrar, consultar y actualizar buses de la flota, incluyendo sus datos de identificación, estado operativo, kilometraje y asignación de conductor. El Conductor solo podrá consultar la información autorizada del bus que tenga asignado.
 
 ### Actores
 
-- Administrador / Supervisor
-- Conductor / Operador, con acceso limitado
+- Administrador
+- Conductor, con acceso limitado
 
 ### Funciones incluidas
 
-Administrador/Supervisor:
+Administrador:
 
 - Registrar bus.
 - Consultar buses.
@@ -38,7 +38,7 @@ Administrador/Supervisor:
 - Gestionar asignación de conductor.
 - Conservar historial de asignaciones/datos relevantes.
 
-Conductor/Operador:
+Conductor:
 
 - Consultar únicamente su bus asignado.
 - Consultar información básica permitida.
@@ -59,12 +59,12 @@ Conductor/Operador:
 
 ### Requerimiento
 
-El sistema permitirá al Conductor/Operador registrar fallas o novedades asociadas a su bus y consultar su seguimiento. El Administrador/Supervisor podrá revisarlas, clasificarlas, resolverlas/descartarlas o convertirlas en una orden de trabajo correctiva.
+El sistema permitirá al Conductor registrar fallas o novedades asociadas a su bus y consultar su seguimiento. El Administrador podrá revisarlas, clasificarlas, resolverlas/descartarlas o convertirlas en una orden de trabajo correctiva.
 
 ### Actores
 
-- Conductor / Operador
-- Administrador / Supervisor
+- Conductor
+- Administrador
 
 ### Datos mínimos del reporte
 
@@ -79,7 +79,7 @@ El sistema permitirá al Conductor/Operador registrar fallas o novedades asociad
 
 - El conductor no puede reportar una novedad para un bus ajeno.
 - El conductor solo consulta sus reportes.
-- El Administrador/Supervisor puede gestionar la novedad.
+- El Administrador puede gestionar la novedad.
 - Si una novedad origina una orden, ambos registros permanecen relacionados.
 - El estado consultado por el conductor refleja el seguimiento real.
 - No se exponen datos administrativos que el conductor no necesita.
@@ -90,11 +90,11 @@ El sistema permitirá al Conductor/Operador registrar fallas o novedades asociad
 
 ### Requerimiento
 
-El sistema permitirá al Administrador/Supervisor programar mantenimiento preventivo por fecha, kilometraje o ambos, consultar las programaciones e identificar mantenimientos vigentes, próximos o vencidos. Una programación podrá originar una orden preventiva manteniendo la trazabilidad entre ambos registros.
+El sistema permitirá al Administrador programar mantenimiento preventivo por fecha, kilometraje o ambos, consultar las programaciones e identificar mantenimientos vigentes, próximos o vencidos. Una programación podrá originar una orden preventiva manteniendo la trazabilidad entre ambos registros.
 
 ### Actores
 
-- Administrador / Supervisor
+- Administrador
 - Sistema
 
 ### Funciones incluidas
@@ -122,12 +122,12 @@ El sistema permitirá al Administrador/Supervisor programar mantenimiento preven
 
 ### Requerimiento
 
-El sistema permitirá gestionar órdenes de trabajo preventivas y correctivas. El Administrador/Supervisor podrá crearlas, asignarlas y supervisarlas; el Mecánico podrá atender sus órdenes, consultar antecedentes y registrar la intervención; el Administrador/Supervisor realizará la validación/cierre final.
+El sistema permitirá gestionar órdenes de trabajo preventivas y correctivas. El Administrador podrá crearlas, asignarlas y supervisarlas; el Mecánico podrá atender sus órdenes, consultar antecedentes y registrar la intervención; el Administrador realizará la validación/cierre final.
 
 ### Actores
 
-- Administrador / Supervisor
-- Personal Técnico / Mecánico
+- Administrador
+- Mecánico
 - Sistema
 
 ### Orígenes admitidos
@@ -138,7 +138,7 @@ Como mínimo:
 - CORRECTIVO_DIRECTO
 - NOVEDAD
 
-### Funciones del Administrador/Supervisor
+### Funciones del Administrador
 
 - Crear orden correctiva directa.
 - Generar/aceptar orden procedente de preventivo.
@@ -163,7 +163,7 @@ Como mínimo:
 
 - Toda orden identifica bus, tipo/origen, estado y responsable técnico cuando esté asignado.
 - Una orden solo puede avanzar mediante transiciones válidas.
-- El mecánico no puede cerrar administrativamente una orden si esa facultad corresponde al supervisor.
+- El mecánico no puede cerrar administrativamente una orden si esa facultad corresponde al administrador.
 - El cierre exige la información técnica mínima definida.
 - El cierre conserva responsable y fecha.
 - Al cerrarse, la información queda disponible para el historial.
@@ -183,11 +183,11 @@ El sistema permitirá administrar el catálogo y las existencias de repuestos e 
 
 ### Actores
 
-- Administrador / Supervisor
-- Personal Técnico / Mecánico
+- Administrador
+- Mecánico
 - Sistema
 
-### Administrador/Supervisor
+### Administrador
 
 - Registrar repuesto/insumo.
 - Actualizar información.
@@ -219,17 +219,17 @@ El sistema permitirá administrar el catálogo y las existencias de repuestos e 
 
 ### Requerimiento
 
-El sistema permitirá consultar el historial de mantenimiento de acuerdo con los permisos de cada rol y permitirá al Administrador/Supervisor generar informes filtrables relacionados con flota, mantenimiento, órdenes de trabajo, repuestos, historial y costos básicos.
+El sistema permitirá consultar el historial de mantenimiento de acuerdo con los permisos de cada rol y permitirá al Administrador generar informes filtrables relacionados con flota, mantenimiento, órdenes de trabajo, repuestos, historial y costos básicos.
 
 ### Actores
 
-- Administrador / Supervisor
-- Personal Técnico / Mecánico
-- Conductor / Operador, limitado
+- Administrador
+- Mecánico
+- Conductor, limitado
 
 ### Acceso
 
-Administrador/Supervisor:
+Administrador:
 
 - Historial completo permitido.
 - Informes.
@@ -241,7 +241,7 @@ Mecánico:
 - Historial técnico necesario para su trabajo.
 - Sin funciones administrativas no autorizadas.
 
-Conductor/Operador:
+Conductor:
 
 - Resumen básico y solo de su bus asignado.
 - Sin costos.
@@ -276,7 +276,7 @@ Estas capacidades se implementan, pero **no cuentan como RF principales**:
 - Protección de rutas.
 - Autorización por roles.
 - Rechazo de cuentas inactivas.
-- Gestión mínima de cuentas por Administrador/Supervisor.
+- Gestión mínima de cuentas por Administrador.
 - Validación de entradas.
 - Manejo controlado de errores.
 - Auditoría básica.

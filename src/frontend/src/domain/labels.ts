@@ -1,4 +1,4 @@
-export type RoleCode = 'ADMIN_SUPERVISOR' | 'MECANICO' | 'CONDUCTOR_OPERADOR'
+export type RoleCode = 'ADMINISTRADOR' | 'MECANICO' | 'CONDUCTOR'
 
 export type AppRouteId =
   | 'inicio'
@@ -20,9 +20,9 @@ export interface RequirementNavItem {
 }
 
 export const ROLE_LABELS: Record<RoleCode, string> = {
-  ADMIN_SUPERVISOR: 'Administrador / Supervisor',
-  CONDUCTOR_OPERADOR: 'Conductor / Operador',
-  MECANICO: 'Personal Técnico / Mecánico',
+  ADMINISTRADOR: 'Administrador',
+  CONDUCTOR: 'Conductor',
+  MECANICO: 'Mecánico',
 }
 
 export const REQUIREMENT_NAV_ITEMS: RequirementNavItem[] = [
@@ -31,42 +31,42 @@ export const REQUIREMENT_NAV_ITEMS: RequirementNavItem[] = [
     id: 'flota',
     label: 'RF-01 — Gestión de la flota vehicular',
     path: '/flota',
-    roles: ['ADMIN_SUPERVISOR', 'CONDUCTOR_OPERADOR'],
+    roles: ['ADMINISTRADOR', 'CONDUCTOR'],
   },
   {
     description: 'Registro y seguimiento de novedades operativas.',
     id: 'novedades',
     label: 'RF-02 — Control de novedades operativas',
     path: '/novedades',
-    roles: ['ADMIN_SUPERVISOR', 'CONDUCTOR_OPERADOR'],
+    roles: ['ADMINISTRADOR', 'CONDUCTOR'],
   },
   {
     description: 'Programación preventiva por fecha, kilometraje o ambos.',
     id: 'mantenimiento-preventivo',
     label: 'RF-03 — Administración del mantenimiento preventivo',
     path: '/mantenimiento-preventivo',
-    roles: ['ADMIN_SUPERVISOR'],
+    roles: ['ADMINISTRADOR'],
   },
   {
     description: 'Asignación, ejecución técnica y cierre administrativo.',
     id: 'ordenes-trabajo',
     label: 'RF-04 — Seguimiento de órdenes de trabajo',
     path: '/ordenes-trabajo',
-    roles: ['ADMIN_SUPERVISOR', 'MECANICO'],
+    roles: ['ADMINISTRADOR', 'MECANICO'],
   },
   {
     description: 'Catálogo, existencias, consumos y movimientos trazables.',
     id: 'repuestos',
     label: 'RF-05 — Central de Repuestos',
     path: '/repuestos',
-    roles: ['ADMIN_SUPERVISOR', 'MECANICO'],
+    roles: ['ADMINISTRADOR', 'MECANICO'],
   },
   {
     description: 'Historial e informes derivados de datos validados.',
     id: 'historial',
     label: 'RF-06 — Consulta de historial y generación de informes',
     path: '/historial',
-    roles: ['ADMIN_SUPERVISOR', 'MECANICO', 'CONDUCTOR_OPERADOR'],
+    roles: ['ADMINISTRADOR', 'MECANICO', 'CONDUCTOR'],
   },
 ]
 

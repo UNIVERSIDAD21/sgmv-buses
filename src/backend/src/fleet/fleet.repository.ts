@@ -188,7 +188,7 @@ export class FleetRepository {
       where: {
         estado: 'ACTIVO',
         rol: {
-          codigo: 'CONDUCTOR_OPERADOR',
+          codigo: 'CONDUCTOR',
         },
         OR: [
           {

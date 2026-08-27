@@ -80,7 +80,7 @@ Los modulos de negocio siguen pendientes. Mientras no exista endpoint real, la i
 - rutas protegidas;
 - rutas inexistentes autenticadas;
 - acceso denegado;
-- menus correctos para Administrador/Supervisor, Mecánico y Conductor/Operador;
+- menus correctos para Administrador, Mecánico y Conductor;
 - manejo de error de login.
 
 ## Capturas de referencia

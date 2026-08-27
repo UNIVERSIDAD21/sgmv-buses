@@ -17,17 +17,17 @@ Combinar:
 
 ## T-RF01-01 — Registrar bus
 
-**Entrada:** datos válidos.  
+**Entrada:** datos válidos.
 **Esperado:** bus persistido con identificación única.
 
 ## T-RF01-02 — Duplicado
 
-**Entrada:** placa/código duplicado.  
+**Entrada:** placa/código duplicado.
 **Esperado:** rechazo controlado.
 
 ## T-RF01-03 — Acceso conductor
 
-**Entrada:** conductor solicita bus ajeno por API.  
+**Entrada:** conductor solicita bus ajeno por API.
 **Esperado:** 403/denegado, sin fuga de datos.
 
 ## T-RF01-04 — Asignación
@@ -38,7 +38,7 @@ Combinar:
 
 ## T-RF02-01 — Registrar novedad
 
-**Actor:** Conductor.  
+**Actor:** Conductor.
 **Esperado:** autor/bus/fecha se asocian correctamente.
 
 ## T-RF02-02 — Consultar propias
@@ -75,7 +75,7 @@ Combinar:
 
 ## T-RF04-01 — Orden directa
 
-**Esperado:** supervisor crea y asigna.
+**Esperado:** administrador crea y asigna.
 
 ## T-RF04-02 — Mecánico atiende
 
@@ -91,11 +91,11 @@ Combinar:
 
 ## T-RF04-05 — Cierre válido
 
-**Esperado:** supervisor cierra, fecha/responsable registrados, historial disponible.
+**Esperado:** administrador cierra, fecha/responsable registrados, historial disponible.
 
 ## T-RF04-06 — Reasignacion auditada
 
-**Esperado:** solo Administrador/Supervisor puede reasignar mecanico y queda registro de responsable/fecha.
+**Esperado:** solo Administrador puede reasignar mecanico y queda registro de responsable/fecha.
 
 ---
 
@@ -125,7 +125,7 @@ Combinar:
 
 ---
 
-## T-RF06-01 — Historial supervisor
+## T-RF06-01 — Historial administrador
 
 **Esperado:** datos completos autorizados.
 
@@ -210,11 +210,11 @@ Revisión técnica:
 
 ## E2E-01 — Novedad correctiva
 
-Conductor → reporta → Supervisor → convierte → asigna → Mecánico → ejecuta → Supervisor → cierra → historial → Conductor consulta estado.
+Conductor → reporta → Administrador → convierte → asigna → Mecánico → ejecuta → Administrador → cierra → historial → Conductor consulta estado.
 
 ## E2E-02 — Preventivo
 
-Supervisor → programa → sistema detecta condicion con umbral 7 dias/500 km → genera orden sin duplicar activas → Mecanico → ejecuta → Supervisor → cierra → actualiza proximo objetivo preventivo → historial.
+Administrador → programa → sistema detecta condicion con umbral 7 dias/500 km → genera orden sin duplicar activas → Mecanico → ejecuta → Administrador → cierra → actualiza proximo objetivo preventivo → historial.
 
 ## E2E-03 — Repuesto
 
@@ -291,7 +291,7 @@ El 2026-08-27 se agregaron pruebas automatizadas de RF-01.
 Backend `src/backend/test/fleet.test.ts` cubre:
 
 - autenticacion obligatoria;
-- permisos de Administrador/Supervisor, Conductor/Operador y Mecanico;
+- permisos de Administrador, Conductor y Mecanico;
 - registro valido de bus;
 - duplicado de placa;
 - duplicado de codigo interno;
@@ -354,7 +354,7 @@ El 2026-08-27 se agregaron pruebas automatizadas de RF-02.
 Backend `src/backend/test/novelty.test.ts` cubre:
 
 - autenticacion obligatoria;
-- permisos de Administrador/Supervisor, Conductor/Operador y Mecanico;
+- permisos de Administrador, Conductor y Mecanico;
 - conductor con asignacion activa;
 - conductor sin asignacion activa;
 - bus derivado de la asignacion;
@@ -406,3 +406,28 @@ Evidencia visual:
 - `docs/screenshots/rf02-mobile-390x844.png`
 
 Playwright verifico `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina, con tablas desplazables en movil, formularios legibles, dialogos/drawers accesibles y foco alcanzable por teclado.
+
+---
+
+## 9. Evidencia de normalizacion transversal de roles
+
+El 2026-08-27 se agregaron y actualizaron pruebas automatizadas para demostrar el catalogo canonico de roles.
+
+Backend:
+
+- `src/backend/test/auth.test.ts` valida que solo existan `ADMINISTRADOR`, `CONDUCTOR` y `MECANICO` en la tabla `roles`.
+- `src/backend/test/auth.test.ts` rechaza sesiones firmadas con alias heredados como `SUPERVISOR`, `OPERADOR`, `OPERARIO`, `TECNICO`, `ADMIN_SUPERVISOR` y `CONDUCTOR_OPERADOR`.
+- `src/backend/test/fleet.test.ts` mantiene permisos de Administrador, Conductor y Mecanico para RF-01.
+- `src/backend/test/novelty.test.ts` mantiene permisos de Administrador, Conductor y Mecanico para RF-02.
+- `src/backend/test/prisma-integrity.test.ts` usa seeds/fixtures con los roles canonicos.
+
+Frontend:
+
+- `src/frontend/src/App.test.tsx` valida que las etiquetas visibles usen Administrador, Conductor y Mecánico.
+- `src/frontend/src/App.test.tsx` valida que no aparezcan etiquetas compuestas con barra en roles visibles.
+- Las pruebas de RF-01 y RF-02 continuan cubriendo acciones visibles segun rol, conductor limitado y mecanico sin acceso a RF-02.
+
+Evidencia visual:
+
+- `docs/screenshots/roles-normalizacion-admin-1440x900.png`
+- `docs/screenshots/roles-normalizacion-conductor-390x844.png`

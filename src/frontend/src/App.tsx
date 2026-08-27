@@ -37,7 +37,7 @@ function AppRoutes() {
         <Route element={<DashboardPage />} path="/inicio" />
         <Route
           element={
-            <ProtectedRoute roles={['ADMIN_SUPERVISOR', 'CONDUCTOR_OPERADOR']}>
+            <ProtectedRoute roles={['ADMINISTRADOR', 'CONDUCTOR']}>
               <FleetPage />
             </ProtectedRoute>
           }
@@ -45,7 +45,7 @@ function AppRoutes() {
         />
         <Route
           element={
-            <ProtectedRoute roles={['ADMIN_SUPERVISOR']}>
+            <ProtectedRoute roles={['ADMINISTRADOR']}>
               <BusFormPage />
             </ProtectedRoute>
           }
@@ -53,7 +53,7 @@ function AppRoutes() {
         />
         <Route
           element={
-            <ProtectedRoute roles={['ADMIN_SUPERVISOR']}>
+            <ProtectedRoute roles={['ADMINISTRADOR']}>
               <BusFormPage />
             </ProtectedRoute>
           }
@@ -61,7 +61,7 @@ function AppRoutes() {
         />
         <Route
           element={
-            <ProtectedRoute roles={['ADMIN_SUPERVISOR', 'CONDUCTOR_OPERADOR']}>
+            <ProtectedRoute roles={['ADMINISTRADOR', 'CONDUCTOR']}>
               <NoveltyPage />
             </ProtectedRoute>
           }
@@ -69,7 +69,7 @@ function AppRoutes() {
         />
         <Route
           element={
-            <ProtectedRoute roles={['ADMIN_SUPERVISOR']}>
+            <ProtectedRoute roles={['ADMINISTRADOR']}>
               <PendingModulePage moduleId="mantenimiento-preventivo" />
             </ProtectedRoute>
           }
@@ -77,7 +77,7 @@ function AppRoutes() {
         />
         <Route
           element={
-            <ProtectedRoute roles={['ADMIN_SUPERVISOR', 'MECANICO']}>
+            <ProtectedRoute roles={['ADMINISTRADOR', 'MECANICO']}>
               <PendingModulePage moduleId="ordenes-trabajo" />
             </ProtectedRoute>
           }
@@ -85,7 +85,7 @@ function AppRoutes() {
         />
         <Route
           element={
-            <ProtectedRoute roles={['ADMIN_SUPERVISOR', 'MECANICO']}>
+            <ProtectedRoute roles={['ADMINISTRADOR', 'MECANICO']}>
               <PendingModulePage moduleId="repuestos" />
             </ProtectedRoute>
           }
@@ -93,7 +93,7 @@ function AppRoutes() {
         />
         <Route
           element={
-            <ProtectedRoute roles={['ADMIN_SUPERVISOR', 'MECANICO', 'CONDUCTOR_OPERADOR']}>
+            <ProtectedRoute roles={['ADMINISTRADOR', 'MECANICO', 'CONDUCTOR']}>
               <PendingModulePage moduleId="historial" />
             </ProtectedRoute>
           }

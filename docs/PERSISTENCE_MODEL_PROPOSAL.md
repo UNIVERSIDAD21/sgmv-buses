@@ -71,9 +71,9 @@ No existe RF-07. La autenticación, cierre de sesión, gestión mínima de cuent
 
 ### `RolCodigo`
 
-- `ADMIN_SUPERVISOR`
+- `ADMINISTRADOR`
 - `MECANICO`
-- `CONDUCTOR_OPERADOR`
+- `CONDUCTOR`
 
 Representa los tres roles funcionales exactos del sistema.
 
@@ -125,7 +125,7 @@ Umbrales:
 - `DEVUELTA_CORRECCION`
 - `CERRADA`
 
-`CERRADA` es terminal. Solo el Supervisor cierra órdenes. Solo el Mecánico marca la ejecución como completada.
+`CERRADA` es terminal. Solo el Administrador cierra órdenes. Solo el Mecánico marca la ejecución como completada.
 
 ### Enums técnicos propuestos
 
@@ -188,14 +188,14 @@ Campos:
 Relaciones:
 
 - Pertenece exactamente a un Rol.
-- Como Conductor/Operador participa en AsignacionConductor y Novedad.
-- Como Personal Técnico/Mecánico puede ser técnico asignado de OrdenTrabajo e Intervencion.
+- Como Conductor participa en AsignacionConductor y Novedad.
+- Como Mecánico puede ser técnico asignado de OrdenTrabajo e Intervencion.
 - Como responsable puede aparecer en movimientos, reasignaciones y auditorías.
 
 Validaciones de backend:
 
 - Usuario inactivo no inicia sesión.
-- Solo `ADMIN_SUPERVISOR` gestiona cuentas mínimas.
+- Solo `ADMINISTRADOR` gestiona cuentas mínimas.
 - No registrar contraseñas, hashes ni tokens en logs.
 - Las FK dependientes de rol se validan en servicios.
 
@@ -321,7 +321,7 @@ WHERE activa = true;
 
 Transacción de reasignación:
 
-1. Validar rol `ADMIN_SUPERVISOR`.
+1. Validar rol `ADMINISTRADOR`.
 2. Validar conductor.
 3. Cerrar asignación activa previa del conductor.
 4. Cerrar asignación activa previa del bus.
@@ -366,7 +366,7 @@ Reglas:
 Conversión a orden:
 
 1. Validar que la novedad esté en `PENDIENTE_REVISION`.
-2. Validar rol `ADMIN_SUPERVISOR`.
+2. Validar rol `ADMINISTRADOR`.
 3. Crear OrdenTrabajo correctiva con `origen = NOVEDAD`.
 4. Cambiar novedad a `CONVERTIDA_A_ORDEN`.
 5. Guardar responsable y fecha.
@@ -485,7 +485,7 @@ Reglas de estado:
 - Para pasar a `COMPLETADA_TECNICO` debe existir al menos una ActividadOrden registrada.
 - En órdenes correctivas, diagnóstico obligatorio.
 - Solo el Mecánico marca `COMPLETADA_TECNICO`.
-- Solo el Supervisor cierra.
+- Solo el Administrador cierra.
 - `CERRADA` requiere `fechaCierre` y `cerradaPorId`.
 - `CERRADA` es terminal.
 
@@ -581,7 +581,7 @@ Campos:
 
 Reglas:
 
-- Solo `ADMIN_SUPERVISOR` reasigna.
+- Solo `ADMINISTRADOR` reasigna.
 - `tecnicoNuevoId` debe tener rol `MECANICO`.
 - Se ejecuta en transacción junto con la actualización de `OrdenTrabajo.tecnicoAsignadoId`.
 
@@ -678,7 +678,7 @@ Restricciones:
 - `cantidad > 0`.
 - `tipo = CONSUMO` requiere `consumoRepuestoId`.
 - `tipo != CONSUMO` requiere `consumoRepuestoId = NULL`.
-- Entrada y ajustes administrativos los registra Administrador/Supervisor.
+- Entrada y ajustes administrativos los registra Administrador.
 - Consumos autorizados los registra Mecánico.
 
 Nota importante:
@@ -716,7 +716,7 @@ Reglas:
 - RF-06 no modifica datos históricos.
 - El conductor solo ve resumen autorizado de su bus.
 - El mecánico solo ve historial técnico necesario.
-- El supervisor puede ver historial e informes permitidos, incluidos costos básicos trazables.
+- El administrador puede ver historial e informes permitidos, incluidos costos básicos trazables.
 
 ---
 
@@ -803,7 +803,7 @@ Reglas de servicio/transacción, no de `CHECK` simple:
 
 ### Reasignación conductor-bus
 
-1. Validar `ADMIN_SUPERVISOR`.
+1. Validar `ADMINISTRADOR`.
 2. Validar conductor.
 3. Cerrar asignación activa previa del conductor.
 4. Cerrar asignación activa previa del bus.
@@ -831,7 +831,7 @@ Reglas de servicio/transacción, no de `CHECK` simple:
 ### Cierre de orden preventiva
 
 1. Validar `COMPLETADA_TECNICO`.
-2. Validar `ADMIN_SUPERVISOR`.
+2. Validar `ADMINISTRADOR`.
 3. Validar información técnica mínima.
 4. Registrar siguiente fecha/kilometraje objetivo si la programación continúa activa.
 5. Cambiar orden a `CERRADA`.

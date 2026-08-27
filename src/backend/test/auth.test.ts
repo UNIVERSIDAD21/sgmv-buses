@@ -25,11 +25,11 @@ interface AuthFixture {
 async function ensureRoles() {
   const [admin, mecanico, conductor] = await Promise.all([
     prisma.rol.upsert({
-      where: { codigo: 'ADMIN_SUPERVISOR' },
+      where: { codigo: 'ADMINISTRADOR' },
       update: {},
       create: {
-        codigo: 'ADMIN_SUPERVISOR',
-        nombre: 'Administrador / Supervisor',
+        codigo: 'ADMINISTRADOR',
+        nombre: 'Administrador',
       },
     }),
     prisma.rol.upsert({
@@ -37,15 +37,15 @@ async function ensureRoles() {
       update: {},
       create: {
         codigo: 'MECANICO',
-        nombre: 'Personal Tecnico / Mecanico',
+        nombre: 'Mecánico',
       },
     }),
     prisma.rol.upsert({
-      where: { codigo: 'CONDUCTOR_OPERADOR' },
+      where: { codigo: 'CONDUCTOR' },
       update: {},
       create: {
-        codigo: 'CONDUCTOR_OPERADOR',
-        nombre: 'Conductor / Operador',
+        codigo: 'CONDUCTOR',
+        nombre: 'Conductor',
       },
     }),
   ])
@@ -101,11 +101,7 @@ function expectNoSensitiveUserFields(body: unknown) {
   expect(serialized).not.toContain('hash')
 }
 
-function createExpiredToken(
-  userId: string,
-  email: string,
-  rol: 'ADMIN_SUPERVISOR' | 'MECANICO' | 'CONDUCTOR_OPERADOR',
-) {
+function createTokenWithRole(userId: string, email: string, rol: string, expiresInSeconds: number) {
   const secret = env.JWT_SECRET
 
   if (!secret) {
@@ -116,7 +112,7 @@ function createExpiredToken(
   const payload = Buffer.from(
     JSON.stringify({
       email,
-      exp: Math.floor(Date.now() / 1000) - 60,
+      exp: Math.floor(Date.now() / 1000) + expiresInSeconds,
       iat: Math.floor(Date.now() / 1000) - 3600,
       rol,
       sub: userId,
@@ -126,6 +122,14 @@ function createExpiredToken(
   const signature = createHmac('sha256', secret).update(unsignedToken).digest('base64url')
 
   return `${unsignedToken}.${signature}`
+}
+
+function createExpiredToken(
+  userId: string,
+  email: string,
+  rol: 'ADMINISTRADOR' | 'MECANICO' | 'CONDUCTOR',
+) {
+  return createTokenWithRole(userId, email, rol, -60)
 }
 
 describeDb('Auth API', () => {
@@ -160,7 +164,7 @@ describeDb('Auth API', () => {
 
     expect(response.headers['set-cookie']?.join(';')).toContain('HttpOnly')
     expect(response.body.data.user.email).toBe(fixture.adminEmail)
-    expect(response.body.data.user.rol.codigo).toBe('ADMIN_SUPERVISOR')
+    expect(response.body.data.user.rol.codigo).toBe('ADMINISTRADOR')
     expectNoSensitiveUserFields(response.body)
   })
 
@@ -266,12 +270,49 @@ describeDb('Auth API', () => {
     expectNoSensitiveUserFields(response.body)
   })
 
+  it('keeps only the three canonical roles and rejects legacy role aliases in session tokens', async () => {
+    const roles = await prisma.rol.findMany({
+      orderBy: { codigo: 'asc' },
+      select: { codigo: true, nombre: true },
+    })
+    const user = await prisma.usuario.findUniqueOrThrow({
+      where: { email: fixture.adminEmail },
+    })
+
+    expect(roles.map((role) => role.codigo).sort()).toEqual([
+      'ADMINISTRADOR',
+      'CONDUCTOR',
+      'MECANICO',
+    ])
+    expect(roles.map((role) => role.nombre).sort()).toEqual([
+      'Administrador',
+      'Conductor',
+      'Mecánico',
+    ])
+
+    for (const legacyRole of [
+      'SUPERVISOR',
+      'OPERADOR',
+      'OPERARIO',
+      'TECNICO',
+      'ADMIN_SUPERVISOR',
+      'CONDUCTOR_OPERADOR',
+    ]) {
+      const legacyToken = createTokenWithRole(user.id, user.email, legacyRole, 3600)
+
+      await request(createApp())
+        .get('/auth/me')
+        .set('Cookie', `${env.COOKIE_NAME}=${legacyToken}`)
+        .expect(401)
+    }
+  }, 60000)
+
   it('rejects authenticated users with an unauthorized role', async () => {
     const app = createApp((testApp) => {
       testApp.get(
         '/test/admin-only',
         authenticate,
-        authorizeRoles('ADMIN_SUPERVISOR'),
+        authorizeRoles('ADMINISTRADOR'),
         (_request, response) => response.status(200).json({ data: { ok: true } }),
       )
     })

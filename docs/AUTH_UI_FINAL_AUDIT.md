@@ -1,7 +1,7 @@
 # Auditoria final de interfaz oficial y autenticacion
 
-**Fecha:** 2026-08-26  
-**Rama:** `feat/auth-ui-foundation`  
+**Fecha:** 2026-08-26
+**Rama:** `feat/auth-ui-foundation`
 **Alcance:** verificacion y correccion puntual de la interfaz oficial y la autenticacion transversal. No inicia RF-01 ni agrega funcionalidades de negocio.
 
 ## Limpieza del ZIP de Figma Make
@@ -25,7 +25,7 @@
 | Expiracion de sesion | Cubierta por pruebas frontend/backend con cookie expirada. |
 | Acceso sin autenticacion | Cubierto con redireccion a login y rechazo backend. |
 | Acceso con rol incorrecto | Cubierto con pantalla de acceso denegado y `authorizeRoles`. |
-| Navegacion por rol | Validada para Administrador/Supervisor, Mecanico y Conductor/Operador. |
+| Navegacion por rol | Validada para Administrador, Mecanico y Conductor. |
 | Menu colapsado/expandido | Validado con nombres completos y tooltips accesibles. |
 | Rutas inexistentes | Cubiertas con redireccion segura a `/inicio`. |
 | Estados de carga, vacio y error | Cubiertos por pruebas y captura visual. |

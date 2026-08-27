@@ -44,11 +44,11 @@ function uniqueBusCode(prefix = 'BUS-TEST') {
 async function ensureRoles() {
   const [admin, mecanico, conductor] = await Promise.all([
     prisma.rol.upsert({
-      where: { codigo: 'ADMIN_SUPERVISOR' },
+      where: { codigo: 'ADMINISTRADOR' },
       update: {},
       create: {
-        codigo: 'ADMIN_SUPERVISOR',
-        nombre: 'Administrador / Supervisor',
+        codigo: 'ADMINISTRADOR',
+        nombre: 'Administrador',
       },
     }),
     prisma.rol.upsert({
@@ -56,15 +56,15 @@ async function ensureRoles() {
       update: {},
       create: {
         codigo: 'MECANICO',
-        nombre: 'Personal Tecnico / Mecanico',
+        nombre: 'Mecánico',
       },
     }),
     prisma.rol.upsert({
-      where: { codigo: 'CONDUCTOR_OPERADOR' },
+      where: { codigo: 'CONDUCTOR' },
       update: {},
       create: {
-        codigo: 'CONDUCTOR_OPERADOR',
-        nombre: 'Conductor / Operador',
+        codigo: 'CONDUCTOR',
+        nombre: 'Conductor',
       },
     }),
   ])
@@ -499,8 +499,8 @@ describeDb('RF-01 Fleet API', () => {
       id: randomUUID(),
       nombre: 'Fake Admin',
       rol: {
-        codigo: 'ADMIN_SUPERVISOR',
-        nombre: 'Administrador / Supervisor',
+        codigo: 'ADMINISTRADOR',
+        nombre: 'Administrador',
       },
     }
     const service = new FleetService()

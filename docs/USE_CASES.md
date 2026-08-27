@@ -21,9 +21,9 @@ Para ejecutar funciones protegidas, el actor debe estar autenticado y autorizado
 
 # CU-01 — RF-01 — Gestión de la flota vehicular
 
-**RF relacionado:** RF-01  
-**Actor principal:** Administrador / Supervisor  
-**Actor secundario:** Conductor / Operador, consulta limitada
+**RF relacionado:** RF-01
+**Actor principal:** Administrador
+**Actor secundario:** Conductor, consulta limitada
 
 ## Objetivo
 
@@ -61,9 +61,9 @@ La información de flota queda actualizada y trazable.
 
 # CU-02 — RF-02 — Control de novedades operativas
 
-**RF relacionado:** RF-02  
-**Actor principal inicial:** Conductor / Operador  
-**Actor de gestión:** Administrador / Supervisor
+**RF relacionado:** RF-02
+**Actor principal inicial:** Conductor
+**Actor de gestión:** Administrador
 
 ## Objetivo
 
@@ -101,11 +101,11 @@ La novedad queda trazada hasta su resolución o hasta la orden originada.
 
 # CU-03 — RF-03 — Administración del mantenimiento preventivo
 
-**RF relacionado:** RF-03  
-**Actor principal:** Administrador / Supervisor  
+**RF relacionado:** RF-03
+**Actor principal:** Administrador
 **Actor secundario:** Sistema
 
-El Personal Técnico/Mecánico no administra programaciones preventivas. Las órdenes preventivas generadas desde este RF se ejecutan dentro de RF-04.
+El Mecánico no administra programaciones preventivas. Las órdenes preventivas generadas desde este RF se ejecutan dentro de RF-04.
 
 ## Objetivo
 
@@ -141,8 +141,8 @@ Existe programación válida y, si corresponde, una orden preventiva relacionada
 
 # CU-04 — RF-04 — Seguimiento de órdenes de trabajo
 
-**RF relacionado:** RF-04  
-**Actores:** Administrador / Supervisor; Personal Técnico / Mecánico
+**RF relacionado:** RF-04
+**Actores:** Administrador; Mecánico
 
 ## Objetivo
 
@@ -179,7 +179,7 @@ Controlar de extremo a extremo la ejecución de una intervención de mantenimien
 - Transición de estado inválida → rechazar.
 - Cierre sin información técnica mínima → rechazar.
 - Stock insuficiente → no registrar consumo inconsistente.
-- Supervisor devuelve trabajo para corrección → conservar estado/trazabilidad según la máquina de estados aprobada.
+- Administrador devuelve trabajo para corrección → conservar estado/trazabilidad según la máquina de estados aprobada.
 
 ## Postcondición
 
@@ -189,8 +189,8 @@ Orden cerrada de manera trazable y reflejada en historial.
 
 # CU-05 — RF-05 — Central de Repuestos
 
-**RF relacionado:** RF-05  
-**Actores:** Administrador / Supervisor; Personal Técnico / Mecánico
+**RF relacionado:** RF-05
+**Actores:** Administrador; Mecánico
 
 ## Objetivo
 
@@ -230,14 +230,14 @@ Existencias y movimientos permanecen consistentes y trazables.
 
 # CU-06 — RF-06 — Consulta de historial y generación de informes
 
-**RF relacionado:** RF-06  
-**Actores:** Administrador / Supervisor; Personal Técnico / Mecánico; Conductor / Operador limitado
+**RF relacionado:** RF-06
+**Actores:** Administrador; Mecánico; Conductor limitado
 
 ## Objetivo
 
 Consultar antecedentes de mantenimiento y generar información de seguimiento sin analítica predictiva.
 
-## Flujo — Administrador/Supervisor
+## Flujo — Administrador
 
 1. Abre historial o informes.
 2. Selecciona filtros.

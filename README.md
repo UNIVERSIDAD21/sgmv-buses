@@ -4,13 +4,17 @@ Prototipo web académico para centralizar y estandarizar la gestión del manteni
 
 ## Estado
 
-La documentación de transferencia a desarrollo está preparada. OpenClaw participa únicamente en la **Fase 3: desarrollo, integración y validación**. El bootstrap tecnico y el bloque de Persistencia ya estan implementados, auditados y documentados; autenticacion y RF completos siguen pendientes de autorizacion por bloque.
+La documentación de transferencia a desarrollo está preparada. OpenClaw participa únicamente en la **Fase 3: desarrollo, integración y validación**. El bootstrap tecnico, Persistencia, autenticacion transversal, RF-01, RF-02 y la normalizacion canonica de roles ya estan implementados, auditados y documentados. RF-03 a RF-06 siguen pendientes de autorizacion por bloque.
 
 Ver `docs/PROJECT_STATUS.md` antes de iniciar cualquier implementación.
 
 ## RF-01 implementado
 
 La Gestion de la flota vehicular esta implementada de extremo a extremo. Ver `docs/RF01_FLEET.md` para endpoints, reglas, pruebas y evidencias visuales.
+
+## RF-02 implementado
+
+El Control de novedades operativas esta implementado de extremo a extremo. Ver `docs/RF02_NOVEDADES.md` para endpoints, reglas, pruebas y evidencias visuales.
 
 ## Stack
 
@@ -21,9 +25,9 @@ La Gestion de la flota vehicular esta implementada de extremo a extremo. Ver `do
 
 ## Roles
 
-- Administrador / Supervisor
-- Personal Técnico / Mecánico
-- Conductor / Operador
+- Administrador
+- Mecánico
+- Conductor
 
 ## Requerimientos funcionales principales
 
@@ -47,6 +51,7 @@ Documentos principales:
 - `docs/DATA_MODEL.md` — modelo conceptual derivado del diseño aprobado.
 - `docs/DATABASE_STRUCTURE.md` — estructura fisica PostgreSQL/Prisma implementada.
 - `docs/RF01_FLEET.md` - endpoints, reglas y evidencias de RF-01.
+- `docs/RF02_NOVEDADES.md` - endpoints, reglas y evidencias de RF-02.
 - `docs/DATA_DICTIONARY.md` — diccionario de datos de las 16 tablas.
 - `docs/ARCHITECTURE.md` — arquitectura y límites técnicos.
 - `docs/TASKS.md` — plan vivo de Fase 3.

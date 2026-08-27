@@ -69,7 +69,7 @@ Relaciones:
 
 Regla:
 
-- Solo existen los tres roles funcionales aprobados: Administrador/Supervisor, Personal Técnico/Mecánico y Conductor/Operador.
+- Solo existen los tres roles funcionales aprobados: Administrador, Mecánico y Conductor.
 
 ---
 
@@ -87,9 +87,9 @@ Atributos conceptuales:
 Relaciones:
 
 - Pertenece exactamente a un Rol.
-- Como Conductor/Operador puede tener muchas AsignacionConductor históricas.
-- Como Conductor/Operador puede registrar muchas Novedades.
-- Como Personal Técnico/Mecánico puede tener muchas OrdenTrabajo asignadas.
+- Como Conductor puede tener muchas AsignacionConductor históricas.
+- Como Conductor puede registrar muchas Novedades.
+- Como Mecánico puede tener muchas OrdenTrabajo asignadas.
 - Puede aparecer como responsable en operaciones auditadas según la regla de negocio.
 
 Restricciones mínimas:
@@ -239,10 +239,10 @@ Relaciones:
 Reglas aprobadas:
 
 - Las órdenes cerradas e intervenciones alimentan el historial del bus.
-- La asignación y reasignación de técnico son responsabilidad del Administrador/Supervisor.
+- La asignación y reasignación de técnico son responsabilidad del Administrador.
 - La reasignación debe quedar auditada.
 - `CERRADA` es terminal.
-- Solo el Supervisor cierra órdenes.
+- Solo el Administrador cierra órdenes.
 - Solo el Mecánico marca la ejecución como completada.
 
 Estados aprobados:
@@ -371,7 +371,7 @@ Relaciones:
 Reglas aprobadas:
 
 - Los movimientos incluyen entradas, consumos y ajustes.
-- Administrador/Supervisor registra entradas y ajustes.
+- Administrador registra entradas y ajustes.
 - Mecánico registra únicamente consumos autorizados.
 - Un MovimientoInventario de entrada o ajuste no necesita ConsumoRepuesto.
 - "Técnico asignado" corresponde a Usuario-OrdenTrabajo.

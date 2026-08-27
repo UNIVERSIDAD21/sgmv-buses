@@ -75,7 +75,7 @@ export function createSessionToken(payload: SessionTokenPayload) {
 }
 
 function isRolCodigo(value: unknown): value is RolCodigo {
-  return value === 'ADMIN_SUPERVISOR' || value === 'MECANICO' || value === 'CONDUCTOR_OPERADOR'
+  return value === 'ADMINISTRADOR' || value === 'MECANICO' || value === 'CONDUCTOR'
 }
 
 export function verifySessionToken(token: string): SessionTokenPayload {

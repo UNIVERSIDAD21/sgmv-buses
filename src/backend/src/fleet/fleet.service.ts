@@ -186,7 +186,7 @@ function translatePrismaError(error: unknown): never {
 }
 
 function ensureAdmin(actor: AuthenticatedUser) {
-  if (actor.rol.codigo !== 'ADMIN_SUPERVISOR') {
+  if (actor.rol.codigo !== 'ADMINISTRADOR') {
     throw new AppError(403, 'FORBIDDEN', 'No tiene permisos para realizar esta operacion')
   }
 }
@@ -210,15 +210,11 @@ export class FleetService {
       throw new AppError(400, 'BUS_INACTIVE', 'No se puede asignar un bus inactivo')
     }
 
-    if (
-      !conductor ||
-      conductor.estado !== 'ACTIVO' ||
-      conductor.rol.codigo !== 'CONDUCTOR_OPERADOR'
-    ) {
+    if (!conductor || conductor.estado !== 'ACTIVO' || conductor.rol.codigo !== 'CONDUCTOR') {
       throw new AppError(
         400,
         'INVALID_DRIVER',
-        'Solo se pueden asignar usuarios activos con rol Conductor / Operador',
+        'Solo se pueden asignar usuarios activos con rol Conductor',
       )
     }
 
@@ -315,7 +311,7 @@ export class FleetService {
   }
 
   async getAssignedBusForDriver(actor: AuthenticatedUser) {
-    if (actor.rol.codigo !== 'CONDUCTOR_OPERADOR') {
+    if (actor.rol.codigo !== 'CONDUCTOR') {
       throw new AppError(403, 'FORBIDDEN', 'No tiene permisos para realizar esta operacion')
     }
 
@@ -382,7 +378,7 @@ export class FleetService {
       throw new AppError(403, 'FORBIDDEN', 'No tiene permisos para realizar esta operacion')
     }
 
-    if (actor.rol.codigo === 'CONDUCTOR_OPERADOR') {
+    if (actor.rol.codigo === 'CONDUCTOR') {
       const assignment = await this.fleetRepository.findActiveAssignmentWithBusByConductor(actor.id)
 
       if (!assignment || assignment.busId !== busId) {

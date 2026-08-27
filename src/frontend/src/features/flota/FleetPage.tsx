@@ -405,8 +405,8 @@ function ActionDialog({
 
 export default function FleetPage() {
   const { user } = useSession()
-  const canManage = user?.rol.codigo === 'ADMIN_SUPERVISOR'
-  const isDriver = user?.rol.codigo === 'CONDUCTOR_OPERADOR'
+  const canManage = user?.rol.codigo === 'ADMINISTRADOR'
+  const isDriver = user?.rol.codigo === 'CONDUCTOR'
   const [busqueda, setBusqueda] = useState('')
   const [estado, setEstado] = useState<BusStatus | ''>('')
   const [pagina, setPagina] = useState(1)
@@ -601,7 +601,7 @@ export default function FleetPage() {
     return (
       <div className="mx-auto max-w-6xl space-y-5 p-4 md:p-6">
         <section className="rounded-lg border border-slate-200 bg-white p-5">
-          <Badge tone="emerald">Conductor / Operador</Badge>
+          <Badge tone="emerald">Conductor</Badge>
           <h2 className="mt-3 text-lg font-semibold text-slate-900">Mi bus asignado</h2>
         </section>
 

@@ -11,45 +11,45 @@ noveltyRoutes.use(authenticate)
 
 noveltyRoutes.get(
   '/resumen',
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(noveltyController.summarize),
 )
 noveltyRoutes.get(
   '/mis-novedades',
-  authorizeRoles('CONDUCTOR_OPERADOR'),
+  authorizeRoles('CONDUCTOR'),
   asyncHandler(noveltyController.listOwnNovelties),
 )
 noveltyRoutes.get(
   '/mis-novedades/:novedadId',
-  authorizeRoles('CONDUCTOR_OPERADOR'),
+  authorizeRoles('CONDUCTOR'),
   asyncHandler(noveltyController.getOwnNovelty),
 )
 noveltyRoutes.post(
   '/',
   enforceAllowedOrigin,
-  authorizeRoles('CONDUCTOR_OPERADOR'),
+  authorizeRoles('CONDUCTOR'),
   asyncHandler(noveltyController.createNovelty),
 )
 noveltyRoutes.get(
   '/',
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(noveltyController.listAdminNovelties),
 )
 noveltyRoutes.get(
   '/:novedadId',
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(noveltyController.getAdminNovelty),
 )
 noveltyRoutes.post(
   '/:novedadId/revision',
   enforceAllowedOrigin,
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(noveltyController.reviewNovelty),
 )
 noveltyRoutes.post(
   '/:novedadId/convertir-orden',
   enforceAllowedOrigin,
-  authorizeRoles('ADMIN_SUPERVISOR'),
+  authorizeRoles('ADMINISTRADOR'),
   asyncHandler(noveltyController.convertToCorrectiveOrder),
 )
 

@@ -60,15 +60,15 @@ async function main() {
   await prisma.$transaction(
     async (tx) => {
       await tx.rol.upsert({
-        where: { codigo: 'ADMIN_SUPERVISOR' },
+        where: { codigo: 'ADMINISTRADOR' },
         update: {
-          nombre: 'Administrador / Supervisor',
+          nombre: 'Administrador',
           descripcion: 'Gestiona flota, novedades, preventivos, ordenes, repuestos e informes.',
         },
         create: {
           id: ids.roles.admin,
-          codigo: 'ADMIN_SUPERVISOR',
-          nombre: 'Administrador / Supervisor',
+          codigo: 'ADMINISTRADOR',
+          nombre: 'Administrador',
           descripcion: 'Gestiona flota, novedades, preventivos, ordenes, repuestos e informes.',
         },
       })
@@ -76,43 +76,43 @@ async function main() {
       await tx.rol.upsert({
         where: { codigo: 'MECANICO' },
         update: {
-          nombre: 'Personal Tecnico / Mecanico',
+          nombre: 'Mecánico',
           descripcion: 'Ejecuta ordenes asignadas y registra actividades y consumos autorizados.',
         },
         create: {
           id: ids.roles.mecanico,
           codigo: 'MECANICO',
-          nombre: 'Personal Tecnico / Mecanico',
+          nombre: 'Mecánico',
           descripcion: 'Ejecuta ordenes asignadas y registra actividades y consumos autorizados.',
         },
       })
 
       await tx.rol.upsert({
-        where: { codigo: 'CONDUCTOR_OPERADOR' },
+        where: { codigo: 'CONDUCTOR' },
         update: {
-          nombre: 'Conductor / Operador',
+          nombre: 'Conductor',
           descripcion: 'Consulta su bus asignado y registra novedades operativas.',
         },
         create: {
           id: ids.roles.conductor,
-          codigo: 'CONDUCTOR_OPERADOR',
-          nombre: 'Conductor / Operador',
+          codigo: 'CONDUCTOR',
+          nombre: 'Conductor',
           descripcion: 'Consulta su bus asignado y registra novedades operativas.',
         },
       })
 
       await tx.usuario.upsert({
-        where: { email: 'supervisor.demo@sgmv.local' },
+        where: { email: 'administrador.demo@sgmv.local' },
         update: {
-          nombre: 'Supervisor Demo',
+          nombre: 'Administrador Demo',
           contrasenaHash,
           estado: 'ACTIVO',
           rolId: ids.roles.admin,
         },
         create: {
           id: ids.usuarios.admin,
-          nombre: 'Supervisor Demo',
-          email: 'supervisor.demo@sgmv.local',
+          nombre: 'Administrador Demo',
+          email: 'administrador.demo@sgmv.local',
           telefono: '3000000001',
           contrasenaHash,
           estado: 'ACTIVO',

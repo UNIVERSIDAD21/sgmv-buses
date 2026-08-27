@@ -1,7 +1,7 @@
 # Decisiones tecnicas aprobadas
 
-**Estado:** APROBADO POR EL PROPIETARIO  
-**Fecha:** 2026-08-25  
+**Estado:** APROBADO POR EL PROPIETARIO
+**Fecha:** 2026-08-25
 **Aplica a:** Fase 3 - Desarrollo, integracion y validacion del prototipo
 
 Este documento registra decisiones tecnicas aprobadas para iniciar Fase 3 sin redefinir requerimientos, roles, casos de uso, reglas de negocio ni alcance aprobado.
@@ -32,7 +32,7 @@ La clasificacion de la novedad debe ser un campo separado del estado, para no cr
 
 ### Justificacion breve
 
-Estos estados cubren el flujo aprobado: el conductor reporta, el supervisor revisa y decide resolver, descartar o convertir en orden.
+Estos estados cubren el flujo aprobado: el conductor reporta, el administrador revisa y decide resolver, descartar o convertir en orden.
 
 ### Impacto en base de datos o arquitectura
 
@@ -75,20 +75,20 @@ Reglas obligatorias:
 
 - `CERRADA` es estado terminal.
 - No se permite cerrar desde `ASIGNADA` ni desde `EN_EJECUCION`.
-- La reasignacion de mecanico es exclusiva del Administrador/Supervisor y queda auditada.
+- La reasignacion de mecanico es exclusiva del Administrador y queda auditada.
 - Para pasar a `COMPLETADA_TECNICO` deben existir fechas de ejecucion y actividades realizadas.
 - En ordenes correctivas, el diagnostico es obligatorio.
 - El consumo de repuestos es opcional.
-- El cierre definitivo es exclusivo del Administrador/Supervisor.
+- El cierre definitivo es exclusivo del Administrador.
 
 Responsabilidades:
 
-- Administrador/Supervisor: crea, asigna, supervisa, devuelve para correccion, valida y cierra.
+- Administrador: crea, asigna, supervisa, devuelve para correccion, valida y cierra.
 - Mecanico: inicia ejecucion, registra informacion tecnica y marca completada.
 
 ### Justificacion breve
 
-La decision conserva la separacion obligatoria entre ejecucion tecnica y cierre administrativo. `DEVUELTA_CORRECCION` cubre la alternativa documentada donde el supervisor devuelve una orden para ajuste sin cerrar el flujo.
+La decision conserva la separacion obligatoria entre ejecucion tecnica y cierre administrativo. `DEVUELTA_CORRECCION` cubre la alternativa documentada donde el administrador devuelve una orden para ajuste sin cerrar el flujo.
 
 ### Impacto en base de datos o arquitectura
 

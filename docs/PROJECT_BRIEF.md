@@ -48,7 +48,7 @@ Construir una plataforma web que permita:
 
 ## 4. Usuarios principales
 
-### Administrador / Supervisor
+### Administrador
 
 Coordina y controla el proceso.
 
@@ -67,7 +67,7 @@ Responsabilidades principales:
 - generar informes;
 - gestionar cuentas de acceso como capacidad transversal.
 
-### Personal Técnico / Mecánico
+### Mecánico
 
 Ejecuta el trabajo técnico.
 
@@ -85,7 +85,7 @@ Responsabilidades principales:
 
 No realiza cierre administrativo final ni ajustes administrativos de inventario.
 
-### Conductor / Operador
+### Conductor
 
 Perfil de acceso limitado.
 
@@ -111,32 +111,32 @@ No puede:
 
 ## 5. Flujo central correctivo
 
-1. El Conductor/Operador detecta una novedad.
+1. El Conductor detecta una novedad.
 2. La registra asociada a su bus.
-3. El Administrador/Supervisor revisa la novedad.
+3. El Administrador revisa la novedad.
 4. La clasifica.
 5. Puede resolverla/descartarla o convertirla en orden correctiva.
 6. Si se convierte, la relación novedad → orden se conserva.
-7. El Administrador/Supervisor asigna un Mecánico.
+7. El Administrador asigna un Mecánico.
 8. El Mecánico consulta antecedentes.
 9. Inicia el trabajo.
 10. Registra diagnóstico, actividades, observaciones y repuestos usados.
 11. Marca el trabajo como completado.
-12. El Administrador/Supervisor valida y cierra.
+12. El Administrador valida y cierra.
 13. La información alimenta el historial del bus.
-14. El Conductor/Operador puede consultar el estado actualizado de su reporte.
+14. El Conductor puede consultar el estado actualizado de su reporte.
 
 ---
 
 ## 6. Flujo central preventivo
 
-1. El Administrador/Supervisor crea una programación preventiva.
+1. El Administrador crea una programación preventiva.
 2. La programación utiliza fecha, kilometraje o ambos criterios.
 3. El sistema determina su estado operativo de seguimiento.
 4. Cuando corresponda, se genera una orden preventiva.
 5. Se asigna un Mecánico.
 6. El Mecánico ejecuta y registra la intervención.
-7. El Administrador/Supervisor valida y cierra.
+7. El Administrador valida y cierra.
 8. La intervención alimenta el historial del bus.
 
 ---

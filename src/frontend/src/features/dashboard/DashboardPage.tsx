@@ -63,9 +63,9 @@ export default function DashboardPage() {
   const visibleItems = user
     ? REQUIREMENT_NAV_ITEMS.filter((item) => item.roles.includes(user.rol.codigo))
     : []
-  const isAdmin = user?.rol.codigo === 'ADMIN_SUPERVISOR'
+  const isAdmin = user?.rol.codigo === 'ADMINISTRADOR'
   const isMechanic = user?.rol.codigo === 'MECANICO'
-  const isDriver = user?.rol.codigo === 'CONDUCTOR_OPERADOR'
+  const isDriver = user?.rol.codigo === 'CONDUCTOR'
 
   useEffect(() => {
     let active = true

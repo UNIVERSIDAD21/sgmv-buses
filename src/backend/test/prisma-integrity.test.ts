@@ -61,11 +61,11 @@ function orderedDates() {
 async function ensureRoles() {
   const [admin, mecanico, conductor] = await Promise.all([
     prisma.rol.upsert({
-      where: { codigo: 'ADMIN_SUPERVISOR' },
+      where: { codigo: 'ADMINISTRADOR' },
       update: {},
       create: {
-        codigo: 'ADMIN_SUPERVISOR',
-        nombre: 'Administrador / Supervisor',
+        codigo: 'ADMINISTRADOR',
+        nombre: 'Administrador',
       },
     }),
     prisma.rol.upsert({
@@ -73,15 +73,15 @@ async function ensureRoles() {
       update: {},
       create: {
         codigo: 'MECANICO',
-        nombre: 'Personal Tecnico / Mecanico',
+        nombre: 'Mecánico',
       },
     }),
     prisma.rol.upsert({
-      where: { codigo: 'CONDUCTOR_OPERADOR' },
+      where: { codigo: 'CONDUCTOR' },
       update: {},
       create: {
-        codigo: 'CONDUCTOR_OPERADOR',
-        nombre: 'Conductor / Operador',
+        codigo: 'CONDUCTOR',
+        nombre: 'Conductor',
       },
     }),
   ])
@@ -105,8 +105,8 @@ async function createCore(label: string) {
     data: [
       {
         id: adminId,
-        nombre: `Supervisor ${label}`,
-        email: `supervisor-${emailLabel}-${unique.toLowerCase()}@test.sgmv.local`,
+        nombre: `Administrador ${label}`,
+        email: `administrador-${emailLabel}-${unique.toLowerCase()}@test.sgmv.local`,
         contrasenaHash: 'hash-demo-no-real',
         rolId: roles.admin.id,
       },

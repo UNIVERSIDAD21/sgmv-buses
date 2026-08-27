@@ -6,7 +6,7 @@ Este archivo es el tablero operativo del agente.
 
 **No marcar el inicio de implementación hasta recibir la orden explícita `INICIAR FASE 3`.**
 
-**Estado actual:** interfaz oficial, autenticacion transversal, RF-01 Gestion de la flota vehicular y RF-02 Control de novedades operativas implementadas sobre la Persistencia cerrada. Todavia no implementar RF-03 a RF-06 completos sin nueva autorización del propietario.
+**Estado actual:** interfaz oficial, autenticacion transversal, RF-01 Gestion de la flota vehicular, RF-02 Control de novedades operativas y normalizacion transversal de roles canonicos implementadas sobre la Persistencia cerrada. Todavia no implementar RF-03 a RF-06 completos sin nueva autorización del propietario.
 
 ---
 
@@ -91,7 +91,7 @@ Este archivo es el tablero operativo del agente.
 - [x] Cuenta activa/inactiva.
 - [x] Autorización por rol en backend.
 - [x] Protección de rutas frontend.
-- [ ] Gestión mínima de cuentas para Administrador/Supervisor.
+- [ ] Gestión mínima de cuentas para Administrador.
 - [x] Manejo controlado de errores.
 - [x] Validación de entradas.
 
@@ -106,9 +106,9 @@ Este archivo es el tablero operativo del agente.
 - [x] Implementar menú lateral colapsable con tooltips accesibles.
 - [x] Mostrar nombres oficiales exactos de RF-01 a RF-06.
 - [x] Crear encabezado contextual con fecha dinámica `es-CO`.
-- [x] Crear panel diferenciado para Administrador/Supervisor.
+- [x] Crear panel diferenciado para Administrador.
 - [x] Crear panel diferenciado para Mecánico.
-- [x] Crear panel diferenciado para Conductor/Operador.
+- [x] Crear panel diferenciado para Conductor.
 - [x] Crear vista base de flota sin RF-01 completo.
 - [x] Crear formulario visual de buses sin persistencia RF-01.
 - [x] Crear estados de carga, error, vacío y éxito.
@@ -117,6 +117,18 @@ Este archivo es el tablero operativo del agente.
 - [x] Documentar diseño visual seleccionado.
 - [x] Ejecutar auditoria final de interfaz oficial y autenticacion sin iniciar RF-01.
 - [x] Corregir defectos puntuales de accesibilidad, estado pendiente, pruebas y captura movil.
+
+---
+
+# 3.2 Normalizacion transversal de roles canonicos
+
+- [x] Auditar valores persistidos, enums, autorizacion, frontend, documentacion, diagramas, seeds y pruebas.
+- [x] Establecer catalogo unico de roles `ADMINISTRADOR`, `CONDUCTOR` y `MECANICO`.
+- [x] Normalizar etiquetas visibles a Administrador, Conductor y Mecánico.
+- [x] Crear migracion correctiva sin editar migraciones aplicadas.
+- [x] Rechazar alias de sesion como `SUPERVISOR`, `OPERADOR`, `OPERARIO`, `TECNICO`, `ADMIN_SUPERVISOR` y `CONDUCTOR_OPERADOR`.
+- [x] Verificar que RF-01 y RF-02 conservan permisos y comportamiento.
+- [x] Registrar decision formal en `docs/DECISIONS.md`.
 
 ---
 
@@ -140,7 +152,7 @@ Este archivo es el tablero operativo del agente.
 - [x] Formulario de novedad para conductor.
 - [x] Asociación automática autor/bus/fecha.
 - [x] Listado de novedades propias del conductor.
-- [x] Bandeja de gestión para supervisor.
+- [x] Bandeja de gestión para administrador.
 - [x] Clasificación.
 - [x] Resolución/descartar según flujo.
 - [x] Conversión a orden.
@@ -175,7 +187,7 @@ Este archivo es el tablero operativo del agente.
 - [ ] Bandeja de órdenes del mecánico.
 - [ ] Consulta de antecedentes.
 - [ ] Inicio de trabajo.
-- [ ] Reasignacion de mecanico solo por Administrador/Supervisor con auditoria.
+- [ ] Reasignacion de mecanico solo por Administrador con auditoria.
 - [ ] Registro de diagnóstico.
 - [ ] Registro de actividades.
 - [ ] Registro de observaciones.
@@ -184,7 +196,7 @@ Este archivo es el tablero operativo del agente.
 - [ ] Exigir fechas de ejecucion y actividades para completar por tecnico.
 - [ ] Exigir diagnostico en ordenes correctivas.
 - [ ] Mantener consumo de repuestos como opcional.
-- [ ] Validar/cerrar por supervisor.
+- [ ] Validar/cerrar por administrador.
 - [ ] Garantizar `CERRADA` como estado terminal.
 - [ ] Impedir cierre desde `ASIGNADA` o `EN_EJECUCION`.
 - [ ] Registrar responsable/fechas.
@@ -214,7 +226,7 @@ Este archivo es el tablero operativo del agente.
 - [ ] Historial derivado de datos validados.
 - [ ] Vista técnica para mecánico.
 - [ ] Vista limitada para conductor.
-- [ ] Informes para supervisor.
+- [ ] Informes para administrador.
 - [ ] Filtro por bus.
 - [ ] Filtro por período.
 - [ ] Filtro por tipo de intervención.

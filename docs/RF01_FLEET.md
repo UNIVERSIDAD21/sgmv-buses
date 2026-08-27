@@ -35,19 +35,19 @@ Todos los endpoints requieren sesion por cookie `HttpOnly`.
 
 | Metodo | Ruta | Roles | Descripcion |
 | --- | --- | --- | --- |
-| `GET` | `/flota/resumen` | Administrador/Supervisor | Totales de buses, estados y asignaciones activas. |
-| `GET` | `/flota/buses` | Administrador/Supervisor | Lista buses con `pagina`, `limite`, `busqueda` y `estado`. |
-| `POST` | `/flota/buses` | Administrador/Supervisor | Registra bus y crea historial inicial de estado. |
-| `GET` | `/flota/buses/:busId` | Administrador/Supervisor; Conductor/Operador asignado | Detalle de bus. El conductor solo accede si ese bus es su asignacion activa. |
-| `PATCH` | `/flota/buses/:busId` | Administrador/Supervisor | Edita codigo, placa, marca, modelo y anio. No edita estado ni kilometraje. |
-| `POST` | `/flota/buses/:busId/kilometraje` | Administrador/Supervisor | Actualiza kilometraje y crea `LecturaKilometraje` en una transaccion. |
-| `GET` | `/flota/buses/:busId/kilometraje` | Administrador/Supervisor | Consulta lecturas historicas. |
-| `POST` | `/flota/buses/:busId/estado` | Administrador/Supervisor | Cambia estado y crea `BusEstadoHistorial` en una transaccion. |
-| `GET` | `/flota/buses/:busId/estados` | Administrador/Supervisor | Consulta historial de estados. |
-| `POST` | `/flota/buses/:busId/asignaciones` | Administrador/Supervisor | Asigna/reasigna conductor; cierra historicos necesarios dentro de la transaccion. |
-| `GET` | `/flota/buses/:busId/asignaciones` | Administrador/Supervisor | Consulta historial de asignaciones. |
-| `GET` | `/flota/conductores-disponibles` | Administrador/Supervisor | Lista conductores activos sin asignacion activa, mas el actual del bus si se envia `busId`. |
-| `GET` | `/flota/mi-bus` | Conductor/Operador | Devuelve su bus asignado y resumen autorizado. |
+| `GET` | `/flota/resumen` | Administrador | Totales de buses, estados y asignaciones activas. |
+| `GET` | `/flota/buses` | Administrador | Lista buses con `pagina`, `limite`, `busqueda` y `estado`. |
+| `POST` | `/flota/buses` | Administrador | Registra bus y crea historial inicial de estado. |
+| `GET` | `/flota/buses/:busId` | Administrador; Conductor asignado | Detalle de bus. El conductor solo accede si ese bus es su asignacion activa. |
+| `PATCH` | `/flota/buses/:busId` | Administrador | Edita codigo, placa, marca, modelo y anio. No edita estado ni kilometraje. |
+| `POST` | `/flota/buses/:busId/kilometraje` | Administrador | Actualiza kilometraje y crea `LecturaKilometraje` en una transaccion. |
+| `GET` | `/flota/buses/:busId/kilometraje` | Administrador | Consulta lecturas historicas. |
+| `POST` | `/flota/buses/:busId/estado` | Administrador | Cambia estado y crea `BusEstadoHistorial` en una transaccion. |
+| `GET` | `/flota/buses/:busId/estados` | Administrador | Consulta historial de estados. |
+| `POST` | `/flota/buses/:busId/asignaciones` | Administrador | Asigna/reasigna conductor; cierra historicos necesarios dentro de la transaccion. |
+| `GET` | `/flota/buses/:busId/asignaciones` | Administrador | Consulta historial de asignaciones. |
+| `GET` | `/flota/conductores-disponibles` | Administrador | Lista conductores activos sin asignacion activa, mas el actual del bus si se envia `busId`. |
+| `GET` | `/flota/mi-bus` | Conductor | Devuelve su bus asignado y resumen autorizado. |
 
 Las rutas de escritura aplican validacion de `Origin` mediante `enforceAllowedOrigin`.
 
@@ -128,7 +128,7 @@ Campos internos, auditoria, estado y kilometraje son rechazados por Zod.
 - Las lecturas e historiales no se editan ni eliminan desde RF-01.
 - Un conductor y un bus tienen maximo una asignacion activa.
 - Reasignar cierra asignaciones activas previas y crea la nueva en la misma transaccion.
-- Solo se asignan usuarios activos con rol `CONDUCTOR_OPERADOR`.
+- Solo se asignan usuarios activos con rol `CONDUCTOR`.
 - El responsable siempre sale de la sesion autenticada.
 - El conductor no puede consultar buses ajenos ni historiales administrativos.
 - El mecanico no participa en RF-01 y recibe acceso denegado.
