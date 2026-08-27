@@ -107,27 +107,33 @@ export class FleetRepository {
     actorId: string,
     motivoEstado: string | null,
   ) {
-    return prisma.$transaction(async (tx) => {
-      const bus = await tx.bus.create({
-        data,
-        include: busDetailInclude,
-      })
+    return prisma.$transaction(
+      async (tx) => {
+        const bus = await tx.bus.create({
+          data,
+          include: busDetailInclude,
+        })
 
-      await tx.busEstadoHistorial.create({
-        data: {
-          busId: bus.id,
-          cambiadoPorId: actorId,
-          estadoAnterior: null,
-          estadoNuevo: bus.estadoOperativo,
-          motivo: motivoEstado ?? 'Registro inicial del bus',
-        },
-      })
+        await tx.busEstadoHistorial.create({
+          data: {
+            busId: bus.id,
+            cambiadoPorId: actorId,
+            estadoAnterior: null,
+            estadoNuevo: bus.estadoOperativo,
+            motivo: motivoEstado ?? 'Registro inicial del bus',
+          },
+        })
 
-      return tx.bus.findUniqueOrThrow({
-        where: { id: bus.id },
-        include: busDetailInclude,
-      })
-    })
+        return tx.bus.findUniqueOrThrow({
+          where: { id: bus.id },
+          include: busDetailInclude,
+        })
+      },
+      {
+        maxWait: 15000,
+        timeout: 60000,
+      },
+    )
   }
 
   findActiveAssignmentByBus(busId: string, client: FleetDbClient = prisma) {
