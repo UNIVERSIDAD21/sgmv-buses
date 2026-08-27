@@ -95,6 +95,8 @@ Una novedad puede originar como máximo la orden asociada definida por el flujo 
 
 La conversión conserva la relación entre novedad y orden y debe ser idempotente ante reintentos razonables para evitar duplicados accidentales.
 
+En RF-02 la prioridad no pertenece a la novedad porque el modelo fisico no tiene ese campo en `novedades`. La prioridad se define solo al crear la `OrdenTrabajo` correctiva asociada.
+
 ---
 
 ## BR-10 — Preventivo

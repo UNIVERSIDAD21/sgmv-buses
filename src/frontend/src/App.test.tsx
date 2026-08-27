@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { RoleCode } from './domain/labels'
@@ -385,6 +385,84 @@ function fleetList(overrides: Partial<{ buses: unknown[]; totalPaginas: number }
   }
 }
 
+const noveltyOrder = {
+  codigo: 'OT-NOV-001',
+  descripcion: 'Orden correctiva generada desde novedad',
+  estado: 'PENDIENTE_ASIGNACION',
+  fechaCreacion: '2026-08-27T12:30:00.000Z',
+  id: 'order-1',
+  origen: 'NOVEDAD',
+  prioridad: 'MEDIA',
+  tipo: 'CORRECTIVA',
+}
+
+const noveltyOne = {
+  bus: {
+    codigoInterno: fleetBus.codigoInterno,
+    estadoOperativo: fleetBus.estadoOperativo,
+    id: fleetBus.id,
+    placa: fleetBus.placa,
+  },
+  clasificacion: null,
+  conductor: {
+    id: 'driver-1',
+    nombre: 'Conductor Uno',
+  },
+  descripcion: 'Se escucha ruido al frenar en pendientes durante la ruta.',
+  estado: 'PENDIENTE_REVISION',
+  fechaReporte: '2026-08-27T12:00:00.000Z',
+  fechaRevision: null,
+  id: 'nov-1',
+  observacionRevision: null,
+  ordenTrabajo: null,
+  revisadaPor: null,
+  tipo: 'Ruido en frenos',
+  updatedAt: '2026-08-27T12:00:00.000Z',
+}
+
+const reviewedNovelty = {
+  ...noveltyOne,
+  clasificacion: 'Falla mecanica',
+  fechaRevision: '2026-08-27T12:10:00.000Z',
+  observacionRevision: 'Revisada por supervisor',
+  revisadaPor: {
+    id: 'admin-1',
+    nombre: 'Supervisor Uno',
+  },
+}
+
+const convertedNovelty = {
+  ...reviewedNovelty,
+  estado: 'CONVERTIDA_A_ORDEN',
+  ordenTrabajo: noveltyOrder,
+}
+
+function noveltySummary() {
+  return {
+    estados: {
+      CONVERTIDA_A_ORDEN: 0,
+      DESCARTADA: 0,
+      PENDIENTE_REVISION: 1,
+      RESUELTA_SIN_ORDEN: 0,
+    },
+    ordenesGeneradas: 0,
+    pendientes: 1,
+    total: 1,
+  }
+}
+
+function noveltyList(novedades: unknown[] = [noveltyOne], totalPaginas = 2) {
+  return {
+    novedades,
+    paginacion: {
+      limite: 8,
+      pagina: 1,
+      total: novedades.length,
+      totalPaginas,
+    },
+  }
+}
+
 function fleetHandler(role: RoleCode = 'ADMIN_SUPERVISOR') {
   return async (path: string, init?: RequestInit) => {
     if (path === '/auth/me') {
@@ -442,6 +520,75 @@ function fleetHandler(role: RoleCode = 'ADMIN_SUPERVISOR') {
           },
         ],
       })
+    }
+
+    if (path === '/novedades/resumen') {
+      return ok(noveltySummary())
+    }
+
+    if (path === '/novedades/mis-novedades') {
+      return ok(noveltyList([noveltyOne], 1))
+    }
+
+    return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
+  }
+}
+
+function noveltyHandler(
+  role: RoleCode = 'ADMIN_SUPERVISOR',
+  options: Partial<{ empty: boolean; failList: boolean; noBus: boolean }> = {},
+) {
+  let converted = false
+  let reviewed = false
+
+  return async (path: string, init?: RequestInit) => {
+    if (path === '/auth/me') {
+      return ok({ user: userForRole(role) })
+    }
+
+    if (path === '/flota/mi-bus') {
+      return ok({
+        asignacion: options.noBus ? null : fleetBus.asignacionesHistorial[0],
+        bus: options.noBus ? null : fleetBus,
+      })
+    }
+
+    if (path === '/novedades/resumen') {
+      return ok(noveltySummary())
+    }
+
+    if (path === '/novedades/mis-novedades' && !init?.method) {
+      return ok(noveltyList(options.empty ? [] : [converted ? convertedNovelty : noveltyOne], 2))
+    }
+
+    if (path === '/novedades/mis-novedades/nov-1') {
+      return ok({ novedad: converted ? convertedNovelty : noveltyOne })
+    }
+
+    if (path === '/novedades' && init?.method === 'POST') {
+      return ok({ novedad: noveltyOne })
+    }
+
+    if (path === '/novedades' && !init?.method) {
+      if (options.failList) {
+        return apiError(500, 'INTERNAL_ERROR', 'Fallo controlado')
+      }
+
+      return ok(noveltyList(options.empty ? [] : [converted ? convertedNovelty : noveltyOne], 2))
+    }
+
+    if (path === '/novedades/nov-1' && !init?.method) {
+      return ok({ novedad: converted ? convertedNovelty : reviewed ? reviewedNovelty : noveltyOne })
+    }
+
+    if (path === '/novedades/nov-1/revision' && init?.method === 'POST') {
+      reviewed = true
+      return ok({ novedad: reviewedNovelty })
+    }
+
+    if (path === '/novedades/nov-1/convertir-orden' && init?.method === 'POST') {
+      converted = true
+      return ok({ novedad: convertedNovelty, orden: noveltyOrder, yaExistia: false })
     }
 
     return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
@@ -682,6 +829,186 @@ describe('RF-01 fleet frontend', () => {
 
       return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
     })
+
+    render(<App />)
+
+    expect(await screen.findByText(/Acceso denegado/i)).toBeInTheDocument()
+  })
+})
+
+describe('RF-02 novelty frontend', () => {
+  it('lets a driver register a novelty only for the assigned bus', async () => {
+    window.history.pushState({}, '', '/novedades')
+    const fetchMock = mockApi(noveltyHandler('CONDUCTOR_OPERADOR'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Mis novedades operativas/i)).toBeInTheDocument()
+    expect(await screen.findByText(/BUS-001 - ABC123/i)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Enviar novedad/i }))
+    expect(await screen.findByText(/El tipo debe tener al menos 3 caracteres/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/La descripcion debe tener al menos 10 caracteres/i),
+    ).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText(/Tipo de novedad/i), {
+      target: { value: 'Ruido en frenos' },
+    })
+    fireEvent.change(screen.getByLabelText(/Descripcion/i), {
+      target: { value: 'Se escucha ruido al frenar en pendientes durante la ruta.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Enviar novedad/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Enviar novedad/i }))
+
+    expect(await screen.findByText(/Novedad registrada para el bus asignado/i)).toBeInTheDocument()
+
+    const createCalls = fetchMock.mock.calls.filter(
+      ([input, init]) => String(input).includes('/novedades') && init?.method === 'POST',
+    )
+    expect(createCalls).toHaveLength(1)
+    expect(String(createCalls[0][1]?.body)).toContain('Ruido en frenos')
+    expect(String(createCalls[0][1]?.body)).not.toContain('busId')
+    expect(String(createCalls[0][1]?.body)).not.toContain('conductorId')
+  })
+
+  it('shows a clear empty state when a driver has no active bus assignment', async () => {
+    window.history.pushState({}, '', '/novedades')
+    mockApi(noveltyHandler('CONDUCTOR_OPERADOR', { noBus: true }))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Sin bus asignado/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Enviar novedad/i })).not.toBeInTheDocument()
+  })
+
+  it('loads own novelty list and authorized detail for a driver', async () => {
+    window.history.pushState({}, '', '/novedades')
+    mockApi(noveltyHandler('CONDUCTOR_OPERADOR'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Ruido en frenos/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Detalle/i }))
+
+    expect(await screen.findByText(/Detalle de novedad/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/Se escucha ruido al frenar/i).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Acciones administrativas/i)).not.toBeInTheDocument()
+  })
+
+  it('loads the administrative list with search, status, priority and pagination', async () => {
+    window.history.pushState({}, '', '/novedades')
+    const fetchMock = mockApi(noveltyHandler('ADMIN_SUPERVISOR'))
+
+    render(<App />)
+
+    expect(
+      await screen.findByRole('heading', { name: /^Control de novedades operativas$/i }),
+    ).toBeInTheDocument()
+    expect(screen.getAllByText(/Pendientes/i).length).toBeGreaterThan(0)
+
+    fireEvent.change(screen.getByPlaceholderText(/Buscar por tipo/i), {
+      target: { value: 'frenos' },
+    })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('busqueda=frenos'),
+        expect.any(Object),
+      )
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Pendiente de revisi.n/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('estado=PENDIENTE_REVISION'),
+        expect.any(Object),
+      )
+    })
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'ALTA' } })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('prioridad=ALTA'),
+        expect.any(Object),
+      )
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Siguiente/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('pagina=2'),
+        expect.any(Object),
+      )
+    })
+  })
+
+  it('reviews a novelty and converts it into a corrective order with confirmation dialog', async () => {
+    window.history.pushState({}, '', '/novedades')
+    const fetchMock = mockApi(noveltyHandler('ADMIN_SUPERVISOR'))
+
+    render(<App />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Detalle/i }))
+    expect(await screen.findByText(/Acciones administrativas/i)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Clasificar/i }))
+    const classifyDialog = screen.getByRole('dialog', { name: /Clasificar novedad/i })
+    fireEvent.change(within(classifyDialog).getByLabelText(/Clasificacion/i), {
+      target: { value: 'Falla mecanica' },
+    })
+    fireEvent.click(within(classifyDialog).getByRole('button', { name: /Guardar clasificacion/i }))
+    expect(await screen.findByText(/Novedad actualizada/i)).toBeInTheDocument()
+
+    fireEvent.click(await screen.findByRole('button', { name: /Generar orden/i }))
+    const convertDialog = await screen.findByRole('dialog', { name: /Generar orden correctiva/i })
+    expect(within(convertDialog).getByText(/Se creara una orden correctiva/i)).toBeInTheDocument()
+    fireEvent.change(within(convertDialog).getByLabelText(/Prioridad de la orden/i), {
+      target: { value: 'MEDIA' },
+    })
+    fireEvent.change(within(convertDialog).getByLabelText(/Observacion/i), {
+      target: { value: 'Requiere orden correctiva.' },
+    })
+    fireEvent.click(within(convertDialog).getByRole('button', { name: /Crear orden/i }))
+
+    expect(
+      await screen.findByText(/Orden OT-NOV-001 generada en estado pendiente de asignacion/i),
+    ).toBeInTheDocument()
+    expect(await screen.findByText(/Orden generada/i)).toBeInTheDocument()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/novedades/nov-1/revision'),
+      expect.objectContaining({ method: 'POST' }),
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/novedades/nov-1/convertir-orden'),
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
+  it('shows administrative empty and error states', async () => {
+    window.history.pushState({}, '', '/novedades')
+    mockApi(noveltyHandler('ADMIN_SUPERVISOR', { empty: true }))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Sin resultados/i)).toBeInTheDocument()
+
+    vi.restoreAllMocks()
+    window.history.pushState({}, '', '/novedades')
+    mockApi(noveltyHandler('ADMIN_SUPERVISOR', { failList: true }))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Fallo controlado/i)).toBeInTheDocument()
+  })
+
+  it('denies mechanic access to RF-02', async () => {
+    window.history.pushState({}, '', '/novedades')
+    mockApi(noveltyHandler('MECANICO'))
 
     render(<App />)
 

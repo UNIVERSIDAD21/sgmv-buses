@@ -10,6 +10,7 @@ import DashboardPage from './features/dashboard/DashboardPage'
 import BusFormPage from './features/flota/BusFormPage'
 import FleetPage from './features/flota/FleetPage'
 import PendingModulePage from './features/modules/PendingModulePage'
+import NoveltyPage from './features/novedades/NoveltyPage'
 
 function ShellRoute() {
   const { logout, user } = useSession()
@@ -61,7 +62,7 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMIN_SUPERVISOR', 'CONDUCTOR_OPERADOR']}>
-              <PendingModulePage moduleId="novedades" />
+              <NoveltyPage />
             </ProtectedRoute>
           }
           path="/novedades"

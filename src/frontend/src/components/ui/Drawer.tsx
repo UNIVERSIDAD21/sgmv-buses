@@ -26,21 +26,21 @@ export default function Drawer({ children, onClose, open, subtitle, title }: Dra
     return () => document.removeEventListener('keydown', handler)
   }, [onClose, open])
 
+  if (!open) {
+    return null
+  }
+
   return (
     <>
       <div
         aria-hidden="true"
-        className={`fixed inset-0 z-40 bg-slate-950/30 transition-opacity md:hidden ${
-          open ? 'opacity-100' : 'pointer-events-none opacity-0'
-        }`}
+        className="fixed inset-0 z-40 bg-slate-950/30 transition-opacity md:hidden"
         onClick={onClose}
       />
       <aside
         aria-label={title}
         aria-modal="true"
-        className={`fixed bottom-0 right-0 top-0 z-50 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-xl transition-transform md:absolute md:bottom-auto md:top-0 md:h-full md:shadow-none ${
-          open ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        className="fixed bottom-0 right-0 top-0 z-50 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-xl transition-transform md:absolute md:bottom-auto md:top-0 md:h-full md:shadow-none"
         role="dialog"
       >
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">

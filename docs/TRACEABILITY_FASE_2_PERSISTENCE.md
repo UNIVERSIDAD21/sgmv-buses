@@ -73,3 +73,15 @@ Ver tambien `docs/DATABASE_STRUCTURE.md` y `docs/DATA_DICTIONARY.md` para el det
 | RF-01 - Gestion de la flota vehicular | `GET/POST/PATCH /flota/buses`, `/flota/resumen`, `/flota/mi-bus`, historiales de kilometraje/estado/asignacion y conductores disponibles | Listado, filtros, paginacion, formulario, detalle, acciones sensibles, panel administrador y panel conductor | Backend `fleet.test.ts`; frontend `App.test.tsx`; capturas `docs/screenshots/rf01-*` |
 
 RF-02, RF-03, RF-04, RF-05 y RF-06 no fueron iniciados en este bloque.
+
+---
+
+## Implementacion RF-02 cerrada
+
+**Fecha:** 2026-08-27
+
+| RF | API/servicio implementado | Frontend implementado | Pruebas |
+|---|---|---|---|
+| RF-02 - Control de novedades operativas | `POST /novedades`, `/novedades/mis-novedades`, `/novedades/resumen`, `GET /novedades`, `GET /novedades/:id`, revision controlada y conversion a orden correctiva | Formulario y listado del conductor, detalle autorizado, panel administrativo, filtros, revision, conversion y resumen de orden generada | Backend `novelty.test.ts`; frontend `App.test.tsx`; capturas `docs/screenshots/rf02-*` |
+
+RF-03, RF-04, RF-05 y RF-06 no fueron iniciados en este bloque. RF-04 solo recibe ordenes originadas por novedad como dato inicial, sin implementar asignacion tecnica ni ejecucion.

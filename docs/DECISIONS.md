@@ -530,3 +530,34 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 **No implementado:** RF-02, RF-03, RF-04, RF-05 y RF-06.
 
 **Estado:** APROBADA / IMPLEMENTADA COMO RF-01.
+
+---
+
+## 2026-08-27 - Implementacion RF-02 Control de novedades operativas
+
+**Decision:** implementar RF-02 como segundo requerimiento funcional completo, conectado de frontend a PostgreSQL/Neon mediante API REST, servicios, repositorios y Prisma.
+
+**Implementado:**
+
+- Endpoints `/novedades/*` protegidos por sesion y roles.
+- DTOs de entrada/salida y validacion Zod estricta.
+- Registro de novedad por Conductor/Operador con autor desde sesion, bus desde asignacion activa y fecha generada por servidor.
+- Listado y detalle de novedades propias para el conductor.
+- Listado, detalle, resumen y filtros administrativos para Administrador/Supervisor.
+- Revision controlada mediante acciones `CLASIFICAR`, `RESOLVER_SIN_ORDEN` y `DESCARTAR`.
+- Conversion transaccional de novedad pendiente en orden correctiva de origen `NOVEDAD`.
+- Creacion del primer `OrdenEstadoHistorial` al generar la orden.
+- Prevencion de orden duplicada mediante restriccion unica y manejo idempotente de reintentos/concurrencia.
+- Pantallas reales para conductor y administrador, mas indicadores de dashboard.
+
+**Decisiones de implementacion:**
+
+- No crear `PATCH` abierto para novedades; solo acciones controladas.
+- No aceptar `busId`, `conductorId`, `autorId`, fechas ni relaciones desde el frontend.
+- Mantener prioridad fuera de `novedades`, porque el modelo fisico no la define ahi; la prioridad solo se establece al generar la `OrdenTrabajo`.
+- Mostrar la orden generada solo como resumen y referencia. La asignacion tecnica, ejecucion, intervenciones, consumos y cierre quedan para RF-04.
+- El mecanico queda denegado en RF-02.
+
+**No implementado:** RF-03, RF-04, RF-05 y RF-06.
+
+**Estado:** APROBADA / IMPLEMENTADA COMO RF-02.

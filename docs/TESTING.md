@@ -344,3 +344,65 @@ Evidencia visual:
 - `docs/screenshots/rf01-vista-conductor-390.png`
 
 Playwright verifico `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina, con tablas desplazables en movil, formularios legibles, modales/drawers accesibles y foco alcanzable por teclado.
+
+---
+
+## 8. Evidencia de RF-02 - Control de novedades operativas
+
+El 2026-08-27 se agregaron pruebas automatizadas de RF-02.
+
+Backend `src/backend/test/novelty.test.ts` cubre:
+
+- autenticacion obligatoria;
+- permisos de Administrador/Supervisor, Conductor/Operador y Mecanico;
+- conductor con asignacion activa;
+- conductor sin asignacion activa;
+- bus derivado de la asignacion;
+- autor derivado de la sesion;
+- intento de suplantar autor o bus;
+- consulta de novedades propias;
+- intento de consultar una novedad ajena;
+- administrador consultando todas;
+- validaciones de campos;
+- transiciones validas;
+- transiciones invalidas;
+- proteccion de estados terminales;
+- conversion valida en orden;
+- orden correctiva con el mismo bus;
+- estado inicial e historial de la orden;
+- intento de conversion duplicada;
+- solicitudes concurrentes;
+- rollback de toda la transaccion si falla una parte.
+
+Frontend `src/frontend/src/App.test.tsx` cubre:
+
+- formulario del Conductor;
+- Conductor sin bus asignado;
+- envio valido;
+- validaciones frontend;
+- prevencion de doble envio;
+- listado propio;
+- detalle autorizado;
+- listado administrativo;
+- busqueda y filtros;
+- revision;
+- cambio de estado mediante acciones controladas;
+- conversion en orden;
+- orden generada como resumen;
+- acciones visibles segun rol;
+- Mecanico sin acceso;
+- estados de carga, vacio y error.
+
+Evidencia visual:
+
+- `docs/screenshots/rf02-driver-form-1440x900.png`
+- `docs/screenshots/rf02-driver-list-1440x900.png`
+- `docs/screenshots/rf02-novelty-detail-1440x900.png`
+- `docs/screenshots/rf02-admin-panel-1440x900.png`
+- `docs/screenshots/rf02-admin-filters-1024x768.png`
+- `docs/screenshots/rf02-review-dialog-1440x900.png`
+- `docs/screenshots/rf02-convert-dialog-1440x900.png`
+- `docs/screenshots/rf02-order-generated-1440x900.png`
+- `docs/screenshots/rf02-mobile-390x844.png`
+
+Playwright verifico `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina, con tablas desplazables en movil, formularios legibles, dialogos/drawers accesibles y foco alcanzable por teclado.

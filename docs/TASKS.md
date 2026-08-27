@@ -6,7 +6,7 @@ Este archivo es el tablero operativo del agente.
 
 **No marcar el inicio de implementación hasta recibir la orden explícita `INICIAR FASE 3`.**
 
-**Estado actual:** interfaz oficial, autenticacion transversal y RF-01 Gestion de la flota vehicular implementadas sobre la Persistencia cerrada. Todavia no implementar RF-02 a RF-06 completos sin nueva autorización del propietario.
+**Estado actual:** interfaz oficial, autenticacion transversal, RF-01 Gestion de la flota vehicular y RF-02 Control de novedades operativas implementadas sobre la Persistencia cerrada. Todavia no implementar RF-03 a RF-06 completos sin nueva autorización del propietario.
 
 ---
 
@@ -137,15 +137,15 @@ Este archivo es el tablero operativo del agente.
 
 # 5. RF-02 — Control de novedades operativas
 
-- [ ] Formulario de novedad para conductor.
-- [ ] Asociación automática autor/bus/fecha.
-- [ ] Listado de novedades propias del conductor.
-- [ ] Bandeja de gestión para supervisor.
-- [ ] Clasificación.
-- [ ] Resolución/descartar según flujo.
-- [ ] Conversión a orden.
-- [ ] Prevención de orden duplicada.
-- [ ] Seguimiento visible para el autor.
+- [x] Formulario de novedad para conductor.
+- [x] Asociación automática autor/bus/fecha.
+- [x] Listado de novedades propias del conductor.
+- [x] Bandeja de gestión para supervisor.
+- [x] Clasificación.
+- [x] Resolución/descartar según flujo.
+- [x] Conversión a orden.
+- [x] Prevención de orden duplicada.
+- [x] Seguimiento visible para el autor.
 
 ---
 

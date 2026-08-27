@@ -48,7 +48,7 @@
 
 ## Estado de handoff
 
-**FASE 3 AUTORIZADA. BOOTSTRAP TÉCNICO, PERSISTENCIA, AUDITORÍA DE BASE DE DATOS, INTERFAZ OFICIAL, AUTENTICACIÓN TRANSVERSAL Y RF-01 GESTIÓN DE LA FLOTA VEHICULAR COMPLETADOS. RF-02 A RF-06 AÚN NO IMPLEMENTADOS.**
+**FASE 3 AUTORIZADA. BOOTSTRAP TÉCNICO, PERSISTENCIA, AUDITORÍA DE BASE DE DATOS, INTERFAZ OFICIAL, AUTENTICACIÓN TRANSVERSAL, RF-01 GESTIÓN DE LA FLOTA VEHICULAR Y RF-02 CONTROL DE NOVEDADES OPERATIVAS COMPLETADOS. RF-03 A RF-06 AÚN NO IMPLEMENTADOS.**
 
 Las decisiones técnicas aprobadas con ajustes finales quedaron registradas en `DECISIONS.md` y consolidadas en la documentación de soporte.
 
@@ -75,7 +75,7 @@ OpenClaw recibió la orden explícita `INICIAR FASE 3`.
 
 El primer bloque permitido ya fue ejecutado: bootstrap técnico del repositorio.
 
-La revisión documental de Persistencia fue autorizada, actualizada, implementada y auditada tras aprobación explícita del propietario. La interfaz oficial y la autenticación transversal también fueron autorizadas e implementadas. El propietario autorizo RF-01 el 2026-08-27 y quedo implementado end-to-end. OpenClaw debe detenerse antes de implementar RF-02, RF-03, RF-04, RF-05 o RF-06 hasta nueva autorización del propietario.
+La revisión documental de Persistencia fue autorizada, actualizada, implementada y auditada tras aprobación explícita del propietario. La interfaz oficial y la autenticación transversal también fueron autorizadas e implementadas. El propietario autorizo RF-01 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-02 el 2026-08-27 y quedo implementado end-to-end. OpenClaw debe detenerse antes de implementar RF-03, RF-04, RF-05 o RF-06 hasta nueva autorización del propietario.
 
 ---
 
@@ -191,7 +191,28 @@ Validacion ejecutada durante el bloque RF-01:
 - Frontend RF-01: listado, busqueda, filtro, paginacion, formulario, validaciones, duplicados, detalle, kilometraje, estado, asignacion, conductor con/sin bus y mecanico denegado.
 - Playwright visual en `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina y con foco alcanzable por teclado.
 
-RF-02, RF-03, RF-04, RF-05 y RF-06 no fueron iniciados.
+RF-02 fue implementado en el bloque siguiente. RF-03, RF-04, RF-05 y RF-06 no fueron iniciados durante RF-01.
+
+---
+
+## Validacion de RF-02
+
+RF-02 queda cubierto por:
+
+- Backend `src/backend/src/novelties/*`: schemas Zod, DTOs, repositorio, servicio, controlador y rutas.
+- Frontend `src/frontend/src/features/novedades/*`: cliente API, tipos, formulario/listado conductor, detalle, panel administrativo, filtros, revision y conversion.
+- Panel administrador con indicador real desde `/novedades/resumen`.
+- Panel conductor con novedades propias desde `/novedades/mis-novedades` y acceso a registro.
+- Documentacion dedicada en `docs/RF02_NOVEDADES.md`.
+- Evidencias visuales `docs/screenshots/rf02-*.png`.
+
+Validacion ejecutada durante el bloque RF-02:
+
+- Backend RF-02: permisos, conductor con/sin asignacion, autor/bus derivados, suplantacion rechazada, consultas propias/admin, validaciones, transiciones, estados terminales, conversion a orden, historial inicial, duplicados/concurrencia y rollback transaccional.
+- Frontend RF-02: formulario conductor, validaciones, doble envio, conductor sin bus, listado propio, detalle autorizado, listado administrativo, busqueda/filtros, revision, conversion a orden, estados vacio/error y mecanico denegado.
+- Playwright visual en `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina y con foco alcanzable por teclado.
+
+RF-03, RF-04, RF-05 y RF-06 no fueron iniciados.
 
 ---
 
