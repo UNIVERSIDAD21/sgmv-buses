@@ -74,8 +74,11 @@ Los modulos de negocio siguen pendientes. Mientras no exista endpoint real, la i
 
 - inicio de sesion;
 - recuperacion de sesion;
+- estado de carga durante recuperacion de sesion;
+- sesion expirada;
 - cierre de sesion;
 - rutas protegidas;
+- rutas inexistentes autenticadas;
 - acceso denegado;
 - menus correctos para Administrador/Supervisor, Mecánico y Conductor/Operador;
 - manejo de error de login.
@@ -87,3 +90,17 @@ Los modulos de negocio siguen pendientes. Mientras no exista endpoint real, la i
 - `docs/screenshots/panel-mecanico.png`.
 - `docs/screenshots/panel-conductor.png`.
 - `docs/screenshots/panel-admin-mobile.png`.
+
+## Capturas de auditoria final
+
+- `docs/screenshots/audit-login-1440.png`.
+- `docs/screenshots/audit-panel-admin-1440.png`.
+- `docs/screenshots/audit-panel-admin-1024.png`.
+- `docs/screenshots/audit-panel-mecanico-1440.png`.
+- `docs/screenshots/audit-panel-conductor-1440.png`.
+- `docs/screenshots/audit-login-mobile-390.png`.
+- `docs/screenshots/audit-menu-mobile-390.png`.
+- `docs/screenshots/audit-access-denied-1440.png`.
+- `docs/screenshots/audit-sidebar-collapsed-tooltip.png`.
+
+La auditoria final de interfaz oficial y autenticacion queda registrada en `docs/AUTH_UI_FINAL_AUDIT.md`.

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHmac, randomUUID } from 'node:crypto'
 
 import { PrismaClient, type Rol } from '@prisma/client'
 import { hash } from 'bcryptjs'
@@ -101,6 +101,33 @@ function expectNoSensitiveUserFields(body: unknown) {
   expect(serialized).not.toContain('hash')
 }
 
+function createExpiredToken(
+  userId: string,
+  email: string,
+  rol: 'ADMIN_SUPERVISOR' | 'MECANICO' | 'CONDUCTOR_OPERADOR',
+) {
+  const secret = env.JWT_SECRET
+
+  if (!secret) {
+    throw new Error('JWT_SECRET test configuration is missing')
+  }
+
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
+  const payload = Buffer.from(
+    JSON.stringify({
+      email,
+      exp: Math.floor(Date.now() / 1000) - 60,
+      iat: Math.floor(Date.now() / 1000) - 3600,
+      rol,
+      sub: userId,
+    }),
+  ).toString('base64url')
+  const unsignedToken = `${header}.${payload}`
+  const signature = createHmac('sha256', secret).update(unsignedToken).digest('base64url')
+
+  return `${unsignedToken}.${signature}`
+}
+
 describeDb('Auth API', () => {
   let fixture: AuthFixture
 
@@ -201,6 +228,21 @@ describeDb('Auth API', () => {
     const response = await request(createApp())
       .get('/auth/me')
       .set('Cookie', `${env.COOKIE_NAME}=malformed.session.value`)
+      .expect(401)
+
+    expect(response.body.error.code).toBe('UNAUTHORIZED')
+  })
+
+  it('rejects expired session cookies with a safe response', async () => {
+    const user = await prisma.usuario.findUniqueOrThrow({
+      include: { rol: true },
+      where: { email: fixture.adminEmail },
+    })
+    const expiredToken = createExpiredToken(user.id, user.email, user.rol.codigo)
+
+    const response = await request(createApp())
+      .get('/auth/me')
+      .set('Cookie', `${env.COOKIE_NAME}=${expiredToken}`)
       .expect(401)
 
     expect(response.body.error.code).toBe('UNAUTHORIZED')

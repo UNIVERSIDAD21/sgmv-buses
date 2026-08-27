@@ -115,6 +115,8 @@ Este archivo es el tablero operativo del agente.
 - [x] Mantener la indicación "Prototipo académico — Datos simulados".
 - [x] Rechazar configuración, mock data, tipos y dependencias vulnerables del ZIP.
 - [x] Documentar diseño visual seleccionado.
+- [x] Ejecutar auditoria final de interfaz oficial y autenticacion sin iniciar RF-01.
+- [x] Corregir defectos puntuales de accesibilidad, estado pendiente, pruebas y captura movil.
 
 ---
 

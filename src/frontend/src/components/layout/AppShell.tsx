@@ -202,6 +202,7 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
             )}
           </div>
           <Button
+            aria-label="Cerrar sesión"
             className={`w-full ${expanded ? '' : 'px-0'}`}
             icon={<LogOut size={15} />}
             loading={loggingOut}

@@ -157,13 +157,20 @@ Validación ejecutada el 2026-08-26:
 - `typecheck`.
 - `lint`.
 - `format:check`.
-- Pruebas frontend: 1 archivo, 7 pruebas.
-- Pruebas backend: 3 archivos, 19 pruebas.
+- Pruebas frontend: 1 archivo, 10 pruebas.
+- Pruebas backend: 3 archivos, 20 pruebas.
 - `build`.
 - `npm audit --audit-level=moderate` sin vulnerabilidades.
 - `git diff --check`.
 - Revisión de secretos temporales sin hallazgos versionables.
 - Capturas en `docs/screenshots/`.
+
+Auditoria final adicional:
+
+- Documentada en `docs/AUTH_UI_FINAL_AUDIT.md`.
+- Verifico login, credenciales invalidas, usuario inactivo, recuperacion/cierre/expiracion de sesion, acceso sin sesion, acceso por rol incorrecto, rutas inexistentes, menus por rol, drawer movil y ausencia de contrasenas/hashes en respuestas.
+- Viewports auditados: `1440 x 900`, `1024 x 768` y `390 x 844`.
+- Defectos corregidos: nombre accesible del boton de logout en menu colapsado, pruebas de sesion expirada/rutas inexistentes/carga inicial, estado literal de "Modulo pendiente de implementacion" y captura movil regenerada fuera de transicion.
 
 ---
 

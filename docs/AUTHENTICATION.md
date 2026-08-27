@@ -78,7 +78,10 @@ La autorizacion final vive en backend con `authorizeRoles(...)`. El frontend tam
 - bloqueo temporal por intentos repetitivos;
 - acceso sin sesion;
 - cookie de sesion malformada;
+- cookie de sesion expirada;
 - consulta de sesion;
 - rol no autorizado;
 - cierre de sesion;
 - respuestas sin contrasena ni hash.
+
+La auditoria final de interfaz y autenticacion queda registrada en `docs/AUTH_UI_FINAL_AUDIT.md`.

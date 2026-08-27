@@ -69,6 +69,28 @@ afterEach(() => {
 })
 
 describe('App authentication and role navigation', () => {
+  it('shows a loading state while the session is being recovered', async () => {
+    window.history.pushState({}, '', '/inicio')
+    const admin = userForRole('ADMIN_SUPERVISOR')
+    let resolveSession!: (response: Response) => void
+
+    mockApi(async (path) => {
+      if (path === '/auth/me') {
+        return new Promise<Response>((resolve) => {
+          resolveSession = resolve
+        })
+      }
+
+      return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
+    })
+
+    render(<App />)
+
+    expect(await screen.findByText(/Cargando sesi.n/i)).toBeInTheDocument()
+    resolveSession(ok({ user: admin }))
+    expect((await screen.findAllByText(/Administrador \/ Supervisor/i)).length).toBeGreaterThan(0)
+  })
+
   it('protects private routes when there is no active session', async () => {
     window.history.pushState({}, '', '/inicio')
     mockApi(async (path) => {
@@ -83,6 +105,40 @@ describe('App authentication and role navigation', () => {
 
     expect(await screen.findByRole('heading', { name: /Iniciar sesi.n/i })).toBeInTheDocument()
     expect(window.location.pathname).toBe('/login')
+  })
+
+  it('treats an expired session as unauthenticated during recovery', async () => {
+    window.history.pushState({}, '', '/historial')
+    mockApi(async (path) => {
+      if (path === '/auth/me') {
+        return apiError(401, 'UNAUTHORIZED', 'Sesion invalida o expirada')
+      }
+
+      return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
+    })
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: /Iniciar sesi.n/i })).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/login')
+  })
+
+  it('redirects unknown authenticated routes to the start page', async () => {
+    window.history.pushState({}, '', '/ruta-inexistente')
+    mockApi(async (path) => {
+      if (path === '/auth/me') {
+        return ok({ user: userForRole('ADMIN_SUPERVISOR') })
+      }
+
+      return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
+    })
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/inicio')
+    })
+    expect(await screen.findByRole('heading', { name: /Inicio/i })).toBeInTheDocument()
   })
 
   it('starts a real session through POST /auth/login', async () => {

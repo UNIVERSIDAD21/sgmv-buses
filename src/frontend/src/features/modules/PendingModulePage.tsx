@@ -11,8 +11,8 @@ export default function PendingModulePage({ moduleId }: PendingModulePageProps) 
   return (
     <div className="p-4 md:p-6">
       <StatePanel
-        description={`${module?.description ?? 'Módulo pendiente.'} Esta pantalla conserva la navegación y el marco visual oficial, pero no simula datos ni operaciones hasta que se autorice el RF correspondiente.`}
-        title={module?.label ?? 'Módulo pendiente de implementación'}
+        description={`${module?.label ?? 'RF pendiente'}: ${module?.description ?? 'Módulo pendiente.'} Esta pantalla conserva la navegación y el marco visual oficial, pero no simula datos ni operaciones hasta que se autorice el RF correspondiente.`}
+        title="Módulo pendiente de implementación"
         tone="empty"
       />
     </div>
