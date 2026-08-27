@@ -8,6 +8,10 @@ La documentación de transferencia a desarrollo está preparada. OpenClaw partic
 
 Ver `docs/PROJECT_STATUS.md` antes de iniciar cualquier implementación.
 
+## RF-01 implementado
+
+La Gestion de la flota vehicular esta implementada de extremo a extremo. Ver `docs/RF01_FLEET.md` para endpoints, reglas, pruebas y evidencias visuales.
+
 ## Stack
 
 - Frontend: React + Vite + Tailwind CSS
@@ -42,6 +46,7 @@ Documentos principales:
 - `docs/BUSINESS_RULES.md` — reglas que el código debe respetar.
 - `docs/DATA_MODEL.md` — modelo conceptual derivado del diseño aprobado.
 - `docs/DATABASE_STRUCTURE.md` — estructura fisica PostgreSQL/Prisma implementada.
+- `docs/RF01_FLEET.md` - endpoints, reglas y evidencias de RF-01.
 - `docs/DATA_DICTIONARY.md` — diccionario de datos de las 16 tablas.
 - `docs/ARCHITECTURE.md` — arquitectura y límites técnicos.
 - `docs/TASKS.md` — plan vivo de Fase 3.

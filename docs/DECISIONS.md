@@ -497,3 +497,36 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 **Evidencia:** `docs/AUTH_UI_FINAL_AUDIT.md` y capturas `docs/screenshots/audit-*.png`.
 
 **Estado:** APROBADA / IMPLEMENTADA COMO AUDITORIA FINAL DE AUTENTICACION E INTERFAZ.
+
+---
+
+## 2026-08-27 - Implementacion RF-01 Gestion de la flota vehicular
+
+**Decision:** implementar RF-01 como primer requerimiento funcional completo, conectado de frontend a PostgreSQL/Neon mediante API REST, servicios, repositorios y Prisma.
+
+**Base de rama:** `main` remoto estaba limpio y actualizado, pero no contenia los commits auditados de autenticacion/interfaz. Para no trabajar sobre `main` y poder cumplir la precondicion tecnica de auth/ui, `feat/rf-01-flota` se creo desde `main` y luego avanzo con la base ya cerrada `feat/auth-ui-foundation`.
+
+**Implementado:**
+
+- Endpoints `/flota/*` protegidos por sesion y roles.
+- DTOs de entrada/salida y validacion Zod estricta.
+- Normalizacion de placa y codigo interno antes de persistir.
+- Manejo controlado de duplicados con `409`.
+- Registro de buses con historial inicial de estado.
+- Edicion solo de campos permitidos.
+- Registro transaccional de kilometraje con `LecturaKilometraje`.
+- Cambio transaccional de estado con `BusEstadoHistorial`.
+- Asignacion/reasignacion transaccional conductor-bus con cierre de historicos.
+- Consulta limitada del bus asignado al conductor autenticado.
+- Pantallas reales de listado, formulario, detalle, operaciones sensibles y paneles por rol.
+
+**Decisiones de implementacion:**
+
+- No crear endpoint de eliminacion fisica de bus; retirar se hace con estado `INACTIVO`.
+- Exigir motivo para cambios de estado de bus.
+- Mantener kilometraje y estado fuera del `PATCH /flota/buses/:busId`; se actualizan solo mediante endpoints trazados.
+- El mecanico queda denegado en RF-01.
+
+**No implementado:** RF-02, RF-03, RF-04, RF-05 y RF-06.
+
+**Estado:** APROBADA / IMPLEMENTADA COMO RF-01.

@@ -6,7 +6,7 @@ Este archivo es el tablero operativo del agente.
 
 **No marcar el inicio de implementación hasta recibir la orden explícita `INICIAR FASE 3`.**
 
-**Estado actual:** interfaz oficial y autenticación transversal implementadas sobre la Persistencia cerrada. Todavía no implementar RF-01 a RF-06 completos sin nueva autorización del propietario.
+**Estado actual:** interfaz oficial, autenticacion transversal y RF-01 Gestion de la flota vehicular implementadas sobre la Persistencia cerrada. Todavia no implementar RF-02 a RF-06 completos sin nueva autorización del propietario.
 
 ---
 
@@ -122,16 +122,16 @@ Este archivo es el tablero operativo del agente.
 
 # 4. RF-01 — Gestión de la flota vehicular
 
-- [ ] CRUD no destructivo de buses.
-- [ ] Identificación única.
-- [ ] Estado operativo.
-- [ ] Kilometraje.
-- [ ] Asignación conductor-bus.
-- [ ] Historial de asignaciones.
-- [ ] Garantizar maximo un bus activo por conductor.
-- [ ] Garantizar maximo un conductor activo por bus.
-- [ ] Vista limitada del conductor.
-- [ ] Pruebas de aislamiento entre conductores.
+- [x] CRUD no destructivo de buses.
+- [x] Identificación única.
+- [x] Estado operativo.
+- [x] Kilometraje.
+- [x] Asignación conductor-bus.
+- [x] Historial de asignaciones.
+- [x] Garantizar maximo un bus activo por conductor.
+- [x] Garantizar maximo un conductor activo por bus.
+- [x] Vista limitada del conductor.
+- [x] Pruebas de aislamiento entre conductores.
 
 ---
 

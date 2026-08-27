@@ -61,3 +61,15 @@ Autenticación, autorización, cierre de sesión, gestión mínima de cuentas y 
 | RF-06 — Consulta de historial y generación de informes | `Informe` como servicio y clases consultadas | No existe tabla `Informe`; consulta tablas de flota, novedades, preventivos, ordenes, actividades, consumos, repuestos y movimientos | Vistas/DTO/servicios futuros sin modificar datos historicos |
 
 Ver tambien `docs/DATABASE_STRUCTURE.md` y `docs/DATA_DICTIONARY.md` para el detalle fisico de claves, indices y restricciones.
+
+---
+
+## Implementacion RF-01 cerrada
+
+**Fecha:** 2026-08-27
+
+| RF | API/servicio implementado | Frontend implementado | Pruebas |
+|---|---|---|---|
+| RF-01 - Gestion de la flota vehicular | `GET/POST/PATCH /flota/buses`, `/flota/resumen`, `/flota/mi-bus`, historiales de kilometraje/estado/asignacion y conductores disponibles | Listado, filtros, paginacion, formulario, detalle, acciones sensibles, panel administrador y panel conductor | Backend `fleet.test.ts`; frontend `App.test.tsx`; capturas `docs/screenshots/rf01-*` |
+
+RF-02, RF-03, RF-04, RF-05 y RF-06 no fueron iniciados en este bloque.
