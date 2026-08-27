@@ -6,7 +6,7 @@ Este archivo es el tablero operativo del agente.
 
 **No marcar el inicio de implementación hasta recibir la orden explícita `INICIAR FASE 3`.**
 
-**Estado actual:** bloque de Persistencia implementado, auditado, documentado y cerrado. Todavia no implementar repositorios, servicios, autenticacion ni RF-01 a RF-06 completos sin nueva autorizacion del propietario.
+**Estado actual:** interfaz oficial, autenticacion transversal y RF-01 Gestion de la flota vehicular implementadas sobre la Persistencia cerrada. Todavia no implementar RF-02 a RF-06 completos sin nueva autorización del propietario.
 
 ---
 
@@ -78,39 +78,60 @@ Este archivo es el tablero operativo del agente.
 
 # 3. Acceso y seguridad transversal
 
-- [ ] Modelo de Rol.
-- [ ] Modelo de Usuario.
-- [ ] Login.
-- [ ] Contraseñas con hash seguro.
-- [ ] JWT en cookie `HttpOnly`.
-- [ ] `Secure=true` en produccion y `SameSite` segun entorno.
-- [ ] Proteccion CSRF o validacion equivalente para escrituras.
-- [ ] Limite de intentos de inicio de sesion.
-- [ ] Expiracion definida del JWT.
-- [ ] Verificar que logs no incluyan contrasenas, hashes ni tokens.
-- [ ] Cuenta activa/inactiva.
-- [ ] Autorización por rol en backend.
-- [ ] Protección de rutas frontend.
+- [x] Modelo de Rol.
+- [x] Modelo de Usuario.
+- [x] Login.
+- [x] Contraseñas con hash seguro.
+- [x] JWT en cookie `HttpOnly`.
+- [x] `Secure=true` en producción y `SameSite` según entorno.
+- [x] Validación de `Origin` como protección equivalente para escrituras de autenticación.
+- [x] Límite de intentos de inicio de sesión.
+- [x] Expiración definida del JWT.
+- [x] Verificar que respuestas y pruebas no incluyan contraseñas, hashes ni tokens.
+- [x] Cuenta activa/inactiva.
+- [x] Autorización por rol en backend.
+- [x] Protección de rutas frontend.
 - [ ] Gestión mínima de cuentas para Administrador/Supervisor.
-- [ ] Manejo controlado de errores.
-- [ ] Validación de entradas.
+- [x] Manejo controlado de errores.
+- [x] Validación de entradas.
 
-**Nota:** esto no crea un RF adicional.
+**Nota:** esto no crea un RF adicional. Las escrituras futuras de RF deben reutilizar autorización backend y CSRF o validación equivalente antes de exponerse.
+
+---
+
+# 3.1 Interfaz visual oficial
+
+- [x] Auditar ZIP de Figma Make sin alterar el original.
+- [x] Integrar identidad visual minimalista modular.
+- [x] Implementar menú lateral colapsable con tooltips accesibles.
+- [x] Mostrar nombres oficiales exactos de RF-01 a RF-06.
+- [x] Crear encabezado contextual con fecha dinámica `es-CO`.
+- [x] Crear panel diferenciado para Administrador/Supervisor.
+- [x] Crear panel diferenciado para Mecánico.
+- [x] Crear panel diferenciado para Conductor/Operador.
+- [x] Crear vista base de flota sin RF-01 completo.
+- [x] Crear formulario visual de buses sin persistencia RF-01.
+- [x] Crear estados de carga, error, vacío y éxito.
+- [x] Mantener la indicación "Prototipo académico — Datos simulados".
+- [x] Rechazar configuración, mock data, tipos y dependencias vulnerables del ZIP.
+- [x] Documentar diseño visual seleccionado.
+- [x] Ejecutar auditoria final de interfaz oficial y autenticacion sin iniciar RF-01.
+- [x] Corregir defectos puntuales de accesibilidad, estado pendiente, pruebas y captura movil.
 
 ---
 
 # 4. RF-01 — Gestión de la flota vehicular
 
-- [ ] CRUD no destructivo de buses.
-- [ ] Identificación única.
-- [ ] Estado operativo.
-- [ ] Kilometraje.
-- [ ] Asignación conductor-bus.
-- [ ] Historial de asignaciones.
-- [ ] Garantizar maximo un bus activo por conductor.
-- [ ] Garantizar maximo un conductor activo por bus.
-- [ ] Vista limitada del conductor.
-- [ ] Pruebas de aislamiento entre conductores.
+- [x] CRUD no destructivo de buses.
+- [x] Identificación única.
+- [x] Estado operativo.
+- [x] Kilometraje.
+- [x] Asignación conductor-bus.
+- [x] Historial de asignaciones.
+- [x] Garantizar maximo un bus activo por conductor.
+- [x] Garantizar maximo un conductor activo por bus.
+- [x] Vista limitada del conductor.
+- [x] Pruebas de aislamiento entre conductores.
 
 ---
 

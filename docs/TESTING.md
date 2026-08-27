@@ -281,3 +281,66 @@ Validacion adicional del bloque:
 - Pruebas ejecutadas contra ese schema temporal.
 - Schema temporal eliminado al finalizar.
 - Auditoria SQL final en Neon actual con cero inconsistencias en coherencia bus-orden, consumo-movimiento, subtotal, `costoTotal`, motivos administrativos, fechas y normalizacion.
+
+---
+
+## 7. Evidencia de RF-01 - Gestion de la flota vehicular
+
+El 2026-08-27 se agregaron pruebas automatizadas de RF-01.
+
+Backend `src/backend/test/fleet.test.ts` cubre:
+
+- autenticacion obligatoria;
+- permisos de Administrador/Supervisor, Conductor/Operador y Mecanico;
+- registro valido de bus;
+- duplicado de placa;
+- duplicado de codigo interno;
+- duplicados por diferencias de mayusculas/minusculas;
+- listado con busqueda, filtro y paginacion;
+- edicion valida;
+- estado invalido;
+- kilometraje inferior al actual;
+- registro atomico de kilometraje e historial;
+- cambio de estado e historial;
+- asignacion valida;
+- conductor con asignacion activa;
+- bus con asignacion activa;
+- reasignacion y cierre de asignaciones anteriores;
+- conservacion de historiales;
+- consulta del bus asignado;
+- conductor intentando consultar otro bus;
+- mecanico intentando acceder a RF-01;
+- rollback cuando falla una operacion transaccional.
+
+Frontend `src/frontend/src/App.test.tsx` cubre:
+
+- carga del listado;
+- busqueda;
+- filtro;
+- paginacion;
+- registro;
+- edicion;
+- validaciones frontend;
+- error de duplicado del backend;
+- registro de kilometraje;
+- cambio de estado;
+- asignacion/reasignacion desde la interfaz;
+- estados de carga, vacio y error;
+- acciones visibles segun rol;
+- conductor con bus asignado;
+- conductor sin bus asignado;
+- mecanico sin acceso a RF-01.
+
+Evidencia visual:
+
+- `docs/screenshots/rf01-flota-listado-1440x900.png`
+- `docs/screenshots/rf01-flota-listado-1024x768.png`
+- `docs/screenshots/rf01-flota-listado-390x844.png`
+- `docs/screenshots/rf01-bus-formulario-1440.png`
+- `docs/screenshots/rf01-bus-detalle-1440.png`
+- `docs/screenshots/rf01-kilometraje-1440.png`
+- `docs/screenshots/rf01-cambio-estado-1440.png`
+- `docs/screenshots/rf01-asignacion-conductor-1440.png`
+- `docs/screenshots/rf01-vista-conductor-390.png`
+
+Playwright verifico `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina, con tablas desplazables en movil, formularios legibles, modales/drawers accesibles y foco alcanzable por teclado.

@@ -1,11 +1,14 @@
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
-import express from 'express'
+import express, { type Express } from 'express'
 import helmet from 'helmet'
 
+import { authRoutes } from './auth/auth.routes.js'
 import { env } from './config/env.js'
+import { fleetRoutes } from './fleet/fleet.routes.js'
+import { errorHandler, notFoundHandler } from './shared/http.js'
 
-export function createApp() {
+export function createApp(configureRoutes?: (app: Express) => void) {
   const app = express()
 
   app.disable('x-powered-by')
@@ -26,6 +29,12 @@ export function createApp() {
       environment: env.NODE_ENV,
     })
   })
+
+  app.use('/auth', authRoutes)
+  app.use('/flota', fleetRoutes)
+  configureRoutes?.(app)
+  app.use(notFoundHandler)
+  app.use(errorHandler)
 
   return app
 }

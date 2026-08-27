@@ -1,40 +1,117 @@
-const functionalRequirements = [
-  'RF-01 Gestión de la flota vehicular',
-  'RF-02 Control de novedades operativas',
-  'RF-03 Administración del mantenimiento preventivo',
-  'RF-04 Seguimiento de órdenes de trabajo',
-  'RF-05 Central de Repuestos',
-  'RF-06 Consulta de historial y generación de informes',
-]
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom'
+
+import AppShell from './components/layout/AppShell'
+import AccessDeniedPage from './features/auth/AccessDeniedPage'
+import LoginPage from './features/auth/LoginPage'
+import ProtectedRoute from './features/auth/ProtectedRoute'
+import { useSession } from './features/auth/session.context'
+import { SessionProvider } from './features/auth/session'
+import DashboardPage from './features/dashboard/DashboardPage'
+import BusFormPage from './features/flota/BusFormPage'
+import FleetPage from './features/flota/FleetPage'
+import PendingModulePage from './features/modules/PendingModulePage'
+
+function ShellRoute() {
+  const { logout, user } = useSession()
+
+  if (!user) {
+    return <Navigate replace to="/login" />
+  }
+
+  return <AppShell onLogout={logout} user={user} />
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route element={<LoginPage />} path="/login" />
+      <Route
+        element={
+          <ProtectedRoute>
+            <ShellRoute />
+          </ProtectedRoute>
+        }
+      >
+        <Route element={<Navigate replace to="/inicio" />} index />
+        <Route element={<DashboardPage />} path="/inicio" />
+        <Route
+          element={
+            <ProtectedRoute roles={['ADMIN_SUPERVISOR', 'CONDUCTOR_OPERADOR']}>
+              <FleetPage />
+            </ProtectedRoute>
+          }
+          path="/flota"
+        />
+        <Route
+          element={
+            <ProtectedRoute roles={['ADMIN_SUPERVISOR']}>
+              <BusFormPage />
+            </ProtectedRoute>
+          }
+          path="/flota/nuevo"
+        />
+        <Route
+          element={
+            <ProtectedRoute roles={['ADMIN_SUPERVISOR']}>
+              <BusFormPage />
+            </ProtectedRoute>
+          }
+          path="/flota/:busId/editar"
+        />
+        <Route
+          element={
+            <ProtectedRoute roles={['ADMIN_SUPERVISOR', 'CONDUCTOR_OPERADOR']}>
+              <PendingModulePage moduleId="novedades" />
+            </ProtectedRoute>
+          }
+          path="/novedades"
+        />
+        <Route
+          element={
+            <ProtectedRoute roles={['ADMIN_SUPERVISOR']}>
+              <PendingModulePage moduleId="mantenimiento-preventivo" />
+            </ProtectedRoute>
+          }
+          path="/mantenimiento-preventivo"
+        />
+        <Route
+          element={
+            <ProtectedRoute roles={['ADMIN_SUPERVISOR', 'MECANICO']}>
+              <PendingModulePage moduleId="ordenes-trabajo" />
+            </ProtectedRoute>
+          }
+          path="/ordenes-trabajo"
+        />
+        <Route
+          element={
+            <ProtectedRoute roles={['ADMIN_SUPERVISOR', 'MECANICO']}>
+              <PendingModulePage moduleId="repuestos" />
+            </ProtectedRoute>
+          }
+          path="/repuestos"
+        />
+        <Route
+          element={
+            <ProtectedRoute roles={['ADMIN_SUPERVISOR', 'MECANICO', 'CONDUCTOR_OPERADOR']}>
+              <PendingModulePage moduleId="historial" />
+            </ProtectedRoute>
+          }
+          path="/historial"
+        />
+        <Route element={<AccessDeniedPage />} path="/acceso-denegado" />
+      </Route>
+      <Route element={<Navigate replace to="/inicio" />} path="*" />
+    </Routes>
+  )
+}
 
 function App() {
   return (
-    <main className="min-h-screen bg-zinc-50 text-zinc-950">
-      <section className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center gap-10 px-6 py-10">
-        <div className="max-w-3xl">
-          <p className="text-sm font-semibold uppercase tracking-normal text-emerald-700">
-            Fase 3 autorizada
-          </p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-normal text-zinc-950 md:text-5xl">
-            Software de Gestión de Mantenimiento Vehicular
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-700">
-            Bootstrap técnico del prototipo web académico para flota de buses.
-          </p>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {functionalRequirements.map((requirement) => (
-            <div
-              className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-800 shadow-sm"
-              key={requirement}
-            >
-              {requirement}
-            </div>
-          ))}
-        </div>
-      </section>
-    </main>
+    <Router>
+      <SessionProvider>
+        <AppRoutes />
+      </SessionProvider>
+    </Router>
   )
 }
 

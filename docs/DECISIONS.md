@@ -434,3 +434,99 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 - Relaciones directas redundantes `OrdenTrabajo`-`Repuesto` u `OrdenTrabajo`-`MovimientoInventario`.
 
 **Estado:** APROBADA / IMPLEMENTADA COMO CIERRE DE PERSISTENCIA.
+
+---
+
+## 2026-08-26 - Interfaz oficial y autenticacion por roles
+
+**Decision:** integrar la interfaz seleccionada desde Figma Make como estructura visual oficial del SGMV e implementar autenticacion real como capacidad transversal, sin iniciar RF-01 a RF-06 completos.
+
+**Base visual autorizada:**
+
+- ZIP original: `C:\Users\ING-ERIK\Downloads\Create it.zip`.
+- SHA-256: `F1A2FD90D27FA735A95E8E8C1BC4EE28F3D5C858C6D1717524C6F73B5F78759F`.
+- La exportacion de Figma Make se usa como referencia visual y fuente selectiva de componentes.
+
+**Implementado:**
+
+- Frontend con React Router, rutas protegidas, recuperacion de sesion por `/auth/me` y cierre por `/auth/logout`.
+- Cliente HTTP centralizado con `credentials: 'include'`.
+- Estado de sesion centralizado y redireccion por autenticacion.
+- Menus y paneles diferenciados por los tres roles oficiales.
+- Pantalla de acceso denegado.
+- Login real sin botones de acceso por rol, sin usuarios codificados, sin `localStorage` y sin exitos simulados.
+- Shell visual con menu colapsable, tooltips accesibles, encabezado contextual, estados vacios/carga/error y fecha dinamica `es-CO`.
+- Vista base de flota y formulario visual de buses sin CRUD RF-01 completo.
+- Backend `POST /auth/login`, `GET /auth/me`, `POST /auth/logout`.
+- Repositorio, servicio, controlador, rutas, middleware de autenticacion y middleware de autorizacion por rol.
+- Verificacion `bcrypt`, validacion Zod, rechazo de usuarios inactivos, errores seguros y bloqueo temporal por intentos fallidos.
+- CORS con credenciales limitado a `CORS_ORIGIN`; escrituras de autenticacion con validacion de `Origin`.
+
+**No copiado del ZIP:**
+
+- Configuracion Figma Make, `.figma/`, agentes, planes, `package.json`, lockfile, Vite/TypeScript config, tipos conceptuales, mock data, fechas estaticas o dependencias vulnerables.
+
+**Diferencias tecnicas necesarias frente al prototipo:**
+
+- La navegacion ya no depende solo de `useState`; usa React Router.
+- Los roles y permisos derivan del backend real y de `schema.prisma`.
+- Los modulos RF pendientes muestran estados vacios honestos, no datos falsos.
+- La sesion vive en cookie `HttpOnly`; no se almacena token en frontend.
+- La autorizacion final queda en backend; ocultar opciones en UI no sustituye permisos de servidor.
+
+**Documentacion creada:**
+
+- `docs/AUTHENTICATION.md`.
+- `docs/VISUAL_DESIGN.md`.
+
+**Estado:** APROBADA / IMPLEMENTADA COMO FUNDACION VISUAL Y AUTENTICACION TRANSVERSAL.
+
+---
+
+## 2026-08-26 - Auditoria final de interfaz oficial y autenticacion
+
+**Decision:** cerrar un bloque final de verificacion sobre la rama `feat/auth-ui-foundation`, corrigiendo solo defectos objetivos de la integracion visual y de autenticacion, sin iniciar RF-01 ni agregar funcionalidades de negocio.
+
+**Ajustes permitidos y ejecutados:**
+
+- Mejorar accesibilidad del boton de cierre de sesion en menu colapsado.
+- Reforzar pruebas de sesion expirada, carga inicial y rutas inexistentes.
+- Mantener los RF pendientes con estado literal "Modulo pendiente de implementacion".
+- Regenerar capturas finales de auditoria en escritorio, portatil y movil.
+
+**Evidencia:** `docs/AUTH_UI_FINAL_AUDIT.md` y capturas `docs/screenshots/audit-*.png`.
+
+**Estado:** APROBADA / IMPLEMENTADA COMO AUDITORIA FINAL DE AUTENTICACION E INTERFAZ.
+
+---
+
+## 2026-08-27 - Implementacion RF-01 Gestion de la flota vehicular
+
+**Decision:** implementar RF-01 como primer requerimiento funcional completo, conectado de frontend a PostgreSQL/Neon mediante API REST, servicios, repositorios y Prisma.
+
+**Base de rama:** `main` remoto estaba limpio y actualizado, pero no contenia los commits auditados de autenticacion/interfaz. Para no trabajar sobre `main` y poder cumplir la precondicion tecnica de auth/ui, `feat/rf-01-flota` se creo desde `main` y luego avanzo con la base ya cerrada `feat/auth-ui-foundation`.
+
+**Implementado:**
+
+- Endpoints `/flota/*` protegidos por sesion y roles.
+- DTOs de entrada/salida y validacion Zod estricta.
+- Normalizacion de placa y codigo interno antes de persistir.
+- Manejo controlado de duplicados con `409`.
+- Registro de buses con historial inicial de estado.
+- Edicion solo de campos permitidos.
+- Registro transaccional de kilometraje con `LecturaKilometraje`.
+- Cambio transaccional de estado con `BusEstadoHistorial`.
+- Asignacion/reasignacion transaccional conductor-bus con cierre de historicos.
+- Consulta limitada del bus asignado al conductor autenticado.
+- Pantallas reales de listado, formulario, detalle, operaciones sensibles y paneles por rol.
+
+**Decisiones de implementacion:**
+
+- No crear endpoint de eliminacion fisica de bus; retirar se hace con estado `INACTIVO`.
+- Exigir motivo para cambios de estado de bus.
+- Mantener kilometraje y estado fuera del `PATCH /flota/buses/:busId`; se actualizan solo mediante endpoints trazados.
+- El mecanico queda denegado en RF-01.
+
+**No implementado:** RF-02, RF-03, RF-04, RF-05 y RF-06.
+
+**Estado:** APROBADA / IMPLEMENTADA COMO RF-01.
