@@ -6,13 +6,13 @@ import {
   AlertTriangle,
   ArrowRight,
   Bus,
+  CheckCircle,
   ClipboardList,
   Package,
   PlusCircle,
   Shield,
   Wrench,
 } from '../../components/ui/Icons'
-import StatePanel from '../../components/ui/StatePanel'
 import StatCard from '../../components/ui/StatCard'
 import {
   NOVELTY_STATUS_LABELS,
@@ -26,6 +26,8 @@ import { getAssignedBus, getFleetSummary } from '../flota/fleet.api'
 import type { AssignedBusResponse, FleetSummaryDto } from '../flota/fleet.types'
 import { getNoveltySummary, listOwnNovelties } from '../novedades/novelty.api'
 import type { NoveltyListResponse, NoveltySummaryDto } from '../novedades/novelty.types'
+import { getWorkOrderSummary } from '../ordenes-trabajo/work-order.api'
+import type { WorkOrderSummaryDto } from '../ordenes-trabajo/work-order.types'
 import { getPreventiveSummary } from '../preventivo/preventive.api'
 import type { PreventiveSummaryDto } from '../preventivo/preventive.types'
 
@@ -62,6 +64,7 @@ export default function DashboardPage() {
   const [fleetError, setFleetError] = useState<string | null>(null)
   const [noveltySummary, setNoveltySummary] = useState<NoveltySummaryDto | null>(null)
   const [preventiveSummary, setPreventiveSummary] = useState<PreventiveSummaryDto | null>(null)
+  const [workOrderSummary, setWorkOrderSummary] = useState<WorkOrderSummaryDto | null>(null)
 
   const visibleItems = user
     ? REQUIREMENT_NAV_ITEMS.filter((item) => item.roles.includes(user.rol.codigo))
@@ -74,7 +77,7 @@ export default function DashboardPage() {
     let active = true
 
     async function loadDashboardContext() {
-      if (!isAdmin && !isDriver) {
+      if (!isAdmin && !isDriver && !isMechanic) {
         return
       }
 
@@ -82,16 +85,26 @@ export default function DashboardPage() {
 
       try {
         if (isAdmin) {
-          const [summary, novelties, preventive] = await Promise.all([
+          const [summary, novelties, preventive, workOrders] = await Promise.all([
             getFleetSummary(),
             getNoveltySummary(),
             getPreventiveSummary(),
+            getWorkOrderSummary(),
           ])
 
           if (active) {
             setFleetSummary(summary)
             setNoveltySummary(novelties)
             setPreventiveSummary(preventive)
+            setWorkOrderSummary(workOrders)
+          }
+        }
+
+        if (isMechanic) {
+          const workOrders = await getWorkOrderSummary()
+
+          if (active) {
+            setWorkOrderSummary(workOrders)
           }
         }
 
@@ -121,7 +134,7 @@ export default function DashboardPage() {
     return () => {
       active = false
     }
-  }, [isAdmin, isDriver])
+  }, [isAdmin, isDriver, isMechanic])
 
   if (!user) {
     return null
@@ -188,6 +201,24 @@ export default function DashboardPage() {
                   : '...'
               }
             />
+            <StatCard
+              icon={<ClipboardList size={16} />}
+              label="Por asignar"
+              note="Ordenes RF-04"
+              value={workOrderSummary?.pendientesAsignacion ?? '...'}
+            />
+            <StatCard
+              icon={<Wrench size={16} />}
+              label="En ejecucion"
+              note="Ordenes RF-04"
+              value={workOrderSummary?.porEstado.EN_EJECUCION ?? '...'}
+            />
+            <StatCard
+              icon={<CheckCircle size={16} />}
+              label="Revision"
+              note="Completadas tecnico"
+              value={workOrderSummary?.pendientesRevision ?? '...'}
+            />
           </div>
           <ModuleList items={visibleItems} />
         </>
@@ -199,11 +230,26 @@ export default function DashboardPage() {
             <h2 className="mb-3 text-xs font-semibold uppercase text-slate-500">Panel tecnico</h2>
             <ModuleList items={visibleItems} />
           </section>
-          <StatePanel
-            description="Las ordenes asignadas, consumos autorizados e historial tecnico se mostraran cuando se implemente RF-04, RF-05 y RF-06."
-            title="Trabajo tecnico pendiente"
-            tone="empty"
-          />
+          <div className="space-y-3">
+            <StatCard
+              icon={<ClipboardList size={16} />}
+              label="Asignadas"
+              note={fleetError ?? 'Ordenes propias'}
+              value={workOrderSummary?.porEstado.ASIGNADA ?? '...'}
+            />
+            <StatCard
+              icon={<Wrench size={16} />}
+              label="En ejecucion"
+              note="Ordenes propias"
+              value={workOrderSummary?.porEstado.EN_EJECUCION ?? '...'}
+            />
+            <StatCard
+              icon={<AlertTriangle size={16} />}
+              label="Devueltas"
+              note="Correccion tecnica"
+              value={workOrderSummary?.porEstado.DEVUELTA_CORRECCION ?? '...'}
+            />
+          </div>
         </div>
       )}
 

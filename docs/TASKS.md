@@ -6,7 +6,7 @@ Este archivo es el tablero operativo del agente.
 
 **No marcar el inicio de implementación hasta recibir la orden explícita `INICIAR FASE 3`.**
 
-**Estado actual:** interfaz oficial, autenticacion transversal, RF-01 Gestion de la flota vehicular, RF-02 Control de novedades operativas, normalizacion transversal de roles canonicos y RF-03 Administracion del mantenimiento preventivo implementadas sobre la Persistencia cerrada. Todavia no implementar RF-04 a RF-06 completos sin nueva autorización del propietario.
+**Estado actual:** interfaz oficial, autenticacion transversal, RF-01 Gestion de la flota vehicular, RF-02 Control de novedades operativas, normalizacion transversal de roles canonicos, RF-03 Administracion del mantenimiento preventivo y RF-04 Seguimiento de ordenes de trabajo implementadas sobre la Persistencia cerrada. Todavia no implementar RF-05 ni RF-06 completos sin nueva autorización del propietario.
 
 ---
 
@@ -174,38 +174,42 @@ Este archivo es el tablero operativo del agente.
 - [x] Generar orden preventiva.
 - [x] Mantener relación programación-orden.
 - [x] Evitar mas de una orden activa por programacion.
-- [ ] Actualizar proxima fecha o proximo kilometraje al cerrar orden preventiva. Pendiente de RF-04 porque RF-03 no ejecuta ni cierra ordenes.
+- [x] Evaluar actualizacion de proxima fecha o proximo kilometraje al cerrar orden preventiva. RF-04 conserva objetivos copiados y no recalcula porque no existen campos fisicos de intervalo preventivo aprobados.
 
 ---
 
 # 7. RF-04 — Seguimiento de órdenes de trabajo
 
-- [ ] Implementar maquina de estados aprobada.
-- [ ] Crear orden correctiva directa.
-- [ ] Recibir orden desde novedad.
-- [ ] Recibir orden desde preventivo.
-- [ ] Asignar mecánico.
-- [ ] Bandeja de órdenes del mecánico.
-- [ ] Consulta de antecedentes.
-- [ ] Inicio de trabajo.
-- [ ] Reasignacion de mecanico solo por Administrador con auditoria.
-- [ ] Registro de diagnóstico.
-- [ ] Registro de actividades.
-- [ ] Registro de observaciones.
-- [ ] Integración con consumo de repuestos.
-- [ ] Marcar completado por técnico.
-- [ ] Exigir fechas de ejecucion y actividades para completar por tecnico.
-- [ ] Exigir diagnostico en ordenes correctivas.
-- [ ] Mantener consumo de repuestos como opcional.
-- [ ] Validar/cerrar por administrador.
-- [ ] Garantizar `CERRADA` como estado terminal.
-- [ ] Impedir cierre desde `ASIGNADA` o `EN_EJECUCION`.
-- [ ] Registrar responsable/fechas.
-- [ ] Actualizar disponibilidad en historial.
+- [x] Implementar maquina de estados aprobada.
+- [x] Crear orden correctiva directa.
+- [x] Recibir orden desde novedad.
+- [x] Recibir orden desde preventivo.
+- [x] Asignar mecanico.
+- [x] Bandeja de ordenes del mecanico.
+- [x] Consulta de antecedentes.
+- [x] Inicio de trabajo.
+- [x] Reasignacion de mecanico solo por Administrador con auditoria.
+- [x] Registro de diagnostico.
+- [x] Registro de actividades.
+- [x] Registro de observaciones.
+- [x] Integracion con consumo de repuestos.
+- [x] Marcar completado por tecnico.
+- [x] Exigir fechas de ejecucion y actividades para completar por tecnico.
+- [x] Exigir diagnostico en ordenes correctivas.
+- [x] Mantener consumo de repuestos como opcional.
+- [x] Validar/cerrar por administrador.
+- [x] Garantizar `CERRADA` como estado terminal.
+- [x] Impedir cierre desde `ASIGNADA` o `EN_EJECUCION`.
+- [x] Registrar responsable/fechas.
+- [x] Mantener historial tecnico disponible mediante orden, intervenciones, actividades, consumos y movimientos.
+- [x] Proteger doble envio de consumo con `clave_idempotencia`.
+- [x] Documentar que RF-05 y RF-06 no fueron iniciados.
 
 ---
 
 # 8. RF-05 — Central de Repuestos
+
+Nota: RF-04 implementa el consumo operativo de repuestos dentro de una orden en ejecucion. La administracion central de repuestos de RF-05 no se inicia en este bloque.
 
 - [ ] Catálogo.
 - [ ] Existencias.

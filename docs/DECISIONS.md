@@ -595,3 +595,25 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 **Limite:** RF-03 no implementa asignacion de Mecanico, ejecucion, diagnostico, actividades, consumos, completado tecnico ni cierre administrativo. Esas acciones quedan para RF-04.
 
 **Estado:** APROBADA / IMPLEMENTADA COMO RF-03.
+
+---
+
+## 2026-08-28 - RF-04 ordenes de trabajo implementado
+
+**Decision:** RF-04 se implementa como modulo operativo para `ADMINISTRADOR` y `MECANICO`, con `CONDUCTOR` denegado. El backend queda en `src/backend/src/work-orders/*` y el frontend en `src/frontend/src/features/ordenes-trabajo/*`.
+
+**Maquina de estados:** se centraliza en `work-order.state.ts` con el flujo `PENDIENTE_ASIGNACION -> ASIGNADA -> EN_EJECUCION -> COMPLETADA_TECNICO -> CERRADA` y el ciclo de correccion `COMPLETADA_TECNICO -> DEVUELTA_CORRECCION -> EN_EJECUCION -> COMPLETADA_TECNICO`. `CERRADA` es terminal.
+
+**Origen manual:** el modelo fisico aprobado no incluye origen `MANUAL`. RF-04 usa `CORRECTIVO_DIRECTO` para ordenes correctivas manuales del Administrador. No se implementa preventiva manual porque los objetivos preventivos historicos provienen de `programaciones_mantenimiento` y no existen campos de intervalo preventivo independientes.
+
+**Reasignacion en ejecucion:** se permite en `ASIGNADA`, `EN_EJECUCION` y `DEVUELTA_CORRECCION`. Cuando ocurre en `EN_EJECUCION`, se conserva el estado para no inventar estados intermedios; se cierra la intervencion activa del mecanico anterior, se crea una nueva intervencion para el mecanico vigente y se registra `orden_reasignaciones`.
+
+**Concurrencia:** RF-04 usa candados transaccionales advisory por orden/repuesto y actualizaciones condicionales (`updateMany` con estado, responsable vigente o stock suficiente) para serializar acciones simultaneas sin depender de nombres de schema ni de consultas `FOR UPDATE` crudas.
+
+**Consumo e idempotencia:** cada consumo aplicado se ejecuta en transaccion, bloquea orden y repuesto, descuenta stock con condicion de existencia suficiente, crea exactamente un movimiento `CONSUMO` y toma el costo unitario desde base de datos. Se agrega `consumos_repuesto.clave_idempotencia` con indice unico parcial `ux_consumos_repuesto_clave_idempotencia` para proteger doble envio.
+
+**Cierre preventivo:** RF-04 conserva la orden preventiva cerrada y sus objetivos copiados. No recalcula la siguiente fecha o kilometraje porque el modelo fisico actual no almacena intervalos aprobados para ese calculo. No se crea una nueva programacion ni una nueva orden al cerrar.
+
+**Limites:** no se inicia RF-05 ni RF-06. No hay compras, proveedores, entradas, ajustes administrativos, catalogo completo, informes consolidados ni exportaciones.
+
+**Estado:** APROBADA / IMPLEMENTADA COMO RF-04.

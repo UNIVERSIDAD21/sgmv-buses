@@ -24,7 +24,7 @@ No se modifico `schema.prisma` ni se crearon migraciones para este bloque.
 - Panel administrador con indicador real de novedades pendientes.
 - Panel conductor con bus real, novedades recientes y acceso a registro.
 
-Fuera de este bloque quedan RF-03, RF-04, RF-05 y RF-06. RF-04 continua pendiente para asignacion tecnica, ejecucion, intervenciones, consumos y cierre de ordenes.
+Fuera de este bloque quedan RF-03, RF-04, RF-05 y RF-06. En el cierre de RF-02, la asignacion tecnica, ejecucion, intervenciones, consumos y cierre de ordenes quedaban para RF-04.
 
 ---
 
@@ -132,7 +132,7 @@ Si `descripcionOrden` se omite, el servicio usa una descripcion segura basada en
 
 - `novedades` no tiene campo fisico `prioridad`; por eso el conductor no envia prioridad y el administrador solo define prioridad al generar la `OrdenTrabajo`. El listado administrativo permite filtrar por prioridad cuando ya existe una orden asociada.
 - La clasificacion es un texto administrativo (`clasificacion`) definido en el modelo. El conductor solo envia `tipo` y `descripcion`.
-- La orden generada se muestra como resumen y referencia. RF-04 sigue pendiente para asignacion tecnica, ejecucion, intervenciones, consumos y cierre.
+- La orden generada se muestra como resumen y referencia. La asignacion tecnica, ejecucion, intervenciones, consumos y cierre se gestionan posteriormente desde RF-04.
 
 ---
 

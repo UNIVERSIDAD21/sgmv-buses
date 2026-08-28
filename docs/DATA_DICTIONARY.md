@@ -438,6 +438,7 @@ Relacion oficial `OrdenTrabajo -> ConsumoRepuesto -> Repuesto`.
 | `subtotal` | `decimal(12,2)` | No | Calculado | `cantidad * costo_unitario`. |
 | `consumido_por_id` | `uuid` | No | FK -> `usuarios.id` | Mecanico responsable. |
 | `fecha_consumo` | `timestamptz(6)` | No | `CURRENT_TIMESTAMP` | Fecha de consumo. |
+| `clave_idempotencia` | `uuid` | Si | UQ parcial | Clave opcional para proteger doble envio de consumo en RF-04. |
 | `created_at` | `timestamptz(6)` | No | `CURRENT_TIMESTAMP` | Fecha de creacion. |
 
 Indices y restricciones:
@@ -447,6 +448,7 @@ Indices y restricciones:
 - FK `consumos_repuesto_repuesto_id_fkey`.
 - FK `consumos_repuesto_consumido_por_id_fkey`.
 - UQ compuesto `consumos_repuesto_id_repuesto_id_key` para coherencia con movimiento.
+- UQ parcial `ux_consumos_repuesto_clave_idempotencia`.
 - IDX `consumos_repuesto_orden_trabajo_id_idx`, `repuesto_id_idx`, `consumido_por_id_idx`.
 - CHECK `ck_consumos_repuesto_valores`.
 - CHECK `ck_consumos_repuesto_subtotal_calculado`.

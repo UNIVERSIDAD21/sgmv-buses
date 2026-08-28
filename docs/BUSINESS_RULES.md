@@ -155,7 +155,7 @@ Una programación que origine una orden preventiva conserva su relación.
 
 No se puede generar mas de una orden activa para la misma programacion preventiva.
 
-Al cerrar una orden preventiva deben actualizarse la proxima fecha o el proximo kilometraje objetivo antes de permitir una nueva generacion.
+Al cerrar una orden preventiva deben actualizarse la proxima fecha o el proximo kilometraje objetivo cuando existan intervalos fisicos aprobados para calcularlos.
 
 Implementacion RF-03:
 
@@ -164,7 +164,7 @@ Implementacion RF-03:
 - La orden generada por RF-03 queda en `PENDIENTE_ASIGNACION`, con `origen=PREVENTIVO`, `tipo=PREVENTIVA`, el mismo bus de la programacion y sin Mecanico asignado.
 - La creacion de orden e historial inicial se ejecuta en una unica transaccion.
 - El indice unico parcial de orden preventiva activa por programacion evita duplicados tambien ante solicitudes simultaneas.
-- La actualizacion del siguiente objetivo al cerrar la orden corresponde a RF-04, porque RF-03 no ejecuta ni cierra ordenes.
+- RF-04 conserva la orden cerrada y sus objetivos copiados. La actualizacion automatica del siguiente objetivo no se ejecuta en la implementacion actual porque el modelo fisico vigente no contiene campos de intervalo preventivo.
 
 ---
 
@@ -228,6 +228,13 @@ Transiciones permitidas:
 
 La reasignacion de mecanico es exclusiva del Administrador y queda auditada.
 
+Implementacion RF-04:
+
+- Las transiciones se validan en `work-order.state.ts`.
+- Toda transicion real registra `orden_estado_historial`.
+- La reasignacion se permite en `ASIGNADA`, `EN_EJECUCION` y `DEVUELTA_CORRECCION`; se rechaza en `COMPLETADA_TECNICO` y `CERRADA`.
+- Si se reasigna durante `EN_EJECUCION`, se conserva el estado, se cierra la intervencion activa del mecanico anterior y se abre una nueva intervencion para el mecanico vigente.
+
 ---
 
 ## BR-16 — Cierre de orden
@@ -243,6 +250,13 @@ En ordenes correctivas, el diagnostico es obligatorio.
 El consumo de repuestos es opcional.
 
 El cierre definitivo es exclusivo del Administrador.
+
+Implementacion RF-04:
+
+- El completado tecnico lo ejecuta solo el Mecanico asignado.
+- El cierre administrativo lo ejecuta solo el Administrador desde `COMPLETADA_TECNICO`.
+- El cierre valida actividades, diagnostico correctivo, consumos/movimientos y costo basico.
+- Una orden cerrada queda inmutable.
 
 ---
 
@@ -274,6 +288,14 @@ Un consumo debe estar relacionado con una orden y un repuesto.
 La cantidad debe ser válida.
 
 El consumo y el descuento de stock deben ocurrir en una operación consistente/atómica.
+
+Implementacion RF-04:
+
+- El consumo solo se permite al Mecanico asignado con orden en `EN_EJECUCION`.
+- El costo unitario proviene del servidor.
+- Cada consumo aplicado genera exactamente un movimiento `CONSUMO`.
+- `clave_idempotencia` protege doble envio de consumo.
+- Las transacciones usan candados advisory por orden/repuesto y actualizaciones condicionales de estado/stock para impedir stock negativo o transiciones duplicadas bajo concurrencia.
 
 ---
 

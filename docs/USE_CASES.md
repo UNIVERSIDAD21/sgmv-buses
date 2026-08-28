@@ -150,48 +150,49 @@ Existe programación válida y, si corresponde, una orden preventiva relacionada
 # CU-04 — RF-04 — Seguimiento de órdenes de trabajo
 
 **RF relacionado:** RF-04
-**Actores:** Administrador; Mecánico
+**Actores:** Administrador; Mecanico
 
 ## Objetivo
 
-Controlar de extremo a extremo la ejecución de una intervención de mantenimiento.
+Controlar de extremo a extremo la ejecucion de una orden de trabajo y su cierre administrativo.
 
 ## Entradas posibles
 
-- Orden correctiva creada directamente.
-- Orden originada por novedad.
-- Orden originada por programación preventiva.
+- Orden correctiva directa creada por Administrador.
+- Orden correctiva originada por novedad de RF-02.
+- Orden preventiva originada por programacion de RF-03.
 
 ## Flujo principal
 
-1. Administrador crea/recibe una orden.
-2. Verifica bus, origen, descripción/prioridad y demás datos requeridos.
-3. Asigna un Mecánico.
-4. Mecánico consulta sus órdenes.
-5. Abre la orden.
-6. Consulta antecedentes del bus.
-7. Inicia la ejecución.
-8. Registra diagnóstico.
-9. Registra actividades realizadas.
-10. Registra observaciones.
-11. Registra repuestos consumidos cuando aplique.
-12. Marca el trabajo como completado.
-13. Administrador revisa.
-14. Si la información es válida, cierra la orden.
-15. El sistema registra responsable y fecha.
-16. La información queda disponible en el historial.
+1. Administrador consulta ordenes pendientes y detalle.
+2. Administrador asigna un Mecanico activo.
+3. El sistema cambia la orden a `ASIGNADA` y registra historial.
+4. Mecanico consulta sus ordenes.
+5. Mecanico inicia la ejecucion.
+6. El sistema cambia a `EN_EJECUCION` y crea intervencion.
+7. Mecanico registra diagnostico, observaciones y actividades.
+8. Mecanico registra consumos cuando aplica.
+9. El sistema descuenta stock y crea movimiento de inventario en transaccion.
+10. Mecanico marca completado tecnico.
+11. Administrador revisa la informacion tecnica.
+12. Administrador cierra la orden.
+13. El sistema fija `fecha_cierre`, `cerrada_por_id`, historial final y costo basico.
 
 ## Alternativas
 
-- Mecánico intenta abrir orden ajena → denegar salvo regla autorizada.
-- Transición de estado inválida → rechazar.
-- Cierre sin información técnica mínima → rechazar.
-- Stock insuficiente → no registrar consumo inconsistente.
-- Administrador devuelve trabajo para corrección → conservar estado/trazabilidad según la máquina de estados aprobada.
+- Conductor intenta acceder al modulo interno -> denegar.
+- Mecanico intenta operar una orden ajena -> denegar.
+- Mecanico anterior intenta escribir despues de reasignacion -> denegar.
+- Transicion de estado invalida -> rechazar.
+- Actividad vacia, diagnostico correctivo faltante o cierre sin requisitos -> rechazar.
+- Stock insuficiente -> no crear consumo, movimiento ni descuento parcial.
+- Doble envio de consumo con la misma clave idempotente -> devolver el consumo existente.
+- Administrador devuelve trabajo para correccion -> conservar informacion previa, cambiar a `DEVUELTA_CORRECCION` y permitir reanudacion por el Mecanico vigente.
+- Orden `CERRADA` recibe cualquier escritura -> rechazar.
 
 ## Postcondición
 
-Orden cerrada de manera trazable y reflejada en historial.
+Orden cerrada de manera trazable y disponible para historial tecnico mediante orden, intervenciones, actividades, consumos y movimientos.
 
 ---
 

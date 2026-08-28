@@ -122,6 +122,32 @@ POST   /mantenimiento-preventivo/programaciones/:programacionId/generar-orden
 
 La capa backend queda organizada como `route -> controller -> service -> repository -> Prisma`. La clasificacion preventiva vive en un modulo reutilizable y no en componentes React. El frontend consume la API desde `src/frontend/src/features/preventivo/preventive.api.ts`.
 
+Contrato RF-04 implementado:
+
+```text
+GET    /ordenes-trabajo/resumen
+GET    /ordenes-trabajo
+POST   /ordenes-trabajo
+GET    /ordenes-trabajo/mis-ordenes
+GET    /ordenes-trabajo/mecanicos-disponibles
+GET    /ordenes-trabajo/:ordenId
+GET    /ordenes-trabajo/:ordenId/historial
+GET    /ordenes-trabajo/:ordenId/reasignaciones
+POST   /ordenes-trabajo/:ordenId/asignar
+POST   /ordenes-trabajo/:ordenId/reasignar
+POST   /ordenes-trabajo/:ordenId/iniciar
+POST   /ordenes-trabajo/:ordenId/reanudar
+PATCH  /ordenes-trabajo/:ordenId/intervencion
+POST   /ordenes-trabajo/:ordenId/actividades
+GET    /ordenes-trabajo/:ordenId/repuestos-disponibles
+POST   /ordenes-trabajo/:ordenId/consumos
+POST   /ordenes-trabajo/:ordenId/completar
+POST   /ordenes-trabajo/:ordenId/devolver
+POST   /ordenes-trabajo/:ordenId/cerrar
+```
+
+RF-04 mantiene la misma separacion `route -> controller -> service -> repository -> Prisma`. La maquina de estados vive en `work-order.state.ts`, las transiciones y autorizaciones en servicio, y las operaciones criticas en transacciones Prisma. El frontend consume la API desde `src/frontend/src/features/ordenes-trabajo/work-order.api.ts`.
+
 ---
 
 ## 6. Respuestas y errores

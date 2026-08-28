@@ -12,6 +12,7 @@ const ids = {
   usuarios: {
     admin: '20000000-0000-4000-8000-000000000001',
     mecanico: '20000000-0000-4000-8000-000000000002',
+    mecanicoApoyo: '20000000-0000-4000-8000-000000000004',
     conductor: '20000000-0000-4000-8000-000000000003',
   },
   buses: {
@@ -133,6 +134,25 @@ async function main() {
           nombre: 'Mecanico Demo',
           email: 'mecanico.demo@sgmv.local',
           telefono: '3000000002',
+          contrasenaHash,
+          estado: 'ACTIVO',
+          rolId: ids.roles.mecanico,
+        },
+      })
+
+      await tx.usuario.upsert({
+        where: { email: 'mecanico.apoyo.demo@sgmv.local' },
+        update: {
+          nombre: 'Mecanico Apoyo Demo',
+          contrasenaHash,
+          estado: 'ACTIVO',
+          rolId: ids.roles.mecanico,
+        },
+        create: {
+          id: ids.usuarios.mecanicoApoyo,
+          nombre: 'Mecanico Apoyo Demo',
+          email: 'mecanico.apoyo.demo@sgmv.local',
+          telefono: '3000000004',
           contrasenaHash,
           estado: 'ACTIVO',
           rolId: ids.roles.mecanico,

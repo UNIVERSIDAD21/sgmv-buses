@@ -252,6 +252,8 @@ Reglas aprobadas:
 - `CERRADA` es terminal.
 - Solo el Administrador cierra órdenes.
 - Solo el Mecánico marca la ejecución como completada.
+- RF-04 permite creacion manual solo para orden correctiva directa; la preventiva manual no se implementa porque requiere una programacion originadora para preservar objetivos e historial.
+- Si se reasigna una orden en `EN_EJECUCION`, el estado se conserva, se cierra la intervencion activa anterior y se abre una nueva intervencion para el Mecanico vigente.
 
 Estados aprobados:
 
@@ -357,6 +359,8 @@ Reglas aprobadas:
 - El consumo de repuestos es opcional.
 - Consumo, movimiento y descuento de stock se ejecutan en una sola transacción.
 - El costo unitario usado en el consumo conserva el valor histórico del momento.
+- RF-04 agrega `clave_idempotencia` opcional para proteger doble envio sin crear movimientos duplicados.
+- RF-04 usa candados advisory transaccionales y descuento condicional de stock para conservar integridad bajo solicitudes concurrentes.
 
 ---
 

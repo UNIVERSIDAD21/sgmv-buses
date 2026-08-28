@@ -600,6 +600,491 @@ function preventiveList(
   }
 }
 
+const workOrderAdmin = {
+  email: 'admin@sgmv.local',
+  id: 'user-administrador',
+  nombre: 'Administrador',
+  telefono: null,
+}
+
+const workOrderMechanic = {
+  email: 'mecanico@sgmv.local',
+  id: 'user-mecanico',
+  nombre: 'Mecanico Uno',
+  telefono: null,
+}
+
+const workOrderMechanicAlt = {
+  email: 'mecanico-alt@sgmv.local',
+  id: 'user-mecanico-alt',
+  nombre: 'Mecanico Dos',
+  telefono: null,
+}
+
+const workOrderPart = {
+  categoria: 'Frenos',
+  codigo: 'REP-001',
+  costoUnitario: '120000.00',
+  estado: 'ACTIVO',
+  id: 'rep-1',
+  nombre: 'Pastilla de freno',
+  stockActual: '3.00',
+  stockMinimo: '1.00',
+  unidadMedida: 'unidad',
+}
+
+function workOrderSummary() {
+  return {
+    activas: 4,
+    pendientesAsignacion: 1,
+    pendientesRevision: 1,
+    porEstado: {
+      ASIGNADA: 1,
+      CERRADA: 1,
+      COMPLETADA_TECNICO: 1,
+      DEVUELTA_CORRECCION: 1,
+      EN_EJECUCION: 1,
+      PENDIENTE_ASIGNACION: 1,
+    },
+    porOrigen: {
+      CORRECTIVO_DIRECTO: 1,
+      NOVEDAD: 1,
+      PREVENTIVO: 1,
+    },
+    porTipo: {
+      CORRECTIVA: 2,
+      PREVENTIVA: 1,
+    },
+    total: 6,
+  }
+}
+
+function workOrderStateHistory(estadoNuevo: string, estadoAnterior: string | null = null) {
+  return {
+    cambiadoPor: workOrderAdmin,
+    estadoAnterior,
+    estadoNuevo,
+    fechaCambio: '2026-08-28T12:00:00.000Z',
+    id: `history-${estadoNuevo}-${estadoAnterior ?? 'inicio'}`,
+    observacion: estadoAnterior ? 'Transicion RF-04' : 'Orden creada',
+  }
+}
+
+function workOrderActions(order: { estado: string; tecnicoAsignado: unknown }, role: RoleCode) {
+  const isAdmin = role === 'ADMINISTRADOR'
+  const isMechanic = role === 'MECANICO'
+  const assigned = Boolean(order.tecnicoAsignado)
+
+  return {
+    puedeAsignar: isAdmin && order.estado === 'PENDIENTE_ASIGNACION',
+    puedeCerrar: isAdmin && order.estado === 'COMPLETADA_TECNICO',
+    puedeCompletar: isMechanic && order.estado === 'EN_EJECUCION' && assigned,
+    puedeDevolver: isAdmin && order.estado === 'COMPLETADA_TECNICO',
+    puedeIniciar: isMechanic && order.estado === 'ASIGNADA' && assigned,
+    puedeReanudar: isMechanic && order.estado === 'DEVUELTA_CORRECCION' && assigned,
+    puedeReasignar:
+      isAdmin &&
+      ['ASIGNADA', 'EN_EJECUCION', 'DEVUELTA_CORRECCION'].includes(order.estado) &&
+      assigned,
+    puedeRegistrarTecnica: isMechanic && order.estado === 'EN_EJECUCION' && assigned,
+  }
+}
+
+function createWorkOrderDetail(status = 'PENDIENTE_ASIGNACION') {
+  const tecnicoAsignado = status === 'PENDIENTE_ASIGNACION' ? null : { ...workOrderMechanic }
+  const fechaAsignacion = status === 'PENDIENTE_ASIGNACION' ? null : '2026-08-28T12:05:00.000Z'
+  const fechaInicioEjecucion = [
+    'EN_EJECUCION',
+    'COMPLETADA_TECNICO',
+    'DEVUELTA_CORRECCION',
+    'CERRADA',
+  ].includes(status)
+    ? '2026-08-28T12:10:00.000Z'
+    : null
+  const fechaCompletadaTecnico = ['COMPLETADA_TECNICO', 'DEVUELTA_CORRECCION', 'CERRADA'].includes(
+    status,
+  )
+    ? '2026-08-28T12:40:00.000Z'
+    : null
+  const fechaCierre = status === 'CERRADA' ? '2026-08-28T12:50:00.000Z' : null
+  const interventions =
+    status === 'PENDIENTE_ASIGNACION' || status === 'ASIGNADA'
+      ? []
+      : [
+          {
+            actividades:
+              status === 'EN_EJECUCION'
+                ? []
+                : [
+                    {
+                      descripcion: 'Revision y ajuste tecnico',
+                      fechaRegistro: '2026-08-28T12:20:00.000Z',
+                      id: 'activity-1',
+                      registradaPor: workOrderMechanic,
+                    },
+                  ],
+            diagnostico:
+              status === 'EN_EJECUCION' ? null : 'Desgaste en sistema de frenos confirmado',
+            fechaFin:
+              status === 'COMPLETADA_TECNICO' ||
+              status === 'DEVUELTA_CORRECCION' ||
+              status === 'CERRADA'
+                ? '2026-08-28T12:40:00.000Z'
+                : null,
+            fechaInicio: '2026-08-28T12:10:00.000Z',
+            id: 'intervention-1',
+            observaciones: 'Prueba funcional pendiente de cierre',
+            tecnico: workOrderMechanic,
+          },
+        ]
+
+  return {
+    acciones: {},
+    bus: {
+      anio: fleetBus.anio,
+      codigoInterno: fleetBus.codigoInterno,
+      estadoOperativo: fleetBus.estadoOperativo,
+      id: fleetBus.id,
+      kilometrajeActual: fleetBus.kilometrajeActual,
+      marca: fleetBus.marca,
+      modelo: fleetBus.modelo,
+      placa: fleetBus.placa,
+    },
+    cerradaPor: status === 'CERRADA' ? workOrderAdmin : null,
+    codigo: 'OT-RF04-001',
+    consumosRepuesto: [],
+    costoTotal: '0.00',
+    creadaPor: workOrderAdmin,
+    descripcion: 'Orden correctiva para seguimiento RF-04',
+    estado: status,
+    fechaAsignacion,
+    fechaCierre,
+    fechaCompletadaTecnico,
+    fechaCreacion: '2026-08-28T12:00:00.000Z',
+    fechaInicioEjecucion,
+    fechaObjetivoPreventivo: null,
+    historialEstados: [workOrderStateHistory('PENDIENTE_ASIGNACION')],
+    historialTecnicoBus: [],
+    id: 'order-rf04-1',
+    intervenciones: interventions,
+    kilometrajeObjetivoPreventivo: null,
+    motivoDevolucionActual: status === 'DEVUELTA_CORRECCION' ? 'Corregir evidencia tecnica' : null,
+    novedad: {
+      clasificacion: 'Falla mecanica',
+      conductor: {
+        email: 'driver@sgmv.local',
+        id: 'driver-1',
+        nombre: 'Conductor Uno',
+        telefono: null,
+      },
+      descripcion: 'Novedad que origino la orden',
+      estado: 'CONVERTIDA_A_ORDEN',
+      fechaReporte: '2026-08-28T11:30:00.000Z',
+      id: 'nov-1',
+      tipo: 'Ruido en frenos',
+    },
+    origen: 'NOVEDAD',
+    prioridad: 'MEDIA',
+    programacionMantenimiento: null,
+    reasignaciones: [],
+    tecnicoAsignado,
+    tipo: 'CORRECTIVA',
+  }
+}
+
+function workOrderList(order: ReturnType<typeof createWorkOrderDetail>) {
+  return {
+    ordenes: [order],
+    paginacion: {
+      limite: 8,
+      pagina: 1,
+      total: 1,
+      totalPaginas: 2,
+    },
+  }
+}
+
+function workOrderHandler(
+  role: RoleCode = 'ADMINISTRADOR',
+  options: Partial<{ empty: boolean; failList: boolean; initialStatus: string }> = {},
+) {
+  let order = createWorkOrderDetail(options.initialStatus ?? 'PENDIENTE_ASIGNACION')
+
+  function decoratedOrder() {
+    return {
+      ...order,
+      acciones: workOrderActions(order, role),
+    }
+  }
+
+  function appendHistory(estadoAnterior: string, estadoNuevo: string) {
+    order = {
+      ...order,
+      historialEstados: [
+        ...order.historialEstados,
+        workOrderStateHistory(estadoNuevo, estadoAnterior),
+      ],
+    }
+  }
+
+  return async (path: string, init?: RequestInit) => {
+    if (path === '/auth/me') {
+      return ok({ user: userForRole(role) })
+    }
+
+    if (path === '/flota/buses' && !init?.method) {
+      return ok(fleetList())
+    }
+
+    if (path === '/ordenes-trabajo/resumen') {
+      return ok(workOrderSummary())
+    }
+
+    if (path === '/ordenes-trabajo/mecanicos-disponibles') {
+      return ok({ mecanicos: [workOrderMechanic, workOrderMechanicAlt] })
+    }
+
+    if ((path === '/ordenes-trabajo' || path === '/ordenes-trabajo/mis-ordenes') && !init?.method) {
+      if (options.failList) {
+        return apiError(500, 'INTERNAL_ERROR', 'Fallo RF-04 controlado')
+      }
+
+      if (options.empty) {
+        return ok({
+          ordenes: [],
+          paginacion: {
+            limite: 8,
+            pagina: 1,
+            total: 0,
+            totalPaginas: 1,
+          },
+        })
+      }
+
+      return ok(workOrderList(decoratedOrder()))
+    }
+
+    if (path === '/ordenes-trabajo' && init?.method === 'POST') {
+      order = {
+        ...createWorkOrderDetail('PENDIENTE_ASIGNACION'),
+        codigo: 'OT-DIR-001',
+        descripcion: 'Orden correctiva directa creada desde frontend',
+        id: 'order-rf04-created',
+        novedad: null,
+        origen: 'CORRECTIVO_DIRECTO',
+      }
+
+      return ok({ orden: decoratedOrder() })
+    }
+
+    if (
+      path === '/ordenes-trabajo/order-rf04-1' ||
+      path === '/ordenes-trabajo/order-rf04-created'
+    ) {
+      return ok({ orden: decoratedOrder() })
+    }
+
+    if (path.endsWith('/asignar') && init?.method === 'POST') {
+      order = {
+        ...order,
+        estado: 'ASIGNADA',
+        fechaAsignacion: '2026-08-28T12:05:00.000Z',
+        tecnicoAsignado: workOrderMechanic,
+      }
+      appendHistory('PENDIENTE_ASIGNACION', 'ASIGNADA')
+
+      return ok({ orden: decoratedOrder() })
+    }
+
+    if (path.endsWith('/reasignar') && init?.method === 'POST') {
+      order = {
+        ...order,
+        reasignaciones: [
+          ...order.reasignaciones,
+          {
+            fechaReasignacion: '2026-08-28T12:08:00.000Z',
+            id: 'reassign-1',
+            motivo: 'Balance de carga',
+            reasignadoPor: workOrderAdmin,
+            tecnicoAnterior: workOrderMechanic,
+            tecnicoNuevo: workOrderMechanicAlt,
+          },
+        ],
+        tecnicoAsignado: workOrderMechanicAlt,
+      }
+
+      return ok({ orden: decoratedOrder() })
+    }
+
+    if (path.endsWith('/iniciar') && init?.method === 'POST') {
+      order = {
+        ...order,
+        estado: 'EN_EJECUCION',
+        fechaInicioEjecucion: '2026-08-28T12:10:00.000Z',
+        intervenciones: [
+          {
+            actividades: [],
+            diagnostico: null,
+            fechaFin: null,
+            fechaInicio: '2026-08-28T12:10:00.000Z',
+            id: 'intervention-1',
+            observaciones: null,
+            tecnico: workOrderMechanic,
+          },
+        ],
+      }
+      appendHistory('ASIGNADA', 'EN_EJECUCION')
+
+      return ok({ orden: decoratedOrder() })
+    }
+
+    if (path.endsWith('/reanudar') && init?.method === 'POST') {
+      order = {
+        ...order,
+        estado: 'EN_EJECUCION',
+        fechaCompletadaTecnico: null,
+        intervenciones: [
+          ...order.intervenciones,
+          {
+            actividades: [],
+            diagnostico: null,
+            fechaFin: null,
+            fechaInicio: '2026-08-28T12:45:00.000Z',
+            id: 'intervention-2',
+            observaciones: null,
+            tecnico: workOrderMechanic,
+          },
+        ],
+        motivoDevolucionActual: null,
+      }
+      appendHistory('DEVUELTA_CORRECCION', 'EN_EJECUCION')
+
+      return ok({ orden: decoratedOrder() })
+    }
+
+    if (path.endsWith('/intervencion') && init?.method === 'PATCH') {
+      const payload = JSON.parse(String(init.body ?? '{}')) as {
+        diagnostico?: string
+        observaciones?: string
+      }
+
+      order = {
+        ...order,
+        intervenciones: order.intervenciones.map((intervention) =>
+          intervention.fechaFin
+            ? intervention
+            : {
+                ...intervention,
+                diagnostico: payload.diagnostico ?? intervention.diagnostico,
+                observaciones: payload.observaciones ?? intervention.observaciones,
+              },
+        ),
+      }
+
+      return ok({ orden: decoratedOrder() })
+    }
+
+    if (path.endsWith('/actividades') && init?.method === 'POST') {
+      const payload = JSON.parse(String(init.body ?? '{}')) as { descripcion?: string }
+
+      order = {
+        ...order,
+        intervenciones: order.intervenciones.map((intervention) =>
+          intervention.fechaFin
+            ? intervention
+            : {
+                ...intervention,
+                actividades: [
+                  ...intervention.actividades,
+                  {
+                    descripcion: payload.descripcion ?? 'Actividad registrada',
+                    fechaRegistro: '2026-08-28T12:20:00.000Z',
+                    id: `activity-${intervention.actividades.length + 1}`,
+                    registradaPor: workOrderMechanic,
+                  },
+                ],
+              },
+        ),
+      }
+
+      return ok({ orden: decoratedOrder() })
+    }
+
+    if (path.endsWith('/repuestos-disponibles')) {
+      return ok({ repuestos: [workOrderPart] })
+    }
+
+    if (path.endsWith('/consumos') && init?.method === 'POST') {
+      order = {
+        ...order,
+        consumosRepuesto: [
+          ...order.consumosRepuesto,
+          {
+            cantidad: '1.00',
+            costoUnitario: '120000.00',
+            fechaConsumo: '2026-08-28T12:25:00.000Z',
+            id: 'consumption-1',
+            movimientoInventario: {
+              cantidad: '1.00',
+              costoUnitario: '120000.00',
+              fechaMovimiento: '2026-08-28T12:25:00.000Z',
+              id: 'movement-1',
+              motivo: 'Consumo asociado a orden OT-RF04-001',
+              tipo: 'CONSUMO',
+            },
+            repuesto: workOrderPart,
+            subtotal: '120000.00',
+          },
+        ],
+        costoTotal: '120000.00',
+      }
+
+      return ok({ consumo: order.consumosRepuesto[0], orden: decoratedOrder(), yaExistia: false })
+    }
+
+    if (path.endsWith('/completar') && init?.method === 'POST') {
+      order = {
+        ...order,
+        estado: 'COMPLETADA_TECNICO',
+        fechaCompletadaTecnico: '2026-08-28T12:40:00.000Z',
+        intervenciones: order.intervenciones.map((intervention) =>
+          intervention.fechaFin
+            ? intervention
+            : { ...intervention, fechaFin: '2026-08-28T12:40:00.000Z' },
+        ),
+      }
+      appendHistory('EN_EJECUCION', 'COMPLETADA_TECNICO')
+
+      return ok({ orden: decoratedOrder() })
+    }
+
+    if (path.endsWith('/devolver') && init?.method === 'POST') {
+      order = {
+        ...order,
+        estado: 'DEVUELTA_CORRECCION',
+        motivoDevolucionActual: 'Corregir evidencia tecnica',
+      }
+      appendHistory('COMPLETADA_TECNICO', 'DEVUELTA_CORRECCION')
+
+      return ok({ orden: decoratedOrder() })
+    }
+
+    if (path.endsWith('/cerrar') && init?.method === 'POST') {
+      order = {
+        ...order,
+        cerradaPor: workOrderAdmin,
+        estado: 'CERRADA',
+        fechaCierre: '2026-08-28T12:50:00.000Z',
+      }
+      appendHistory('COMPLETADA_TECNICO', 'CERRADA')
+
+      return ok({ orden: decoratedOrder() })
+    }
+
+    return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
+  }
+}
+
 function fleetHandler(role: RoleCode = 'ADMINISTRADOR') {
   return async (path: string, init?: RequestInit) => {
     if (path === '/auth/me') {
@@ -669,6 +1154,10 @@ function fleetHandler(role: RoleCode = 'ADMINISTRADOR') {
 
     if (path === '/mantenimiento-preventivo/resumen') {
       return ok(preventiveSummary())
+    }
+
+    if (path === '/ordenes-trabajo/resumen') {
+      return ok(workOrderSummary())
     }
 
     return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
@@ -765,6 +1254,10 @@ function preventiveHandler(
         ...preventiveSummary(),
         ordenesActivas: generated ? 1 : 0,
       })
+    }
+
+    if (path === '/ordenes-trabajo/resumen') {
+      return ok(workOrderSummary())
     }
 
     if (path === '/mantenimiento-preventivo/programaciones' && !init?.method) {
@@ -1468,5 +1961,193 @@ describe('RF-03 preventive maintenance frontend', () => {
     render(<App />)
 
     expect(await screen.findByText(/Acceso denegado/i)).toBeInTheDocument()
+  })
+})
+
+describe('RF-04 work order frontend', () => {
+  it('loads administrative summary, filters, manual creation, assignment and reassignment', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo')
+    const fetchMock = mockApi(workOrderHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect(
+      await screen.findByRole('heading', { name: /^Seguimiento de ordenes de trabajo$/i }),
+    ).toBeInTheDocument()
+    expect((await screen.findAllByText('OT-RF04-001')).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Pendiente de asignacion/i).length).toBeGreaterThan(0)
+
+    fireEvent.change(screen.getByPlaceholderText(/Buscar por codigo/i), {
+      target: { value: 'frenos' },
+    })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('busqueda=frenos'),
+        expect.any(Object),
+      )
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /^Pendiente de asignacion$/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('estado=PENDIENTE_ASIGNACION'),
+        expect.any(Object),
+      )
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /^Crear orden$/i }))
+    const createDialog = await screen.findByRole('dialog', { name: /Crear orden manual/i })
+
+    fireEvent.click(within(createDialog).getByRole('button', { name: /^Crear orden$/i }))
+    expect(await screen.findByText(/Seleccione un bus/i)).toBeInTheDocument()
+
+    fireEvent.change(within(createDialog).getByLabelText(/^Bus$/i), {
+      target: { value: 'bus-1' },
+    })
+    fireEvent.change(within(createDialog).getByLabelText(/^Prioridad$/i), {
+      target: { value: 'ALTA' },
+    })
+    fireEvent.change(within(createDialog).getByLabelText(/^Descripcion$/i), {
+      target: { value: 'Orden correctiva directa creada desde el formulario RF-04.' },
+    })
+    fireEvent.click(within(createDialog).getByRole('button', { name: /^Crear orden$/i }))
+
+    expect(await screen.findByText(/Orden de trabajo creada/i)).toBeInTheDocument()
+    expect((await screen.findAllByText('OT-DIR-001')).length).toBeGreaterThan(0)
+
+    const createCalls = fetchMock.mock.calls.filter(
+      ([input, init]) => String(input).endsWith('/ordenes-trabajo') && init?.method === 'POST',
+    )
+    expect(createCalls).toHaveLength(1)
+    expect(String(createCalls[0][1]?.body)).not.toContain('estado')
+    expect(String(createCalls[0][1]?.body)).not.toContain('novedadId')
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Asignar$/i }))
+    const assignDialog = await screen.findByRole('dialog', { name: /Asignar mecanico/i })
+    fireEvent.change(within(assignDialog).getByLabelText(/^Mecanico$/i), {
+      target: { value: 'user-mecanico' },
+    })
+    fireEvent.click(within(assignDialog).getByRole('button', { name: /^Asignar$/i }))
+
+    expect(await screen.findByText(/Orden asignada/i)).toBeInTheDocument()
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Reasignar$/i }))
+    const reassignDialog = await screen.findByRole('dialog', { name: /Reasignar mecanico/i })
+    fireEvent.click(within(reassignDialog).getByRole('button', { name: /^Reasignar$/i }))
+    expect(await screen.findByText(/El motivo de reasignacion es obligatorio/i)).toBeInTheDocument()
+    fireEvent.change(within(reassignDialog).getByLabelText(/^Mecanico$/i), {
+      target: { value: 'user-mecanico-alt' },
+    })
+    fireEvent.change(within(reassignDialog).getByLabelText(/Motivo de reasignacion/i), {
+      target: { value: 'Balance de carga' },
+    })
+    fireEvent.click(within(reassignDialog).getByRole('button', { name: /^Reasignar$/i }))
+
+    expect(await screen.findByText(/Orden reasignada/i)).toBeInTheDocument()
+    expect((await screen.findAllByText(/Mecanico Dos/i)).length).toBeGreaterThan(0)
+  })
+
+  it('lets the assigned mechanic execute, consume stock and complete technically', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo')
+    const fetchMock = mockApi(workOrderHandler('MECANICO', { initialStatus: 'ASIGNADA' }))
+
+    render(<App />)
+
+    expect((await screen.findAllByText('OT-RF04-001')).length).toBeGreaterThan(0)
+    fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
+    expect(await screen.findByText(/Ejecucion tecnica/i)).toBeInTheDocument()
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Iniciar$/i }))
+    expect(await screen.findByText(/Ejecucion iniciada/i)).toBeInTheDocument()
+
+    fireEvent.change(await screen.findByLabelText(/^Diagnostico$/i), {
+      target: { value: 'Diagnostico correctivo desde frontend.' },
+    })
+    fireEvent.change(screen.getByLabelText(/Observaciones tecnicas/i), {
+      target: { value: 'Observaciones tecnicas desde frontend.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Guardar tecnica/i }))
+    expect(await screen.findByText(/Intervencion actualizada/i)).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText(/Actividad realizada/i), {
+      target: { value: 'Revision y ajuste de frenos' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Registrar actividad/i }))
+    expect(await screen.findByText(/Actividad registrada/i)).toBeInTheDocument()
+
+    expect(await screen.findByText(/Pastilla de freno/i)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/^Repuesto$/i), { target: { value: 'rep-1' } })
+    fireEvent.change(screen.getByLabelText(/^Cantidad$/i), { target: { value: '1' } })
+    fireEvent.click(screen.getByRole('button', { name: /Registrar consumo/i }))
+    expect(await screen.findByText(/Consumo registrado/i)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Completar$/i }))
+    const completeDialog = await screen.findByRole('dialog', { name: /Completar orden/i })
+    fireEvent.click(within(completeDialog).getByRole('button', { name: /Confirmar completado/i }))
+    expect(await screen.findByText(/Orden completada tecnicamente/i)).toBeInTheDocument()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/ordenes-trabajo/order-rf04-1/iniciar'),
+      expect.objectContaining({ method: 'POST' }),
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/ordenes-trabajo/order-rf04-1/consumos'),
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
+  it('lets administrators return completed orders for correction', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo')
+    mockApi(workOrderHandler('ADMINISTRADOR', { initialStatus: 'COMPLETADA_TECNICO' }))
+
+    render(<App />)
+
+    fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
+    fireEvent.click(await screen.findByRole('button', { name: /^Devolver$/i }))
+    const returnDialog = await screen.findByRole('dialog', { name: /Devolver orden/i })
+
+    fireEvent.click(within(returnDialog).getByRole('button', { name: /^Devolver$/i }))
+    expect(await screen.findByText(/El motivo de devolucion es obligatorio/i)).toBeInTheDocument()
+    fireEvent.change(within(returnDialog).getByLabelText(/Motivo de devolucion/i), {
+      target: { value: 'Corregir evidencia tecnica' },
+    })
+    fireEvent.click(within(returnDialog).getByRole('button', { name: /^Devolver$/i }))
+
+    expect(await screen.findByText(/Orden devuelta para correccion/i)).toBeInTheDocument()
+    expect((await screen.findAllByText(/Devuelta a correccion/i)).length).toBeGreaterThan(0)
+  })
+
+  it('closes completed orders only after confirmation', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo')
+    mockApi(workOrderHandler('ADMINISTRADOR', { initialStatus: 'COMPLETADA_TECNICO' }))
+
+    render(<App />)
+
+    fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
+    fireEvent.click(await screen.findByRole('button', { name: /^Cerrar$/i }))
+    const closeDialog = await screen.findByRole('dialog', { name: /Cerrar orden/i })
+
+    fireEvent.click(within(closeDialog).getByRole('button', { name: /Cerrar orden/i }))
+    expect(await screen.findByText(/Confirme el cierre administrativo/i)).toBeInTheDocument()
+    fireEvent.click(within(closeDialog).getByRole('checkbox'))
+    fireEvent.change(within(closeDialog).getByLabelText(/Observacion de cierre/i), {
+      target: { value: 'Cierre validado' },
+    })
+    fireEvent.click(within(closeDialog).getByRole('button', { name: /Cerrar orden/i }))
+
+    expect(await screen.findByText(/Orden cerrada/i)).toBeInTheDocument()
+    expect((await screen.findAllByText(/^Cerrada$/i)).length).toBeGreaterThan(0)
+  })
+
+  it('denies drivers access to internal work-order tracking', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo')
+    mockApi(workOrderHandler('CONDUCTOR'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Acceso denegado/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Ejecucion tecnica/i)).not.toBeInTheDocument()
   })
 })

@@ -216,7 +216,7 @@ Conductor → reporta → Administrador → convierte → asigna → Mecánico �
 
 Administrador → programa → sistema detecta condicion con umbral 7 dias/500 km → genera orden sin duplicar activas → Mecanico → ejecuta → Administrador → cierra → actualiza proximo objetivo preventivo → historial.
 
-Cobertura RF-03 cerrada: hasta `genera orden sin duplicar activas`. La ejecucion por Mecanico, cierre y actualizacion de proximo objetivo se validaran al implementar RF-04.
+Cobertura RF-03 cerrada: hasta `genera orden sin duplicar activas`. RF-04 agrega ejecucion por Mecanico y cierre administrativo; la actualizacion automatica de proximo objetivo no se ejecuta porque el modelo fisico no contiene intervalos preventivos aprobados.
 
 ## E2E-03 — Repuesto
 
@@ -473,7 +473,54 @@ La verificacion visual confirmo `1440x900`, `1024x768` y `390x844` sin overflow 
 
 ---
 
-## 11. Neon y ejecucion secuencial de pruebas backend
+## 11. Evidencia de RF-04 - Seguimiento de ordenes de trabajo
+
+El 2026-08-28 se agregaron pruebas automatizadas para RF-04.
+
+Backend:
+
+- `src/backend/test/work-order.test.ts` cubre autenticacion obligatoria, Administrador autorizado, Mecanico limitado a sus ordenes, Conductor denegado, usuario inactivo denegado y alias heredados rechazados.
+- Cubre orden correctiva de RF-02 y preventiva de RF-03 disponibles en RF-04, con novedad/programacion, bus y objetivos preventivos conservados.
+- Cubre creacion manual correctiva, rechazo de campos protegidos y rechazo de preventiva manual no soportada por el modelo fisico.
+- Cubre resumen, listado, mis ordenes, busqueda, filtros por estado/tipo/origen/bus/mecanico, detalle, historial y DTO seguros.
+- Cubre asignacion, mecanico inexistente, usuario sin rol, usuario inactivo, estado invalido, reasignacion, mismo mecanico rechazado, motivo obligatorio, `orden_reasignaciones` y perdida inmediata de permisos del mecanico anterior.
+- Cubre inicio, intervencion, diagnostico, observaciones, actividad valida, actividad vacia rechazada, escritura fuera de ejecucion rechazada y correccion despues de devolucion sin borrar historial.
+- Cubre consumo con repuesto activo, inactivo, stock insuficiente, cantidad invalida, mecanico ajeno, descuento correcto, movimiento unico, relaciones, costo del servidor, subtotal decimal, costo total, rollback, concurrencia e idempotencia.
+- Cubre completado tecnico, precondiciones, escritura bloqueada despues de completar, devolucion, reanudacion, cierre administrativo, historial final, costo validado, orden cerrada terminal y preventiva sin crear programacion nueva.
+
+Frontend:
+
+- `src/frontend/src/App.test.tsx` cubre Administrador con resumen, listado, filtros, creacion manual, asignacion, reasignacion, devolucion y cierre con confirmacion.
+- Cubre Mecanico con listado propio, detalle, inicio, diagnostico, observaciones, actividades, disponibilidad, consumo y completado tecnico.
+- Cubre Conductor denegado y navegacion RF-02 intacta.
+
+Evidencia visual:
+
+- `docs/screenshots/rf04-admin-summary-1440x900.png`
+- `docs/screenshots/rf04-admin-list-filters-1024x768.png`
+- `docs/screenshots/rf04-admin-create-1440x900.png`
+- `docs/screenshots/rf04-admin-detail-pending-1440x900.png`
+- `docs/screenshots/rf04-admin-assign-1440x900.png`
+- `docs/screenshots/rf04-admin-reassign-1440x900.png`
+- `docs/screenshots/rf04-admin-completed-1440x900.png`
+- `docs/screenshots/rf04-admin-return-dialog-1440x900.png`
+- `docs/screenshots/rf04-admin-close-dialog-1440x900.png`
+- `docs/screenshots/rf04-admin-closed-1440x900.png`
+- `docs/screenshots/rf04-mechanic-list-1440x900.png`
+- `docs/screenshots/rf04-mechanic-detail-assigned-1440x900.png`
+- `docs/screenshots/rf04-mechanic-execution-1440x900.png`
+- `docs/screenshots/rf04-mechanic-technical-1440x900.png`
+- `docs/screenshots/rf04-mechanic-consumption-1440x900.png`
+- `docs/screenshots/rf04-mechanic-consumption-summary-1440x900.png`
+- `docs/screenshots/rf04-mechanic-completed-1440x900.png`
+- `docs/screenshots/rf04-mechanic-returned-1440x900.png`
+- `docs/screenshots/rf04-mechanic-mobile-390x844.png`
+
+La verificacion visual RF-04 confirma `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina, tablas adaptables, controles por rol/estado, dialogos accesibles y foco visible.
+
+---
+
+## 12. Neon y ejecucion secuencial de pruebas backend
 
 El script backend usa:
 
@@ -483,9 +530,11 @@ vitest --run --fileParallelism=false
 
 Ese cambio secuencia archivos o suites de Vitest para no saturar el pool de conexiones contra Neon. No convierte en secuenciales las solicitudes internas de una prueba especifica.
 
-Las pruebas de concurrencia RF-02 y RF-03 conservan solicitudes simultaneas mediante `Promise.all`. En RF-02 se valida que dos solicitudes simultaneas para convertir la misma novedad no generen dos ordenes, que solo una respuesta represente creacion nueva, que la base termine con una sola orden asociada, que exista un unico historial inicial valido y que no queden transacciones parciales. En RF-03 se valida el mismo principio para generar una orden preventiva desde una programacion.
+Las pruebas de concurrencia RF-02, RF-03 y RF-04 conservan solicitudes simultaneas mediante `Promise.all`. En RF-02 se valida que dos solicitudes simultaneas para convertir la misma novedad no generen dos ordenes, que solo una respuesta represente creacion nueva, que la base termine con una sola orden asociada, que exista un unico historial inicial valido y que no queden transacciones parciales. En RF-03 se valida el mismo principio para generar una orden preventiva desde una programacion. En RF-04 se valida consumo con stock limitado, asignacion incompatible, completado/cierre simultaneo y doble cierre.
 
 `P1001` debe tratarse como limitacion de conexion con Neon o su pooler cuando no se puede establecer comunicacion. No representa por si solo una prueba funcional fallida.
+
+Durante la validacion temporal de RF-04 se registro un primer intento con `P1002` al adquirir el advisory lock de Prisma para migraciones. Se repitio en el schema temporal `rf04_final_20260828_1710` con `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1`, sin ejecutar migraciones simultaneas sobre el mismo schema; las 6 migraciones aplicaron desde cero, el seed corrio dos veces, RF-04 backend paso `11/11` y el schema fue eliminado al finalizar.
 
 `P1002` indica tiempo de espera agotado. Si el mensaje menciona advisory lock, el contexto especifico es bloqueo/espera de migracion; no todos los `P1002` significan la misma causa.
 

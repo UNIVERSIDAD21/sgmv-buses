@@ -1,6 +1,6 @@
 # Project Status
 
-**Última consolidación documental:** 2026-08-27
+**Última consolidación documental:** 2026-08-28
 
 ## Fase académica
 
@@ -48,7 +48,7 @@
 
 ## Estado de handoff
 
-**FASE 3 AUTORIZADA. BOOTSTRAP TÉCNICO, PERSISTENCIA, AUDITORÍA DE BASE DE DATOS, INTERFAZ OFICIAL, AUTENTICACIÓN TRANSVERSAL, RF-01 GESTIÓN DE LA FLOTA VEHICULAR, RF-02 CONTROL DE NOVEDADES OPERATIVAS, NORMALIZACIÓN TRANSVERSAL DE ROLES Y RF-03 ADMINISTRACIÓN DEL MANTENIMIENTO PREVENTIVO COMPLETADOS. RF-04 A RF-06 AÚN NO IMPLEMENTADOS.**
+**FASE 3 AUTORIZADA. BOOTSTRAP TÉCNICO, PERSISTENCIA, AUDITORÍA DE BASE DE DATOS, INTERFAZ OFICIAL, AUTENTICACIÓN TRANSVERSAL, RF-01 GESTIÓN DE LA FLOTA VEHICULAR, RF-02 CONTROL DE NOVEDADES OPERATIVAS, NORMALIZACIÓN TRANSVERSAL DE ROLES, RF-03 ADMINISTRACIÓN DEL MANTENIMIENTO PREVENTIVO Y RF-04 SEGUIMIENTO DE ÓRDENES DE TRABAJO COMPLETADOS. RF-05 Y RF-06 AÚN NO IMPLEMENTADOS.**
 
 Las decisiones técnicas aprobadas con ajustes finales quedaron registradas en `DECISIONS.md` y consolidadas en la documentación de soporte.
 
@@ -69,6 +69,7 @@ Resumen:
 - Autenticación real implementada con email/contraseña, bcrypt, JWT en cookie `HttpOnly`, rutas `/auth/login`, `/auth/me` y `/auth/logout`.
 - Interfaz visual seleccionada integrada como estructura oficial: login, menú lateral colapsable, encabezado contextual, paneles por rol, vista base de flota, formulario visual de buses y estados pendientes.
 - Roles canónicos normalizados transversalmente a `ADMINISTRADOR`, `CONDUCTOR` y `MECANICO`; las etiquetas visibles son Administrador, Conductor y Mecánico.
+- RF-04 implementado con endpoints reales en `/ordenes-trabajo`, maquina de estados centralizada, asignacion/reasignacion, intervenciones, actividades, consumos transaccionales, completado tecnico, devolucion y cierre administrativo.
 
 ### Estado de inicio
 
@@ -76,7 +77,7 @@ OpenClaw recibió la orden explícita `INICIAR FASE 3`.
 
 El primer bloque permitido ya fue ejecutado: bootstrap técnico del repositorio.
 
-La revisión documental de Persistencia fue autorizada, actualizada, implementada y auditada tras aprobación explícita del propietario. La interfaz oficial y la autenticación transversal también fueron autorizadas e implementadas. El propietario autorizo RF-01 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-02 el 2026-08-27 y quedo implementado end-to-end. La normalización transversal de roles canónicos quedo completada después de RF-02 y antes de RF-03. El propietario autorizo RF-03 el 2026-08-27 y quedo implementado end-to-end. OpenClaw debe detenerse antes de implementar RF-04, RF-05 o RF-06 hasta nueva autorización del propietario.
+La revisión documental de Persistencia fue autorizada, actualizada, implementada y auditada tras aprobación explícita del propietario. La interfaz oficial y la autenticación transversal también fueron autorizadas e implementadas. El propietario autorizo RF-01 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-02 el 2026-08-27 y quedo implementado end-to-end. La normalización transversal de roles canónicos quedo completada después de RF-02 y antes de RF-03. El propietario autorizo RF-03 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-04 el 2026-08-28 y quedo implementado end-to-end. OpenClaw debe detenerse antes de implementar RF-05 o RF-06 hasta nueva autorización del propietario.
 
 ---
 
@@ -106,7 +107,7 @@ Las decisiones adoptadas están registradas en `DECISIONS.md`.
 - Mantener la relación de repuestos como `OrdenTrabajo -> ConsumoRepuesto -> Repuesto`.
 - Configurar correctamente despliegue Vercel/Render/Neon, CORS, cookies y CSRF.
 - Mantener la autenticación como capacidad transversal; no crear RF-07 ni gestión de usuarios como módulo principal.
-- No mostrar datos simulados como si provinieran de Neon. Los RF pendientes deben mostrar estados vacíos o "Módulo pendiente de implementación".
+- No mostrar datos simulados como si provinieran de Neon. RF-05 y RF-06 deben mostrar estados vacíos o "Módulo pendiente de implementación" mientras no existan endpoints reales.
 
 Si aparece una contradicción con un artefacto posterior, detener, documentar impacto y consultar al propietario antes de implementar.
 
@@ -240,7 +241,7 @@ Alcance implementado:
 Limites conservados:
 
 - RF-03 no asigna mecanico, no inicia ejecucion, no registra diagnostico, no consume repuestos y no cierra ordenes.
-- La actualizacion del siguiente objetivo al cerrar una orden preventiva queda pendiente para RF-04, porque el cierre de orden no pertenece a RF-03.
+- RF-04 cierra ordenes preventivas, pero no recalcula el siguiente objetivo porque el modelo fisico no contiene intervalos preventivos aprobados.
 
 Validacion ejecutada durante el bloque RF-03:
 
@@ -248,7 +249,50 @@ Validacion ejecutada durante el bloque RF-03:
 - Frontend RF-03: ruta protegida, administrador autorizado, Conductor y Mecanico denegados, resumen real, listado, busqueda/filtros/paginacion, formularios por fecha/kilometraje/combinado, validaciones, doble envio, detalle, badges, reprogramacion, generacion de orden, estados vacio/error y controles por rol.
 - Playwright visual en `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina, con dialogos accesibles y foco alcanzable por teclado.
 
-RF-04, RF-05 y RF-06 no fueron iniciados.
+RF-04 fue implementado en el bloque siguiente. RF-05 y RF-06 no fueron iniciados.
+
+---
+
+## Validacion de RF-04
+
+RF-04 queda cubierto por:
+
+- Backend `src/backend/src/work-orders/*`: schemas Zod, DTOs, maquina de estados, repositorio, servicio, controlador y rutas.
+- Frontend `src/frontend/src/features/ordenes-trabajo/*`: cliente API, tipos, resumen, listados por rol, detalle, formularios de ejecucion y dialogos administrativos.
+- Panel administrador con indicadores reales desde `/ordenes-trabajo/resumen`.
+- Panel mecanico con indicadores reales desde `/ordenes-trabajo/resumen`.
+- Documentacion dedicada en `docs/RF04_ORDENES_TRABAJO.md`.
+- Evidencias visuales `docs/screenshots/rf04-*.png`.
+
+Alcance implementado:
+
+- Resumen, listado administrativo, mis ordenes de Mecanico, detalle, historial y reasignaciones.
+- Creacion manual de orden correctiva directa con origen `CORRECTIVO_DIRECTO`.
+- Recepcion de ordenes correctivas desde RF-02 y preventivas desde RF-03.
+- Asignacion inicial y reasignacion con motivo, trazabilidad y perdida inmediata de permisos del Mecanico anterior.
+- Inicio, reanudacion, diagnostico, observaciones, actividades y completado tecnico.
+- Consulta minima de repuestos activos y consumo transaccional con movimiento `CONSUMO`, descuento de stock, costo del servidor e idempotencia.
+- Devolucion para correccion y cierre administrativo.
+- Orden `CERRADA` terminal.
+
+Limites conservados:
+
+- RF-04 no administra catalogo, compras, proveedores, entradas ni ajustes de inventario.
+- RF-04 no genera informes consolidados ni exportaciones.
+- La preventiva manual no se implementa por ausencia de origen fisico `MANUAL` e intervalos preventivos independientes.
+- El cierre preventivo conserva objetivos copiados y no recalcula proxima fecha o kilometraje porque no existen campos fisicos de intervalo aprobados.
+
+Validacion ejecutada durante el bloque RF-04:
+
+- Backend RF-04 aislado: 11 pruebas aprobadas.
+- Frontend RF-04 aislado: 5 pruebas aprobadas.
+- Backend completo: 69 pruebas aprobadas.
+- Frontend completo: 34 pruebas aprobadas.
+- Typecheck y lint de frontend/backend correctos.
+- Pruebas de concurrencia cubren asignacion incompatible, consumo con stock limitado, completado/cierre simultaneo y doble cierre.
+- Neon temporal `rf04_final_20260828_1710`: migraciones desde cero, seed dos veces, RF-04 backend `11/11` y schema eliminado. Un primer intento tuvo `P1002` de advisory lock de Prisma y se repitio con lock deshabilitado sin migraciones simultaneas.
+
+RF-05 y RF-06 no fueron iniciados.
 
 ---
 

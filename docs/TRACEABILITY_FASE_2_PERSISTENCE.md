@@ -27,10 +27,10 @@ Autenticación, autorización, cierre de sesión, gestión mínima de cuentas y 
 | Administrador | RF-01 — Gestión de la flota vehicular | Registra, consulta y actualiza buses; gestiona asignación conductor-bus. | Usuario, Rol, Bus, AsignacionConductor | LecturaKilometraje; BusEstadoHistorial si se audita estado del bus |
 | Administrador | RF-02 — Control de novedades operativas | Revisa, clasifica, resuelve/descarta o convierte novedades en orden. | Usuario, Rol, Bus, Novedad, OrdenTrabajo | OrdenEstadoHistorial cuando la conversión crea/cambia estado de orden |
 | Administrador | RF-03 — Administración del mantenimiento preventivo | Crea y gestiona programaciones; genera órdenes preventivas sin duplicar activas. | Usuario, Rol, Bus, ProgramacionMantenimiento, OrdenTrabajo | LecturaKilometraje; OrdenEstadoHistorial |
-| Administrador | RF-04 — Seguimiento de órdenes de trabajo | Crea/asigna/supervisa, reasigna técnico, valida y cierra órdenes. | Usuario, Rol, Bus, Novedad, ProgramacionMantenimiento, OrdenTrabajo, Intervencion, ActividadOrden | OrdenEstadoHistorial; OrdenReasignacion |
+| Administrador | RF-04 — Seguimiento de órdenes de trabajo | Crea/asigna/supervisa, reasigna tecnico, valida y cierra ordenes. | Usuario, Rol, Bus, Novedad, ProgramacionMantenimiento, OrdenTrabajo, Intervencion, ActividadOrden, ConsumoRepuesto, Repuesto, MovimientoInventario | OrdenEstadoHistorial; OrdenReasignacion |
 | Administrador | RF-05 — Central de Repuestos | Administra catálogo, existencias, entradas, ajustes y movimientos. | Usuario, Rol, Repuesto, MovimientoInventario, ConsumoRepuesto, OrdenTrabajo | Ninguna adicional obligatoria; MovimientoInventario conserva responsable y fecha |
 | Administrador | RF-06 — Consulta de historial y generación de informes | Consulta historial completo permitido, costos básicos trazables e informes filtrables. | Bus, AsignacionConductor, Novedad, ProgramacionMantenimiento, OrdenTrabajo, Intervencion, ActividadOrden, Repuesto, ConsumoRepuesto, MovimientoInventario, Informe como servicio | LecturaKilometraje; OrdenEstadoHistorial; OrdenReasignacion; BusEstadoHistorial si existe |
-| Mecánico | RF-04 — Seguimiento de órdenes de trabajo | Consulta órdenes asignadas, antecedentes técnicos, registra diagnóstico, actividades, observaciones, consumos y marca completado técnico. | Usuario, Rol, Bus, OrdenTrabajo, Intervencion, ActividadOrden, ConsumoRepuesto, Repuesto | OrdenEstadoHistorial |
+| Mecánico | RF-04 — Seguimiento de órdenes de trabajo | Consulta ordenes asignadas, antecedentes tecnicos, registra diagnostico, actividades, observaciones, consumos y marca completado tecnico. | Usuario, Rol, Bus, OrdenTrabajo, Intervencion, ActividadOrden, ConsumoRepuesto, Repuesto, MovimientoInventario | OrdenEstadoHistorial |
 | Mecánico | RF-05 — Central de Repuestos | Consulta existencias y registra consumos autorizados asociados a orden. | Usuario, Rol, OrdenTrabajo, ConsumoRepuesto, Repuesto, MovimientoInventario | Ninguna adicional obligatoria; el consumo genera MovimientoInventario |
 | Mecánico | RF-06 — Consulta de historial y generación de informes | Consulta historial técnico necesario para ejecutar su trabajo. | Bus, OrdenTrabajo, Intervencion, ActividadOrden, ConsumoRepuesto, Repuesto, Informe como servicio | OrdenEstadoHistorial; OrdenReasignacion cuando aporte contexto |
 | Conductor | RF-01 — Gestión de la flota vehicular | Consulta únicamente su bus asignado. | Usuario, Rol, Bus, AsignacionConductor, ProgramacionMantenimiento | LecturaKilometraje cuando aporte próximo mantenimiento permitido |
@@ -56,7 +56,7 @@ Autenticación, autorización, cierre de sesión, gestión mínima de cuentas y 
 | RF-01 — Gestión de la flota vehicular | `Bus`, `AsignacionConductor`, `Usuario`, `Rol` | `buses`, `asignaciones_conductor`, `usuarios`, `roles` | `lecturas_kilometraje`, `bus_estado_historial` |
 | RF-02 — Control de novedades operativas | `Novedad`, `Usuario`, `Bus`, `OrdenTrabajo` | `novedades`, `usuarios`, `buses`, `ordenes_trabajo` | `orden_estado_historial` |
 | RF-03 — Administración del mantenimiento preventivo | `ProgramacionMantenimiento`, `OrdenTrabajo`, `Bus` | `programaciones_mantenimiento`, `ordenes_trabajo`, `buses` | `lecturas_kilometraje`, `orden_estado_historial` |
-| RF-04 — Seguimiento de órdenes de trabajo | `OrdenTrabajo`, `Intervencion`, `ActividadOrden`, `Usuario` | `ordenes_trabajo`, `intervenciones`, `actividades_orden`, `usuarios` | `orden_estado_historial`, `orden_reasignaciones` |
+| RF-04 — Seguimiento de órdenes de trabajo | `OrdenTrabajo`, `Intervencion`, `ActividadOrden`, `ConsumoRepuesto`, `Repuesto`, `MovimientoInventario`, `Usuario` | `ordenes_trabajo`, `intervenciones`, `actividades_orden`, `consumos_repuesto`, `repuestos`, `movimientos_inventario`, `usuarios` | `orden_estado_historial`, `orden_reasignaciones`, `clave_idempotencia` de consumo |
 | RF-05 — Central de Repuestos | `Repuesto`, `ConsumoRepuesto`, `MovimientoInventario`, `OrdenTrabajo`, `Usuario` | `repuestos`, `consumos_repuesto`, `movimientos_inventario`, `ordenes_trabajo`, `usuarios` | Reglas transaccionales de consumo y stock en servicios |
 | RF-06 — Consulta de historial y generación de informes | `Informe` como servicio y clases consultadas | No existe tabla `Informe`; consulta tablas de flota, novedades, preventivos, ordenes, actividades, consumos, repuestos y movimientos | Vistas/DTO/servicios futuros sin modificar datos historicos |
 
@@ -96,4 +96,16 @@ RF-03 fue implementado en el bloque siguiente. RF-04 solo recibe ordenes origina
 |---|---|---|---|
 | RF-03 - Administracion del mantenimiento preventivo | `GET /mantenimiento-preventivo/resumen`, `GET/POST /mantenimiento-preventivo/programaciones`, `GET/PATCH /mantenimiento-preventivo/programaciones/:programacionId`, `POST /mantenimiento-preventivo/programaciones/:programacionId/generar-orden`, clasificacion centralizada y transaccion de orden preventiva | Panel administrador, resumen, listado, filtros, paginacion, formularios por fecha/kilometraje/combinado, detalle, reprogramacion y confirmacion de generacion de orden | Backend `preventive.test.ts`; frontend `App.test.tsx`; capturas `docs/screenshots/rf03-*` |
 
-RF-04, RF-05 y RF-06 no fueron iniciados. RF-04 recibira ordenes preventivas en estado `PENDIENTE_ASIGNACION`, sin Mecanico asignado ni ejecucion tecnica desde RF-03.
+RF-04 fue implementado en el bloque siguiente. RF-05 y RF-06 no fueron iniciados.
+
+---
+
+## Implementacion RF-04 cerrada
+
+**Fecha:** 2026-08-28
+
+| RF | API/servicio implementado | Frontend implementado | Pruebas |
+|---|---|---|---|
+| RF-04 - Seguimiento de ordenes de trabajo | `/ordenes-trabajo`, resumen, listados, detalle, historial, reasignaciones, asignacion, reasignacion, inicio, reanudacion, intervencion, actividades, repuestos disponibles, consumos, completado, devolucion y cierre | Vista administrador, vista mecanico, filtros, formularios, detalle, dialogos de asignacion/reasignacion/devolucion/cierre, paneles por rol y conductor denegado | Backend `work-order.test.ts`; frontend `App.test.tsx`; capturas `docs/screenshots/rf04-*` |
+
+RF-05 y RF-06 no fueron iniciados. RF-04 usa repuestos solo para consumo transaccional durante una orden en ejecucion; no administra catalogo ni genera informes consolidados.

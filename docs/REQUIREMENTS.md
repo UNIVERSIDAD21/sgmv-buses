@@ -130,56 +130,57 @@ El sistema permitirá al Administrador programar mantenimiento preventivo por fe
 
 ### Requerimiento
 
-El sistema permitirá gestionar órdenes de trabajo preventivas y correctivas. El Administrador podrá crearlas, asignarlas y supervisarlas; el Mecánico podrá atender sus órdenes, consultar antecedentes y registrar la intervención; el Administrador realizará la validación/cierre final.
+El sistema permite gestionar ordenes de trabajo preventivas y correctivas desde su recepcion o creacion autorizada hasta su cierre administrativo, conservando trazabilidad de estados, asignaciones, intervenciones, actividades, consumos, stock y costo basico.
+
+### Estado implementado
+
+Contrato real documentado en `docs/RF04_ORDENES_TRABAJO.md`.
 
 ### Actores
 
 - Administrador
-- Mecánico
+- Mecanico
 - Sistema
 
-### Orígenes admitidos
+Conductor no participa en RF-04 interno y recibe acceso denegado.
 
-Como mínimo:
+### Origenes admitidos
 
-- PREVENTIVO
-- CORRECTIVO_DIRECTO
-- NOVEDAD
+- `PREVENTIVO`: generado desde RF-03 con programacion y bus conservados.
+- `NOVEDAD`: generado desde RF-02 con novedad y bus conservados.
+- `CORRECTIVO_DIRECTO`: orden correctiva manual creada por Administrador en RF-04.
+
+No existe origen fisico `MANUAL`. La orden preventiva manual no se implementa porque no hay campos de intervalo preventivo aprobados fuera de `programaciones_mantenimiento`.
 
 ### Funciones del Administrador
 
+- Consultar resumen, listado, detalle, historial y reasignaciones.
 - Crear orden correctiva directa.
-- Generar/aceptar orden procedente de preventivo.
-- Convertir novedad en orden.
-- Asignar técnico.
-- Consultar seguimiento.
-- Validar información técnica.
-- Cerrar orden.
+- Asignar mecanico.
+- Reasignar mecanico con motivo y trazabilidad.
+- Consultar informacion tecnica, consumos y costo basico.
+- Devolver una orden completada para correccion.
+- Cerrar administrativamente con confirmacion.
 
-### Funciones del Mecánico
+### Funciones del Mecanico
 
-- Consultar órdenes asignadas.
-- Consultar historial/antecedentes técnicos permitidos.
-- Iniciar trabajo.
-- Registrar diagnóstico.
-- Registrar actividades.
-- Registrar observaciones.
-- Registrar repuestos consumidos.
-- Marcar ejecución como completada.
+- Consultar solo ordenes asignadas vigentes.
+- Iniciar y reanudar ordenes propias.
+- Registrar diagnostico, observaciones y actividades.
+- Consultar repuestos activos y existencia disponible.
+- Registrar consumos con descuento transaccional.
+- Marcar completado tecnico.
 
-### Criterios de aceptación
+### Criterios de aceptacion
 
-- Toda orden identifica bus, tipo/origen, estado y responsable técnico cuando esté asignado.
-- Una orden solo puede avanzar mediante transiciones válidas.
-- El mecánico no puede cerrar administrativamente una orden si esa facultad corresponde al administrador.
-- El cierre exige la información técnica mínima definida.
-- El cierre conserva responsable y fecha.
-- Al cerrarse, la información queda disponible para el historial.
-- Si la orden proviene de novedad o programación preventiva, la relación de origen se conserva.
-
-### Nota importante
-
-Los nombres exactos del enum de estados deben documentarse como decisión técnica antes de consolidar migraciones. Si no han sido aprobados aún, OpenClaw debe proponerlos y registrarlos en `docs/DECISIONS.md`, sin alterar la separación "ejecución técnica" vs. "cierre administrativo".
+- Toda orden identifica bus, tipo, origen, estado, creador y tecnico cuando el estado lo exige.
+- La maquina valida `PENDIENTE_ASIGNACION -> ASIGNADA -> EN_EJECUCION -> COMPLETADA_TECNICO -> CERRADA` y el ciclo `COMPLETADA_TECNICO -> DEVUELTA_CORRECCION -> EN_EJECUCION`.
+- Toda transicion real crea historial de estado.
+- Las reasignaciones conservan tecnico anterior, tecnico nuevo, Administrador, motivo y fecha.
+- El consumo genera exactamente un movimiento `CONSUMO`, descuenta stock en la misma transaccion y usa costo del servidor.
+- `CERRADA` es terminal.
+- RF-05 no se inicia: no hay compras, entradas, ajustes ni catalogo completo.
+- RF-06 no se inicia: no hay informes consolidados ni exportaciones.
 
 ---
 

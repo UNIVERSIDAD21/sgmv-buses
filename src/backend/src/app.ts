@@ -9,6 +9,7 @@ import { fleetRoutes } from './fleet/fleet.routes.js'
 import { noveltyRoutes } from './novelties/novelty.routes.js'
 import { preventiveRoutes } from './preventive/preventive.routes.js'
 import { errorHandler, notFoundHandler } from './shared/http.js'
+import { workOrderRoutes } from './work-orders/work-order.routes.js'
 
 export function createApp(configureRoutes?: (app: Express) => void) {
   const app = express()
@@ -36,6 +37,7 @@ export function createApp(configureRoutes?: (app: Express) => void) {
   app.use('/flota', fleetRoutes)
   app.use('/novedades', noveltyRoutes)
   app.use('/mantenimiento-preventivo', preventiveRoutes)
+  app.use('/ordenes-trabajo', workOrderRoutes)
   configureRoutes?.(app)
   app.use(notFoundHandler)
   app.use(errorHandler)

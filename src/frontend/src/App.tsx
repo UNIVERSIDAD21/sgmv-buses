@@ -11,6 +11,7 @@ import BusFormPage from './features/flota/BusFormPage'
 import FleetPage from './features/flota/FleetPage'
 import PendingModulePage from './features/modules/PendingModulePage'
 import NoveltyPage from './features/novedades/NoveltyPage'
+import WorkOrderPage from './features/ordenes-trabajo/WorkOrderPage'
 import PreventivePage from './features/preventivo/PreventivePage'
 
 function ShellRoute() {
@@ -79,7 +80,7 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR', 'MECANICO']}>
-              <PendingModulePage moduleId="ordenes-trabajo" />
+              <WorkOrderPage />
             </ProtectedRoute>
           }
           path="/ordenes-trabajo"

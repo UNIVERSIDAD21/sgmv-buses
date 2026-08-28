@@ -4,7 +4,7 @@ Prototipo web académico para centralizar y estandarizar la gestión del manteni
 
 ## Estado
 
-La documentación de transferencia a desarrollo está preparada. OpenClaw participa únicamente en la **Fase 3: desarrollo, integración y validación**. El bootstrap tecnico, Persistencia, autenticacion transversal, RF-01, RF-02, la normalizacion canonica de roles y RF-03 ya estan implementados, auditados y documentados. RF-04 a RF-06 siguen pendientes de autorizacion por bloque.
+La documentación de transferencia a desarrollo está preparada. OpenClaw participa únicamente en la **Fase 3: desarrollo, integración y validación**. El bootstrap tecnico, Persistencia, autenticacion transversal, RF-01, RF-02, la normalizacion canonica de roles, RF-03 y RF-04 ya estan implementados, auditados y documentados. RF-05 y RF-06 siguen pendientes de autorizacion por bloque.
 
 Ver `docs/PROJECT_STATUS.md` antes de iniciar cualquier implementación.
 
@@ -19,6 +19,10 @@ El Control de novedades operativas esta implementado de extremo a extremo. Ver `
 ## RF-03 implementado
 
 La Administracion del mantenimiento preventivo esta implementada de extremo a extremo para Administrador. Ver `docs/RF03_MANTENIMIENTO_PREVENTIVO.md` para endpoints, reglas de clasificacion, generacion de orden preventiva, pruebas y evidencias visuales.
+
+## RF-04 implementado
+
+El Seguimiento de ordenes de trabajo esta implementado de extremo a extremo para Administrador y Mecanico, con Conductor denegado. Ver `docs/RF04_ORDENES_TRABAJO.md` para endpoints, maquina de estados, transacciones, consumos, pruebas y evidencias visuales.
 
 ## Stack
 
@@ -57,6 +61,7 @@ Documentos principales:
 - `docs/RF01_FLEET.md` - endpoints, reglas y evidencias de RF-01.
 - `docs/RF02_NOVEDADES.md` - endpoints, reglas y evidencias de RF-02.
 - `docs/RF03_MANTENIMIENTO_PREVENTIVO.md` - endpoints, reglas y evidencias de RF-03.
+- `docs/RF04_ORDENES_TRABAJO.md` - endpoints, reglas y evidencias de RF-04.
 - `docs/DATA_DICTIONARY.md` — diccionario de datos de las 16 tablas.
 - `docs/ARCHITECTURE.md` — arquitectura y límites técnicos.
 - `docs/TASKS.md` — plan vivo de Fase 3.

@@ -116,7 +116,7 @@ Estas reglas requieren contexto de sesion, rol, flujo o varias consultas. Quedan
 - Validar que el conductor solo registre novedades de su bus activo y consulte solo su resumen autorizado.
 - Calcular estados preventivos `VIGENTE`, `PROXIMO` y `VENCIDO` con umbral de 7 dias y 500 km, sin persistirlos como verdad durable.
 - Ejecutar la generacion de orden preventiva y su historial inicial en una transaccion.
-- Actualizar el siguiente objetivo al cerrar una orden preventiva queda para RF-04, porque RF-03 no ejecuta ni cierra ordenes.
+- RF-04 cierra ordenes preventivas y conserva objetivos copiados. La actualizacion automatica del siguiente objetivo no se ejecuta mientras no existan campos fisicos de intervalo preventivo aprobados.
 - Validar transiciones completas de la maquina de estados, incluyendo que no se cierre desde `ASIGNADA` ni `EN_EJECUCION`.
 - Exigir al menos una `ActividadOrden` antes de `COMPLETADA_TECNICO`.
 - Exigir diagnostico en ordenes correctivas.
@@ -133,7 +133,7 @@ Estas reglas requieren contexto de sesion, rol, flujo o varias consultas. Quedan
 | RF-01 — Gestión de la flota vehicular | `Bus`, `AsignacionConductor`, `Usuario` | `buses`, `asignaciones_conductor`, `usuarios`, `roles` | `lecturas_kilometraje`, `bus_estado_historial` |
 | RF-02 — Control de novedades operativas | `Novedad`, `Usuario`, `Bus`, `OrdenTrabajo` | `novedades`, `usuarios`, `buses`, `ordenes_trabajo` | `orden_estado_historial` cuando se convierte a orden |
 | RF-03 — Administración del mantenimiento preventivo | `ProgramacionMantenimiento`, `OrdenTrabajo`, `Bus` | `programaciones_mantenimiento`, `ordenes_trabajo`, `buses` | `lecturas_kilometraje`, `orden_estado_historial` |
-| RF-04 — Seguimiento de órdenes de trabajo | `OrdenTrabajo`, `Intervencion`, `ActividadOrden`, `Usuario` | `ordenes_trabajo`, `intervenciones`, `actividades_orden`, `usuarios` | `orden_estado_historial`, `orden_reasignaciones` |
+| RF-04 — Seguimiento de órdenes de trabajo | `OrdenTrabajo`, `Intervencion`, `ActividadOrden`, `ConsumoRepuesto`, `Repuesto`, `MovimientoInventario`, `Usuario` | `ordenes_trabajo`, `intervenciones`, `actividades_orden`, `consumos_repuesto`, `repuestos`, `movimientos_inventario`, `usuarios` | `orden_estado_historial`, `orden_reasignaciones`, `clave_idempotencia` para doble envio de consumo |
 | RF-05 — Central de Repuestos | `Repuesto`, `ConsumoRepuesto`, `MovimientoInventario`, `OrdenTrabajo`, `Usuario` | `repuestos`, `consumos_repuesto`, `movimientos_inventario`, `ordenes_trabajo`, `usuarios` | `orden_estado_historial` si el consumo acompaña cambios de orden |
 | RF-06 — Consulta de historial y generación de informes | `Informe` como servicio, mas clases consultadas | Consulta `buses`, `novedades`, `programaciones_mantenimiento`, `ordenes_trabajo`, `intervenciones`, `actividades_orden`, `consumos_repuesto`, `repuestos`, `movimientos_inventario` | `lecturas_kilometraje`, `bus_estado_historial`, `orden_estado_historial`, `orden_reasignaciones` |
 
