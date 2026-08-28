@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { authenticate, authorizeRoles } from '../src/auth/auth.middleware.js'
 import { createApp } from '../src/app.js'
-import { env } from '../src/config/env.js'
+import { env, parseBooleanEnv } from '../src/config/env.js'
 
 const prisma = new PrismaClient()
 const describeDb = process.env.DATABASE_URL ? describe : describe.skip
@@ -131,6 +131,15 @@ function createExpiredToken(
 ) {
   return createTokenWithRole(userId, email, rol, -60)
 }
+
+describe('Environment parsing', () => {
+  it('parses string boolean flags explicitly', () => {
+    expect(parseBooleanEnv('false')).toBe(false)
+    expect(parseBooleanEnv('0')).toBe(false)
+    expect(parseBooleanEnv('true')).toBe(true)
+    expect(parseBooleanEnv('1')).toBe(true)
+  })
+})
 
 describeDb('Auth API', () => {
   let fixture: AuthFixture

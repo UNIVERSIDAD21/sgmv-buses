@@ -84,6 +84,7 @@ Este archivo es el tablero operativo del agente.
 - [x] Contraseñas con hash seguro.
 - [x] JWT en cookie `HttpOnly`.
 - [x] `Secure=true` en producción y `SameSite` según entorno.
+- [x] Interpretar correctamente `COOKIE_SECURE=false` para sesiones locales HTTP.
 - [x] Validación de `Origin` como protección equivalente para escrituras de autenticación.
 - [x] Límite de intentos de inicio de sesión.
 - [x] Expiración definida del JWT.

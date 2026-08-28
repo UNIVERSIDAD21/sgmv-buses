@@ -9,6 +9,26 @@ const repoRoot = resolve(currentDir, '../../../..')
 
 config({ path: resolve(repoRoot, '.env') })
 
+export function parseBooleanEnv(value: unknown) {
+  if (typeof value !== 'string') {
+    return value
+  }
+
+  const normalized = value.trim().toLowerCase()
+
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+    return true
+  }
+
+  if (['0', 'false', 'no', 'off'].includes(normalized)) {
+    return false
+  }
+
+  return value
+}
+
+const booleanEnv = z.preprocess(parseBooleanEnv, z.boolean())
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
@@ -17,7 +37,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32).optional(),
   JWT_EXPIRES_IN: z.string().default('1h'),
   COOKIE_NAME: z.string().default('sgmv_session'),
-  COOKIE_SECURE: z.coerce.boolean().default(false),
+  COOKIE_SECURE: booleanEnv.default(false),
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   CSRF_SECRET: z.string().min(32).optional(),
   LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
