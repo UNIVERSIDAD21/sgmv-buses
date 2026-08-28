@@ -586,7 +586,7 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 
 **Orden preventiva:** solo una programacion `PROXIMO` o `VENCIDO` puede generar orden. La orden se crea con `tipo=PREVENTIVA`, `origen=PREVENTIVO`, `estado=PENDIENTE_ASIGNACION`, mismo bus, sin Mecanico asignado y con historial inicial en la misma transaccion. Una programacion `VIGENTE` se rechaza.
 
-**Concurrencia:** se reutiliza el indice unico parcial `ux_orden_preventiva_activa_por_programacion` y una transaccion Prisma para impedir ordenes activas duplicadas. Las pruebas de concurrencia usan solicitudes simultaneas con `Promise.all`, aunque Vitest ejecute archivos con `--fileParallelism=false`.
+**Concurrencia:** se reutiliza el indice unico parcial `ux_orden_preventiva_activa_programacion` y una transaccion Prisma para impedir ordenes activas duplicadas. Las pruebas de concurrencia usan solicitudes simultaneas con `Promise.all`, aunque Vitest ejecute archivos con `--fileParallelism=false`.
 
 **Persistencia:** no se crea migracion nueva para RF-03 porque el modelo fisico ya tenia `programaciones_mantenimiento`, relacion opcional con `ordenes_trabajo`, objetivos preventivos copiados, FK compuesta al mismo bus e historial de estados.
 

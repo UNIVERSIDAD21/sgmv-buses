@@ -89,7 +89,7 @@ No se implemento relacion directa redundante entre `OrdenTrabajo` y `MovimientoI
 | Una orden por novedad | Unique `ordenes_trabajo.novedad_id`. |
 | Orden desde novedad del mismo bus | FK compuesta `ordenes_trabajo(novedad_id,bus_id) -> novedades(id,bus_id)`. |
 | Orden preventiva del mismo bus de la programacion | FK compuesta `ordenes_trabajo(programacion_mantenimiento_id,bus_id) -> programaciones_mantenimiento(id,bus_id)`. |
-| Una orden preventiva activa por programacion | Indice parcial `ux_orden_preventiva_activa_por_programacion`. |
+| Una orden preventiva activa por programacion | Indice parcial `ux_orden_preventiva_activa_programacion`. |
 | Origen/tipo de orden coherente | `ck_ordenes_origen_coherente`. |
 | Tecnico obligatorio desde `ASIGNADA` | `ck_ordenes_tecnico_segun_estado`. |
 | Fechas cronologicas de orden | `ck_ordenes_fechas_cronologicas`. |

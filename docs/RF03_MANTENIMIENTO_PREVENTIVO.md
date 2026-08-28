@@ -58,6 +58,7 @@ Reglas:
 - `PROXIMO` si no esta vencido y faltan 7 dias calendario o menos, o faltan entre 1 y 500 km.
 - `VIGENTE` si no esta vencido ni proximo.
 - En programaciones combinadas, cualquier criterio vencido domina; si ninguno vence, cualquier criterio proximo domina.
+- Si la fecha objetivo es la fecha actual en `America/Bogota`, la clasificacion por fecha es `PROXIMO` con `diasRestantes = 0`; pasa a `VENCIDO` al siguiente dia calendario.
 
 El kilometraje actual se toma siempre desde `buses.kilometraje_actual`, actualizado por RF-01. El cliente no puede enviar kilometraje actual ni estado calculado.
 
@@ -110,7 +111,7 @@ La generacion de orden se ejecuta dentro de una transaccion Prisma:
 2. Si ya existe orden activa, devuelve el resumen con `yaExistia=true`.
 3. Si no existe, crea la orden preventiva y el historial inicial en la misma transaccion.
 
-La base protege duplicados con el indice unico parcial `ux_orden_preventiva_activa_por_programacion`. Dos solicitudes simultaneas no pueden dejar dos ordenes activas para la misma programacion; si una transaccion pierde la carrera, se recarga la orden existente y se responde de forma segura.
+La base protege duplicados con el indice unico parcial `ux_orden_preventiva_activa_programacion`. Dos solicitudes simultaneas no pueden dejar dos ordenes activas para la misma programacion; si una transaccion pierde la carrera, se recarga la orden existente y se responde de forma segura.
 
 ## 9. Persistencia
 

@@ -421,7 +421,7 @@ Regla oficial:
 Índice parcial recomendado:
 
 ```sql
-CREATE UNIQUE INDEX ux_orden_preventiva_activa_por_programacion
+CREATE UNIQUE INDEX ux_orden_preventiva_activa_programacion
 ON ordenes_trabajo (programacion_mantenimiento_id)
 WHERE programacion_mantenimiento_id IS NOT NULL
   AND estado <> 'CERRADA';

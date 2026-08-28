@@ -274,7 +274,7 @@ Indices y restricciones:
 - PK `ordenes_trabajo_pkey`.
 - UQ `ordenes_trabajo_codigo_key`, `ordenes_trabajo_novedad_id_key`.
 - UQ funcional `ux_ordenes_trabajo_codigo_upper`.
-- UQ parcial `ux_orden_preventiva_activa_por_programacion`.
+- UQ parcial `ux_orden_preventiva_activa_programacion`.
 - FKs simples a `buses`, `usuarios`, `novedades`, `programaciones_mantenimiento`.
 - FK compuesta `ordenes_trabajo_novedad_bus_id_fkey`.
 - FK compuesta `ordenes_trabajo_programacion_bus_id_fkey`.

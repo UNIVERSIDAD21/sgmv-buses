@@ -21,6 +21,26 @@ const thresholds = {
   timeZone: 'America/Bogota',
 }
 
+function databaseSchemaName() {
+  const datasourceUrl = process.env.DATABASE_URL
+
+  if (!datasourceUrl) {
+    return 'public'
+  }
+
+  const schema = new URL(datasourceUrl).searchParams.get('schema') ?? 'public'
+
+  if (!/^[A-Za-z0-9_]+$/.test(schema)) {
+    throw new Error('DATABASE_URL schema contains unsupported characters')
+  }
+
+  return schema
+}
+
+function tableName(table: string) {
+  return `"${databaseSchemaName()}"."${table}"`
+}
+
 const created = {
   asignaciones: [] as string[],
   buses: [] as string[],
@@ -754,33 +774,44 @@ describeDb('RF-03 Preventive maintenance API', () => {
 
     expect(first.status).toBe(200)
     expect(second.status).toBe(200)
+    expect(first.body.data.orden.id).toBe(second.body.data.orden.id)
 
     const order = await prisma.ordenTrabajo.findFirstOrThrow({
       where: { programacionMantenimientoId: schedule.id },
     })
     created.ordenes.push(order.id)
-    const [orderCount, historyCount, orphanRows] = await Promise.all([
+    const [orderCount, historyCount, orphanOrderRows, orphanHistoryRows] = await Promise.all([
       prisma.ordenTrabajo.count({
         where: { programacionMantenimientoId: schedule.id },
       }),
       prisma.ordenEstadoHistorial.count({
         where: { ordenTrabajoId: order.id },
       }),
-      prisma.$queryRaw<Array<{ count: bigint }>>`
+      prisma.$queryRawUnsafe<Array<{ count: bigint }>>(`
         SELECT count(*)::bigint AS count
-        FROM "orden_estado_historial" AS "historial"
-        LEFT JOIN "ordenes_trabajo" AS "orden"
+        FROM ${tableName('ordenes_trabajo')} AS "orden"
+        LEFT JOIN ${tableName('programaciones_mantenimiento')} AS "programacion"
+          ON "programacion"."id" = "orden"."programacion_mantenimiento_id"
+        WHERE "orden"."programacion_mantenimiento_id" IS NOT NULL
+          AND "programacion"."id" IS NULL
+      `),
+      prisma.$queryRawUnsafe<Array<{ count: bigint }>>(`
+        SELECT count(*)::bigint AS count
+        FROM ${tableName('orden_estado_historial')} AS "historial"
+        LEFT JOIN ${tableName('ordenes_trabajo')} AS "orden"
           ON "orden"."id" = "historial"."orden_trabajo_id"
         WHERE "orden"."id" IS NULL
-      `,
+      `),
     ])
     const responses = [first.body.data.yaExistia, second.body.data.yaExistia]
-    const orphanHistoryCount = Number(orphanRows[0]?.count ?? 0)
+    const orphanOrderCount = Number(orphanOrderRows[0]?.count ?? 0)
+    const orphanHistoryCount = Number(orphanHistoryRows[0]?.count ?? 0)
 
     expect(responses.filter((value) => value === false)).toHaveLength(1)
     expect(responses.filter((value) => value === true)).toHaveLength(1)
     expect(orderCount).toBe(1)
     expect(historyCount).toBe(1)
+    expect(orphanOrderCount).toBe(0)
     expect(orphanHistoryCount).toBe(0)
   }, 60000)
 
