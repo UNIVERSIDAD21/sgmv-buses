@@ -211,6 +211,14 @@ Reglas aprobadas:
 
 Esta interpretación de varias órdenes históricas con máximo una activa reemplaza cualquier lectura visual de máximo una orden total.
 
+Implementacion RF-03:
+
+- `estado` no existe como columna fisica de `programaciones_mantenimiento`; el DTO devuelve `clasificacion`.
+- `kilometrajeActual` se toma de `Bus.kilometrajeActual`.
+- `fechaProgramada` se almacena como `date` y se compara como dia calendario en la zona operacional `America/Bogota`.
+- La generacion de orden preventiva conserva el mismo bus mediante FK compuesta y copia los objetivos preventivos aplicables.
+- RF-03 crea la orden en `PENDIENTE_ASIGNACION`; asignacion, ejecucion y cierre quedan para RF-04.
+
 ---
 
 ### OrdenTrabajo

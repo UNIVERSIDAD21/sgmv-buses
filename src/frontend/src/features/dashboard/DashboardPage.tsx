@@ -26,6 +26,8 @@ import { getAssignedBus, getFleetSummary } from '../flota/fleet.api'
 import type { AssignedBusResponse, FleetSummaryDto } from '../flota/fleet.types'
 import { getNoveltySummary, listOwnNovelties } from '../novedades/novelty.api'
 import type { NoveltyListResponse, NoveltySummaryDto } from '../novedades/novelty.types'
+import { getPreventiveSummary } from '../preventivo/preventive.api'
+import type { PreventiveSummaryDto } from '../preventivo/preventive.types'
 
 function ModuleList({ items }: { items: RequirementNavItem[] }) {
   return (
@@ -59,6 +61,7 @@ export default function DashboardPage() {
   const [driverNovelties, setDriverNovelties] = useState<NoveltyListResponse | null>(null)
   const [fleetError, setFleetError] = useState<string | null>(null)
   const [noveltySummary, setNoveltySummary] = useState<NoveltySummaryDto | null>(null)
+  const [preventiveSummary, setPreventiveSummary] = useState<PreventiveSummaryDto | null>(null)
 
   const visibleItems = user
     ? REQUIREMENT_NAV_ITEMS.filter((item) => item.roles.includes(user.rol.codigo))
@@ -79,11 +82,16 @@ export default function DashboardPage() {
 
       try {
         if (isAdmin) {
-          const [summary, novelties] = await Promise.all([getFleetSummary(), getNoveltySummary()])
+          const [summary, novelties, preventive] = await Promise.all([
+            getFleetSummary(),
+            getNoveltySummary(),
+            getPreventiveSummary(),
+          ])
 
           if (active) {
             setFleetSummary(summary)
             setNoveltySummary(novelties)
+            setPreventiveSummary(preventive)
           }
         }
 
@@ -139,7 +147,7 @@ export default function DashboardPage() {
 
       {isAdmin && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <StatCard
               icon={<Bus size={16} />}
               label="Flota"
@@ -169,6 +177,16 @@ export default function DashboardPage() {
               label="Novedades"
               note="Pendientes de revision"
               value={noveltySummary?.pendientes ?? '...'}
+            />
+            <StatCard
+              icon={<Shield size={16} />}
+              label="Preventivos"
+              note="Proximos o vencidos"
+              value={
+                preventiveSummary
+                  ? preventiveSummary.estados.PROXIMO + preventiveSummary.estados.VENCIDO
+                  : '...'
+              }
             />
           </div>
           <ModuleList items={visibleItems} />

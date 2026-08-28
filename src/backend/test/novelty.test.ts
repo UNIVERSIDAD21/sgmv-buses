@@ -517,8 +517,12 @@ describeDb('RF-02 Novelty API', () => {
     const order = await prisma.ordenTrabajo.findFirstOrThrow({ where: { novedadId: novelty.id } })
     created.ordenes.push(order.id)
 
-    expect([200, 200]).toContain(first.status)
-    expect([200, 200]).toContain(second.status)
+    expect(first.status).toBe(200)
+    expect(second.status).toBe(200)
+    expect([first.body.data.orden.id, second.body.data.orden.id]).toEqual([order.id, order.id])
+    const responses = [first.body.data.yaExistia, second.body.data.yaExistia]
+    expect(responses.filter((value) => value === false)).toHaveLength(1)
+    expect(responses.filter((value) => value === true)).toHaveLength(1)
     expect(count).toBe(1)
   }, 60000)
 

@@ -22,6 +22,8 @@ const envSchema = z.object({
   CSRF_SECRET: z.string().min(32).optional(),
   LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   LOGIN_RATE_LIMIT_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  PREVENTIVE_SOON_DAYS: z.coerce.number().int().positive().default(7),
+  PREVENTIVE_SOON_KM: z.coerce.number().int().positive().default(500),
 })
 
 const parsedEnv = envSchema.safeParse(process.env)

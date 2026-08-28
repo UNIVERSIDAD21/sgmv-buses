@@ -48,7 +48,7 @@
 
 ## Estado de handoff
 
-**FASE 3 AUTORIZADA. BOOTSTRAP TÉCNICO, PERSISTENCIA, AUDITORÍA DE BASE DE DATOS, INTERFAZ OFICIAL, AUTENTICACIÓN TRANSVERSAL, RF-01 GESTIÓN DE LA FLOTA VEHICULAR, RF-02 CONTROL DE NOVEDADES OPERATIVAS Y NORMALIZACIÓN TRANSVERSAL DE ROLES COMPLETADOS. RF-03 A RF-06 AÚN NO IMPLEMENTADOS.**
+**FASE 3 AUTORIZADA. BOOTSTRAP TÉCNICO, PERSISTENCIA, AUDITORÍA DE BASE DE DATOS, INTERFAZ OFICIAL, AUTENTICACIÓN TRANSVERSAL, RF-01 GESTIÓN DE LA FLOTA VEHICULAR, RF-02 CONTROL DE NOVEDADES OPERATIVAS, NORMALIZACIÓN TRANSVERSAL DE ROLES Y RF-03 ADMINISTRACIÓN DEL MANTENIMIENTO PREVENTIVO COMPLETADOS. RF-04 A RF-06 AÚN NO IMPLEMENTADOS.**
 
 Las decisiones técnicas aprobadas con ajustes finales quedaron registradas en `DECISIONS.md` y consolidadas en la documentación de soporte.
 
@@ -76,7 +76,7 @@ OpenClaw recibió la orden explícita `INICIAR FASE 3`.
 
 El primer bloque permitido ya fue ejecutado: bootstrap técnico del repositorio.
 
-La revisión documental de Persistencia fue autorizada, actualizada, implementada y auditada tras aprobación explícita del propietario. La interfaz oficial y la autenticación transversal también fueron autorizadas e implementadas. El propietario autorizo RF-01 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-02 el 2026-08-27 y quedo implementado end-to-end. La normalización transversal de roles canónicos quedo completada después de RF-02 y antes de RF-03. OpenClaw debe detenerse antes de implementar RF-03, RF-04, RF-05 o RF-06 hasta nueva autorización del propietario.
+La revisión documental de Persistencia fue autorizada, actualizada, implementada y auditada tras aprobación explícita del propietario. La interfaz oficial y la autenticación transversal también fueron autorizadas e implementadas. El propietario autorizo RF-01 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-02 el 2026-08-27 y quedo implementado end-to-end. La normalización transversal de roles canónicos quedo completada después de RF-02 y antes de RF-03. El propietario autorizo RF-03 el 2026-08-27 y quedo implementado end-to-end. OpenClaw debe detenerse antes de implementar RF-04, RF-05 o RF-06 hasta nueva autorización del propietario.
 
 ---
 
@@ -213,7 +213,42 @@ Validacion ejecutada durante el bloque RF-02:
 - Frontend RF-02: formulario conductor, validaciones, doble envio, conductor sin bus, listado propio, detalle autorizado, listado administrativo, busqueda/filtros, revision, conversion a orden, estados vacio/error y mecanico denegado.
 - Playwright visual en `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina y con foco alcanzable por teclado.
 
-RF-03, RF-04, RF-05 y RF-06 no fueron iniciados.
+RF-03 fue implementado en el bloque siguiente. RF-04, RF-05 y RF-06 no fueron iniciados.
+
+---
+
+## Validacion de RF-03
+
+RF-03 queda cubierto por:
+
+- Backend `src/backend/src/preventive/*`: schemas Zod, DTOs, repositorio, servicio, controlador y rutas.
+- Frontend `src/frontend/src/features/preventivo/*`: cliente API, tipos, resumen, listado, filtros, formulario, detalle, reprogramacion y generacion de orden preventiva.
+- Panel administrador con indicador real desde `/mantenimiento-preventivo/resumen`.
+- Documentacion dedicada en `docs/RF03_MANTENIMIENTO_PREVENTIVO.md`.
+- Evidencias visuales `docs/screenshots/rf03-*.png`.
+
+Alcance implementado:
+
+- Programaciones por fecha, kilometraje o ambos.
+- Clasificacion calculada en servidor como `VIGENTE`, `PROXIMO` o `VENCIDO`.
+- Umbrales centralizados: `PREVENTIVE_SOON_DAYS=7` y `PREVENTIVE_SOON_KM=500`.
+- Generacion explicita de orden preventiva solo para programaciones `PROXIMO` o `VENCIDO`.
+- Orden preventiva creada con origen `PREVENTIVO`, tipo `PREVENTIVA`, estado `PENDIENTE_ASIGNACION`, mismo bus, sin mecanico asignado e historial inicial.
+- Proteccion contra duplicados mediante transaccion Prisma e indice unico parcial de orden preventiva activa por programacion.
+- Administrador como unico actor autorizado para RF-03; Conductor y Mecanico reciben acceso denegado.
+
+Limites conservados:
+
+- RF-03 no asigna mecanico, no inicia ejecucion, no registra diagnostico, no consume repuestos y no cierra ordenes.
+- La actualizacion del siguiente objetivo al cerrar una orden preventiva queda pendiente para RF-04, porque el cierre de orden no pertenece a RF-03.
+
+Validacion ejecutada durante el bloque RF-03:
+
+- Backend RF-03: permisos, rechazo de alias heredados, creacion por fecha/kilometraje/combinada, filtros, paginacion, resumen, detalle, actualizacion controlada, recalculo por kilometraje oficial de RF-01, generacion de orden, idempotencia, concurrencia con solicitudes simultaneas, historial inicial y rollback transaccional.
+- Frontend RF-03: ruta protegida, administrador autorizado, Conductor y Mecanico denegados, resumen real, listado, busqueda/filtros/paginacion, formularios por fecha/kilometraje/combinado, validaciones, doble envio, detalle, badges, reprogramacion, generacion de orden, estados vacio/error y controles por rol.
+- Playwright visual en `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina, con dialogos accesibles y foco alcanzable por teclado.
+
+RF-04, RF-05 y RF-06 no fueron iniciados.
 
 ---
 

@@ -173,9 +173,17 @@ Como la autenticacion usa cookie, configurar CORS con credenciales solo para el 
 Variables esperadas:
 
 - Vercel: `VITE_API_URL`.
-- Render: `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CORS_ORIGIN`, configuracion de cookie, CSRF o equivalente, limites de login y umbrales preventivos.
+- Render: `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CORS_ORIGIN`, configuracion de cookie, CSRF o equivalente, limites de login, `PREVENTIVE_SOON_DAYS` y `PREVENTIVE_SOON_KM`.
 
 Considerar cold starts de Render si se usa plan gratuito al evaluar RNF-03.
+
+Validacion con Neon:
+
+- Usar schemas temporales independientes para pruebas desde cero y actualizaciones.
+- No ejecutar migraciones simultaneamente sobre el mismo schema.
+- `P1001` indica que Prisma no pudo establecer comunicacion con Neon o su pooler.
+- `P1002` indica tiempo de espera agotado; si el mensaje menciona advisory lock, el contexto es espera de migracion, no una regla general para todos los `P1002`.
+- No registrar cadenas de conexion ni secretos en logs, capturas o documentos.
 
 ---
 

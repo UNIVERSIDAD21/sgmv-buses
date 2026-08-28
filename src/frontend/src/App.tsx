@@ -11,6 +11,7 @@ import BusFormPage from './features/flota/BusFormPage'
 import FleetPage from './features/flota/FleetPage'
 import PendingModulePage from './features/modules/PendingModulePage'
 import NoveltyPage from './features/novedades/NoveltyPage'
+import PreventivePage from './features/preventivo/PreventivePage'
 
 function ShellRoute() {
   const { logout, user } = useSession()
@@ -70,7 +71,7 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR']}>
-              <PendingModulePage moduleId="mantenimiento-preventivo" />
+              <PreventivePage />
             </ProtectedRoute>
           }
           path="/mantenimiento-preventivo"

@@ -98,7 +98,7 @@ Ejemplos conceptuales, no contrato congelado:
 /api/buses
 /api/asignaciones
 /api/novedades
-/api/mantenimientos-preventivos
+/api/mantenimiento-preventivo
 /api/ordenes
 /api/intervenciones
 /api/repuestos
@@ -108,6 +108,19 @@ Ejemplos conceptuales, no contrato congelado:
 ```
 
 El agente puede ajustar pluralización/rutas antes de implementación siempre que documente el contrato y mantenga consistencia.
+
+Contrato RF-03 implementado:
+
+```text
+GET    /mantenimiento-preventivo/resumen
+GET    /mantenimiento-preventivo/programaciones
+POST   /mantenimiento-preventivo/programaciones
+GET    /mantenimiento-preventivo/programaciones/:programacionId
+PATCH  /mantenimiento-preventivo/programaciones/:programacionId
+POST   /mantenimiento-preventivo/programaciones/:programacionId/generar-orden
+```
+
+La capa backend queda organizada como `route -> controller -> service -> repository -> Prisma`. La clasificacion preventiva vive en un modulo reutilizable y no en componentes React. El frontend consume la API desde `src/frontend/src/features/preventivo/preventive.api.ts`.
 
 ---
 

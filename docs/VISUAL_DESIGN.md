@@ -66,7 +66,9 @@ Los seis RF deben mostrarse siempre con sus nombres oficiales:
 - RF-05 — Central de Repuestos.
 - RF-06 — Consulta de historial y generación de informes.
 
-Los modulos de negocio siguen pendientes. Mientras no exista endpoint real, la interfaz muestra estados vacios o "Modulo pendiente de implementacion" y no presenta datos como si vinieran de Neon.
+RF-01, RF-02 y RF-03 ya usan endpoints reales. Los modulos pendientes RF-04, RF-05 y RF-06 mantienen estados vacios o "Modulo pendiente de implementacion" mientras no exista endpoint real, y no presentan datos como si vinieran de Neon.
+
+RF-03 conserva la interfaz oficial: panel administrativo denso, resumen, tabla, filtros, formularios y dialogos conectados a la API real, sin datos simulados ni `setTimeout`.
 
 ## Cobertura frontend
 

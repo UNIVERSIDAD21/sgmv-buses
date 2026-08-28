@@ -230,6 +230,13 @@ Indices y restricciones:
 - IDX `programaciones_mantenimiento_bus_id_activa_idx`, `programaciones_mantenimiento_creada_por_id_idx`.
 - CHECK `ck_programaciones_mantenimiento_criterio`.
 
+Uso RF-03:
+
+- El estado visible se devuelve como clasificacion calculada; no existe columna fisica de estado preventivo.
+- `creada_por_id` se obtiene desde la sesion del Administrador autenticado.
+- `kilometraje_actual` no se almacena aqui ni se acepta desde cliente; se consulta desde `buses`.
+- Una programacion con orden preventiva activa asociada no se reprograma desde RF-03.
+
 ---
 
 ## 9. `ordenes_trabajo`
@@ -281,6 +288,13 @@ Indices y restricciones:
 - CHECK `ck_ordenes_fechas_cronologicas`.
 - Trigger `trg_ordenes_trabajo_cerrada_terminal`.
 - Trigger `trg_ordenes_trabajo_set_costo_total`.
+
+Uso RF-03:
+
+- Las ordenes creadas desde programacion preventiva usan `tipo=PREVENTIVA`, `origen=PREVENTIVO` y estado inicial `PENDIENTE_ASIGNACION`.
+- `tecnico_asignado_id` queda `NULL` en RF-03; la asignacion inicia en RF-04.
+- `fecha_objetivo_preventivo` y `kilometraje_objetivo_preventivo` conservan una copia de los criterios de la programacion originadora.
+- El historial inicial se registra en `orden_estado_historial` dentro de la misma transaccion.
 
 ---
 

@@ -67,9 +67,9 @@ Combinar:
 
 **Esperado:** origen preventivo y relación preservada; sin duplicado.
 
-## T-RF03-05 — Cierre preventivo y nuevo objetivo
+## T-RF03-05 — Limite con cierre preventivo
 
-**Esperado:** al cerrar una orden preventiva, se actualiza la proxima fecha o el proximo kilometraje objetivo antes de permitir una nueva generacion.
+**Esperado:** RF-03 genera la orden preventiva, pero no la ejecuta ni la cierra. La actualizacion de la proxima fecha o kilometraje al cerrar una orden preventiva se valida en RF-04.
 
 ---
 
@@ -215,6 +215,8 @@ Conductor → reporta → Administrador → convierte → asigna → Mecánico �
 ## E2E-02 — Preventivo
 
 Administrador → programa → sistema detecta condicion con umbral 7 dias/500 km → genera orden sin duplicar activas → Mecanico → ejecuta → Administrador → cierra → actualiza proximo objetivo preventivo → historial.
+
+Cobertura RF-03 cerrada: hasta `genera orden sin duplicar activas`. La ejecucion por Mecanico, cierre y actualizacion de proximo objetivo se validaran al implementar RF-04.
 
 ## E2E-03 — Repuesto
 
@@ -431,3 +433,60 @@ Evidencia visual:
 
 - `docs/screenshots/roles-normalizacion-admin-1440x900.png`
 - `docs/screenshots/roles-normalizacion-conductor-390x844.png`
+
+---
+
+## 10. Evidencia de RF-03 - Administracion del mantenimiento preventivo
+
+El 2026-08-27 se agregaron pruebas automatizadas para RF-03.
+
+Backend:
+
+- `src/backend/test/preventive.test.ts` cubre autenticacion obligatoria, Administrador autorizado, Conductor/Mecanico denegados, usuario inactivo denegado y alias heredados rechazados.
+- Cubre creacion valida por fecha, kilometraje y criterio combinado.
+- Cubre rechazo de programacion sin criterio aplicable, bus inexistente, bus inactivo, campos internos desconocidos, fecha invalida, kilometraje invalido y duplicados logicos.
+- Cubre clasificacion deterministica con reloj controlado para 8/7/1/0/-1 dias y 501/500/1/0/superado km.
+- Cubre resumen, listado paginado, busqueda, filtros, detalle y DTO sin campos sensibles.
+- Cubre reprogramacion controlada, rechazo de campos protegidos y bloqueo cuando existe orden activa.
+- Cubre generacion de orden preventiva proxima/vencida, rechazo de vigente, mismo bus, origen `PREVENTIVO`, tipo `PREVENTIVA`, estado `PENDIENTE_ASIGNACION`, sin Mecanico asignado, historial inicial, responsable de sesion, orden ya existente, concurrencia e inexistencia de huerfanos.
+
+Frontend:
+
+- `src/frontend/src/App.test.tsx` cubre ruta protegida, Administrador con acceso, Conductor/Mecanico denegados, resumen real, listado, paginacion, busqueda, filtros, estados vacio/error, formularios por fecha/kilometraje/combinado, validacion sin criterio, doble envio, detalle, badges, valores restantes, reprogramacion y generacion de orden.
+
+Evidencia visual:
+
+- `docs/screenshots/rf03-summary-1440x900.png`
+- `docs/screenshots/rf03-list-1440x900.png`
+- `docs/screenshots/rf03-filters-1024x768.png`
+- `docs/screenshots/rf03-form-date-1440x900.png`
+- `docs/screenshots/rf03-form-combined-1440x900.png`
+- `docs/screenshots/rf03-detail-vigente-1440x900.png`
+- `docs/screenshots/rf03-detail-proximo-1440x900.png`
+- `docs/screenshots/rf03-detail-vencido-1440x900.png`
+- `docs/screenshots/rf03-generate-order-confirm-1440x900.png`
+- `docs/screenshots/rf03-order-generated-1440x900.png`
+- `docs/screenshots/rf03-mobile-390x844.png`
+- `docs/screenshots/rf03-mobile-list-390x844.png`
+
+La verificacion visual confirmo `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina, sin contenido cortado, con controles diferenciables sin depender solo del color y dialogos/drawers accesibles.
+
+---
+
+## 11. Neon y ejecucion secuencial de pruebas backend
+
+El script backend usa:
+
+```text
+vitest --run --fileParallelism=false
+```
+
+Ese cambio secuencia archivos o suites de Vitest para no saturar el pool de conexiones contra Neon. No convierte en secuenciales las solicitudes internas de una prueba especifica.
+
+Las pruebas de concurrencia RF-02 y RF-03 conservan solicitudes simultaneas mediante `Promise.all`. En RF-02 se valida que dos solicitudes simultaneas para convertir la misma novedad no generen dos ordenes, que solo una respuesta represente creacion nueva, que la base termine con una sola orden asociada, que exista un unico historial inicial valido y que no queden transacciones parciales. En RF-03 se valida el mismo principio para generar una orden preventiva desde una programacion.
+
+`P1001` debe tratarse como limitacion de conexion con Neon o su pooler cuando no se puede establecer comunicacion. No representa por si solo una prueba funcional fallida.
+
+`P1002` indica tiempo de espera agotado. Si el mensaje menciona advisory lock, el contexto especifico es bloqueo/espera de migracion; no todos los `P1002` significan la misma causa.
+
+Las migraciones no deben ejecutarse simultaneamente sobre el mismo schema. Las validaciones desde cero o de actualizacion deben usar schemas temporales independientes y nunca registrar secretos ni cadenas de conexion.

@@ -139,6 +139,8 @@ No puede:
 7. El Administrador valida y cierra.
 8. La intervención alimenta el historial del bus.
 
+RF-03 cubre hasta la generacion de la orden preventiva en estado `PENDIENTE_ASIGNACION`. La asignacion del Mecanico, ejecucion, intervencion y cierre pertenecen a RF-04.
+
 ---
 
 ## 7. Módulos del prototipo

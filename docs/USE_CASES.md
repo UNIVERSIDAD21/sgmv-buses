@@ -126,6 +126,14 @@ Programar y controlar mantenimiento preventivo usando fecha y/o kilometraje.
 8. El sistema crea la orden con origen preventivo.
 9. Conserva relación programación → orden.
 
+## Implementacion 2026-08-27
+
+- Endpoint base real: `/mantenimiento-preventivo`.
+- El estado `VIGENTE`, `PROXIMO` o `VENCIDO` se calcula en servidor al consultar, listar, resumir, actualizar o generar orden.
+- La programacion obtiene responsable desde la sesion; el cliente no envia creador, responsable, kilometraje actual ni clasificacion.
+- La orden preventiva generada desde RF-03 queda en `PENDIENTE_ASIGNACION`, sin Mecanico asignado, y con historial inicial.
+- Conductor y Mecanico reciben acceso denegado a este caso de uso administrativo.
+
 ## Alternativas
 
 - Fecha/kilometraje inválido → rechazar.

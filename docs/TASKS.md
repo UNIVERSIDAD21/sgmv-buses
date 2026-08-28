@@ -6,7 +6,7 @@ Este archivo es el tablero operativo del agente.
 
 **No marcar el inicio de implementación hasta recibir la orden explícita `INICIAR FASE 3`.**
 
-**Estado actual:** interfaz oficial, autenticacion transversal, RF-01 Gestion de la flota vehicular, RF-02 Control de novedades operativas y normalizacion transversal de roles canonicos implementadas sobre la Persistencia cerrada. Todavia no implementar RF-03 a RF-06 completos sin nueva autorización del propietario.
+**Estado actual:** interfaz oficial, autenticacion transversal, RF-01 Gestion de la flota vehicular, RF-02 Control de novedades operativas, normalizacion transversal de roles canonicos y RF-03 Administracion del mantenimiento preventivo implementadas sobre la Persistencia cerrada. Todavia no implementar RF-04 a RF-06 completos sin nueva autorización del propietario.
 
 ---
 
@@ -163,17 +163,17 @@ Este archivo es el tablero operativo del agente.
 
 # 6. RF-03 — Administración del mantenimiento preventivo
 
-- [ ] Crear programación.
-- [ ] Criterio por fecha.
-- [ ] Criterio por kilometraje.
-- [ ] Criterio combinado.
-- [ ] Implementar umbral aprobado de "proximo": 7 dias y 500 km.
-- [ ] Estados de seguimiento.
-- [ ] Vista de próximos/vencidos.
-- [ ] Generar orden preventiva.
-- [ ] Mantener relación programación-orden.
-- [ ] Evitar mas de una orden activa por programacion.
-- [ ] Actualizar proxima fecha o proximo kilometraje al cerrar orden preventiva.
+- [x] Crear programación.
+- [x] Criterio por fecha.
+- [x] Criterio por kilometraje.
+- [x] Criterio combinado.
+- [x] Implementar umbral aprobado de "proximo": 7 dias y 500 km.
+- [x] Estados de seguimiento.
+- [x] Vista de próximos/vencidos.
+- [x] Generar orden preventiva.
+- [x] Mantener relación programación-orden.
+- [x] Evitar mas de una orden activa por programacion.
+- [ ] Actualizar proxima fecha o proximo kilometraje al cerrar orden preventiva. Pendiente de RF-04 porque RF-03 no ejecuta ni cierra ordenes.
 
 ---
 

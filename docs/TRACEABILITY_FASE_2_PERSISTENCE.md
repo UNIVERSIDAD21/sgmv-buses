@@ -84,4 +84,16 @@ RF-02, RF-03, RF-04, RF-05 y RF-06 no fueron iniciados en este bloque.
 |---|---|---|---|
 | RF-02 - Control de novedades operativas | `POST /novedades`, `/novedades/mis-novedades`, `/novedades/resumen`, `GET /novedades`, `GET /novedades/:id`, revision controlada y conversion a orden correctiva | Formulario y listado del conductor, detalle autorizado, panel administrativo, filtros, revision, conversion y resumen de orden generada | Backend `novelty.test.ts`; frontend `App.test.tsx`; capturas `docs/screenshots/rf02-*` |
 
-RF-03, RF-04, RF-05 y RF-06 no fueron iniciados en este bloque. RF-04 solo recibe ordenes originadas por novedad como dato inicial, sin implementar asignacion tecnica ni ejecucion.
+RF-03 fue implementado en el bloque siguiente. RF-04 solo recibe ordenes originadas por novedad como dato inicial, sin implementar asignacion tecnica ni ejecucion.
+
+---
+
+## Implementacion RF-03 cerrada
+
+**Fecha:** 2026-08-27
+
+| RF | API/servicio implementado | Frontend implementado | Pruebas |
+|---|---|---|---|
+| RF-03 - Administracion del mantenimiento preventivo | `GET /mantenimiento-preventivo/resumen`, `GET/POST /mantenimiento-preventivo/programaciones`, `GET/PATCH /mantenimiento-preventivo/programaciones/:programacionId`, `POST /mantenimiento-preventivo/programaciones/:programacionId/generar-orden`, clasificacion centralizada y transaccion de orden preventiva | Panel administrador, resumen, listado, filtros, paginacion, formularios por fecha/kilometraje/combinado, detalle, reprogramacion y confirmacion de generacion de orden | Backend `preventive.test.ts`; frontend `App.test.tsx`; capturas `docs/screenshots/rf03-*` |
+
+RF-04, RF-05 y RF-06 no fueron iniciados. RF-04 recibira ordenes preventivas en estado `PENDIENTE_ASIGNACION`, sin Mecanico asignado ni ejecucion tecnica desde RF-03.

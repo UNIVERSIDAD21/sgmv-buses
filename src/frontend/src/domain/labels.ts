@@ -93,6 +93,18 @@ export const NOVELTY_STATUS_LABELS = {
   RESUELTA_SIN_ORDEN: 'Resuelta sin orden',
 } as const
 
+export const PREVENTIVE_STATUS_LABELS = {
+  PROXIMO: 'Proximo',
+  VENCIDO: 'Vencido',
+  VIGENTE: 'Vigente',
+} as const
+
+export const PREVENTIVE_CRITERION_LABELS = {
+  FECHA: 'Fecha',
+  FECHA_KILOMETRAJE: 'Fecha y kilometraje',
+  KILOMETRAJE: 'Kilometraje',
+} as const
+
 export function getDefaultPathForRole() {
   return '/inicio'
 }

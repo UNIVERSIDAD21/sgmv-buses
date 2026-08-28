@@ -57,6 +57,8 @@ La autorizacion final vive en backend con `authorizeRoles(...)`. El frontend tam
 
 No se aceptan alias como `SUPERVISOR`, `OPERADOR`, `OPERARIO`, `TECNICO`, `ADMIN_SUPERVISOR` o `CONDUCTOR_OPERADOR` en tokens, DTO ni reglas de autorizacion.
 
+Los tokens o sesiones emitidos antes de la normalizacion que contengan `ADMIN_SUPERVISOR` o `CONDUCTOR_OPERADOR` no se migran ni se convierten silenciosamente. El middleware los rechaza como roles no canonicos, el usuario debe iniciar sesion nuevamente y el nuevo JWT queda emitido con `ADMINISTRADOR`, `CONDUCTOR` o `MECANICO`.
+
 ## Reglas de seguridad implementadas
 
 - Hash `bcrypt` para contrasenas almacenadas.

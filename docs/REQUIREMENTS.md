@@ -116,6 +116,14 @@ El sistema permitirá al Administrador programar mantenimiento preventivo por fe
 - Una orden generada desde una programación conserva su origen.
 - No se generan duplicados accidentales de orden para la misma programación.
 
+### Implementacion RF-03
+
+- Contrato real documentado en `docs/RF03_MANTENIMIENTO_PREVENTIVO.md`.
+- Rutas finales bajo `/mantenimiento-preventivo`.
+- Clasificacion calculada en backend con umbrales `PREVENTIVE_SOON_DAYS=7` y `PREVENTIVE_SOON_KM=500`.
+- Conductor y Mecanico no administran RF-03 y reciben acceso denegado.
+- La orden preventiva se genera inicialmente en `PENDIENTE_ASIGNACION`, sin Mecanico asignado; asignacion, ejecucion y cierre quedan para RF-04.
+
 ---
 
 ## RF-04 — Seguimiento de órdenes de trabajo

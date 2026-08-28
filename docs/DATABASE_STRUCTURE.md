@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-08-26
 **Bloque:** auditoria final de Persistencia y modelo de datos
-**Estado:** implementado, validado localmente con Prisma y pendiente de seguir sin autenticacion hasta aprobacion explicita.
+**Estado:** implementado, validado localmente con Prisma y reutilizado por RF-01, RF-02 y RF-03.
 
 Este documento describe la estructura fisica implementada en PostgreSQL/Neon desde `src/backend/prisma/schema.prisma` y las migraciones Prisma. El modelo respeta los diagramas oficiales de Fase 2 y la interpretacion textual aprobada en `DATA_MODEL.md`, `PERSISTENCE_MODEL_PROPOSAL.md`, `DECISIONS.md`, `BUSINESS_RULES.md` y `TRACEABILITY_FASE_2_PERSISTENCE.md`.
 
@@ -21,6 +21,8 @@ No existe tabla `Informe`. RF-06 se resuelve mediante consultas, DTO, servicios 
 | `20260827124500_normaliza_usuario_demo_admin` | Normaliza la cuenta demo heredada `supervisor.demo@sgmv.local` a `administrador.demo@sgmv.local` sin tocar usuarios reales. | Correctiva/aditiva |
 
 La migracion inicial no fue modificada retroactivamente. Los ajustes fisicos posteriores quedaron en migraciones correctivas/aditivas separadas.
+
+RF-03 no agrego migraciones nuevas: la estructura fisica existente ya soportaba programaciones, ordenes preventivas, FK compuesta bus-programacion-orden, objetivo preventivo copiado, historial inicial e indice unico parcial para evitar orden preventiva activa duplicada.
 
 ---
 
@@ -113,7 +115,8 @@ Estas reglas requieren contexto de sesion, rol, flujo o varias consultas. Quedan
 - Validar que solo `MECANICO` marque ejecucion tecnica como `COMPLETADA_TECNICO`.
 - Validar que el conductor solo registre novedades de su bus activo y consulte solo su resumen autorizado.
 - Calcular estados preventivos `VIGENTE`, `PROXIMO` y `VENCIDO` con umbral de 7 dias y 500 km, sin persistirlos como verdad durable.
-- Ejecutar la generacion de orden preventiva y la actualizacion del siguiente objetivo en una transaccion.
+- Ejecutar la generacion de orden preventiva y su historial inicial en una transaccion.
+- Actualizar el siguiente objetivo al cerrar una orden preventiva queda para RF-04, porque RF-03 no ejecuta ni cierra ordenes.
 - Validar transiciones completas de la maquina de estados, incluyendo que no se cierre desde `ASIGNADA` ni `EN_EJECUCION`.
 - Exigir al menos una `ActividadOrden` antes de `COMPLETADA_TECNICO`.
 - Exigir diagnostico en ordenes correctivas.

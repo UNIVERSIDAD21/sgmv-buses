@@ -469,6 +469,137 @@ function noveltyList(novedades: unknown[] = [noveltyOne], totalPaginas = 2) {
   }
 }
 
+const preventiveOrder = {
+  codigo: 'OT-PREV-001',
+  descripcion: 'Orden preventiva generada desde programacion',
+  estado: 'PENDIENTE_ASIGNACION',
+  fechaCreacion: '2026-08-27T13:00:00.000Z',
+  fechaObjetivoPreventivo: null,
+  id: 'order-prev-1',
+  kilometrajeObjetivoPreventivo: 11500,
+  origen: 'PREVENTIVO',
+  prioridad: 'MEDIA',
+  tipo: 'PREVENTIVA',
+}
+
+const preventiveOne = {
+  activa: true,
+  actividad: 'Revision preventiva de frenos y suspension.',
+  bus: fleetBus,
+  clasificacion: {
+    criterios: {
+      fecha: null,
+      kilometraje: {
+        estado: 'PROXIMO',
+        restante: 500,
+      },
+    },
+    diasRestantes: null,
+    estado: 'PROXIMO',
+    kilometrosRestantes: 500,
+  },
+  creadaPor: {
+    email: 'admin@sgmv.local',
+    id: 'admin-1',
+    nombre: 'Administrador Uno',
+  },
+  createdAt: '2026-08-27T12:00:00.000Z',
+  criterio: 'KILOMETRAJE',
+  fechaProgramada: null,
+  id: 'prev-1',
+  kilometrajeObjetivo: 11500,
+  ordenActiva: null,
+  tipo: 'Revision preventiva',
+  updatedAt: '2026-08-27T12:00:00.000Z',
+}
+
+const preventiveVigente = {
+  ...preventiveOne,
+  actividad: 'Revision vigente de carroceria y luces.',
+  clasificacion: {
+    criterios: {
+      fecha: {
+        estado: 'VIGENTE',
+        restante: 8,
+      },
+      kilometraje: null,
+    },
+    diasRestantes: 8,
+    estado: 'VIGENTE',
+    kilometrosRestantes: null,
+  },
+  criterio: 'FECHA',
+  fechaProgramada: '2026-09-04',
+  id: 'prev-2',
+  kilometrajeObjetivo: null,
+  tipo: 'Carroceria',
+}
+
+const preventiveVencida = {
+  ...preventiveOne,
+  actividad: 'Revision vencida por kilometraje superado.',
+  clasificacion: {
+    criterios: {
+      fecha: null,
+      kilometraje: {
+        estado: 'VENCIDO',
+        restante: -100,
+      },
+    },
+    diasRestantes: null,
+    estado: 'VENCIDO',
+    kilometrosRestantes: -100,
+  },
+  id: 'prev-3',
+  kilometrajeObjetivo: 10900,
+  tipo: 'Sistema electrico',
+}
+
+const preventiveWithOrder = {
+  ...preventiveOne,
+  ordenActiva: preventiveOrder,
+}
+
+const preventiveUpdated = {
+  ...preventiveOne,
+  actividad: 'Revision preventiva reprogramada.',
+  kilometrajeObjetivo: 11600,
+}
+
+function preventiveSummary() {
+  return {
+    activas: 3,
+    elegiblesParaOrden: 2,
+    estados: {
+      PROXIMO: 1,
+      VENCIDO: 1,
+      VIGENTE: 1,
+    },
+    inactivas: 0,
+    ordenesActivas: 0,
+    total: 3,
+    umbrales: {
+      dias: 7,
+      kilometros: 500,
+    },
+  }
+}
+
+function preventiveList(
+  programaciones: unknown[] = [preventiveOne, preventiveVigente, preventiveVencida],
+  totalPaginas = 2,
+) {
+  return {
+    paginacion: {
+      limite: 8,
+      pagina: 1,
+      total: programaciones.length,
+      totalPaginas,
+    },
+    programaciones,
+  }
+}
+
 function fleetHandler(role: RoleCode = 'ADMINISTRADOR') {
   return async (path: string, init?: RequestInit) => {
     if (path === '/auth/me') {
@@ -536,6 +667,10 @@ function fleetHandler(role: RoleCode = 'ADMINISTRADOR') {
       return ok(noveltyList([noveltyOne], 1))
     }
 
+    if (path === '/mantenimiento-preventivo/resumen') {
+      return ok(preventiveSummary())
+    }
+
     return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
   }
 }
@@ -601,6 +736,86 @@ function noveltyHandler(
   }
 }
 
+function preventiveHandler(
+  role: RoleCode = 'ADMINISTRADOR',
+  options: Partial<{ empty: boolean; failList: boolean; orderAlreadyExists: boolean }> = {},
+) {
+  let generated = false
+  let updated = false
+
+  return async (path: string, init?: RequestInit) => {
+    if (path === '/auth/me') {
+      return ok({ user: userForRole(role) })
+    }
+
+    if (path === '/flota/resumen') {
+      return ok(fleetSummary())
+    }
+
+    if (path === '/flota/buses' && !init?.method) {
+      return ok(fleetList())
+    }
+
+    if (path === '/novedades/resumen') {
+      return ok(noveltySummary())
+    }
+
+    if (path === '/mantenimiento-preventivo/resumen') {
+      return ok({
+        ...preventiveSummary(),
+        ordenesActivas: generated ? 1 : 0,
+      })
+    }
+
+    if (path === '/mantenimiento-preventivo/programaciones' && !init?.method) {
+      if (options.failList) {
+        return apiError(500, 'INTERNAL_ERROR', 'Fallo preventivo controlado')
+      }
+
+      if (options.empty) {
+        return ok(preventiveList([], 1))
+      }
+
+      return ok(
+        preventiveList([
+          generated ? preventiveWithOrder : updated ? preventiveUpdated : preventiveOne,
+          preventiveVigente,
+          preventiveVencida,
+        ]),
+      )
+    }
+
+    if (path === '/mantenimiento-preventivo/programaciones' && init?.method === 'POST') {
+      return ok({ programacion: preventiveVigente })
+    }
+
+    if (path === '/mantenimiento-preventivo/programaciones/prev-1' && !init?.method) {
+      return ok({
+        programacion: generated ? preventiveWithOrder : updated ? preventiveUpdated : preventiveOne,
+      })
+    }
+
+    if (path === '/mantenimiento-preventivo/programaciones/prev-1' && init?.method === 'PATCH') {
+      updated = true
+      return ok({ programacion: preventiveUpdated })
+    }
+
+    if (
+      path === '/mantenimiento-preventivo/programaciones/prev-1/generar-orden' &&
+      init?.method === 'POST'
+    ) {
+      generated = true
+      return ok({
+        orden: preventiveOrder,
+        programacion: preventiveWithOrder,
+        yaExistia: Boolean(options.orderAlreadyExists),
+      })
+    }
+
+    return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
+  }
+}
+
 describe('RF-01 fleet frontend', () => {
   it('loads fleet list with search, filter and pagination', async () => {
     window.history.pushState({}, '', '/flota')
@@ -632,7 +847,7 @@ describe('RF-01 fleet frontend', () => {
       )
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /Siguiente/i }))
+    fireEvent.click(screen.getAllByRole('button', { name: /Siguiente/i })[0])
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -942,7 +1157,7 @@ describe('RF-02 novelty frontend', () => {
       )
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /Siguiente/i }))
+    fireEvent.click(screen.getAllByRole('button', { name: /Siguiente/i })[0])
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -1015,6 +1230,240 @@ describe('RF-02 novelty frontend', () => {
   it('denies mechanic access to RF-02', async () => {
     window.history.pushState({}, '', '/novedades')
     mockApi(noveltyHandler('MECANICO'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Acceso denegado/i)).toBeInTheDocument()
+  })
+})
+
+describe('RF-03 preventive maintenance frontend', () => {
+  it('loads the administrative preventive list with summary, filters and pagination', async () => {
+    window.history.pushState({}, '', '/mantenimiento-preventivo')
+    const fetchMock = mockApi(preventiveHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect(
+      await screen.findByRole('heading', {
+        name: /^Administracion del mantenimiento preventivo$/i,
+      }),
+    ).toBeInTheDocument()
+    expect((await screen.findAllByText('ABC123')).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Revision preventiva/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Proximo/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Vigente/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Vencido/i).length).toBeGreaterThan(0)
+
+    fireEvent.change(screen.getByPlaceholderText(/Buscar por actividad/i), {
+      target: { value: 'frenos' },
+    })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('busqueda=frenos'),
+        expect.any(Object),
+      )
+    })
+
+    fireEvent.change(screen.getByLabelText(/^Criterio$/i), {
+      target: { value: 'KILOMETRAJE' },
+    })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('criterio=KILOMETRAJE'),
+        expect.any(Object),
+      )
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /^Vencido$/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('estado=VENCIDO'),
+        expect.any(Object),
+      )
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Siguiente/i })[0])
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('pagina=2'),
+        expect.any(Object),
+      )
+    })
+  })
+
+  it('creates preventive schedules by date, mileage and combined criteria with validation', async () => {
+    window.history.pushState({}, '', '/mantenimiento-preventivo')
+    const fetchMock = mockApi(preventiveHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Crear programacion/i }))
+    const dateDialog = await screen.findByRole('dialog', {
+      name: /Crear programacion preventiva/i,
+    })
+
+    fireEvent.change(within(dateDialog).getByLabelText(/^Bus$/i), { target: { value: 'bus-1' } })
+    fireEvent.change(within(dateDialog).getByLabelText(/^Tipo$/i), {
+      target: { value: 'Revision mensual' },
+    })
+    fireEvent.change(within(dateDialog).getByLabelText(/^Actividad$/i), {
+      target: { value: 'Revision preventiva mensual por fecha.' },
+    })
+    fireEvent.click(within(dateDialog).getByRole('button', { name: /Registrar programacion/i }))
+    expect(await screen.findByText(/Seleccione una fecha programada/i)).toBeInTheDocument()
+
+    fireEvent.change(within(dateDialog).getByLabelText(/Fecha programada/i), {
+      target: { value: '2026-09-05' },
+    })
+    fireEvent.click(within(dateDialog).getByRole('button', { name: /Registrar programacion/i }))
+    fireEvent.click(within(dateDialog).getByRole('button', { name: /Registrar programacion/i }))
+    expect(await screen.findByText(/Programacion preventiva registrada/i)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Crear programacion/i }))
+    const mileageDialog = await screen.findByRole('dialog', {
+      name: /Crear programacion preventiva/i,
+    })
+    fireEvent.change(within(mileageDialog).getByLabelText(/^Bus$/i), {
+      target: { value: 'bus-1' },
+    })
+    fireEvent.change(within(mileageDialog).getByLabelText(/^Criterio$/i), {
+      target: { value: 'KILOMETRAJE' },
+    })
+    fireEvent.change(within(mileageDialog).getByLabelText(/^Tipo$/i), {
+      target: { value: 'Cambio aceite' },
+    })
+    fireEvent.change(within(mileageDialog).getByLabelText(/Kilometraje objetivo/i), {
+      target: { value: '12000' },
+    })
+    fireEvent.change(within(mileageDialog).getByLabelText(/^Actividad$/i), {
+      target: { value: 'Cambio preventivo de aceite por kilometraje.' },
+    })
+    fireEvent.click(within(mileageDialog).getByRole('button', { name: /Registrar programacion/i }))
+
+    expect(await screen.findByText(/Programacion preventiva registrada/i)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Crear programacion/i }))
+    const combinedDialog = await screen.findByRole('dialog', {
+      name: /Crear programacion preventiva/i,
+    })
+    fireEvent.change(within(combinedDialog).getByLabelText(/^Bus$/i), {
+      target: { value: 'bus-1' },
+    })
+    fireEvent.change(within(combinedDialog).getByLabelText(/^Criterio$/i), {
+      target: { value: 'FECHA_KILOMETRAJE' },
+    })
+    fireEvent.change(within(combinedDialog).getByLabelText(/^Tipo$/i), {
+      target: { value: 'Frenos' },
+    })
+    fireEvent.change(within(combinedDialog).getByLabelText(/Fecha programada/i), {
+      target: { value: '2026-09-06' },
+    })
+    fireEvent.change(within(combinedDialog).getByLabelText(/Kilometraje objetivo/i), {
+      target: { value: '12100' },
+    })
+    fireEvent.change(within(combinedDialog).getByLabelText(/^Actividad$/i), {
+      target: { value: 'Revision combinada de frenos por fecha y kilometraje.' },
+    })
+    fireEvent.click(within(combinedDialog).getByRole('button', { name: /Registrar programacion/i }))
+
+    expect(await screen.findByText(/Programacion preventiva registrada/i)).toBeInTheDocument()
+
+    const createCalls = fetchMock.mock.calls.filter(
+      ([input, init]) =>
+        String(input).includes('/mantenimiento-preventivo/programaciones') &&
+        init?.method === 'POST',
+    )
+
+    expect(createCalls).toHaveLength(3)
+    expect(String(createCalls[0][1]?.body)).toContain('FECHA')
+    expect(String(createCalls[1][1]?.body)).toContain('KILOMETRAJE')
+    expect(String(createCalls[2][1]?.body)).toContain('FECHA_KILOMETRAJE')
+    expect(String(createCalls[0][1]?.body)).not.toContain('kilometrajeActual')
+  })
+
+  it('opens detail, shows remaining values, reprograms and generates a preventive order', async () => {
+    window.history.pushState({}, '', '/mantenimiento-preventivo')
+    const fetchMock = mockApi(preventiveHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    fireEvent.click(
+      await screen.findAllByRole('button', { name: /Detalle/i }).then((buttons) => buttons[0]),
+    )
+    expect(await screen.findByText(/Detalle preventivo/i)).toBeInTheDocument()
+    expect(screen.getByText('500 km')).toBeInTheDocument()
+    expect(screen.getByText(/Sin orden preventiva activa/i)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Reprogramar/i }))
+    const reprogramDialog = await screen.findByRole('dialog', {
+      name: /Reprogramar mantenimiento/i,
+    })
+    fireEvent.change(within(reprogramDialog).getByLabelText(/Kilometraje objetivo/i), {
+      target: { value: '11600' },
+    })
+    fireEvent.click(within(reprogramDialog).getByRole('button', { name: /Guardar cambios/i }))
+    expect(await screen.findByText(/Programacion preventiva actualizada/i)).toBeInTheDocument()
+
+    fireEvent.click(await screen.findByRole('button', { name: /Generar orden/i }))
+    const orderDialog = await screen.findByRole('dialog', { name: /Generar orden preventiva/i })
+    expect(within(orderDialog).getByText(/RF-04/i)).toBeInTheDocument()
+    fireEvent.change(within(orderDialog).getByLabelText(/^Prioridad$/i), {
+      target: { value: 'MEDIA' },
+    })
+    fireEvent.change(within(orderDialog).getByLabelText(/^Observacion$/i), {
+      target: { value: 'Generar orden preventiva elegible.' },
+    })
+    fireEvent.click(within(orderDialog).getByRole('button', { name: /Crear orden/i }))
+
+    expect(
+      await screen.findByText(/Orden preventiva OT-PREV-001 generada en estado pendiente/i),
+    ).toBeInTheDocument()
+    expect(await screen.findByText(/Orden preventiva activa/i)).toBeInTheDocument()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/mantenimiento-preventivo/programaciones/prev-1'),
+      expect.objectContaining({ method: 'PATCH' }),
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/mantenimiento-preventivo/programaciones/prev-1/generar-orden'),
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
+  it('shows empty and error states for preventive administration', async () => {
+    window.history.pushState({}, '', '/mantenimiento-preventivo')
+    mockApi(preventiveHandler('ADMINISTRADOR', { empty: true }))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Sin resultados/i)).toBeInTheDocument()
+
+    vi.restoreAllMocks()
+    window.history.pushState({}, '', '/mantenimiento-preventivo')
+    mockApi(preventiveHandler('ADMINISTRADOR', { failList: true }))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Fallo preventivo controlado/i)).toBeInTheDocument()
+  })
+
+  it('denies conductor and mechanic access to RF-03 administrative controls', async () => {
+    window.history.pushState({}, '', '/mantenimiento-preventivo')
+    mockApi(preventiveHandler('CONDUCTOR'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Acceso denegado/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Crear programacion/i })).not.toBeInTheDocument()
+
+    vi.restoreAllMocks()
+    window.history.pushState({}, '', '/mantenimiento-preventivo')
+    mockApi(preventiveHandler('MECANICO'))
 
     render(<App />)
 

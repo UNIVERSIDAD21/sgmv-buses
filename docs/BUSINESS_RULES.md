@@ -109,6 +109,13 @@ Criterios:
 - kilometraje;
 - ambos.
 
+Implementacion:
+
+- El Administrador autenticado es el unico actor que crea, consulta, reprograma y genera ordenes desde programaciones preventivas.
+- El bus debe existir y no puede estar `INACTIVO`.
+- El sistema toma `kilometrajeActual` desde `buses.kilometraje_actual`; el cliente no puede enviarlo.
+- El cliente no puede enviar creador, responsable ni clasificacion calculada.
+
 ---
 
 ## BR-11 — Estado preventivo
@@ -132,6 +139,14 @@ Formula aprobada:
 - `PROXIMO` si ninguno esta vencido y al menos uno esta dentro del umbral.
 - `VIGENTE` si no esta vencido ni proximo.
 
+Implementacion:
+
+- La regla vive centralizada en `src/backend/src/preventive/preventive.classification.ts`.
+- Los umbrales se leen desde `PREVENTIVE_SOON_DAYS` y `PREVENTIVE_SOON_KM`.
+- La zona horaria operacional documentada es `America/Bogota`.
+- Las fechas objetivo preventivas son `date`; se comparan como dias calendario para evitar cambios prematuros por UTC.
+- La fecha actual se obtiene en servidor.
+
 ---
 
 ## BR-12 — Programación → orden
@@ -141,6 +156,15 @@ Una programación que origine una orden preventiva conserva su relación.
 No se puede generar mas de una orden activa para la misma programacion preventiva.
 
 Al cerrar una orden preventiva deben actualizarse la proxima fecha o el proximo kilometraje objetivo antes de permitir una nueva generacion.
+
+Implementacion RF-03:
+
+- Una programacion `VIGENTE` no genera orden preventiva.
+- Una programacion `PROXIMO` o `VENCIDO` puede generar orden preventiva.
+- La orden generada por RF-03 queda en `PENDIENTE_ASIGNACION`, con `origen=PREVENTIVO`, `tipo=PREVENTIVA`, el mismo bus de la programacion y sin Mecanico asignado.
+- La creacion de orden e historial inicial se ejecuta en una unica transaccion.
+- El indice unico parcial de orden preventiva activa por programacion evita duplicados tambien ante solicitudes simultaneas.
+- La actualizacion del siguiente objetivo al cerrar la orden corresponde a RF-04, porque RF-03 no ejecuta ni cierra ordenes.
 
 ---
 
