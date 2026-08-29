@@ -82,10 +82,10 @@ async function ensureRoles() {
     }),
     prisma.rol.upsert({
       where: { codigo: 'MECANICO' },
-      update: { nombre: 'Mecanico' },
+      update: { nombre: 'Mecánico' },
       create: {
         codigo: 'MECANICO',
-        nombre: 'Mecanico',
+        nombre: 'Mecánico',
       },
     }),
     prisma.rol.upsert({

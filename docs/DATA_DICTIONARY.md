@@ -471,6 +471,7 @@ Historial de movimientos de stock.
 | `motivo` | `text` | Si | Obligatorio para entrada/ajuste | Motivo administrativo o soporte. |
 | `responsable_id` | `uuid` | No | FK -> `usuarios.id` | Usuario responsable del movimiento. |
 | `consumo_repuesto_id` | `uuid` | Si | UQ, FK -> `consumos_repuesto.id` | Consumo asociado cuando `tipo = CONSUMO`. |
+| `clave_idempotencia` | `uuid` | Si | UQ parcial | Identificador opcional del comando RF-05 para evitar doble envio de stock inicial, entradas y ajustes. |
 | `fecha_movimiento` | `timestamptz(6)` | No | `CURRENT_TIMESTAMP` | Fecha del movimiento. |
 | `created_at` | `timestamptz(6)` | No | `CURRENT_TIMESTAMP` | Fecha de creacion. |
 
@@ -485,6 +486,7 @@ Indices y restricciones:
 - IDX `movimientos_inventario_fecha_movimiento_idx`.
 - IDX `movimientos_inventario_repuesto_id_fecha_movimiento_idx`.
 - IDX `movimientos_inventario_responsable_id_idx`.
+- UQ parcial `ux_movimientos_inventario_clave_idempotencia`.
 - CHECK `ck_movimientos_inventario_valores`.
 - CHECK `ck_movimientos_inventario_consumo`.
 - CHECK `ck_movimientos_inventario_motivo_administrativo`.

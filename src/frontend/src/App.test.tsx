@@ -226,8 +226,9 @@ describe('App authentication and role navigation', () => {
 
     expect(await screen.findByText(/Panel t.cnico/i)).toBeInTheDocument()
     expect(screen.getAllByText(/RF-04/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/RF-05/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/RF-06/i).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/RF-05/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Central de repuestos/i })).not.toBeInTheDocument()
     expect(screen.queryByText(/RF-01/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/RF-02/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/RF-03/i)).not.toBeInTheDocument()
@@ -1079,6 +1080,481 @@ function workOrderHandler(
       appendHistory('COMPLETADA_TECNICO', 'CERRADA')
 
       return ok({ orden: decoratedOrder() })
+    }
+
+    return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
+  }
+}
+
+type TestSparePart = {
+  categoria: string | null
+  codigo: string
+  costoUnitario: string
+  createdAt: string
+  disponibilidad: 'AGOTADO' | 'BAJO' | 'DISPONIBLE' | 'INACTIVO'
+  estado: 'ACTIVO' | 'INACTIVO'
+  id: string
+  nombre: string
+  stockActual: string
+  stockMinimo: string
+  unidadMedida: string
+  updatedAt: string
+  valorActual: string
+}
+
+type TestMovement = {
+  cantidad: string
+  consumo: {
+    id: string
+    orden: {
+      codigo: string
+      estado: string
+      id: string
+      origen: string
+      tipo: string
+    }
+  } | null
+  costoUnitario: string | null
+  direccion: 'ENTRADA' | 'SALIDA'
+  fechaMovimiento: string
+  id: string
+  motivo: string | null
+  repuesto: Omit<TestSparePart, 'createdAt' | 'updatedAt'>
+  responsable: {
+    email: string
+    id: string
+    nombre: string
+    telefono: string | null
+  }
+  tipo: 'AJUSTE_ENTRADA' | 'AJUSTE_SALIDA' | 'CONSUMO' | 'ENTRADA'
+}
+
+function fixedDecimal(value: number) {
+  return value.toFixed(2)
+}
+
+function sparePartAvailability(
+  part: Pick<TestSparePart, 'estado' | 'stockActual' | 'stockMinimo'>,
+) {
+  const stock = Number(part.stockActual)
+  const minimum = Number(part.stockMinimo)
+
+  if (part.estado === 'INACTIVO') {
+    return 'INACTIVO' as const
+  }
+
+  if (stock === 0) {
+    return 'AGOTADO' as const
+  }
+
+  if (stock <= minimum) {
+    return 'BAJO' as const
+  }
+
+  return 'DISPONIBLE' as const
+}
+
+function decorateSparePart(part: Omit<TestSparePart, 'disponibilidad' | 'valorActual'>) {
+  const stock = Number(part.stockActual)
+  const cost = Number(part.costoUnitario)
+
+  return {
+    ...part,
+    disponibilidad: sparePartAvailability(part),
+    valorActual: fixedDecimal(stock * cost),
+  }
+}
+
+function movementPart(part: TestSparePart): TestMovement['repuesto'] {
+  return {
+    categoria: part.categoria,
+    codigo: part.codigo,
+    costoUnitario: part.costoUnitario,
+    descripcion: part.descripcion,
+    disponibilidad: part.disponibilidad,
+    estado: part.estado,
+    id: part.id,
+    nombre: part.nombre,
+    stockActual: part.stockActual,
+    stockMinimo: part.stockMinimo,
+    unidadMedida: part.unidadMedida,
+    valorActual: part.valorActual,
+  }
+}
+
+function sparePartFixture(
+  overrides: Partial<Omit<TestSparePart, 'disponibilidad' | 'valorActual'>> = {},
+) {
+  return decorateSparePart({
+    categoria: 'Frenos',
+    codigo: 'REP-FILTRO-001',
+    costoUnitario: '45000.00',
+    createdAt: '2026-08-29T09:00:00.000Z',
+    estado: 'ACTIVO',
+    id: 'part-low',
+    nombre: 'Filtro de aceite',
+    stockActual: '1.00',
+    stockMinimo: '2.00',
+    unidadMedida: 'unidad',
+    updatedAt: '2026-08-29T09:10:00.000Z',
+    ...overrides,
+  })
+}
+
+function sparePartMovement(part: TestSparePart, overrides: Partial<TestMovement> = {}) {
+  return {
+    cantidad: '1.00',
+    consumo: null,
+    costoUnitario: part.costoUnitario,
+    direccion: 'ENTRADA',
+    fechaMovimiento: '2026-08-29T09:12:00.000Z',
+    id: `mov-${part.id}`,
+    motivo: 'Entrada inicial RF-05',
+    repuesto: movementPart(part),
+    responsable: workOrderAdmin,
+    tipo: 'ENTRADA',
+    ...overrides,
+  } satisfies TestMovement
+}
+
+function sparePartPage(repuestos: TestSparePart[], pagina = 1, limite = 8) {
+  return {
+    paginacion: {
+      limite,
+      pagina,
+      total: repuestos.length,
+      totalPaginas: Math.max(1, Math.ceil(repuestos.length / limite)),
+    },
+    repuestos,
+  }
+}
+
+function movementPage(movimientos: TestMovement[], pagina = 1, limite = 6) {
+  return {
+    movimientos,
+    paginacion: {
+      limite,
+      pagina,
+      total: movimientos.length,
+      totalPaginas: Math.max(1, Math.ceil(movimientos.length / limite)),
+    },
+  }
+}
+
+function parseRequestBody<T>(init?: RequestInit) {
+  return JSON.parse(String(init?.body ?? '{}')) as T
+}
+
+function sparePartHandler(
+  role: RoleCode = 'ADMINISTRADOR',
+  options: Partial<{ empty: boolean; failList: boolean; slowCreate: boolean }> = {},
+) {
+  const available = sparePartFixture({
+    codigo: 'REP-FRENO-001',
+    costoUnitario: '120000.00',
+    id: 'part-available',
+    nombre: 'Pastilla de freno',
+    stockActual: '8.00',
+    stockMinimo: '2.00',
+  })
+  const low = sparePartFixture()
+  const empty = sparePartFixture({
+    categoria: 'Lubricantes',
+    codigo: 'REP-ACEITE-001',
+    id: 'part-empty',
+    nombre: 'Aceite motor',
+    stockActual: '0.00',
+    stockMinimo: '3.00',
+  })
+  const inactive = sparePartFixture({
+    categoria: 'Transmision',
+    codigo: 'REP-BANDA-001',
+    estado: 'INACTIVO',
+    id: 'part-inactive',
+    nombre: 'Banda auxiliar',
+    stockActual: '3.00',
+    stockMinimo: '1.00',
+  })
+
+  let parts = options.empty ? [] : [available, low, empty, inactive]
+  let movements = options.empty
+    ? []
+    : [
+        sparePartMovement(available, {
+          cantidad: '2.00',
+          consumo: {
+            id: 'consumo-rf04-1',
+            orden: {
+              codigo: 'OT-RF04-001',
+              estado: 'EN_EJECUCION',
+              id: 'order-rf04-1',
+              origen: 'NOVEDAD',
+              tipo: 'CORRECTIVA',
+            },
+          },
+          direccion: 'SALIDA',
+          fechaMovimiento: '2026-08-29T10:00:00.000Z',
+          id: 'mov-consumo-rf04-1',
+          motivo: 'Consumo registrado desde RF-04',
+          tipo: 'CONSUMO',
+        }),
+        sparePartMovement(low, {
+          cantidad: '1.00',
+          direccion: 'SALIDA',
+          id: 'mov-ajuste-low',
+          motivo: 'Ajuste por conteo fisico',
+          tipo: 'AJUSTE_SALIDA',
+        }),
+        sparePartMovement(inactive, {
+          cantidad: '3.00',
+          id: 'mov-inactive-entry',
+          motivo: 'Entrada antes de desactivacion',
+        }),
+      ]
+
+  function refreshPart(part: TestSparePart) {
+    return decorateSparePart({
+      categoria: part.categoria,
+      codigo: part.codigo,
+      costoUnitario: part.costoUnitario,
+      createdAt: part.createdAt,
+      estado: part.estado,
+      id: part.id,
+      nombre: part.nombre,
+      stockActual: part.stockActual,
+      stockMinimo: part.stockMinimo,
+      unidadMedida: part.unidadMedida,
+      updatedAt: '2026-08-29T10:30:00.000Z',
+    })
+  }
+
+  function replacePart(next: TestSparePart) {
+    parts = parts.map((part) => (part.id === next.id ? next : part))
+    movements = movements.map((movement) =>
+      movement.repuesto.id === next.id ? { ...movement, repuesto: movementPart(next) } : movement,
+    )
+
+    return next
+  }
+
+  function findPart(partId: string) {
+    return parts.find((part) => part.id === partId)
+  }
+
+  function summary() {
+    return {
+      agotados: parts.filter((part) => part.disponibilidad === 'AGOTADO').length,
+      bajoStock: parts.filter((part) => part.disponibilidad === 'BAJO').length,
+      disponibles: parts.filter((part) => part.disponibilidad === 'DISPONIBLE').length,
+      inactivos: parts.filter((part) => part.disponibilidad === 'INACTIVO').length,
+      movimientosRecientes: movements.slice(0, 5),
+      totalActivos: parts.filter((part) => part.estado === 'ACTIVO').length,
+      totalRepuestos: parts.length,
+      valorInventario: fixedDecimal(
+        parts.reduce(
+          (total, part) => total + Number(part.stockActual) * Number(part.costoUnitario),
+          0,
+        ),
+      ),
+    }
+  }
+
+  return async (path: string, init?: RequestInit) => {
+    if (path === '/auth/me') {
+      return ok({ user: userForRole(role) })
+    }
+
+    if (path === '/repuestos/resumen') {
+      return ok(summary())
+    }
+
+    if (path === '/repuestos' && !init?.method) {
+      if (options.failList) {
+        return apiError(500, 'INTERNAL_ERROR', 'Fallo RF-05 controlado')
+      }
+
+      return ok(sparePartPage(parts))
+    }
+
+    if (path === '/inventario/movimientos' && !init?.method) {
+      return ok(movementPage(movements))
+    }
+
+    if (path === '/repuestos' && init?.method === 'POST') {
+      if (options.slowCreate) {
+        await new Promise((resolve) => setTimeout(resolve, 40))
+      }
+
+      const body = parseRequestBody<{
+        categoria?: string
+        codigo: string
+        costoUnitario: string
+        nombre: string
+        stockInicial: string
+        stockMinimo: string
+        unidadMedida: string
+      }>(init)
+      const code = body.codigo.trim().toUpperCase()
+
+      if (parts.some((part) => part.codigo === code)) {
+        return apiError(409, 'DUPLICATE_SPARE_PART_CODE', 'El codigo ya existe')
+      }
+
+      const part = decorateSparePart({
+        categoria: body.categoria ?? null,
+        codigo: code,
+        costoUnitario: fixedDecimal(Number(body.costoUnitario)),
+        createdAt: '2026-08-29T10:40:00.000Z',
+        estado: 'ACTIVO',
+        id: 'part-created',
+        nombre: body.nombre.trim(),
+        stockActual: fixedDecimal(Number(body.stockInicial)),
+        stockMinimo: fixedDecimal(Number(body.stockMinimo)),
+        unidadMedida: body.unidadMedida.trim(),
+        updatedAt: '2026-08-29T10:40:00.000Z',
+      })
+      parts = [part, ...parts]
+
+      const movement =
+        Number(part.stockActual) > 0
+          ? sparePartMovement(part, {
+              cantidad: part.stockActual,
+              id: 'mov-created-initial',
+              motivo: 'Existencia inicial autorizada',
+            })
+          : null
+
+      if (movement) {
+        movements = [movement, ...movements]
+      }
+
+      return ok({ movimientoInicial: movement, repuesto: part, yaExistia: false })
+    }
+
+    const partIdMatch = path.match(/^\/repuestos\/([^/]+)(?:\/([^/]+))?$/)
+
+    if (partIdMatch) {
+      const [, partId, action] = partIdMatch
+      const part = findPart(partId)
+
+      if (!part) {
+        return apiError(404, 'SPARE_PART_NOT_FOUND', 'Repuesto no encontrado')
+      }
+
+      if (!action && !init?.method) {
+        return ok({ repuesto: part })
+      }
+
+      if (action === 'movimientos' && !init?.method) {
+        return ok(movementPage(movements.filter((movement) => movement.repuesto.id === partId)))
+      }
+
+      if (!action && init?.method === 'PATCH') {
+        const body = parseRequestBody<{
+          categoria?: string
+          codigo?: string
+          costoUnitario?: string
+          nombre?: string
+          stockMinimo?: string
+          unidadMedida?: string
+        }>(init)
+        const next = replacePart(
+          refreshPart({
+            ...part,
+            categoria: body.categoria ?? part.categoria,
+            codigo: body.codigo ? body.codigo.trim().toUpperCase() : part.codigo,
+            costoUnitario: body.costoUnitario
+              ? fixedDecimal(Number(body.costoUnitario))
+              : part.costoUnitario,
+            nombre: body.nombre ?? part.nombre,
+            stockMinimo: body.stockMinimo
+              ? fixedDecimal(Number(body.stockMinimo))
+              : part.stockMinimo,
+            unidadMedida: body.unidadMedida ?? part.unidadMedida,
+          }),
+        )
+
+        return ok({ repuesto: next })
+      }
+
+      if (action === 'activar' && init?.method === 'POST') {
+        const next = replacePart(refreshPart({ ...part, estado: 'ACTIVO' }))
+
+        return ok({ repuesto: next, yaExistia: part.estado === 'ACTIVO' })
+      }
+
+      if (action === 'desactivar' && init?.method === 'POST') {
+        const next = replacePart(refreshPart({ ...part, estado: 'INACTIVO' }))
+
+        return ok({ repuesto: next, yaExistia: part.estado === 'INACTIVO' })
+      }
+
+      if (action === 'entradas' && init?.method === 'POST') {
+        const body = parseRequestBody<{ cantidad: string; costoUnitario?: string; motivo: string }>(
+          init,
+        )
+        const quantity = Number(body.cantidad)
+        const previous = Number(part.stockActual)
+        const next = replacePart(
+          refreshPart({
+            ...part,
+            costoUnitario: body.costoUnitario
+              ? fixedDecimal(Number(body.costoUnitario))
+              : part.costoUnitario,
+            stockActual: fixedDecimal(previous + quantity),
+          }),
+        )
+        const movement = sparePartMovement(next, {
+          cantidad: fixedDecimal(quantity),
+          costoUnitario: next.costoUnitario,
+          id: 'mov-entry-ui',
+          motivo: body.motivo,
+        })
+        movements = [movement, ...movements]
+
+        return ok({
+          cantidadAplicada: movement.cantidad,
+          movimiento: movement,
+          repuesto: next,
+          stockAnterior: fixedDecimal(previous),
+          stockResultante: next.stockActual,
+          yaExistia: false,
+        })
+      }
+
+      if (action === 'ajustes' && init?.method === 'POST') {
+        const body = parseRequestBody<{
+          cantidad: string
+          direccion: 'DISMINUCION' | 'INCREMENTO'
+          motivo: string
+        }>(init)
+        const quantity = Number(body.cantidad)
+        const previous = Number(part.stockActual)
+
+        if (body.direccion === 'DISMINUCION' && quantity > previous) {
+          return apiError(409, 'INSUFFICIENT_STOCK', 'Stock insuficiente para aplicar el ajuste')
+        }
+
+        const result = body.direccion === 'INCREMENTO' ? previous + quantity : previous - quantity
+        const next = replacePart(refreshPart({ ...part, stockActual: fixedDecimal(result) }))
+        const movement = sparePartMovement(next, {
+          cantidad: fixedDecimal(quantity),
+          direccion: body.direccion === 'INCREMENTO' ? 'ENTRADA' : 'SALIDA',
+          id: body.direccion === 'INCREMENTO' ? 'mov-adjust-in' : 'mov-adjust-out',
+          motivo: body.motivo,
+          tipo: body.direccion === 'INCREMENTO' ? 'AJUSTE_ENTRADA' : 'AJUSTE_SALIDA',
+        })
+        movements = [movement, ...movements]
+
+        return ok({
+          cantidadAplicada: movement.cantidad,
+          movimiento: movement,
+          repuesto: next,
+          stockAnterior: fixedDecimal(previous),
+          stockResultante: next.stockActual,
+          yaExistia: false,
+        })
+      }
     }
 
     return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
@@ -2149,5 +2625,319 @@ describe('RF-04 work order frontend', () => {
 
     expect(await screen.findByText(/Acceso denegado/i)).toBeInTheDocument()
     expect(screen.queryByText(/Ejecucion tecnica/i)).not.toBeInTheDocument()
+  })
+})
+
+describe('RF-05 spare parts frontend', () => {
+  it('loads the administrative central with summary, catalog, filters and RF-04 movement references', async () => {
+    window.history.pushState({}, '', '/repuestos')
+    const fetchMock = mockApi(sparePartHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect(
+      (await screen.findAllByRole('heading', { name: /Central de repuestos/i })).length,
+    ).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: /Central de repuestos/i }).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('REP-FRENO-001')).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/Disponible/i)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/Bajo/i)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/Agotado/i)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/Inactivo/i)).length).toBeGreaterThan(0)
+    expect(await screen.findByText('OT-RF04-001')).toBeInTheDocument()
+
+    fireEvent.change(screen.getAllByLabelText(/^Buscar$/i)[0], {
+      target: { value: 'freno' },
+    })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('busqueda=freno'),
+        expect.any(Object),
+      )
+    })
+
+    fireEvent.change(screen.getByLabelText(/^Disponibilidad$/i), {
+      target: { value: 'BAJO' },
+    })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('disponibilidad=BAJO'),
+        expect.any(Object),
+      )
+    })
+
+    fireEvent.change(screen.getAllByLabelText(/^Buscar$/i)[1], {
+      target: { value: 'OT-RF04' },
+    })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/inventario/movimientos?'),
+        expect.any(Object),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('busqueda=OT-RF04'),
+        expect.any(Object),
+      )
+    })
+  })
+
+  it.each(['MECANICO', 'CONDUCTOR'] as RoleCode[])(
+    'keeps %s out of the RF-05 administrative route and navigation',
+    async (role) => {
+      window.history.pushState({}, '', '/repuestos')
+      mockApi(sparePartHandler(role))
+
+      render(<App />)
+
+      expect(await screen.findByText(/Acceso denegado/i)).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /Central de repuestos/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Nuevo repuesto/i })).not.toBeInTheDocument()
+    },
+  )
+
+  it('shows empty and recoverable error states', async () => {
+    window.history.pushState({}, '', '/repuestos')
+    mockApi(sparePartHandler('ADMINISTRADOR', { empty: true }))
+
+    const { unmount } = render(<App />)
+
+    expect(await screen.findByText(/Sin repuestos para mostrar/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Limpiar filtros/i })).toBeInTheDocument()
+
+    unmount()
+    window.history.pushState({}, '', '/repuestos')
+    mockApi(sparePartHandler('ADMINISTRADOR', { failList: true }))
+    render(<App />)
+
+    expect(await screen.findByText(/Fallo RF-05 controlado/i)).toBeInTheDocument()
+  })
+
+  it('creates a spare part with initial stock, validates input and blocks duplicate submission', async () => {
+    window.history.pushState({}, '', '/repuestos')
+    const fetchMock = mockApi(sparePartHandler('ADMINISTRADOR', { slowCreate: true }))
+
+    render(<App />)
+
+    expect((await screen.findAllByText('REP-FRENO-001')).length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('button', { name: /Nuevo repuesto/i }))
+
+    const dialog = await screen.findByRole('dialog', { name: /Nuevo repuesto/i })
+    fireEvent.change(within(dialog).getByLabelText(/^Codigo$/i), {
+      target: { value: ' rf05-demo ' },
+    })
+    fireEvent.change(within(dialog).getByLabelText(/^Nombre$/i), {
+      target: { value: ' Kit de filtros ' },
+    })
+    fireEvent.change(within(dialog).getByLabelText(/^Stock inicial$/i), {
+      target: { value: '-1' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: /Crear repuesto/i }))
+    expect(
+      await within(dialog).findByText(/Stock y costo deben ser valores validos/i),
+    ).toBeInTheDocument()
+
+    fireEvent.change(within(dialog).getByLabelText(/^Categoria$/i), {
+      target: { value: 'Filtros' },
+    })
+    fireEvent.change(within(dialog).getByLabelText(/^Unidad de medida$/i), {
+      target: { value: 'unidad' },
+    })
+    fireEvent.change(within(dialog).getByLabelText(/^Stock inicial$/i), {
+      target: { value: '5' },
+    })
+    fireEvent.change(within(dialog).getByLabelText(/^Stock minimo$/i), {
+      target: { value: '2' },
+    })
+    fireEvent.change(within(dialog).getByLabelText(/^Costo unitario$/i), {
+      target: { value: '76000.50' },
+    })
+    fireEvent.change(await within(dialog).findByLabelText(/Motivo de stock inicial/i), {
+      target: { value: 'Carga inicial autorizada' },
+    })
+
+    const submit = within(dialog).getByRole('button', { name: /Crear repuesto/i })
+    fireEvent.click(submit)
+    await waitFor(() => expect(submit).toBeDisabled())
+    fireEvent.click(submit)
+
+    expect(await screen.findByText(/Repuesto creado/i)).toBeInTheDocument()
+    expect((await screen.findAllByText('RF05-DEMO')).length).toBeGreaterThan(0)
+
+    const createCalls = fetchMock.mock.calls.filter(
+      ([input, init]) => String(input).endsWith('/repuestos') && init?.method === 'POST',
+    )
+    expect(createCalls).toHaveLength(1)
+    const body = JSON.parse(String(createCalls[0][1]?.body)) as {
+      claveIdempotencia?: string
+      codigo: string
+      stockInicial: string
+    }
+    expect(body.codigo).toBe('rf05-demo')
+    expect(body.stockInicial).toBe('5')
+    expect(body.claveIdempotencia).toEqual(expect.any(String))
+  })
+
+  it('shows controlled duplicate-code errors during creation', async () => {
+    window.history.pushState({}, '', '/repuestos')
+    mockApi(sparePartHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect((await screen.findAllByText('REP-FRENO-001')).length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('button', { name: /Nuevo repuesto/i }))
+
+    const dialog = await screen.findByRole('dialog', { name: /Nuevo repuesto/i })
+    fireEvent.change(within(dialog).getByLabelText(/^Codigo$/i), {
+      target: { value: 'rep-freno-001' },
+    })
+    fireEvent.change(within(dialog).getByLabelText(/^Nombre$/i), {
+      target: { value: 'Repuesto duplicado' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: /Crear repuesto/i }))
+
+    expect(await within(dialog).findByText(/El codigo ya existe/i)).toBeInTheDocument()
+  })
+
+  it('opens detail, keeps movements immutable, edits only master data and confirms deactivation', async () => {
+    window.history.pushState({}, '', '/repuestos')
+    const fetchMock = mockApi(sparePartHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    const detailButtons = await screen.findAllByRole('button', { name: /^Detalle$/i })
+    fireEvent.click(detailButtons[0])
+
+    const detailDialog = await screen.findByRole('dialog', { name: /Detalle de repuesto/i })
+    expect(within(detailDialog).getByText('OT-RF04-001')).toBeInTheDocument()
+    expect(within(detailDialog).getByText(/Consumo de orden/i)).toBeInTheDocument()
+    expect(
+      within(detailDialog).queryByRole('button', { name: /Eliminar movimiento/i }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(within(detailDialog).getByRole('button', { name: /^Editar$/i }))
+    const editDialog = await screen.findByRole('dialog', { name: /Editar repuesto/i })
+    expect(
+      within(editDialog).queryByLabelText(/Stock actual|Existencia actual|Stock inicial/i),
+    ).not.toBeInTheDocument()
+
+    fireEvent.change(within(editDialog).getByLabelText(/^Nombre$/i), {
+      target: { value: 'Pastilla de freno reforzada' },
+    })
+    fireEvent.change(within(editDialog).getByLabelText(/^Costo unitario$/i), {
+      target: { value: '125000' },
+    })
+    fireEvent.click(within(editDialog).getByRole('button', { name: /Guardar cambios/i }))
+
+    expect(await screen.findByText(/Repuesto actualizado/i)).toBeInTheDocument()
+    const patchCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        String(input).includes('/repuestos/part-available') && init?.method === 'PATCH',
+    )
+    expect(patchCall).toBeTruthy()
+    expect(String(patchCall?.[1]?.body)).not.toContain('stockActual')
+    expect(String(patchCall?.[1]?.body)).not.toContain('stockInicial')
+
+    fireEvent.click(within(detailDialog).getByRole('button', { name: /^Desactivar$/i }))
+    const statusDialog = await screen.findByRole('dialog', { name: /Confirmar estado/i })
+    expect(
+      within(statusDialog).getByText(/El historial y la existencia se conservan/i),
+    ).toBeInTheDocument()
+    fireEvent.click(within(statusDialog).getByRole('button', { name: /^Desactivar$/i }))
+
+    expect(await screen.findByText(/Repuesto desactivado/i)).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/repuestos/part-available/desactivar'),
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
+  it('registers entries and explicit adjustments with confirmation and stock-insufficient feedback', async () => {
+    window.history.pushState({}, '', '/repuestos')
+    const fetchMock = mockApi(sparePartHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect((await screen.findAllByText('REP-FRENO-001')).length).toBeGreaterThan(0)
+
+    const availableRow = screen.getAllByText('REP-FRENO-001')[0].closest('tr')
+    expect(availableRow).toBeTruthy()
+    fireEvent.click(within(availableRow as HTMLElement).getByRole('button', { name: /^Entrada$/i }))
+
+    const entryDialog = await screen.findByRole('dialog', { name: /Registrar entrada/i })
+    fireEvent.change(within(entryDialog).getByLabelText(/^Cantidad de entrada$/i), {
+      target: { value: '2' },
+    })
+    fireEvent.change(within(entryDialog).getByLabelText(/^Costo unitario futuro$/i), {
+      target: { value: '125000' },
+    })
+    fireEvent.change(within(entryDialog).getByLabelText(/^Motivo$/i), {
+      target: { value: 'Reposicion operativa' },
+    })
+    fireEvent.click(within(entryDialog).getByRole('button', { name: /Registrar entrada/i }))
+
+    expect(await screen.findByText(/Entrada registrada/i)).toBeInTheDocument()
+    const entryCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        String(input).includes('/repuestos/part-available/entradas') && init?.method === 'POST',
+    )
+    expect(entryCall).toBeTruthy()
+    const entryBody = JSON.parse(String(entryCall?.[1]?.body)) as {
+      claveIdempotencia?: string
+      costoUnitario?: string
+      motivo: string
+    }
+    expect(entryBody.claveIdempotencia).toEqual(expect.any(String))
+    expect(entryBody.costoUnitario).toBe('125000')
+    expect(entryBody.motivo).toBe('Reposicion operativa')
+
+    fireEvent.click(screen.getByLabelText(/Cerrar panel/i))
+
+    const emptyRow = screen.getAllByText('REP-ACEITE-001')[0].closest('tr')
+    expect(emptyRow).toBeTruthy()
+    fireEvent.click(within(emptyRow as HTMLElement).getByRole('button', { name: /^Ajuste$/i }))
+
+    const adjustmentDialog = await screen.findByRole('dialog', { name: /Registrar ajuste/i })
+    fireEvent.change(within(adjustmentDialog).getByLabelText(/^Direccion$/i), {
+      target: { value: 'DISMINUCION' },
+    })
+    fireEvent.change(within(adjustmentDialog).getByLabelText(/^Cantidad$/i), {
+      target: { value: '1' },
+    })
+    fireEvent.change(within(adjustmentDialog).getByLabelText(/^Motivo$/i), {
+      target: { value: 'Conteo fisico' },
+    })
+    fireEvent.click(within(adjustmentDialog).getByRole('button', { name: /Registrar ajuste/i }))
+    expect(
+      await within(adjustmentDialog).findByText(/Confirme la disminucion/i),
+    ).toBeInTheDocument()
+
+    fireEvent.click(within(adjustmentDialog).getByRole('checkbox'))
+    fireEvent.click(within(adjustmentDialog).getByRole('button', { name: /Registrar ajuste/i }))
+    expect(await within(adjustmentDialog).findByText(/Stock insuficiente/i)).toBeInTheDocument()
+
+    fireEvent.change(within(adjustmentDialog).getByLabelText(/^Direccion$/i), {
+      target: { value: 'INCREMENTO' },
+    })
+    fireEvent.change(within(adjustmentDialog).getByLabelText(/^Cantidad$/i), {
+      target: { value: '2' },
+    })
+    fireEvent.click(within(adjustmentDialog).getByRole('button', { name: /Registrar ajuste/i }))
+
+    expect(await screen.findByText(/Ajuste registrado/i)).toBeInTheDocument()
+    const adjustmentCalls = fetchMock.mock.calls.filter(
+      ([input, init]) =>
+        String(input).includes('/repuestos/part-empty/ajustes') && init?.method === 'POST',
+    )
+    const adjustmentCall = adjustmentCalls.at(-1)
+    expect(adjustmentCall).toBeTruthy()
+    const adjustmentBody = JSON.parse(String(adjustmentCall?.[1]?.body)) as {
+      claveIdempotencia?: string
+      direccion: string
+    }
+    expect(adjustmentBody.claveIdempotencia).toEqual(expect.any(String))
+    expect(adjustmentBody.direccion).toBe('INCREMENTO')
   })
 })

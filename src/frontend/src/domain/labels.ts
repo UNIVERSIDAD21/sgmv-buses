@@ -57,9 +57,9 @@ export const REQUIREMENT_NAV_ITEMS: RequirementNavItem[] = [
   {
     description: 'Catálogo, existencias, consumos y movimientos trazables.',
     id: 'repuestos',
-    label: 'RF-05 — Central de Repuestos',
+    label: 'Central de repuestos',
     path: '/repuestos',
-    roles: ['ADMINISTRADOR', 'MECANICO'],
+    roles: ['ADMINISTRADOR'],
   },
   {
     description: 'Historial e informes derivados de datos validados.',

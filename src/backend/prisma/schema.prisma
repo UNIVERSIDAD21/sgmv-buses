@@ -454,6 +454,7 @@ model MovimientoInventario {
   motivo            String?                  @db.Text
   responsableId     String                   @map("responsable_id") @db.Uuid
   consumoRepuestoId String?                  @unique @map("consumo_repuesto_id") @db.Uuid
+  claveIdempotencia String?                  @map("clave_idempotencia") @db.Uuid
   fechaMovimiento   DateTime                 @default(now()) @map("fecha_movimiento") @db.Timestamptz(6)
   createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
 

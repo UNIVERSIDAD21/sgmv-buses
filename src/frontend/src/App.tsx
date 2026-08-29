@@ -13,6 +13,7 @@ import PendingModulePage from './features/modules/PendingModulePage'
 import NoveltyPage from './features/novedades/NoveltyPage'
 import WorkOrderPage from './features/ordenes-trabajo/WorkOrderPage'
 import PreventivePage from './features/preventivo/PreventivePage'
+import SparePartsPage from './features/repuestos/SparePartsPage'
 
 function ShellRoute() {
   const { logout, user } = useSession()
@@ -87,8 +88,8 @@ function AppRoutes() {
         />
         <Route
           element={
-            <ProtectedRoute roles={['ADMINISTRADOR', 'MECANICO']}>
-              <PendingModulePage moduleId="repuestos" />
+            <ProtectedRoute roles={['ADMINISTRADOR']}>
+              <SparePartsPage />
             </ProtectedRoute>
           }
           path="/repuestos"

@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-08-26
 **Bloque:** auditoria final de Persistencia y modelo de datos
-**Estado:** implementado, validado localmente con Prisma y reutilizado por RF-01, RF-02 y RF-03.
+**Estado:** implementado, validado localmente con Prisma y reutilizado por RF-01 a RF-05.
 
 Este documento describe la estructura fisica implementada en PostgreSQL/Neon desde `src/backend/prisma/schema.prisma` y las migraciones Prisma. El modelo respeta los diagramas oficiales de Fase 2 y la interpretacion textual aprobada en `DATA_MODEL.md`, `PERSISTENCE_MODEL_PROPOSAL.md`, `DECISIONS.md`, `BUSINESS_RULES.md` y `TRACEABILITY_FASE_2_PERSISTENCE.md`.
 
@@ -19,10 +19,14 @@ No existe tabla `Informe`. RF-06 se resuelve mediante consultas, DTO, servicios 
 | `20260826163500_fija_search_path_triggers` | Reemplaza funciones de triggers fijando `search_path` al schema de migracion para validaciones multi-schema seguras. | Correctiva/aditiva |
 | `20260827123000_normaliza_roles_canonicos` | Renombra valores fisicos del enum `rol_codigo` a `ADMINISTRADOR`, `CONDUCTOR` y `MECANICO`, y actualiza etiquetas de la tabla `roles`. | Correctiva/aditiva |
 | `20260827124500_normaliza_usuario_demo_admin` | Normaliza la cuenta demo heredada `supervisor.demo@sgmv.local` a `administrador.demo@sgmv.local` sin tocar usuarios reales. | Correctiva/aditiva |
+| `20260828121500_rf04_consumo_idempotencia` | Agrega `consumos_repuesto.clave_idempotencia` e indice unico parcial para evitar doble envio de consumos RF-04. | Correctiva/aditiva |
+| `20260829101500_rf05_movimiento_idempotencia` | Agrega `movimientos_inventario.clave_idempotencia` e indice unico parcial para idempotencia de stock inicial, entradas y ajustes RF-05. | Correctiva/aditiva |
 
 La migracion inicial no fue modificada retroactivamente. Los ajustes fisicos posteriores quedaron en migraciones correctivas/aditivas separadas.
 
 RF-03 no agrego migraciones nuevas: la estructura fisica existente ya soportaba programaciones, ordenes preventivas, FK compuesta bus-programacion-orden, objetivo preventivo copiado, historial inicial e indice unico parcial para evitar orden preventiva activa duplicada.
+
+RF-05 no creo tablas nuevas. La unica ampliacion fisica fue la columna nullable `clave_idempotencia` en `movimientos_inventario`, necesaria para distinguir un doble envio del mismo comando frente a dos entradas o ajustes legitimamente iguales.
 
 ---
 
@@ -102,6 +106,7 @@ No se implemento relacion directa redundante entre `OrdenTrabajo` y `MovimientoI
 | Movimiento consumo con mismo repuesto del consumo | FK compuesta `movimientos_inventario(consumo_repuesto_id,repuesto_id) -> consumos_repuesto(id,repuesto_id)`. |
 | Cada consumo genera exactamente un movimiento | Constraint triggers diferibles sobre `consumos_repuesto` y `movimientos_inventario`. |
 | Entradas y ajustes con motivo | `ck_movimientos_inventario_motivo_administrativo`. |
+| Idempotencia de entradas y ajustes RF-05 | Indice unico parcial `ux_movimientos_inventario_clave_idempotencia`. |
 | Email, placa y codigos normalizados | Checks de normalizacion e indices funcionales case-insensitive. |
 | Sin duplicados por mayusculas/minusculas | Indices `ux_*_lower` y `ux_*_upper`. |
 
@@ -121,6 +126,9 @@ Estas reglas requieren contexto de sesion, rol, flujo o varias consultas. Quedan
 - Exigir al menos una `ActividadOrden` antes de `COMPLETADA_TECNICO`.
 - Exigir diagnostico en ordenes correctivas.
 - Ejecutar consumo, movimiento y descuento de stock en una transaccion atomica con guardia de stock suficiente.
+- Ejecutar entradas y ajustes RF-05 en una transaccion atomica con candado advisory por repuesto, clave idempotente y guardia de stock suficiente cuando sea disminucion.
+- Calcular disponibilidad RF-05 en backend con `INACTIVO`, `AGOTADO`, `BAJO` y `DISPONIBLE`.
+- Proteger la ruta `/repuestos` y `/inventario/movimientos` solo para `ADMINISTRADOR`; el Mecanico conserva solo consumo operacional de RF-04.
 - Normalizar correo, placa y codigos antes de persistir para entregar errores controlados al usuario.
 - Controlar mensajes de error, permisos y no exposicion de secretos.
 
@@ -133,8 +141,8 @@ Estas reglas requieren contexto de sesion, rol, flujo o varias consultas. Quedan
 | RF-01 — Gestión de la flota vehicular | `Bus`, `AsignacionConductor`, `Usuario` | `buses`, `asignaciones_conductor`, `usuarios`, `roles` | `lecturas_kilometraje`, `bus_estado_historial` |
 | RF-02 — Control de novedades operativas | `Novedad`, `Usuario`, `Bus`, `OrdenTrabajo` | `novedades`, `usuarios`, `buses`, `ordenes_trabajo` | `orden_estado_historial` cuando se convierte a orden |
 | RF-03 — Administración del mantenimiento preventivo | `ProgramacionMantenimiento`, `OrdenTrabajo`, `Bus` | `programaciones_mantenimiento`, `ordenes_trabajo`, `buses` | `lecturas_kilometraje`, `orden_estado_historial` |
-| RF-04 — Seguimiento de órdenes de trabajo | `OrdenTrabajo`, `Intervencion`, `ActividadOrden`, `ConsumoRepuesto`, `Repuesto`, `MovimientoInventario`, `Usuario` | `ordenes_trabajo`, `intervenciones`, `actividades_orden`, `consumos_repuesto`, `repuestos`, `movimientos_inventario`, `usuarios` | `orden_estado_historial`, `orden_reasignaciones`, `clave_idempotencia` para doble envio de consumo |
-| RF-05 — Central de Repuestos | `Repuesto`, `ConsumoRepuesto`, `MovimientoInventario`, `OrdenTrabajo`, `Usuario` | `repuestos`, `consumos_repuesto`, `movimientos_inventario`, `ordenes_trabajo`, `usuarios` | `orden_estado_historial` si el consumo acompaña cambios de orden |
+| RF-04 — Seguimiento de órdenes de trabajo | `OrdenTrabajo`, `Intervencion`, `ActividadOrden`, `ConsumoRepuesto`, `Repuesto`, `MovimientoInventario`, `Usuario` | `ordenes_trabajo`, `intervenciones`, `actividades_orden`, `consumos_repuesto`, `repuestos`, `movimientos_inventario`, `usuarios` | `orden_estado_historial`, `orden_reasignaciones`, `consumos_repuesto.clave_idempotencia` para doble envio de consumo |
+| RF-05 — Central de Repuestos | `Repuesto`, `ConsumoRepuesto`, `MovimientoInventario`, `OrdenTrabajo`, `Usuario` | `repuestos`, `consumos_repuesto`, `movimientos_inventario`, `ordenes_trabajo`, `usuarios` | `movimientos_inventario.clave_idempotencia` para doble envio de entradas, ajustes y stock inicial |
 | RF-06 — Consulta de historial y generación de informes | `Informe` como servicio, mas clases consultadas | Consulta `buses`, `novedades`, `programaciones_mantenimiento`, `ordenes_trabajo`, `intervenciones`, `actividades_orden`, `consumos_repuesto`, `repuestos`, `movimientos_inventario` | `lecturas_kilometraje`, `bus_estado_historial`, `orden_estado_historial`, `orden_reasignaciones` |
 
 ---

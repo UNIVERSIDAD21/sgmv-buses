@@ -1,6 +1,6 @@
 # Diseno visual oficial
 
-**Estado:** integrado como base visual oficial del SGMV para autenticacion, panel por rol, navegacion principal y estados pendientes de RF.
+**Estado:** integrado como base visual oficial del SGMV para autenticacion, panel por rol, navegacion principal, RF-01 a RF-05 reales y estado pendiente de RF-06.
 
 ## Fuente aprobada
 
@@ -40,6 +40,7 @@ El ZIP se usa solo como referencia visual y fuente selectiva de componentes. No 
 | Vista de flota | `src/frontend/src/features/flota/FleetPage.tsx` | Base visual sin CRUD RF-01 completo. |
 | Formulario de buses | `src/frontend/src/features/flota/BusFormPage.tsx` | Base visual deshabilitada hasta implementar RF-01. |
 | Modulos pendientes | `src/frontend/src/features/modules/PendingModulePage.tsx` | Estado vacio honesto para RF no implementados. |
+| Central de repuestos | `src/frontend/src/features/repuestos/SparePartsPage.tsx` | RF-05 conectado a API real, con resumen, catalogo, formularios, movimientos y controles administrativos. |
 
 ## Elementos rechazados del ZIP
 
@@ -66,9 +67,11 @@ Los seis RF deben mostrarse siempre con sus nombres oficiales:
 - RF-05 — Central de Repuestos.
 - RF-06 — Consulta de historial y generación de informes.
 
-RF-01, RF-02, RF-03 y RF-04 ya usan endpoints reales. Los modulos pendientes RF-05 y RF-06 mantienen estados vacios o "Modulo pendiente de implementacion" mientras no exista endpoint real, y no presentan datos como si vinieran de Neon.
+RF-01, RF-02, RF-03, RF-04 y RF-05 ya usan endpoints reales. El modulo pendiente RF-06 mantiene estado vacio o "Modulo pendiente de implementacion" mientras no exista endpoint real, y no presenta datos como si vinieran de Neon.
 
 RF-03 conserva la interfaz oficial: panel administrativo denso, resumen, tabla, filtros, formularios y dialogos conectados a la API real, sin datos simulados ni `setTimeout`.
+
+RF-05 conserva la interfaz oficial: panel administrativo denso, tarjetas de resumen, catalogo paginado, filtros, detalle, formularios y dialogos conectados a la API real. Administrador ve `Central de repuestos`; Mecánico y Conductor no ven la navegacion ni acceden a la ruta administrativa.
 
 ## Cobertura frontend
 
@@ -83,7 +86,9 @@ RF-03 conserva la interfaz oficial: panel administrativo denso, resumen, tabla, 
 - rutas inexistentes autenticadas;
 - acceso denegado;
 - menus correctos para Administrador, Mecánico y Conductor;
-- manejo de error de login.
+- manejo de error de login;
+- central RF-05 visible solo para Administrador;
+- catalogo, filtros, paginacion, formulario, detalle, entrada, ajuste, activacion/desactivacion, stock insuficiente y doble envio bloqueado.
 
 ## Capturas de referencia
 
@@ -106,3 +111,15 @@ RF-03 conserva la interfaz oficial: panel administrativo denso, resumen, tabla, 
 - `docs/screenshots/audit-sidebar-collapsed-tooltip.png`.
 
 La auditoria final de interfaz oficial y autenticacion queda registrada en `docs/AUTH_UI_FINAL_AUDIT.md`.
+
+## Capturas RF-05
+
+- `docs/screenshots/rf05-inventory-list-1440x900.png`.
+- `docs/screenshots/rf05-part-form-1440x900.png`.
+- `docs/screenshots/rf05-part-detail-1440x900.png`.
+- `docs/screenshots/rf05-stock-entry-1440x900.png`.
+- `docs/screenshots/rf05-stock-adjustment-1440x900.png`.
+- `docs/screenshots/rf05-movements-1440x900.png`.
+- `docs/screenshots/rf05-low-stock-1024x768.png`.
+- `docs/screenshots/rf05-mobile-390x844.png`.
+- `docs/screenshots/rf05-rf04-consumption-movement-1440x900.png`.

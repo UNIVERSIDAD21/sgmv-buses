@@ -51,9 +51,9 @@ Las respuestas de usuario no incluyen `contrasenaHash`, contrasenas ni tokens.
 
 La autorizacion final vive en backend con `authorizeRoles(...)`. El frontend tambien filtra rutas, menus y vistas por rol, pero solo como experiencia de usuario.
 
-- `ADMINISTRADOR`: RF-01 a RF-06.
-- `MECANICO`: RF-04, RF-05 y RF-06 tecnico.
-- `CONDUCTOR`: RF-01 limitado a bus asignado, RF-02 propio y RF-06 resumen autorizado.
+- `ADMINISTRADOR`: RF-01 a RF-05 activos; RF-05 administrativo completo; RF-06 queda pendiente de autorización.
+- `MECANICO`: RF-04 activo; en RF-05 solo aparece por integracion de consumo dentro de una orden RF-04 autorizada; RF-06 tecnico queda pendiente.
+- `CONDUCTOR`: RF-01 limitado a bus asignado y RF-02 propio; RF-06 resumen autorizado queda pendiente.
 
 No se aceptan alias como `SUPERVISOR`, `OPERADOR`, `OPERARIO`, `TECNICO`, `ADMIN_SUPERVISOR` o `CONDUCTOR_OPERADOR` en tokens, DTO ni reglas de autorizacion.
 

@@ -199,41 +199,50 @@ Orden cerrada de manera trazable y disponible para historial tecnico mediante or
 # CU-05 — RF-05 — Central de Repuestos
 
 **RF relacionado:** RF-05
-**Actores:** Administrador; Mecánico
+**Actor principal:** Administrador
+**Actor relacionado por integracion:** Mecánico en RF-04
 
 ## Objetivo
 
-Mantener un inventario básico y vincular los consumos con las intervenciones.
+Mantener una central administrativa basica de repuestos e insumos con existencias, alertas, entradas, ajustes y movimientos trazables. Los consumos de orden siguen ejecutandose desde RF-04 y quedan visibles en RF-05.
 
 ## Flujo principal — Administración
 
-1. Administrador consulta catálogo.
-2. Registra/actualiza un repuesto.
-3. Registra entrada o ajuste.
-4. El sistema valida cantidad.
-5. Registra movimiento, fecha y responsable.
-6. Actualiza existencia.
+1. Administrador abre `/repuestos`.
+2. El sistema muestra resumen operativo, catalogo paginado y movimientos recientes.
+3. Administrador busca, filtra u ordena el catalogo.
+4. Administrador registra un repuesto nuevo con stock cero o stock inicial.
+5. Si el stock inicial es mayor que cero, el sistema crea el repuesto y un movimiento `ENTRADA` en una sola transaccion.
+6. Administrador consulta detalle e historial por repuesto.
+7. Administrador registra entrada operativa o ajuste con direccion explicita.
+8. El sistema valida rol, repuesto activo, cantidad, motivo y clave idempotente.
+9. El sistema actualiza stock atomicamente y crea exactamente un movimiento.
+10. Administrador activa o desactiva logicamente un repuesto cuando corresponde.
+11. El sistema conserva historial y no elimina registros con dependencia.
 
-## Flujo principal — Consumo técnico
+## Integracion con RF-04
 
-1. Mecánico abre una orden activa permitida.
-2. Consulta disponibilidad.
-3. Selecciona repuesto.
-4. Registra cantidad utilizada.
-5. El sistema valida stock.
-6. Registra consumo.
-7. Actualiza stock de forma atómica.
-8. Mantiene relación consumo → orden → repuesto.
+1. Mecánico abre una orden asignada en `EN_EJECUCION`.
+2. RF-04 muestra solo repuestos activos con stock positivo.
+3. Mecánico registra consumo autorizado.
+4. RF-04 valida estado, propiedad, cantidad, stock y clave idempotente.
+5. RF-04 crea un `ConsumoRepuesto`, descuenta stock y crea un unico movimiento `CONSUMO` en la misma transaccion.
+6. RF-05 muestra la existencia resultante y el movimiento con referencia a orden y consumo.
 
 ## Alternativas
 
 - Cantidad <= 0 → rechazar.
-- Stock insuficiente → rechazar o aplicar la política explícitamente aprobada; nunca producir stock inconsistente.
-- Mecánico intenta ajuste administrativo → denegar.
+- Codigo duplicado → rechazar con conflicto controlado.
+- Stock insuficiente → rechazar; nunca producir stock negativo ni movimiento parcial.
+- Repuesto inactivo → exigir reactivacion antes de entradas, ajustes o consumo.
+- Doble envio con misma clave idempotente → devolver la operacion existente sin duplicar stock.
+- Claves distintas con datos iguales → permitir operaciones legitimas independientes.
+- Mecánico o Conductor intentan acceder a `/repuestos` → denegar.
+- Intento de editar stock por `PATCH` → rechazar.
 
 ## Postcondición
 
-Existencias y movimientos permanecen consistentes y trazables.
+Existencias, movimientos y consumos permanecen consistentes, auditables e inmutables desde la interfaz administrativa.
 
 ---
 

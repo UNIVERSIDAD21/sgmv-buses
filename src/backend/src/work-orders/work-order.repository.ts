@@ -296,6 +296,9 @@ export class WorkOrderRepository {
     return prisma.repuesto.findMany({
       where: {
         estado: 'ACTIVO',
+        stockActual: {
+          gt: 0,
+        },
         ...(busqueda
           ? {
               OR: [

@@ -148,6 +148,24 @@ POST   /ordenes-trabajo/:ordenId/cerrar
 
 RF-04 mantiene la misma separacion `route -> controller -> service -> repository -> Prisma`. La maquina de estados vive en `work-order.state.ts`, las transiciones y autorizaciones en servicio, y las operaciones criticas en transacciones Prisma. El frontend consume la API desde `src/frontend/src/features/ordenes-trabajo/work-order.api.ts`.
 
+Contrato RF-05 implementado:
+
+```text
+GET    /repuestos/resumen
+GET    /repuestos
+POST   /repuestos
+GET    /repuestos/:repuestoId
+PATCH  /repuestos/:repuestoId
+POST   /repuestos/:repuestoId/activar
+POST   /repuestos/:repuestoId/desactivar
+POST   /repuestos/:repuestoId/entradas
+POST   /repuestos/:repuestoId/ajustes
+GET    /repuestos/:repuestoId/movimientos
+GET    /inventario/movimientos
+```
+
+RF-05 mantiene la separacion `route -> controller -> service -> repository -> Prisma` en `src/backend/src/spare-parts/*`. La disponibilidad vive en `spare-part.availability.ts`; las entradas y ajustes usan transacciones Prisma, candado advisory por repuesto, actualizacion atomica condicionada y `movimientos_inventario.clave_idempotencia`. El frontend consume la API desde `src/frontend/src/features/repuestos/spare-part.api.ts`.
+
 ---
 
 ## 6. Respuestas y errores

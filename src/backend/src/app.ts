@@ -9,6 +9,7 @@ import { fleetRoutes } from './fleet/fleet.routes.js'
 import { noveltyRoutes } from './novelties/novelty.routes.js'
 import { preventiveRoutes } from './preventive/preventive.routes.js'
 import { errorHandler, notFoundHandler } from './shared/http.js'
+import { inventoryRoutes, sparePartRoutes } from './spare-parts/spare-part.routes.js'
 import { workOrderRoutes } from './work-orders/work-order.routes.js'
 
 export function createApp(configureRoutes?: (app: Express) => void) {
@@ -38,6 +39,8 @@ export function createApp(configureRoutes?: (app: Express) => void) {
   app.use('/novedades', noveltyRoutes)
   app.use('/mantenimiento-preventivo', preventiveRoutes)
   app.use('/ordenes-trabajo', workOrderRoutes)
+  app.use('/repuestos', sparePartRoutes)
+  app.use('/inventario', inventoryRoutes)
   configureRoutes?.(app)
   app.use(notFoundHandler)
   app.use(errorHandler)

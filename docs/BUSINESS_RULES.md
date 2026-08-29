@@ -279,6 +279,27 @@ Un movimiento de inventario registra:
 - responsable;
 - motivo cuando aplique.
 
+Implementacion RF-05:
+
+- La central administrativa reutiliza `repuestos` y `movimientos_inventario`; no existe tabla nueva de inventario, insumos, kardex, proveedores ni compras.
+- La existencia actual vive en `repuestos.stock_actual` y nunca se edita directamente por `PATCH`.
+- Crear un repuesto con stock inicial positivo debe crear en la misma transaccion un movimiento `ENTRADA` con responsable y motivo.
+- Entradas y ajustes administrativos exigen rol `ADMINISTRADOR`, repuesto activo, cantidad positiva y fecha del servidor.
+- Los ajustes usan direccion explicita `INCREMENTO` o `DISMINUCION`; la cantidad siempre es positiva.
+- Todo ajuste exige motivo significativo. Una correccion posterior se registra con un nuevo movimiento compensatorio.
+- La desactivacion es logica, conserva stock e historial, impide nuevas entradas/ajustes/consumos normales y requiere reactivacion antes de operar.
+- `movimientos_inventario.clave_idempotencia` protege doble envio de stock inicial, entradas y ajustes sin impedir operaciones legitimas con claves distintas.
+- Las operaciones de stock usan transaccion, candado advisory por repuesto y actualizacion atomica condicionada para evitar actualizaciones perdidas y stock negativo.
+
+Clasificacion de disponibilidad:
+
+- `INACTIVO`: repuesto desactivado.
+- `AGOTADO`: repuesto activo con `stock_actual = 0`.
+- `BAJO`: repuesto activo con `stock_actual > 0` y `stock_actual <= stock_minimo`.
+- `DISPONIBLE`: repuesto activo con `stock_actual > stock_minimo`.
+
+La clasificacion se calcula en backend y no se recibe del cliente.
+
 ---
 
 ## BR-19 — Consumo de repuesto
@@ -297,13 +318,22 @@ Implementacion RF-04:
 - `clave_idempotencia` protege doble envio de consumo.
 - Las transacciones usan candados advisory por orden/repuesto y actualizaciones condicionales de estado/stock para impedir stock negativo o transiciones duplicadas bajo concurrencia.
 
+Integracion RF-05:
+
+- El consumo RF-04 aparece en el historial RF-05 como el mismo movimiento `CONSUMO`, no como una copia.
+- La consulta operacional de RF-04 solo ofrece repuestos activos con stock positivo.
+- El costo unitario del consumo conserva la fotografia historica aunque cambie despues el costo actual del repuesto.
+- Un consumo concurrente contra un ajuste negativo puede fallar por stock insuficiente, pero nunca deja consumo, movimiento o stock parcial.
+
 ---
 
 ## BR-20 — Permisos de inventario
 
-Administrador puede registrar entradas y ajustes.
+Administrador puede entrar a la Central de repuestos, consultar catalogo, costos basicos, detalle, historial, movimientos, entradas, ajustes y activar/desactivar repuestos.
 
-Mecánico puede consultar y registrar consumo durante una intervención autorizada, pero no realizar ajustes administrativos.
+Mecánico no administra RF-05. Solo puede consultar disponibilidad minima y registrar consumo durante una intervencion RF-04 autorizada.
+
+Conductor no participa en RF-05 y no puede consultar costos, movimientos ni existencias administrativas.
 
 ---
 

@@ -30,6 +30,8 @@ import { getWorkOrderSummary } from '../ordenes-trabajo/work-order.api'
 import type { WorkOrderSummaryDto } from '../ordenes-trabajo/work-order.types'
 import { getPreventiveSummary } from '../preventivo/preventive.api'
 import type { PreventiveSummaryDto } from '../preventivo/preventive.types'
+import { getSparePartSummary } from '../repuestos/spare-part.api'
+import type { SparePartSummaryDto } from '../repuestos/spare-part.types'
 
 function ModuleList({ items }: { items: RequirementNavItem[] }) {
   return (
@@ -64,6 +66,7 @@ export default function DashboardPage() {
   const [fleetError, setFleetError] = useState<string | null>(null)
   const [noveltySummary, setNoveltySummary] = useState<NoveltySummaryDto | null>(null)
   const [preventiveSummary, setPreventiveSummary] = useState<PreventiveSummaryDto | null>(null)
+  const [sparePartSummary, setSparePartSummary] = useState<SparePartSummaryDto | null>(null)
   const [workOrderSummary, setWorkOrderSummary] = useState<WorkOrderSummaryDto | null>(null)
 
   const visibleItems = user
@@ -85,11 +88,12 @@ export default function DashboardPage() {
 
       try {
         if (isAdmin) {
-          const [summary, novelties, preventive, workOrders] = await Promise.all([
+          const [summary, novelties, preventive, workOrders, spareParts] = await Promise.all([
             getFleetSummary(),
             getNoveltySummary(),
             getPreventiveSummary(),
             getWorkOrderSummary(),
+            getSparePartSummary(),
           ])
 
           if (active) {
@@ -97,6 +101,7 @@ export default function DashboardPage() {
             setNoveltySummary(novelties)
             setPreventiveSummary(preventive)
             setWorkOrderSummary(workOrders)
+            setSparePartSummary(spareParts)
           }
         }
 
@@ -218,6 +223,14 @@ export default function DashboardPage() {
               label="Revision"
               note="Completadas tecnico"
               value={workOrderSummary?.pendientesRevision ?? '...'}
+            />
+            <StatCard
+              icon={<Package size={16} />}
+              label="Repuestos"
+              note="Bajo stock o agotados"
+              value={
+                sparePartSummary ? sparePartSummary.bajoStock + sparePartSummary.agotados : '...'
+              }
             />
           </div>
           <ModuleList items={visibleItems} />

@@ -56,7 +56,7 @@ async function ensureRoles() {
     }),
     prisma.rol.upsert({
       where: { codigo: 'MECANICO' },
-      update: {},
+      update: { nombre: 'Mecánico' },
       create: {
         codigo: 'MECANICO',
         nombre: 'Mecánico',

@@ -38,10 +38,18 @@ const ids = {
     preventivaCreada: '82000000-0000-4000-8000-000000000005',
   },
   repuesto: '90000000-0000-4000-8000-000000000001',
+  repuestosRf05: {
+    agotado: '90000000-0000-4000-8000-000000000003',
+    bajo: '90000000-0000-4000-8000-000000000002',
+    inactivo: '90000000-0000-4000-8000-000000000004',
+  },
   consumo: '91000000-0000-4000-8000-000000000001',
   movimientos: {
     entrada: '92000000-0000-4000-8000-000000000001',
     consumo: '92000000-0000-4000-8000-000000000002',
+    entradaBajo: '92000000-0000-4000-8000-000000000003',
+    ajusteBajo: '92000000-0000-4000-8000-000000000004',
+    entradaInactivo: '92000000-0000-4000-8000-000000000005',
   },
 }
 
@@ -437,6 +445,78 @@ async function main() {
         },
       })
 
+      await tx.repuesto.upsert({
+        where: { codigo: 'REP-FILTRO-001' },
+        update: {
+          nombre: 'Filtro de aceite',
+          categoria: 'Motor',
+          unidadMedida: 'unidad',
+          stockActual: '1',
+          stockMinimo: '2',
+          costoUnitario: '45000',
+          estado: 'ACTIVO',
+        },
+        create: {
+          id: ids.repuestosRf05.bajo,
+          codigo: 'REP-FILTRO-001',
+          nombre: 'Filtro de aceite',
+          categoria: 'Motor',
+          unidadMedida: 'unidad',
+          stockActual: '1',
+          stockMinimo: '2',
+          costoUnitario: '45000',
+          estado: 'ACTIVO',
+        },
+      })
+
+      await tx.repuesto.upsert({
+        where: { codigo: 'REP-ACEITE-001' },
+        update: {
+          nombre: 'Aceite motor 15W40',
+          categoria: 'Lubricantes',
+          unidadMedida: 'litro',
+          stockActual: '0',
+          stockMinimo: '3',
+          costoUnitario: '32000',
+          estado: 'ACTIVO',
+        },
+        create: {
+          id: ids.repuestosRf05.agotado,
+          codigo: 'REP-ACEITE-001',
+          nombre: 'Aceite motor 15W40',
+          categoria: 'Lubricantes',
+          unidadMedida: 'litro',
+          stockActual: '0',
+          stockMinimo: '3',
+          costoUnitario: '32000',
+          estado: 'ACTIVO',
+        },
+      })
+
+      await tx.repuesto.upsert({
+        where: { codigo: 'REP-BANDA-001' },
+        update: {
+          nombre: 'Banda de alternador',
+          categoria: 'Motor',
+          unidadMedida: 'unidad',
+          stockActual: '3',
+          stockMinimo: '1',
+          costoUnitario: '120000',
+          estado: 'INACTIVO',
+        },
+        create: {
+          id: ids.repuestosRf05.inactivo,
+          codigo: 'REP-BANDA-001',
+          nombre: 'Banda de alternador',
+          categoria: 'Motor',
+          unidadMedida: 'unidad',
+          stockActual: '3',
+          stockMinimo: '1',
+          costoUnitario: '120000',
+          estado: 'INACTIVO',
+        },
+      })
+
       await tx.movimientoInventario.upsert({
         where: { id: ids.movimientos.entrada },
         update: {
@@ -451,6 +531,60 @@ async function main() {
           cantidad: '10',
           costoUnitario: '80000',
           motivo: 'Entrada inicial de desarrollo.',
+          responsableId: ids.usuarios.admin,
+        },
+      })
+
+      await tx.movimientoInventario.upsert({
+        where: { id: ids.movimientos.entradaBajo },
+        update: {
+          cantidad: '2',
+          costoUnitario: '45000',
+          motivo: 'Entrada inicial RF-05 para evidencia de bajo stock.',
+        },
+        create: {
+          id: ids.movimientos.entradaBajo,
+          repuestoId: ids.repuestosRf05.bajo,
+          tipo: 'ENTRADA',
+          cantidad: '2',
+          costoUnitario: '45000',
+          motivo: 'Entrada inicial RF-05 para evidencia de bajo stock.',
+          responsableId: ids.usuarios.admin,
+        },
+      })
+
+      await tx.movimientoInventario.upsert({
+        where: { id: ids.movimientos.ajusteBajo },
+        update: {
+          cantidad: '1',
+          costoUnitario: '45000',
+          motivo: 'Ajuste de salida RF-05 por conteo fisico demo.',
+        },
+        create: {
+          id: ids.movimientos.ajusteBajo,
+          repuestoId: ids.repuestosRf05.bajo,
+          tipo: 'AJUSTE_SALIDA',
+          cantidad: '1',
+          costoUnitario: '45000',
+          motivo: 'Ajuste de salida RF-05 por conteo fisico demo.',
+          responsableId: ids.usuarios.admin,
+        },
+      })
+
+      await tx.movimientoInventario.upsert({
+        where: { id: ids.movimientos.entradaInactivo },
+        update: {
+          cantidad: '3',
+          costoUnitario: '120000',
+          motivo: 'Entrada inicial antes de desactivacion demo RF-05.',
+        },
+        create: {
+          id: ids.movimientos.entradaInactivo,
+          repuestoId: ids.repuestosRf05.inactivo,
+          tipo: 'ENTRADA',
+          cantidad: '3',
+          costoUnitario: '120000',
+          motivo: 'Entrada inicial antes de desactivacion demo RF-05.',
           responsableId: ids.usuarios.admin,
         },
       })

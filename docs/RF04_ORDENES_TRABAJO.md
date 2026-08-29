@@ -4,7 +4,7 @@
 
 RF-04 controla el ciclo operativo completo de una orden de trabajo correctiva o preventiva desde su recepcion en taller hasta el cierre administrativo. Reutiliza las ordenes creadas por RF-02 y RF-03, permite crear ordenes correctivas directas autorizadas, asigna y reasigna mecanicos con trazabilidad, registra ejecucion tecnica, actividades y consumos de repuestos, calcula costo basico disponible y bloquea modificaciones sobre ordenes cerradas.
 
-No implementa RF-05 ni RF-06. El catalogo completo de repuestos, compras, entradas, ajustes administrativos, informes consolidados y exportaciones siguen pendientes para sus bloques propios.
+RF-04 no administra el catalogo ni las existencias: solo consume repuestos activos dentro de una orden autorizada. La central administrativa de catalogo, entradas y ajustes pertenece a RF-05; informes consolidados y exportaciones permanecen fuera de RF-04 y corresponden a RF-06.
 
 ## 2. Roles
 

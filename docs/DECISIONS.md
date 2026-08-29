@@ -319,7 +319,7 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 **Participación de actores:**
 
 - Administrador participa en RF-01, RF-02, RF-03, RF-04, RF-05 y RF-06.
-- Mecánico participa en RF-04, RF-05 con consulta de existencias y consumos autorizados, y RF-06 con historial técnico necesario.
+- Mecánico participa en RF-04 con consulta minima de existencias y consumos autorizados; no administra RF-05 ni accede a su central administrativa. En RF-06 participara con historial tecnico necesario cuando ese RF sea autorizado.
 - Conductor participa en RF-01 solo para consultar su bus asignado, RF-02 para registrar/consultar sus novedades y RF-06 mediante resumen autorizado de su bus.
 
 **Clases principales del dominio:**
@@ -614,6 +614,30 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 
 **Cierre preventivo:** RF-04 conserva la orden preventiva cerrada y sus objetivos copiados. No recalcula la siguiente fecha o kilometraje porque el modelo fisico actual no almacena intervalos aprobados para ese calculo. No se crea una nueva programacion ni una nueva orden al cerrar.
 
-**Limites:** no se inicia RF-05 ni RF-06. No hay compras, proveedores, entradas, ajustes administrativos, catalogo completo, informes consolidados ni exportaciones.
+**Limites RF-04:** RF-04 no administra catalogo, compras, proveedores, entradas ni ajustes administrativos. Esas operaciones pertenecen a RF-05. Informes consolidados y exportaciones pertenecen a RF-06.
 
 **Estado:** APROBADA / IMPLEMENTADA COMO RF-04.
+
+---
+
+## 2026-08-29 - RF-05 central de repuestos implementada
+
+**Decision:** RF-05 se implementa como central administrativa exclusiva para `ADMINISTRADOR`, reutilizando `repuestos`, `movimientos_inventario`, `consumos_repuesto`, `ordenes_trabajo` y `usuarios`. No se crean tablas de inventario paralelo, insumos, kardex, compras ni proveedores.
+
+**Rol de Mecanico:** el Mecanico no administra RF-05 ni ve `/repuestos`. Su participacion sigue dentro de RF-04: consulta minima de repuestos disponibles y consumo autorizado sobre una orden propia en `EN_EJECUCION`.
+
+**Disponibilidad:** se calcula en backend como `INACTIVO`, `AGOTADO`, `BAJO` y `DISPONIBLE`. `INACTIVO` domina sobre stock; `AGOTADO` corresponde a existencia cero; `BAJO` incluye el limite exacto `stock_actual <= stock_minimo`; `DISPONIBLE` aplica cuando la existencia supera el minimo.
+
+**Stock:** `stock_actual` no se modifica por `PATCH`. Las variaciones se hacen por stock inicial trazable, entrada, ajuste o consumo RF-04. La desactivacion conserva stock e historial y exige reactivacion antes de operar.
+
+**Migracion minima:** se agrega `20260829101500_rf05_movimiento_idempotencia`, que crea `movimientos_inventario.clave_idempotencia UUID NULL` y el indice unico parcial `ux_movimientos_inventario_clave_idempotencia`. El bloqueo exacto era que entradas, ajustes y stock inicial no tenian forma seria de distinguir doble envio del mismo comando frente a dos operaciones legitimas iguales. La migracion no afecta datos RF-01 a RF-04 porque la columna es nullable y no cambia FKs ni checks existentes.
+
+**Concurrencia:** entradas y ajustes usan transacciones Prisma, candado advisory por repuesto, actualizaciones atomicas condicionadas e idempotencia por clave. Se valida que dos entradas concurrentes acumulen stock, que ajustes negativos concurrentes no sobrepasen existencia y que un ajuste RF-05 concurrente con consumo RF-04 no deje stock negativo ni movimientos duplicados.
+
+**Lecturas RF-05:** resumen y catalogo usan Prisma query builder para filtros, conteo, ordenamiento y paginacion. Se evita SQL crudo en esas lecturas porque durante la validacion Neon multi-schema se observo `cached plan must not change result type` al alternar schemas temporales con consultas preparadas sobre tablas del mismo nombre.
+
+**Costo:** `repuestos.costo_unitario` representa costo actual basico. Los consumos RF-04 conservan `consumos_repuesto.costo_unitario` y `subtotal` historicos; editar el costo actual no recalcula consumos anteriores ni ordenes cerradas.
+
+**Limites:** RF-05 no implementa proveedores, compras, facturacion, bodegas multiples, lotes, series, codigos de barras, importacion masiva, informes consolidados, exportaciones ni tabla `Informe`. RF-06 permanece pendiente.
+
+**Estado:** IMPLEMENTADA COMO RF-05.

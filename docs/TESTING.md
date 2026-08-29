@@ -520,7 +520,48 @@ La verificacion visual RF-04 confirma `1440x900`, `1024x768` y `390x844` sin ove
 
 ---
 
-## 12. Neon y ejecucion secuencial de pruebas backend
+## 12. Evidencia de RF-05 - Central de repuestos
+
+El 2026-08-29 se agregaron pruebas automatizadas para RF-05.
+
+Backend:
+
+- `src/backend/test/spare-part.test.ts` cubre autenticacion obligatoria, Administrador autorizado, Mecanico y Conductor denegados, catalogo, creacion con stock cero, creacion con stock inicial y movimiento, normalizacion, duplicados, detalle, edicion controlada, rechazo de stock por `PATCH`, activacion/desactivacion, inactivos, clasificacion, listado, filtros, entradas, ajustes, idempotencia y concurrencia.
+- Cubre entradas concurrentes sin actualizacion perdida, ajustes negativos concurrentes con stock limitado, consumo RF-04 concurrente contra ajuste RF-05, alta concurrente con mismo codigo y cero stock negativo.
+- Cubre integracion RF-04: consumo descuenta stock, genera un solo movimiento `CONSUMO`, aparece en movimientos RF-05 con referencia a orden/consumo y conserva costo historico aunque cambie el costo actual del repuesto.
+- `src/backend/test/work-order.test.ts` conserva consumo transaccional de RF-04 y valida consulta minima de repuestos activos con stock positivo.
+- `src/backend/test/prisma-integrity.test.ts` conserva restricciones de consumo, movimiento, subtotales, motivos administrativos y stock no negativo.
+
+Frontend:
+
+- `src/frontend/src/App.test.tsx` cubre ruta `/repuestos`, navegacion visible solo para Administrador, guard de ruta para Mecanico y Conductor, resumen real, catalogo, busqueda, filtros, estados vacio/error, formulario de creacion, validaciones, codigo duplicado, stock inicial, detalle, edicion sin stock directo, entrada, ajuste positivo, ajuste negativo con confirmacion, stock insuficiente, activacion/desactivacion, doble envio bloqueado e historial con referencia a `OT-RF04-001`.
+
+Conteos ejecutados:
+
+- Frontend completo: 42/42.
+- Backend por archivo contra PostgreSQL/Neon configurado: 80/80.
+- Backend RF-05 aislado: 11/11.
+- Backend RF-05 en Neon temporal `rf05_final_20260829_1627`: 11/11.
+- Seed temporal RF-05 ejecutado dos veces: 3 roles, 4 usuarios, 2 buses, 1 novedad, 1 programacion, 2 ordenes, 4 repuestos, 1 consumo y 5 movimientos.
+- Auditoria temporal RF-05: 0 inconsistencias en codigos duplicados, stock negativo, movimientos sin repuesto, consumos sin repuesto, consumos sin movimiento, consumos con mas de un movimiento, movimientos `CONSUMO` sin consumo, consumos con orden inexistente y responsables inexistentes.
+
+Evidencia visual requerida:
+
+- `docs/screenshots/rf05-inventory-list-1440x900.png`
+- `docs/screenshots/rf05-part-form-1440x900.png`
+- `docs/screenshots/rf05-part-detail-1440x900.png`
+- `docs/screenshots/rf05-stock-entry-1440x900.png`
+- `docs/screenshots/rf05-stock-adjustment-1440x900.png`
+- `docs/screenshots/rf05-movements-1440x900.png`
+- `docs/screenshots/rf05-low-stock-1024x768.png`
+- `docs/screenshots/rf05-mobile-390x844.png`
+- `docs/screenshots/rf05-rf04-consumption-movement-1440x900.png`
+
+La verificacion visual RF-05 confirmo `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina, estados visibles por texto, formularios utilizables, drawers accesibles, filtros funcionales y consola del navegador sin errores relevantes distintos de los `401` esperados de recuperacion de sesion antes del login.
+
+---
+
+## 13. Neon y ejecucion secuencial de pruebas backend
 
 El script backend usa:
 
@@ -535,6 +576,10 @@ Las pruebas de concurrencia RF-02, RF-03 y RF-04 conservan solicitudes simultane
 `P1001` debe tratarse como limitacion de conexion con Neon o su pooler cuando no se puede establecer comunicacion. No representa por si solo una prueba funcional fallida.
 
 Durante la validacion temporal de RF-04 se registro un primer intento con `P1002` al adquirir el advisory lock de Prisma para migraciones. Se repitio en el schema temporal `rf04_final_20260828_1710` con `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1`, sin ejecutar migraciones simultaneas sobre el mismo schema; las 6 migraciones aplicaron desde cero, el seed corrio dos veces, RF-04 backend paso `11/11` y el schema fue eliminado al finalizar.
+
+Durante la validacion temporal de RF-05 se repitio la mitigacion documentada para Neon: `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1` solo en migraciones secuenciales del schema temporal `rf05_final_20260829_1627`. Las 7 migraciones aplicaron desde cero, el seed corrio dos veces, RF-05 backend paso `11/11`, la auditoria de integridad quedo en cero inconsistencias y el schema fue eliminado al finalizar.
+
+RF-05 tambien corrigio una incompatibilidad de lecturas con el pooler: el resumen y catalogo dejaron de usar SQL crudo para evitar `cached plan must not change result type` al validar schemas temporales. Los filtros, conteos, ordenamiento y paginacion quedaron implementados con Prisma query builder.
 
 `P1002` indica tiempo de espera agotado. Si el mensaje menciona advisory lock, el contexto especifico es bloqueo/espera de migracion; no todos los `P1002` significan la misma causa.
 

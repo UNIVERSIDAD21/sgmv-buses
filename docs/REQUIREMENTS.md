@@ -179,7 +179,7 @@ No existe origen fisico `MANUAL`. La orden preventiva manual no se implementa po
 - Las reasignaciones conservan tecnico anterior, tecnico nuevo, Administrador, motivo y fecha.
 - El consumo genera exactamente un movimiento `CONSUMO`, descuenta stock en la misma transaccion y usa costo del servidor.
 - `CERRADA` es terminal.
-- RF-05 no se inicia: no hay compras, entradas, ajustes ni catalogo completo.
+- RF-04 no administra catalogo, compras, entradas ni ajustes; esas operaciones pertenecen a RF-05.
 - RF-06 no se inicia: no hay informes consolidados ni exportaciones.
 
 ---
@@ -188,39 +188,46 @@ No existe origen fisico `MANUAL`. La orden preventiva manual no se implementa po
 
 ### Requerimiento
 
-El sistema permitirá administrar el catálogo y las existencias de repuestos e insumos, registrar entradas y ajustes, consultar disponibilidad y asociar los consumos de una intervención con la orden correspondiente.
+El sistema permite al Administrador administrar una central básica y trazable de repuestos e insumos, controlar existencias, registrar entradas y ajustes autorizados, consultar disponibilidad y auditar movimientos. Los consumos de repuestos permanecen integrados con RF-04 y se reflejan inmediatamente en la central.
 
 ### Actores
 
 - Administrador
-- Mecánico
 - Sistema
+
+El Mecánico no administra RF-05. Solo conserva en RF-04 la consulta mínima de repuestos disponibles y el consumo autorizado dentro de una orden asignada en `EN_EJECUCION`. El Conductor no participa.
 
 ### Administrador
 
-- Registrar repuesto/insumo.
-- Actualizar información.
-- Activar/desactivar.
-- Registrar entradas.
-- Registrar ajustes.
-- Consultar existencias.
-- Consultar movimientos.
-
-### Mecánico
-
-- Consultar existencias.
-- Registrar consumo durante una intervención/orden.
-- No realizar ajustes administrativos de inventario.
+- Consultar resumen operativo.
+- Listar catálogo paginado.
+- Buscar, filtrar y ordenar por campos permitidos.
+- Registrar repuesto o insumo.
+- Crear stock inicial trazable mediante movimiento `ENTRADA`.
+- Editar datos maestros autorizados sin modificar stock directo.
+- Activar o desactivar lógicamente.
+- Registrar entradas operativas.
+- Registrar ajustes de incremento o disminución con motivo.
+- Consultar detalle e historial de movimientos.
+- Consultar movimientos de consumo originados en RF-04.
+- Ver costo unitario actual y valor básico del stock.
 
 ### Criterios de aceptación
 
-- Cada movimiento registra tipo, cantidad, motivo cuando aplique, fecha y responsable.
-- Cada consumo identifica orden y repuesto.
-- El consumo actualiza stock de forma consistente.
-- La operación de consumo y descuento de inventario es atómica.
-- No debe existir un consumo huérfano sin orden/repuesto.
-- El sistema evita cantidades inválidas y stock inconsistente.
-- Los movimientos quedan disponibles para auditoría y reportes.
+- Solo `ADMINISTRADOR` accede a `/repuestos` y a los endpoints administrativos.
+- El catálogo reutiliza la tabla `repuestos`; no se crean tablas redundantes de inventario, insumos, kardex, compras ni proveedores.
+- Crear un repuesto con stock inicial positivo crea exactamente un movimiento `ENTRADA` en la misma transacción.
+- La existencia no se modifica por `PATCH`; toda variación pasa por entrada, ajuste o consumo RF-04.
+- Toda entrada o ajuste aplicado genera exactamente un movimiento con responsable y fecha del servidor.
+- La clasificación se calcula en backend: `INACTIVO`, `AGOTADO`, `BAJO` y `DISPONIBLE`.
+- El límite `stockActual <= stockMinimo` se clasifica como `BAJO`.
+- Un repuesto inactivo conserva historia y no participa en nuevas entradas, ajustes ni consumos normales.
+- Los consumos RF-04 generan un único movimiento `CONSUMO`, descuentan stock y aparecen en RF-05 con referencia a orden y consumo.
+- El costo histórico fotografiado del consumo no cambia si luego se edita el costo actual del repuesto.
+- Entradas, ajustes y consumos evitan stock negativo bajo concurrencia.
+- Las claves idempotentes evitan doble envío sin bloquear operaciones legítimas con claves distintas.
+- Los movimientos quedan inmutables desde la interfaz y no exponen edición ni borrado.
+- RF-06 no se inicia: sin informes consolidados, exportaciones ni tabla `Informe`.
 
 ---
 

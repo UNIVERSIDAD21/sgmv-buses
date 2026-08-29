@@ -6,7 +6,7 @@ Este archivo es el tablero operativo del agente.
 
 **No marcar el inicio de implementación hasta recibir la orden explícita `INICIAR FASE 3`.**
 
-**Estado actual:** interfaz oficial, autenticacion transversal, RF-01 Gestion de la flota vehicular, RF-02 Control de novedades operativas, normalizacion transversal de roles canonicos, RF-03 Administracion del mantenimiento preventivo y RF-04 Seguimiento de ordenes de trabajo implementadas sobre la Persistencia cerrada. Todavia no implementar RF-05 ni RF-06 completos sin nueva autorización del propietario.
+**Estado actual:** interfaz oficial, autenticacion transversal, RF-01 Gestion de la flota vehicular, RF-02 Control de novedades operativas, normalizacion transversal de roles canonicos, RF-03 Administracion del mantenimiento preventivo, RF-04 Seguimiento de ordenes de trabajo y RF-05 Central de repuestos implementadas sobre la Persistencia cerrada. RF-06 sigue pendiente y no debe iniciarse sin nueva autorización del propietario.
 
 ---
 
@@ -203,25 +203,32 @@ Este archivo es el tablero operativo del agente.
 - [x] Registrar responsable/fechas.
 - [x] Mantener historial tecnico disponible mediante orden, intervenciones, actividades, consumos y movimientos.
 - [x] Proteger doble envio de consumo con `clave_idempotencia`.
-- [x] Documentar que RF-05 y RF-06 no fueron iniciados.
+- [x] Documentar los limites de RF-04 frente a RF-05 y RF-06.
 
 ---
 
 # 8. RF-05 — Central de Repuestos
 
-Nota: RF-04 implementa el consumo operativo de repuestos dentro de una orden en ejecucion. La administracion central de repuestos de RF-05 no se inicia en este bloque.
+Nota: RF-05 implementa la central administrativa de repuestos para Administrador. El Mecánico no administra inventario; conserva únicamente la consulta minima y consumo de repuestos dentro de una orden RF-04 asignada y en ejecución.
 
-- [ ] Catálogo.
-- [ ] Existencias.
-- [ ] Entradas.
-- [ ] Ajustes administrativos.
-- [ ] Consulta de stock por mecánico.
-- [ ] Consumo asociado a orden.
-- [ ] Transacción atómica consumo + movimiento + stock.
-- [ ] Historial de movimientos.
-- [ ] Validación de cantidades.
-- [ ] Prueba de stock insuficiente.
-- [ ] Cálculo de subtotal.
+- [x] Catálogo paginado, buscable, filtrable y ordenado desde backend.
+- [x] Existencias actuales sin edición directa por `PATCH`.
+- [x] Alta con stock cero.
+- [x] Alta con stock inicial trazable por movimiento.
+- [x] Disponibilidad centralizada: `DISPONIBLE`, `BAJO`, `AGOTADO`, `INACTIVO`.
+- [x] Entradas administrativas con transacción, responsable, motivo e idempotencia.
+- [x] Ajustes administrativos positivos y negativos con motivo obligatorio.
+- [x] Consulta minima de stock por Mecánico conservada en RF-04, sin acceso a central administrativa.
+- [x] Consumo asociado a orden desde RF-04.
+- [x] Transacción atómica consumo + movimiento + stock.
+- [x] Historial de movimientos general y por repuesto.
+- [x] Relación visible con orden y consumo cuando el movimiento proviene de RF-04.
+- [x] Validación de cantidades, costos y campos sensibles con Zod.
+- [x] Prueba de stock insuficiente.
+- [x] Cálculo de subtotal y costo histórico fotografiado en consumo.
+- [x] Valor básico actual de inventario sin valoración contable avanzada.
+- [x] Pruebas de concurrencia, rollback e idempotencia.
+- [x] Evidencias visuales RF-05 en `docs/screenshots/`.
 
 ---
 
@@ -243,24 +250,24 @@ Nota: RF-04 implementa el consumo operativo de repuestos dentro de una orden en 
 
 # 10. Integración
 
-- [ ] Probar flujo conductor → novedad → orden → mecánico → cierre → historial.
-- [ ] Probar flujo preventivo → orden → mecánico → cierre → historial.
-- [ ] Probar flujo orden → consumo → inventario.
-- [ ] Probar permisos por API.
-- [ ] Probar manejo de errores.
-- [ ] Revisar responsive.
+- [x] Probar flujo conductor → novedad → orden → mecánico → cierre como regresión RF-02/RF-04.
+- [x] Probar flujo preventivo → orden → mecánico → cierre como regresión RF-03/RF-04.
+- [x] Probar flujo orden → consumo → inventario.
+- [x] Probar permisos por API.
+- [x] Probar manejo de errores.
+- [x] Revisar responsive en `1440x900`, `1024x768` y `390x844`.
 
 ---
 
 # 11. Pruebas finales
 
-- [ ] Ejecutar casos RF.
-- [ ] Ejecutar casos RNF.
-- [ ] Validar Chrome.
+- [x] Ejecutar casos RF-01 a RF-05 automatizados.
+- [x] Ejecutar casos RNF cubiertos por auth, permisos, validación, build, lint, typecheck y pruebas visuales.
+- [x] Validar Chromium/Chrome mediante Playwright.
 - [ ] Validar Edge.
 - [ ] Medir operaciones habituales para RNF-03.
-- [ ] Confirmar cero errores bloqueantes en flujos principales.
-- [ ] Registrar fallos/correcciones.
+- [x] Confirmar cero errores bloqueantes en flujos principales RF-01 a RF-05.
+- [x] Registrar fallos/correcciones.
 
 ---
 
@@ -273,9 +280,9 @@ Nota: RF-04 implementa el consumo operativo de repuestos dentro de una orden en 
 - [ ] Variables de entorno.
 - [ ] Configurar CORS/cookies/CSRF segun dominios Vercel/Render.
 - [ ] Migraciones en entorno destino.
-- [ ] Seed/demo seguro si se requiere.
+- [x] Seed/demo seguro e idempotente para RF-05 en entorno de validacion.
 - [ ] Smoke test.
-- [ ] Actualizar `README.md`/`SETUP.md`.
+- [x] Actualizar `README.md` y documentación técnica afectada.
 - [ ] Revisar diff final.
 - [ ] Commit y push.
 - [ ] Entregar resumen de módulos implementados, pruebas y pendientes.

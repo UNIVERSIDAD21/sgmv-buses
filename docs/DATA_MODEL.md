@@ -334,6 +334,10 @@ Restricciones mínimas:
 - Cantidades válidas.
 - Costo no negativo.
 - Estado activo/inactivo.
+- RF-05 calcula disponibilidad en backend: `INACTIVO`, `AGOTADO`, `BAJO` o `DISPONIBLE`.
+- `stockActual` no se edita directamente; cambia por entrada, ajuste o consumo RF-04.
+- El stock inicial positivo se registra con un movimiento `ENTRADA` en la misma transaccion de creacion.
+- La desactivacion es logica y conserva consumos, movimientos y stock.
 
 ---
 
@@ -361,6 +365,8 @@ Reglas aprobadas:
 - El costo unitario usado en el consumo conserva el valor histórico del momento.
 - RF-04 agrega `clave_idempotencia` opcional para proteger doble envio sin crear movimientos duplicados.
 - RF-04 usa candados advisory transaccionales y descuento condicional de stock para conservar integridad bajo solicitudes concurrentes.
+- RF-05 muestra este movimiento de consumo dentro del historial sin duplicarlo ni transformarlo.
+- La consulta operacional de RF-04 solo ofrece repuestos activos con existencia positiva.
 
 ---
 
@@ -384,8 +390,11 @@ Reglas aprobadas:
 
 - Los movimientos incluyen entradas, consumos y ajustes.
 - Administrador registra entradas y ajustes.
-- Mecánico registra únicamente consumos autorizados.
+- Mecánico registra únicamente consumos autorizados desde RF-04.
 - Un MovimientoInventario de entrada o ajuste no necesita ConsumoRepuesto.
+- RF-05 agrega `clave_idempotencia` opcional en MovimientoInventario para entradas, ajustes y stock inicial.
+- Las claves idempotentes repetidas no duplican stock ni movimientos; claves distintas permiten operaciones iguales legitimas.
+- Los movimientos son inmutables desde la interfaz. Una correccion se realiza con un nuevo movimiento compensatorio.
 - "Técnico asignado" corresponde a Usuario-OrdenTrabajo.
 - "Responsable del movimiento" corresponde a Usuario-MovimientoInventario.
 - No interpretar esas dos responsabilidades como una relación directa OrdenTrabajo-MovimientoInventario.

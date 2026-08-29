@@ -1,6 +1,6 @@
 # Project Status
 
-**Última consolidación documental:** 2026-08-28
+**Última consolidación documental:** 2026-08-29
 
 ## Fase académica
 
@@ -48,7 +48,7 @@
 
 ## Estado de handoff
 
-**FASE 3 AUTORIZADA. BOOTSTRAP TÉCNICO, PERSISTENCIA, AUDITORÍA DE BASE DE DATOS, INTERFAZ OFICIAL, AUTENTICACIÓN TRANSVERSAL, RF-01 GESTIÓN DE LA FLOTA VEHICULAR, RF-02 CONTROL DE NOVEDADES OPERATIVAS, NORMALIZACIÓN TRANSVERSAL DE ROLES, RF-03 ADMINISTRACIÓN DEL MANTENIMIENTO PREVENTIVO Y RF-04 SEGUIMIENTO DE ÓRDENES DE TRABAJO COMPLETADOS. RF-05 Y RF-06 AÚN NO IMPLEMENTADOS.**
+**FASE 3 AUTORIZADA. BOOTSTRAP TÉCNICO, PERSISTENCIA, AUDITORÍA DE BASE DE DATOS, INTERFAZ OFICIAL, AUTENTICACIÓN TRANSVERSAL, RF-01 GESTIÓN DE LA FLOTA VEHICULAR, RF-02 CONTROL DE NOVEDADES OPERATIVAS, NORMALIZACIÓN TRANSVERSAL DE ROLES, RF-03 ADMINISTRACIÓN DEL MANTENIMIENTO PREVENTIVO, RF-04 SEGUIMIENTO DE ÓRDENES DE TRABAJO Y RF-05 CENTRAL DE REPUESTOS COMPLETADOS. RF-06 AÚN NO IMPLEMENTADO.**
 
 Las decisiones técnicas aprobadas con ajustes finales quedaron registradas en `DECISIONS.md` y consolidadas en la documentación de soporte.
 
@@ -70,6 +70,7 @@ Resumen:
 - Interfaz visual seleccionada integrada como estructura oficial: login, menú lateral colapsable, encabezado contextual, paneles por rol, vista base de flota, formulario visual de buses y estados pendientes.
 - Roles canónicos normalizados transversalmente a `ADMINISTRADOR`, `CONDUCTOR` y `MECANICO`; las etiquetas visibles son Administrador, Conductor y Mecánico.
 - RF-04 implementado con endpoints reales en `/ordenes-trabajo`, maquina de estados centralizada, asignacion/reasignacion, intervenciones, actividades, consumos transaccionales, completado tecnico, devolucion y cierre administrativo.
+- RF-05 implementado con endpoints reales en `/repuestos` y `/inventario/movimientos`, central administrativa para Administrador, catalogo, disponibilidad, entradas, ajustes, movimientos, idempotencia, concurrencia segura e integracion visible con consumos RF-04.
 
 ### Estado de inicio
 
@@ -77,7 +78,7 @@ OpenClaw recibió la orden explícita `INICIAR FASE 3`.
 
 El primer bloque permitido ya fue ejecutado: bootstrap técnico del repositorio.
 
-La revisión documental de Persistencia fue autorizada, actualizada, implementada y auditada tras aprobación explícita del propietario. La interfaz oficial y la autenticación transversal también fueron autorizadas e implementadas. El propietario autorizo RF-01 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-02 el 2026-08-27 y quedo implementado end-to-end. La normalización transversal de roles canónicos quedo completada después de RF-02 y antes de RF-03. El propietario autorizo RF-03 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-04 el 2026-08-28 y quedo implementado end-to-end. OpenClaw debe detenerse antes de implementar RF-05 o RF-06 hasta nueva autorización del propietario.
+La revisión documental de Persistencia fue autorizada, actualizada, implementada y auditada tras aprobación explícita del propietario. La interfaz oficial y la autenticación transversal también fueron autorizadas e implementadas. El propietario autorizo RF-01 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-02 el 2026-08-27 y quedo implementado end-to-end. La normalización transversal de roles canónicos quedo completada después de RF-02 y antes de RF-03. El propietario autorizo RF-03 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-04 el 2026-08-28 y quedo implementado end-to-end. El propietario autorizo RF-05 el 2026-08-29 y quedo implementado end-to-end. OpenClaw debe detenerse antes de implementar RF-06 hasta nueva autorización del propietario.
 
 ---
 
@@ -105,9 +106,12 @@ Las decisiones adoptadas están registradas en `DECISIONS.md`.
 - Calcular `VIGENTE`, `PROXIMO` y `VENCIDO` sin persistirlos como estado durable que pueda quedar desactualizado.
 - Mantener `Informe` como servicio/consulta/DTO/vista inicial, no como tabla.
 - Mantener la relación de repuestos como `OrdenTrabajo -> ConsumoRepuesto -> Repuesto`.
+- Mantener RF-05 sobre `repuestos`, `movimientos_inventario` y `consumos_repuesto`, sin inventario paralelo ni compras.
+- Aplicar idempotencia RF-05 con `movimientos_inventario.clave_idempotencia` para stock inicial, entradas y ajustes.
+- Mantener al Mecánico fuera de la central administrativa de RF-05; su consumo sigue exclusivamente dentro de RF-04.
 - Configurar correctamente despliegue Vercel/Render/Neon, CORS, cookies y CSRF.
 - Mantener la autenticación como capacidad transversal; no crear RF-07 ni gestión de usuarios como módulo principal.
-- No mostrar datos simulados como si provinieran de Neon. RF-05 y RF-06 deben mostrar estados vacíos o "Módulo pendiente de implementación" mientras no existan endpoints reales.
+- No mostrar datos simulados como si provinieran de Neon. RF-06 debe mostrar estado vacío o "Módulo pendiente de implementación" mientras no existan endpoints reales.
 
 Si aparece una contradicción con un artefacto posterior, detener, documentar impacto y consultar al propietario antes de implementar.
 
@@ -292,7 +296,49 @@ Validacion ejecutada durante el bloque RF-04:
 - Pruebas de concurrencia cubren asignacion incompatible, consumo con stock limitado, completado/cierre simultaneo y doble cierre.
 - Neon temporal `rf04_final_20260828_1710`: migraciones desde cero, seed dos veces, RF-04 backend `11/11` y schema eliminado. Un primer intento tuvo `P1002` de advisory lock de Prisma y se repitio con lock deshabilitado sin migraciones simultaneas.
 
-RF-05 y RF-06 no fueron iniciados.
+RF-05 fue implementado en el bloque siguiente. RF-06 no fue iniciado.
+
+---
+
+## Validacion de RF-05
+
+RF-05 queda cubierto por:
+
+- Backend `src/backend/src/spare-parts/*`: schemas Zod, DTOs, disponibilidad centralizada, repositorio Prisma, servicio, controlador y rutas.
+- Frontend `src/frontend/src/features/repuestos/*`: cliente API, tipos, central administrativa, resumen, catalogo, formularios, detalle, entradas, ajustes, activacion/desactivacion y movimientos.
+- Panel administrador con indicador real desde `/repuestos/resumen`.
+- Integracion RF-04: el consumo del Mecanico genera un unico `ConsumoRepuesto`, un unico movimiento `CONSUMO`, descuenta stock y aparece en RF-05 con referencia a orden y consumo.
+- Documentacion dedicada en `docs/RF05_CENTRAL_REPUESTOS.md`.
+- Evidencias visuales `docs/screenshots/rf05-*.png`.
+
+Alcance implementado:
+
+- Catalogo paginado, busqueda, filtros, ordenamiento seguro y detalle.
+- Alta con stock cero o stock inicial trazable.
+- Disponibilidad calculada como `INACTIVO`, `AGOTADO`, `BAJO` o `DISPONIBLE`.
+- Edicion controlada de datos maestros sin permitir modificar stock directamente.
+- Activacion/desactivacion logica conservando historia.
+- Entradas y ajustes administrativos con motivo, responsable, fecha del servidor e idempotencia.
+- Historial de movimientos general y por repuesto, inmutable desde la interfaz.
+- Costo unitario actual y valor basico del inventario con Decimal seguro.
+- Concurrencia protegida mediante transacciones Prisma, candado advisory por repuesto, actualizaciones atomicas condicionadas y clave idempotente.
+
+Limites conservados:
+
+- RF-05 no implementa proveedores, cotizaciones, compras, facturas, pagos, bodegas multiples, lotes, series, codigos de barras, importaciones, informes consolidados ni exportaciones.
+- RF-06 no fue iniciado.
+
+Validacion ejecutada durante el bloque RF-05:
+
+- Backend RF-05 aislado: 11 pruebas aprobadas.
+- Backend completo por suites: 80 pruebas aprobadas.
+- Frontend completo: 42 pruebas aprobadas.
+- Pruebas de concurrencia cubren doble entrada, ajuste negativo sobre stock limitado, consumo RF-04 contra ajuste RF-05 y codigo duplicado concurrente.
+- Seed RF-05 idempotente ejecutado dos veces con `SEED_USER_PASSWORD` temporal de proceso.
+- Neon temporal `rf05_final_20260829_1627` validado desde cero con 7 migraciones, seed repetido, RF-05 backend `11/11`, auditoria de integridad en cero inconsistencias y schema eliminado al finalizar. Se uso `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1` solo para migraciones secuenciales por el `P1002` conocido del pooler Neon.
+- Playwright visual en `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina ni errores relevantes de consola.
+
+RF-06 no fue iniciado.
 
 ---
 
