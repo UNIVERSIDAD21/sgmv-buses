@@ -26,16 +26,6 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Local OpenClaw agent workspace files
-HEARTBEAT.md
-IDENTITY.md
-MEMORY.md
-SOUL.md
-TOOLS.md
-USER.md
-memory/
-openclaw-workspace-state.json
-
 # Prisma local artifacts
 src/backend/prisma/*.db
 src/backend/prisma/*.db-journal
