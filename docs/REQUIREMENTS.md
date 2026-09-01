@@ -280,6 +280,10 @@ Pueden agregarse filtros derivados de los datos existentes siempre que no creen 
 - Los costos básicos provienen de información trazable del mantenimiento.
 - No se implementa analítica predictiva.
 
+### Trazabilidad de implementación
+
+RF-06 se implementa como consultas derivadas de las entidades existentes, sin persistir un informe paralelo. El Administrador dispone de informes de mantenimiento, repuestos y costos básicos; el Mecánico recibe únicamente datos técnicos de buses donde figura en asignaciones o intervenciones; el Conductor usa un endpoint dedicado que deriva su bus de la asignación activa y nunca acepta un `busId` para ampliar alcance. La implementación y sus evidencias están documentadas en `RF06_HISTORIAL_INFORMES.md`.
+
 ---
 
 # 3. Capacidades transversales obligatorias

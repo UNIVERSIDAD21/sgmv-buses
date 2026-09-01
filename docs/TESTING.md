@@ -584,3 +584,41 @@ RF-05 tambien corrigio una incompatibilidad de lecturas con el pooler: el resume
 `P1002` indica tiempo de espera agotado. Si el mensaje menciona advisory lock, el contexto especifico es bloqueo/espera de migracion; no todos los `P1002` significan la misma causa.
 
 Las migraciones no deben ejecutarse simultaneamente sobre el mismo schema. Las validaciones desde cero o de actualizacion deben usar schemas temporales independientes y nunca registrar secretos ni cadenas de conexion.
+
+---
+
+## 14. Evidencia de RF-06 - Consulta de historial y generación de informes
+
+El 2026-08-31 se agregaron pruebas automatizadas para RF-06.
+
+Backend:
+
+- `src/backend/test/report.test.ts` cubre autenticación obligatoria, Administrador con historial completo, costos e informes, Mecánico limitado a buses propios y Conductor limitado a su asignación activa.
+- Verifica que el Mecánico no reciba `costoAcumulado`, `costoTotal`, `costoUnitario` ni `subtotal`, aunque sí pueda ver diagnósticos, actividades y cantidades de repuestos autorizadas.
+- Verifica que el Conductor use `/historial/mi-bus`, no pueda consultar `/historial/buses/:id`, vea únicamente novedades propias y no reciba diagnósticos, repuestos ni costos.
+- Cubre filtros por bus, período, tipo, estado y origen, aliases `page`/`pageSize`, paginación y rechazo de intervalos cronológicos inválidos.
+- Cubre informes derivados de mantenimiento, repuestos y costos contra PostgreSQL/Neon configurado.
+
+Frontend:
+
+- `src/frontend/src/App.test.tsx` cubre vista administrativa con resumen, filtros, buses, detalle e informes; vista técnica del Mecánico sin costos; vista del Conductor mediante endpoint dedicado; y estado claro sin asignación activa.
+- Verifica que filtros generen consultas coherentes y que controles administrativos no aparezcan para roles limitados.
+
+Conteos ejecutados:
+
+- Backend RF-06: 5/5.
+- Frontend RF-06: 4/4.
+- Backend completo: 85/85 en 9 archivos.
+- Frontend completo: 46/46.
+- Prisma validate, typecheck, lint de frontend/backend, format check y build: correctos.
+
+Evidencia visual:
+
+- `docs/screenshots/rf06-admin-overview-1440x900.png`
+- `docs/screenshots/rf06-admin-filters-1024x768.png`
+- `docs/screenshots/rf06-admin-detail-1440x900.png`
+- `docs/screenshots/rf06-mechanic-1440x900.png`
+- `docs/screenshots/rf06-driver-1440x900.png`
+- `docs/screenshots/rf06-mobile-390x844.png`
+
+La verificación visual del 2026-09-01 confirmó ausencia de overflow horizontal en `1440x900`, `1024x768` y `390x844`, controles diferenciables sin depender solo del color, separación efectiva de datos por rol y consola sin errores relevantes. El Administrador accedió a informes y costos; el Mecánico no recibió costos ni informes administrativos; el Conductor no recibió filtros, diagnósticos, repuestos ni costos.

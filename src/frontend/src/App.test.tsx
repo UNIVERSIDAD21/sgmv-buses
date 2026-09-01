@@ -2941,3 +2941,344 @@ describe('RF-05 spare parts frontend', () => {
     expect(adjustmentBody.direccion).toBe('INCREMENTO')
   })
 })
+
+const historyBus = {
+  anio: 2024,
+  codigoInterno: 'BUS-RF06-001',
+  costoAcumulado: '185000.00',
+  estadoOperativo: 'OPERATIVO',
+  id: 'history-bus-1',
+  kilometrajeActual: 48000,
+  marca: 'Mercedes-Benz',
+  modelo: 'O500',
+  placa: 'RF6001',
+  totalOrdenes: 1,
+  ultimoMantenimiento: '2026-08-12T18:00:00.000Z',
+}
+
+function historySummary(role: RoleCode) {
+  return {
+    alcance:
+      role === 'ADMINISTRADOR'
+        ? 'Toda la flota y los informes administrativos'
+        : role === 'MECANICO'
+          ? 'Buses con órdenes asignadas o intervenciones propias'
+          : 'Bus asignado actualmente y novedades propias',
+    ...(role === 'ADMINISTRADOR' ? { costoTotal: '185000.00' } : {}),
+    indicadores: {
+      buses: 1,
+      mantenimientosProgramados: 1,
+      novedades: 1,
+      ordenes: 1,
+      ordenesCerradas: 1,
+    },
+    rol: role,
+  }
+}
+
+function historyDetail(role: RoleCode) {
+  const isAdmin = role === 'ADMINISTRADOR'
+  const isDriver = role === 'CONDUCTOR'
+
+  return {
+    asignaciones: isAdmin
+      ? [
+          {
+            activa: true,
+            asignadoPor: 'Administrador Uno',
+            conductor: 'Conductor Uno',
+            fechaFin: null,
+            fechaInicio: '2026-08-01T10:00:00.000Z',
+            id: 'history-assignment-1',
+            motivo: 'Ruta principal',
+          },
+        ]
+      : [],
+    bus: {
+      anio: historyBus.anio,
+      codigoInterno: historyBus.codigoInterno,
+      estadoOperativo: historyBus.estadoOperativo,
+      id: historyBus.id,
+      kilometrajeActual: historyBus.kilometrajeActual,
+      marca: historyBus.marca,
+      modelo: historyBus.modelo,
+      placa: historyBus.placa,
+    },
+    estados: isDriver
+      ? []
+      : [
+          {
+            cambiadoPor: 'Administrador Uno',
+            estadoAnterior: 'EN_MANTENIMIENTO',
+            estadoNuevo: 'OPERATIVO',
+            fechaCambio: '2026-08-12T18:00:00.000Z',
+            id: 'history-state-1',
+            motivo: 'Mantenimiento finalizado',
+          },
+        ],
+    kilometrajes: isAdmin
+      ? [
+          {
+            fechaRegistro: '2026-08-12T18:00:00.000Z',
+            id: 'history-mileage-1',
+            kilometrajeAnterior: 47500,
+            kilometrajeNuevo: 48000,
+            motivo: 'Cierre de ruta',
+            registradoPor: 'Administrador Uno',
+          },
+        ]
+      : [],
+    mantenimientos: [
+      {
+        activa: true,
+        actividad: 'Cambio de aceite y revisión de filtros',
+        criterio: 'FECHA_KILOMETRAJE',
+        fechaProgramada: '2026-09-15T00:00:00.000Z',
+        id: 'history-schedule-1',
+        kilometrajeObjetivo: 50000,
+        tipo: 'Revisión 50.000 km',
+      },
+    ],
+    novedades:
+      isDriver || isAdmin
+        ? [
+            {
+              clasificacion: 'Falla mecánica',
+              descripcion: 'Vibración leve al frenar',
+              estado: 'CONVERTIDA_A_ORDEN',
+              fechaReporte: '2026-08-10T09:00:00.000Z',
+              id: 'history-novelty-1',
+              ...(isAdmin ? { reportadaPor: 'Conductor Uno' } : {}),
+              tipo: 'Frenos',
+            },
+          ]
+        : [],
+    ordenes: [
+      {
+        codigo: 'OT-RF06-001',
+        ...(isAdmin ? { costoTotal: '185000.00' } : {}),
+        descripcion: 'Revisión correctiva del sistema de frenos',
+        ...(!isDriver
+          ? {
+              diagnosticos: [
+                {
+                  actividades: ['Cambio de pastillas y limpieza'],
+                  diagnostico: 'Desgaste de pastillas delanteras',
+                  fechaFin: '2026-08-12T17:00:00.000Z',
+                  fechaInicio: '2026-08-11T08:00:00.000Z',
+                  observaciones: 'Prueba de frenado satisfactoria',
+                  tecnico: 'Mecánico Uno',
+                },
+              ],
+              repuestos: [
+                {
+                  cantidad: '2.00',
+                  codigo: 'REP-RF06-001',
+                  ...(isAdmin ? { costoUnitario: '92500.00', subtotal: '185000.00' } : {}),
+                  nombre: 'Pastilla de freno',
+                  unidadMedida: 'unidad',
+                },
+              ],
+            }
+          : {}),
+        estado: 'CERRADA',
+        fechaCierre: '2026-08-12T18:00:00.000Z',
+        fechaCreacion: '2026-08-10T10:00:00.000Z',
+        id: 'history-order-1',
+        origen: 'NOVEDAD',
+        tecnico: 'Mecánico Uno',
+        tipo: 'CORRECTIVA',
+      },
+    ],
+  }
+}
+
+function historyHandler(role: RoleCode, options: { noAssignment?: boolean } = {}) {
+  return async (path: string): Promise<Response> => {
+    if (path === '/auth/me') {
+      return ok({ user: userForRole(role) })
+    }
+
+    if (path === '/historial/resumen') {
+      return ok(historySummary(role))
+    }
+
+    if (path === '/historial/mi-bus') {
+      return ok(
+        options.noAssignment
+          ? { asignacion: null, historial: null }
+          : {
+              asignacion: {
+                fechaInicio: '2026-08-01T10:00:00.000Z',
+                id: 'history-assignment-1',
+              },
+              historial: historyDetail(role),
+            },
+      )
+    }
+
+    if (path === '/historial/buses') {
+      return ok({
+        buses: [
+          role === 'ADMINISTRADOR'
+            ? historyBus
+            : Object.fromEntries(
+                Object.entries(historyBus).filter(([key]) => key !== 'costoAcumulado'),
+              ),
+        ],
+        paginacion: { limite: 10, pagina: 1, total: 1, totalPaginas: 1 },
+      })
+    }
+
+    if (path === `/historial/buses/${historyBus.id}`) {
+      return ok(historyDetail(role))
+    }
+
+    if (path === '/historial/informes/mantenimiento') {
+      return ok({
+        costoTotal: '185000.00',
+        paginacion: { limite: 10, pagina: 1, total: 1, totalPaginas: 1 },
+        registros: [
+          {
+            bus: 'BUS-RF06-001 · RF6001',
+            codigo: 'OT-RF06-001',
+            costoTotal: '185000.00',
+            estado: 'CERRADA',
+            fechaCierre: '2026-08-12T18:00:00.000Z',
+            fechaCreacion: '2026-08-10T10:00:00.000Z',
+            id: 'history-order-1',
+            intervenciones: 1,
+            origen: 'NOVEDAD',
+            repuestosConsumidos: 1,
+            tecnico: 'Mecánico Uno',
+            tipo: 'CORRECTIVA',
+          },
+        ],
+      })
+    }
+
+    if (path === '/historial/informes/repuestos') {
+      return ok({
+        costoTotal: '185000.00',
+        paginacion: { limite: 10, pagina: 1, total: 1, totalPaginas: 1 },
+        registros: [
+          {
+            cantidad: '2.00',
+            categoria: 'Frenos',
+            codigo: 'REP-RF06-001',
+            costoTotal: '185000.00',
+            id: 'history-part-1',
+            nombre: 'Pastilla de freno',
+            ordenes: 1,
+            unidadMedida: 'unidad',
+          },
+        ],
+      })
+    }
+
+    if (path === '/historial/informes/costos') {
+      return ok({
+        costoTotal: '185000.00',
+        paginacion: { limite: 10, pagina: 1, total: 1, totalPaginas: 1 },
+        registros: [
+          {
+            bus: 'BUS-RF06-001 · RF6001',
+            busId: historyBus.id,
+            cerradas: 1,
+            costoPromedio: '185000.00',
+            costoTotal: '185000.00',
+            ordenes: 1,
+          },
+        ],
+      })
+    }
+
+    return apiError(404, 'NOT_FOUND', 'Ruta RF-06 no encontrada')
+  }
+}
+
+describe('RF-06 history and reports frontend', () => {
+  it('loads the administrative history, filters, detail and three derived reports', async () => {
+    window.history.pushState({}, '', '/historial')
+    const fetchMock = mockApi(historyHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect(
+      await screen.findByRole('heading', { name: /Historial e informes/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Toda la flota y los informes administrativos/i)).toBeInTheDocument()
+    expect((await screen.findAllByText('BUS-RF06-001')).length).toBeGreaterThan(0)
+    expect(screen.getByRole('heading', { name: /^Informes administrativos$/i })).toBeInTheDocument()
+    expect(screen.getByText(/Repuestos utilizados/i)).toBeInTheDocument()
+    expect(screen.getByText(/Costos por bus/i)).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText(/Tipo de orden/i), {
+      target: { value: 'PREVENTIVA' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Aplicar filtros/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('tipo=PREVENTIVA'),
+        expect.any(Object),
+      )
+    })
+
+    fireEvent.click((await screen.findAllByRole('button', { name: /Ver detalle/i }))[0])
+    expect(await screen.findByText(/Línea de tiempo de mantenimiento/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Desgaste de pastillas delanteras/i)).toBeInTheDocument()
+    expect(screen.getByText(/Asignaciones de conductor/i)).toBeInTheDocument()
+  })
+
+  it('shows mechanics only their technical history without administrative costs or reports', async () => {
+    window.history.pushState({}, '', '/historial')
+    mockApi(historyHandler('MECANICO'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Historial técnico autorizado/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Buses con órdenes asignadas o intervenciones propias/i),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Informes administrativos/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Costo acumulado/i)).not.toBeInTheDocument()
+
+    fireEvent.click((await screen.findAllByRole('button', { name: /Ver detalle/i }))[0])
+    expect(await screen.findByText(/Desgaste de pastillas delanteras/i)).toBeInTheDocument()
+    expect(await screen.findByText(/REP-RF06-001/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Asignaciones de conductor/i)).not.toBeInTheDocument()
+  })
+
+  it('loads the driver bus from the dedicated endpoint and keeps private technical data hidden', async () => {
+    window.history.pushState({}, '', '/historial')
+    const fetchMock = mockApi(historyHandler('CONDUCTOR'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Historial de mi bus asignado/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Vibración leve al frenar/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Buscar bus/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Desgaste de pastillas delanteras/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/REP-RF06-001/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Informes administrativos/i)).not.toBeInTheDocument()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/historial/mi-bus'),
+      expect.any(Object),
+    )
+    expect(
+      fetchMock.mock.calls.some(([input]) => String(input).includes('/historial/buses?')),
+    ).toBe(false)
+  })
+
+  it('shows a clear empty state when the driver has no active assignment', async () => {
+    window.history.pushState({}, '', '/historial')
+    mockApi(historyHandler('CONDUCTOR', { noAssignment: true }))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Sin bus asignado actualmente/i)).toBeInTheDocument()
+    expect(screen.getByText(/no acepta identificadores de bus/i)).toBeInTheDocument()
+  })
+})
