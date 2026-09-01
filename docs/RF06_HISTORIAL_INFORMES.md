@@ -53,6 +53,8 @@ Todos requieren sesión autenticada y son de solo lectura.
 
 Los filtros enviados por el cliente se combinan de forma acumulativa con el alcance del rol. Nunca reemplazan la restricción de seguridad.
 
+El resumen usa el mismo universo filtrado que el listado de buses. La búsqueda por código, placa, marca o modelo también restringe órdenes, costos e informes; el período se aplica a la fecha de creación de órdenes, la fecha de reporte de novedades y la fecha programada de mantenimientos. Los filtros de orden limitan primero los buses relacionados antes de calcular los demás indicadores.
+
 ## Fuentes de datos
 
 El historial se construye con:

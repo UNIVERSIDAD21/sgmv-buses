@@ -20,6 +20,26 @@ const userSelect = {
   nombre: true,
 } as const
 
+function busSearchWhere(search: string): Prisma.BusWhereInput {
+  return {
+    OR: [
+      { codigoInterno: { contains: search, mode: 'insensitive' } },
+      { placa: { contains: search, mode: 'insensitive' } },
+      { marca: { contains: search, mode: 'insensitive' } },
+      { modelo: { contains: search, mode: 'insensitive' } },
+    ],
+  }
+}
+
+function dateRangeFromQuery(query: ReportQuery) {
+  return query.fechaDesde || query.fechaHasta
+    ? {
+        ...(query.fechaDesde ? { gte: new Date(`${query.fechaDesde}T00:00:00.000Z`) } : {}),
+        ...(query.fechaHasta ? { lte: new Date(`${query.fechaHasta}T23:59:59.999Z`) } : {}),
+      }
+    : undefined
+}
+
 export function orderWhereFromQuery(
   query: ReportQuery,
   extra: Prisma.OrdenTrabajoWhereInput = {},
@@ -28,18 +48,26 @@ export function orderWhereFromQuery(
     ...(query.busId ? { busId: query.busId } : {}),
     ...(query.estado ? { estado: query.estado } : {}),
     ...(query.origen ? { origen: query.origen } : {}),
+    ...(query.busqueda ? { bus: busSearchWhere(query.busqueda) } : {}),
     ...(query.tipo ? { tipo: query.tipo } : {}),
-    ...(query.fechaDesde || query.fechaHasta
-      ? {
-          fechaCreacion: {
-            ...(query.fechaDesde ? { gte: new Date(`${query.fechaDesde}T00:00:00.000Z`) } : {}),
-            ...(query.fechaHasta ? { lte: new Date(`${query.fechaHasta}T23:59:59.999Z`) } : {}),
-          },
-        }
-      : {}),
+    ...(dateRangeFromQuery(query) ? { fechaCreacion: dateRangeFromQuery(query) } : {}),
   }
 
   return Object.keys(extra).length > 0 ? { AND: [extra, filters] } : filters
+}
+
+function busWhereFromQuery(query: ReportQuery, accessibleBusIds?: string[]): Prisma.BusWhereInput {
+  const scope: Prisma.BusWhereInput = accessibleBusIds ? { id: { in: accessibleBusIds } } : {}
+  const hasOrderFilters = Boolean(
+    query.estado || query.fechaDesde || query.fechaHasta || query.origen || query.tipo,
+  )
+  const filters: Prisma.BusWhereInput = {
+    ...(query.busId ? { id: query.busId } : {}),
+    ...(query.busqueda ? busSearchWhere(query.busqueda) : {}),
+    ...(hasOrderFilters ? { ordenesTrabajo: { some: orderWhereFromQuery(query) } } : {}),
+  }
+
+  return Object.keys(scope).length > 0 ? { AND: [scope, filters] } : filters
 }
 
 export class ReportRepository {
@@ -72,29 +100,7 @@ export class ReportRepository {
 
   async listBuses(query: ReportQuery, accessibleBusIds?: string[], includeCosts = false) {
     const orderFilters = orderWhereFromQuery(query)
-    const hasOrderFilters = Boolean(
-      query.busId ||
-      query.estado ||
-      query.fechaDesde ||
-      query.fechaHasta ||
-      query.origen ||
-      query.tipo,
-    )
-    const where: Prisma.BusWhereInput = {
-      ...(accessibleBusIds ? { id: { in: accessibleBusIds } } : {}),
-      ...(query.busId ? { id: query.busId } : {}),
-      ...(query.busqueda
-        ? {
-            OR: [
-              { codigoInterno: { contains: query.busqueda, mode: 'insensitive' } },
-              { placa: { contains: query.busqueda, mode: 'insensitive' } },
-              { marca: { contains: query.busqueda, mode: 'insensitive' } },
-              { modelo: { contains: query.busqueda, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
-      ...(hasOrderFilters ? { ordenesTrabajo: { some: orderFilters } } : {}),
-    }
+    const where = busWhereFromQuery(query, accessibleBusIds)
     const skip = (query.pagina - 1) * query.limite
     const [buses, total] = await Promise.all([
       prisma.bus.findMany({
@@ -229,24 +235,28 @@ export class ReportRepository {
   }
 
   async summary(query: ReportQuery, accessibleBusIds?: string[], conductorId?: string) {
-    const busWhere: Prisma.BusWhereInput = accessibleBusIds ? { id: { in: accessibleBusIds } } : {}
+    const busWhere = busWhereFromQuery(query, accessibleBusIds)
+    const filteredBuses = await prisma.bus.findMany({ select: { id: true }, where: busWhere })
+    const filteredBusIds = filteredBuses.map((bus) => bus.id)
     const orderWhere = orderWhereFromQuery(query, {
-      ...(accessibleBusIds ? { busId: { in: accessibleBusIds } } : {}),
+      busId: { in: filteredBusIds },
     })
     const closedWhere = {
       ...orderWhere,
       estado: 'CERRADA' as EstadoOrdenTrabajo,
     }
     const noveltyWhere: Prisma.NovedadWhereInput = {
-      ...(accessibleBusIds ? { busId: { in: accessibleBusIds } } : {}),
+      busId: { in: filteredBusIds },
       ...(conductorId ? { conductorId } : {}),
+      ...(dateRangeFromQuery(query) ? { fechaReporte: dateRangeFromQuery(query) } : {}),
     }
     const scheduleWhere: Prisma.ProgramacionMantenimientoWhereInput = {
-      ...(accessibleBusIds ? { busId: { in: accessibleBusIds } } : {}),
+      busId: { in: filteredBusIds },
+      ...(dateRangeFromQuery(query) ? { fechaProgramada: dateRangeFromQuery(query) } : {}),
     }
     const [buses, ordenes, ordenesCerradas, novedades, mantenimientosProgramados, cost] =
       await Promise.all([
-        prisma.bus.count({ where: busWhere }),
+        Promise.resolve(filteredBusIds.length),
         prisma.ordenTrabajo.count({ where: orderWhere }),
         prisma.ordenTrabajo.count({ where: closedWhere }),
         prisma.novedad.count({ where: noveltyWhere }),

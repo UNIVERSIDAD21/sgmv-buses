@@ -597,6 +597,7 @@ Backend:
 - Verifica que el Mecánico no reciba `costoAcumulado`, `costoTotal`, `costoUnitario` ni `subtotal`, aunque sí pueda ver diagnósticos, actividades y cantidades de repuestos autorizadas.
 - Verifica que el Conductor use `/historial/mi-bus`, no pueda consultar `/historial/buses/:id`, vea únicamente novedades propias y no reciba diagnósticos, repuestos ni costos.
 - Cubre filtros por bus, período, tipo, estado y origen, aliases `page`/`pageSize`, paginación y rechazo de intervalos cronológicos inválidos.
+- Comprueba que las tarjetas del resumen reutilicen el universo filtrado del listado, que búsqueda/período afecten los indicadores relacionados y que un `busId` del cliente nunca sobrescriba el alcance autorizado del Mecánico.
 - Cubre informes derivados de mantenimiento, repuestos y costos contra PostgreSQL/Neon configurado.
 
 Frontend:

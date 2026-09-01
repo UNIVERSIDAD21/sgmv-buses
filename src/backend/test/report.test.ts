@@ -324,6 +324,29 @@ describeDb('RF-06 History and reports API', () => {
 
     expect(summary.body.data.rol).toBe('ADMINISTRADOR')
     expect(summary.body.data.costoTotal).toBe('185000.00')
+    expect(summary.body.data.indicadores.buses).toBe(1)
+    expect(summary.body.data.indicadores.mantenimientosProgramados).toBe(1)
+    expect(summary.body.data.indicadores.novedades).toBe(2)
+
+    const filteredSummary = await admin
+      .get('/historial/resumen')
+      .query({ busqueda: `RF06-BUS-${suffix}`, fechaDesde: '2026-08-01', fechaHasta: '2026-08-31' })
+      .expect(200)
+    expect(filteredSummary.body.data.indicadores.buses).toBe(1)
+    expect(filteredSummary.body.data.indicadores.ordenes).toBe(1)
+    expect(filteredSummary.body.data.indicadores.mantenimientosProgramados).toBe(1)
+    expect(filteredSummary.body.data.indicadores.novedades).toBe(0)
+    expect(filteredSummary.body.data.costoTotal).toBe('185000.00')
+
+    const emptySummary = await admin
+      .get('/historial/resumen')
+      .query({ busId: fixture.busId, tipo: 'PREVENTIVA' })
+      .expect(200)
+    expect(emptySummary.body.data.indicadores.buses).toBe(0)
+    expect(emptySummary.body.data.indicadores.ordenes).toBe(0)
+    expect(emptySummary.body.data.indicadores.mantenimientosProgramados).toBe(0)
+    expect(emptySummary.body.data.indicadores.novedades).toBe(0)
+    expect(emptySummary.body.data.costoTotal).toBe('0.00')
 
     const buses = await admin
       .get('/historial/buses')
@@ -340,15 +363,19 @@ describeDb('RF-06 History and reports API', () => {
 
     const maintenance = await admin
       .get('/historial/informes/mantenimiento')
-      .query({ busId: fixture.busId, fechaDesde: '2026-08-01', fechaHasta: '2026-08-31' })
+      .query({
+        busqueda: `RF06-BUS-${suffix}`,
+        fechaDesde: '2026-08-01',
+        fechaHasta: '2026-08-31',
+      })
       .expect(200)
     const parts = await admin
       .get('/historial/informes/repuestos')
-      .query({ busId: fixture.busId })
+      .query({ busqueda: `RF06-BUS-${suffix}` })
       .expect(200)
     const costs = await admin
       .get('/historial/informes/costos')
-      .query({ busId: fixture.busId })
+      .query({ busqueda: `RF06-BUS-${suffix}` })
       .expect(200)
 
     expect(maintenance.body.data.registros[0].codigo).toBe(`OT-RF06-${suffix}`)
@@ -365,6 +392,13 @@ describeDb('RF-06 History and reports API', () => {
       fixture.otherBusId,
     )
     expect(JSON.stringify(buses.body)).not.toContain('costoAcumulado')
+
+    const inaccessibleList = await mechanic
+      .get('/historial/buses')
+      .query({ busId: fixture.otherBusId })
+      .expect(200)
+    expect(inaccessibleList.body.data.buses).toHaveLength(0)
+    expect(inaccessibleList.body.data.paginacion.total).toBe(0)
 
     const detail = await mechanic.get(`/historial/buses/${fixture.busId}`).expect(200)
     const serialized = JSON.stringify(detail.body)
