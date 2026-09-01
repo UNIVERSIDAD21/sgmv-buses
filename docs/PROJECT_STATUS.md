@@ -1,6 +1,6 @@
 # Project Status
 
-**Última consolidación documental:** 2026-08-29
+**Última consolidación documental:** 2026-08-31
 
 ## Fase académica
 
@@ -48,7 +48,7 @@
 
 ## Estado de handoff
 
-**FASE 3 AUTORIZADA. BOOTSTRAP TÉCNICO, PERSISTENCIA, AUDITORÍA DE BASE DE DATOS, INTERFAZ OFICIAL, AUTENTICACIÓN TRANSVERSAL, RF-01 GESTIÓN DE LA FLOTA VEHICULAR, RF-02 CONTROL DE NOVEDADES OPERATIVAS, NORMALIZACIÓN TRANSVERSAL DE ROLES, RF-03 ADMINISTRACIÓN DEL MANTENIMIENTO PREVENTIVO, RF-04 SEGUIMIENTO DE ÓRDENES DE TRABAJO Y RF-05 CENTRAL DE REPUESTOS COMPLETADOS. RF-06 AÚN NO IMPLEMENTADO.**
+**FASE 3 AUTORIZADA. BOOTSTRAP TÉCNICO, PERSISTENCIA, AUDITORÍA DE BASE DE DATOS, INTERFAZ OFICIAL, AUTENTICACIÓN TRANSVERSAL, NORMALIZACIÓN TRANSVERSAL DE ROLES Y RF-01 A RF-06 COMPLETADOS.**
 
 Las decisiones técnicas aprobadas con ajustes finales quedaron registradas en `DECISIONS.md` y consolidadas en la documentación de soporte.
 
@@ -71,6 +71,7 @@ Resumen:
 - Roles canónicos normalizados transversalmente a `ADMINISTRADOR`, `CONDUCTOR` y `MECANICO`; las etiquetas visibles son Administrador, Conductor y Mecánico.
 - RF-04 implementado con endpoints reales en `/ordenes-trabajo`, maquina de estados centralizada, asignacion/reasignacion, intervenciones, actividades, consumos transaccionales, completado tecnico, devolucion y cierre administrativo.
 - RF-05 implementado con endpoints reales en `/repuestos` y `/inventario/movimientos`, central administrativa para Administrador, catalogo, disponibilidad, entradas, ajustes, movimientos, idempotencia, concurrencia segura e integracion visible con consumos RF-04.
+- RF-06 implementado con endpoints reales en `/historial`, historial derivado sin tabla `Informe`, filtros, detalle por bus, vista técnica del Mecánico, vista limitada del Conductor e informes administrativos de mantenimiento, repuestos y costos.
 
 ### Estado de inicio
 
@@ -78,7 +79,7 @@ OpenClaw recibió la orden explícita `INICIAR FASE 3`.
 
 El primer bloque permitido ya fue ejecutado: bootstrap técnico del repositorio.
 
-La revisión documental de Persistencia fue autorizada, actualizada, implementada y auditada tras aprobación explícita del propietario. La interfaz oficial y la autenticación transversal también fueron autorizadas e implementadas. El propietario autorizo RF-01 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-02 el 2026-08-27 y quedo implementado end-to-end. La normalización transversal de roles canónicos quedo completada después de RF-02 y antes de RF-03. El propietario autorizo RF-03 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-04 el 2026-08-28 y quedo implementado end-to-end. El propietario autorizo RF-05 el 2026-08-29 y quedo implementado end-to-end. OpenClaw debe detenerse antes de implementar RF-06 hasta nueva autorización del propietario.
+La revisión documental de Persistencia fue autorizada, actualizada, implementada y auditada tras aprobación explícita del propietario. La interfaz oficial y la autenticación transversal también fueron autorizadas e implementadas. El propietario autorizo RF-01 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-02 el 2026-08-27 y quedo implementado end-to-end. La normalización transversal de roles canónicos quedo completada después de RF-02 y antes de RF-03. El propietario autorizo RF-03 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-04 el 2026-08-28 y quedo implementado end-to-end. El propietario autorizo RF-05 el 2026-08-29 y quedo implementado end-to-end. El propietario autorizó RF-06 el 2026-08-31 y quedó implementado end-to-end sobre la Persistencia existente, sin migración ni tabla `Informe`.
 
 ---
 
@@ -338,7 +339,44 @@ Validacion ejecutada durante el bloque RF-05:
 - Neon temporal `rf05_final_20260829_1627` validado desde cero con 7 migraciones, seed repetido, RF-05 backend `11/11`, auditoria de integridad en cero inconsistencias y schema eliminado al finalizar. Se uso `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1` solo para migraciones secuenciales por el `P1002` conocido del pooler Neon.
 - Playwright visual en `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina ni errores relevantes de consola.
 
-RF-06 no fue iniciado.
+RF-06 no fue iniciado durante el bloque RF-05.
+
+---
+
+## Validacion de RF-06
+
+RF-06 queda cubierto por:
+
+- Backend `src/backend/src/reports/*`: schemas Zod, tipos, repositorio Prisma, servicio con alcance por rol, controlador y rutas de solo lectura.
+- Frontend `src/frontend/src/features/historial/*`: cliente API, tipos, resumen, filtros, buses, detalle cronológico y tres informes administrativos.
+- Administrador con toda la flota, costos básicos trazables e informes de mantenimiento, repuestos y costos por bus.
+- Mecánico limitado a buses donde es o fue técnico asignado/interviniente, con diagnósticos, actividades y repuestos técnicos sin costos.
+- Conductor limitado al bus de su asignación activa derivada en backend, novedades propias y mantenimiento básico, sin aceptar `busId` del cliente.
+- Documentación dedicada en `docs/RF06_HISTORIAL_INFORMES.md`.
+- Evidencias visuales `docs/screenshots/rf06-*.png`.
+
+Alcance implementado:
+
+- Resumen por rol, listado filtrable de buses para Administrador/Mecánico y detalle histórico.
+- Filtros por bus, período, tipo, estado y origen, con validación cronológica y paginación.
+- Informes administrativos derivados de `ordenes_trabajo`, `consumos_repuesto`, `repuestos` y `buses`.
+- Historial de órdenes, intervenciones, actividades, consumos, programaciones, novedades y trazas RF-01 permitidas según rol.
+- Solo consultas `GET`; RF-06 no modifica datos operativos.
+
+Limites conservados:
+
+- No se creó tabla `Informe`, migración ni modelo persistente adicional.
+- No se implementó analítica predictiva, exportación, contabilidad avanzada ni un RF nuevo.
+- RF-01 a RF-05 conservan sus rutas, reglas y permisos.
+
+Validación ejecutada durante el bloque RF-06:
+
+- Backend RF-06: 5 pruebas de integración aprobadas contra PostgreSQL/Neon configurado.
+- Frontend RF-06: 4 pruebas aprobadas por rol, filtros, detalle, informes y estado sin asignación.
+- Backend completo: 85 pruebas aprobadas en 9 archivos.
+- Frontend completo: 46 pruebas aprobadas.
+- Prisma validate, typecheck, lint de frontend/backend, format check y build correctos.
+- Verificación visual en `1440x900`, `1024x768` y `390x844`, sin desbordamiento horizontal ni errores relevantes de consola y con separación efectiva de datos por rol.
 
 ---
 

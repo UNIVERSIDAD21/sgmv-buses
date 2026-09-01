@@ -4,7 +4,7 @@ Prototipo web académico para centralizar y estandarizar la gestión del manteni
 
 ## Estado
 
-La documentación de transferencia a desarrollo está preparada. OpenClaw participa únicamente en la **Fase 3: desarrollo, integración y validación**. El bootstrap tecnico, Persistencia, autenticacion transversal, RF-01, RF-02, la normalizacion canonica de roles, RF-03, RF-04 y RF-05 ya estan implementados, auditados y documentados. RF-06 sigue pendiente de autorizacion.
+La documentación de transferencia a desarrollo está preparada. La **Fase 3: desarrollo, integración y validación** cuenta con bootstrap técnico, Persistencia, autenticación transversal, normalización canónica de roles y RF-01 a RF-06 implementados y documentados.
 
 Ver `docs/PROJECT_STATUS.md` antes de iniciar cualquier implementación.
 
@@ -27,6 +27,10 @@ El Seguimiento de ordenes de trabajo esta implementado de extremo a extremo para
 ## RF-05 implementado
 
 La Central de repuestos esta implementada de extremo a extremo para Administrador, con integracion real al consumo RF-04 del Mecanico y Conductor denegado. Ver `docs/RF05_CENTRAL_REPUESTOS.md` para endpoints, disponibilidad, entradas, ajustes, movimientos, concurrencia, pruebas y evidencias visuales.
+
+## RF-06 implementado
+
+La Consulta de historial y generación de informes está implementada de extremo a extremo con historial derivado y de solo lectura: Administrador sobre toda la flota con informes y costos básicos, Mecánico limitado a antecedentes técnicos propios y Conductor limitado a su bus asignado y novedades propias. Ver `docs/RF06_HISTORIAL_INFORMES.md`.
 
 ## Stack
 
@@ -67,6 +71,7 @@ Documentos principales:
 - `docs/RF03_MANTENIMIENTO_PREVENTIVO.md` - endpoints, reglas y evidencias de RF-03.
 - `docs/RF04_ORDENES_TRABAJO.md` - endpoints, reglas y evidencias de RF-04.
 - `docs/RF05_CENTRAL_REPUESTOS.md` - endpoints, reglas y evidencias de RF-05.
+- `docs/RF06_HISTORIAL_INFORMES.md` - historial derivado, informes, permisos y evidencias de RF-06.
 - `docs/DATA_DICTIONARY.md` — diccionario de datos de las 16 tablas.
 - `docs/ARCHITECTURE.md` — arquitectura y límites técnicos.
 - `docs/TASKS.md` — plan vivo de Fase 3.

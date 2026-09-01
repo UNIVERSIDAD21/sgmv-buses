@@ -638,6 +638,22 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 
 **Costo:** `repuestos.costo_unitario` representa costo actual basico. Los consumos RF-04 conservan `consumos_repuesto.costo_unitario` y `subtotal` historicos; editar el costo actual no recalcula consumos anteriores ni ordenes cerradas.
 
-**Limites:** RF-05 no implementa proveedores, compras, facturacion, bodegas multiples, lotes, series, codigos de barras, importacion masiva, informes consolidados, exportaciones ni tabla `Informe`. RF-06 permanece pendiente.
+**Limites:** RF-05 no implementa proveedores, compras, facturacion, bodegas multiples, lotes, series, codigos de barras, importacion masiva, informes consolidados, exportaciones ni tabla `Informe`. RF-06 se implementa en un bloque posterior.
 
 **Estado:** IMPLEMENTADA COMO RF-05.
+
+---
+
+## 2026-08-31 - RF-06 historial e informes implementado
+
+**Decisión:** RF-06 se implementa como módulo de consultas de solo lectura en `src/backend/src/reports/*` y `src/frontend/src/features/historial/*`. El historial se deriva de buses, asignaciones, kilometrajes, novedades, programaciones, órdenes, intervenciones, actividades y consumos ya validados. No se crea tabla `Informe`, migración ni duplicado persistente del historial.
+
+**Acceso por rol:** el Administrador consulta toda la flota, costos básicos y tres informes derivados. El Mecánico solo consulta buses donde aparece como técnico asignado actual/histórico o responsable de una intervención, y recibe información técnica sin campos de costo. El Conductor usa `/historial/mi-bus`; el backend deriva el bus desde su asignación activa, limita novedades al propio conductor y no expone costos, inventario administrativo, diagnósticos internos ni datos de otros buses.
+
+**Informes:** mantenimiento lista órdenes filtradas con bus, estado, técnico e indicadores; repuestos agrupa consumos históricos por referencia; costos agrupa `ordenes_trabajo.costo_total` por bus. Los valores provienen de costos fotografiados por RF-04/RF-05 y no se recalculan desde el cliente.
+
+**Filtros y seguridad:** Zod valida bus, período, tipo, estado, origen y paginación, incluyendo que `fechaDesde <= fechaHasta`. Los filtros de acceso se combinan con el alcance del rol mediante condiciones acumulativas para que un parámetro del cliente no pueda reemplazar la restricción de seguridad.
+
+**Límites:** no hay escrituras RF-06, exportación, analítica predictiva, contabilidad avanzada, nuevas tablas ni nuevos RF. RF-01 a RF-05 permanecen como fuentes de verdad operativas.
+
+**Estado:** IMPLEMENTADA COMO RF-06.

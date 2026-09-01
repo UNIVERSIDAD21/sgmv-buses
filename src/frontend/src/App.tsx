@@ -9,7 +9,7 @@ import { SessionProvider } from './features/auth/session'
 import DashboardPage from './features/dashboard/DashboardPage'
 import BusFormPage from './features/flota/BusFormPage'
 import FleetPage from './features/flota/FleetPage'
-import PendingModulePage from './features/modules/PendingModulePage'
+import HistoryReportsPage from './features/historial/HistoryReportsPage'
 import NoveltyPage from './features/novedades/NoveltyPage'
 import WorkOrderPage from './features/ordenes-trabajo/WorkOrderPage'
 import PreventivePage from './features/preventivo/PreventivePage'
@@ -97,7 +97,7 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR', 'MECANICO', 'CONDUCTOR']}>
-              <PendingModulePage moduleId="historial" />
+              <HistoryReportsPage />
             </ProtectedRoute>
           }
           path="/historial"

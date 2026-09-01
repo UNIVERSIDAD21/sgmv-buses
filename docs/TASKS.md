@@ -6,7 +6,7 @@ Este archivo es el tablero operativo del agente.
 
 **No marcar el inicio de implementación hasta recibir la orden explícita `INICIAR FASE 3`.**
 
-**Estado actual:** interfaz oficial, autenticacion transversal, RF-01 Gestion de la flota vehicular, RF-02 Control de novedades operativas, normalizacion transversal de roles canonicos, RF-03 Administracion del mantenimiento preventivo, RF-04 Seguimiento de ordenes de trabajo y RF-05 Central de repuestos implementadas sobre la Persistencia cerrada. RF-06 sigue pendiente y no debe iniciarse sin nueva autorización del propietario.
+**Estado actual:** interfaz oficial, autenticación transversal, normalización de roles canónicos y RF-01 a RF-06 implementados sobre la Persistencia cerrada. RF-06 fue autorizado el 2026-08-31 y se implementó sin migración ni tabla `Informe`.
 
 ---
 
@@ -234,17 +234,17 @@ Nota: RF-05 implementa la central administrativa de repuestos para Administrador
 
 # 9. RF-06 — Consulta de historial y generación de informes
 
-- [ ] Consulta de historial por bus.
-- [ ] Historial derivado de datos validados.
-- [ ] Vista técnica para mecánico.
-- [ ] Vista limitada para conductor.
-- [ ] Informes para administrador.
-- [ ] Filtro por bus.
-- [ ] Filtro por período.
-- [ ] Filtro por tipo de intervención.
-- [ ] Costos básicos.
-- [ ] Verificar coherencia contra BD.
-- [ ] No introducir analítica predictiva.
+- [x] Consulta de historial por bus.
+- [x] Historial derivado de datos validados.
+- [x] Vista técnica para mecánico.
+- [x] Vista limitada para conductor.
+- [x] Informes para administrador.
+- [x] Filtro por bus.
+- [x] Filtro por período.
+- [x] Filtro por tipo de intervención.
+- [x] Costos básicos.
+- [x] Verificar coherencia contra BD.
+- [x] No introducir analítica predictiva.
 
 ---
 
@@ -261,12 +261,12 @@ Nota: RF-05 implementa la central administrativa de repuestos para Administrador
 
 # 11. Pruebas finales
 
-- [x] Ejecutar casos RF-01 a RF-05 automatizados.
+- [x] Ejecutar casos RF-01 a RF-06 automatizados.
 - [x] Ejecutar casos RNF cubiertos por auth, permisos, validación, build, lint, typecheck y pruebas visuales.
 - [x] Validar Chromium/Chrome mediante Playwright.
 - [ ] Validar Edge.
 - [ ] Medir operaciones habituales para RNF-03.
-- [x] Confirmar cero errores bloqueantes en flujos principales RF-01 a RF-05.
+- [x] Confirmar cero errores bloqueantes en flujos principales RF-01 a RF-06.
 - [x] Registrar fallos/correcciones.
 
 ---
