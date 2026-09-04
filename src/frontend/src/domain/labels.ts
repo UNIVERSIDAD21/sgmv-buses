@@ -1,4 +1,4 @@
-export type RoleCode = 'ADMINISTRADOR' | 'MECANICO' | 'CONDUCTOR'
+export type RoleCode = 'ADMINISTRADOR' | 'DESPACHADOR' | 'MECANICO' | 'CONDUCTOR'
 
 export type AppRouteId =
   | 'inicio'
@@ -21,24 +21,25 @@ export interface RequirementNavItem {
 
 export const ROLE_LABELS: Record<RoleCode, string> = {
   ADMINISTRADOR: 'Administrador',
+  DESPACHADOR: 'Despachador',
   CONDUCTOR: 'Conductor',
   MECANICO: 'Mecánico',
 }
 
 export const REQUIREMENT_NAV_ITEMS: RequirementNavItem[] = [
   {
-    description: 'Registro, consulta y actualización de buses y asignaciones.',
+    description: 'Buses, asignaciones, disponibilidad y kilometraje operativo.',
     id: 'flota',
     label: 'RF-01 — Gestión de la flota vehicular',
     path: '/flota',
-    roles: ['ADMINISTRADOR', 'CONDUCTOR'],
+    roles: ['ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR'],
   },
   {
     description: 'Registro y seguimiento de novedades operativas.',
     id: 'novedades',
     label: 'RF-02 — Control de novedades operativas',
     path: '/novedades',
-    roles: ['ADMINISTRADOR', 'CONDUCTOR'],
+    roles: ['ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR'],
   },
   {
     description: 'Programación preventiva por fecha, kilometraje o ambos.',
@@ -66,7 +67,7 @@ export const REQUIREMENT_NAV_ITEMS: RequirementNavItem[] = [
     id: 'historial',
     label: 'RF-06 — Consulta de historial y generación de informes',
     path: '/historial',
-    roles: ['ADMINISTRADOR', 'MECANICO', 'CONDUCTOR'],
+    roles: ['ADMINISTRADOR', 'DESPACHADOR', 'MECANICO', 'CONDUCTOR'],
   },
 ]
 

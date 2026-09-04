@@ -302,10 +302,12 @@ function OrderHistory({ admin, orders }: { admin: boolean; orders: HistoryOrderD
 function HistoryDetail({
   detail,
   isAdmin,
+  showOperationalAudit = isAdmin,
   title = 'Detalle histórico del bus',
 }: {
   detail: HistoryDetailDto
   isAdmin: boolean
+  showOperationalAudit?: boolean
   title?: string
 }) {
   return (
@@ -366,7 +368,7 @@ function HistoryDetail({
           </div>
         </Section>
 
-        <Section title={isAdmin ? 'Novedades del bus' : 'Mis novedades del bus'}>
+        <Section title={showOperationalAudit ? 'Novedades del bus' : 'Mis novedades del bus'}>
           <div className="divide-y divide-slate-100">
             {detail.novedades.length === 0 ? (
               <p className="p-4 text-sm text-slate-500">Sin novedades visibles.</p>
@@ -389,7 +391,7 @@ function HistoryDetail({
         </Section>
       </div>
 
-      {isAdmin && (
+      {showOperationalAudit && (
         <div className="grid gap-4 lg:grid-cols-2">
           <Section title="Asignaciones de conductor">
             <div className="divide-y divide-slate-100">
@@ -513,6 +515,7 @@ export default function HistoryReportsPage() {
   const [error, setError] = useState<string | null>(null)
   const role = user?.rol.codigo
   const isAdmin = role === 'ADMINISTRADOR'
+  const isDispatcher = role === 'DESPACHADOR'
 
   const load = useCallback(async () => {
     if (!role) {
@@ -693,7 +696,13 @@ export default function HistoryReportsPage() {
 
       {role !== 'CONDUCTOR' && (
         <Section
-          title={isAdmin ? 'Historial consolidado de la flota' : 'Historial técnico autorizado'}
+          title={
+            isAdmin
+              ? 'Historial consolidado de la flota'
+              : isDispatcher
+                ? 'Trazabilidad operativa de la flota'
+                : 'Historial técnico autorizado'
+          }
         >
           <BusCards
             buses={buses}
@@ -716,8 +725,13 @@ export default function HistoryReportsPage() {
         <HistoryDetail
           detail={detail}
           isAdmin={isAdmin}
+          showOperationalAudit={isAdmin || isDispatcher}
           title={
-            role === 'CONDUCTOR' ? 'Historial de mi bus asignado' : 'Detalle histórico del bus'
+            role === 'CONDUCTOR'
+              ? 'Historial de mi bus asignado'
+              : isDispatcher
+                ? 'Trazabilidad operativa del bus'
+                : 'Detalle histórico del bus'
           }
         />
       )}

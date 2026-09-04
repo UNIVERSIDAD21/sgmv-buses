@@ -27,7 +27,7 @@ export class ReportService {
   constructor(private readonly reportRepository = new ReportRepository()) {}
 
   private async accessibleBusIds(user: AuthenticatedUser) {
-    if (user.rol.codigo === 'ADMINISTRADOR') {
+    if (user.rol.codigo === 'ADMINISTRADOR' || user.rol.codigo === 'DESPACHADOR') {
       return undefined
     }
 
@@ -51,7 +51,9 @@ export class ReportService {
         ? 'Toda la flota y los informes administrativos'
         : user.rol.codigo === 'MECANICO'
           ? 'Buses con órdenes asignadas o intervenciones propias'
-          : 'Bus asignado actualmente y novedades propias'
+          : user.rol.codigo === 'DESPACHADOR'
+            ? 'Flota, disponibilidad, asignaciones y novedades operativas'
+            : 'Bus asignado actualmente y novedades propias'
 
     return {
       alcance,
@@ -157,7 +159,7 @@ export class ReportService {
       user.rol.codigo === 'CONDUCTOR'
         ? Promise.resolve([])
         : this.reportRepository.listBusStates(busId),
-      user.rol.codigo === 'ADMINISTRADOR'
+      user.rol.codigo === 'ADMINISTRADOR' || user.rol.codigo === 'DESPACHADOR'
         ? this.reportRepository.listBusMileage(busId)
         : Promise.resolve([]),
       this.reportRepository.listBusSchedules(busId),
@@ -167,7 +169,7 @@ export class ReportService {
             busId,
             user.rol.codigo === 'CONDUCTOR' ? user.id : undefined,
           ),
-      user.rol.codigo === 'ADMINISTRADOR'
+      user.rol.codigo === 'ADMINISTRADOR' || user.rol.codigo === 'DESPACHADOR'
         ? this.reportRepository.listBusAssignments(busId)
         : Promise.resolve([]),
     ])
@@ -177,11 +179,13 @@ export class ReportService {
     }
 
     const isAdmin = user.rol.codigo === 'ADMINISTRADOR'
+    const canViewTechnicalDetails =
+      user.rol.codigo === 'ADMINISTRADOR' || user.rol.codigo === 'MECANICO'
     const historyOrders: HistoryOrderDto[] = orders.map((order) => ({
       codigo: order.codigo,
       ...(isAdmin ? { costoTotal: order.costoTotal.toFixed(2) } : {}),
       descripcion: order.descripcion,
-      ...(user.rol.codigo !== 'CONDUCTOR'
+      ...(canViewTechnicalDetails
         ? {
             diagnosticos: order.intervenciones.map((intervention) => ({
               actividades: intervention.actividades.map((activity) => activity.descripcion),
@@ -198,7 +202,7 @@ export class ReportService {
       fechaCreacion: order.fechaCreacion.toISOString(),
       id: order.id,
       origen: order.origen,
-      ...(user.rol.codigo !== 'CONDUCTOR'
+      ...(canViewTechnicalDetails
         ? {
             repuestos: order.consumosRepuesto.map((consumption) => ({
               cantidad: consumption.cantidad.toFixed(2),
@@ -223,7 +227,9 @@ export class ReportService {
       estado: novelty.estado,
       fechaReporte: novelty.fechaReporte.toISOString(),
       id: novelty.id,
-      ...(isAdmin ? { reportadaPor: novelty.conductor.nombre } : {}),
+      ...(isAdmin || user.rol.codigo === 'DESPACHADOR'
+        ? { reportadaPor: novelty.conductor.nombre }
+        : {}),
       tipo: novelty.tipo,
     }))
 

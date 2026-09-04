@@ -73,6 +73,7 @@ export default function DashboardPage() {
     ? REQUIREMENT_NAV_ITEMS.filter((item) => item.roles.includes(user.rol.codigo))
     : []
   const isAdmin = user?.rol.codigo === 'ADMINISTRADOR'
+  const isDispatcher = user?.rol.codigo === 'DESPACHADOR'
   const isMechanic = user?.rol.codigo === 'MECANICO'
   const isDriver = user?.rol.codigo === 'CONDUCTOR'
 
@@ -80,7 +81,7 @@ export default function DashboardPage() {
     let active = true
 
     async function loadDashboardContext() {
-      if (!isAdmin && !isDriver && !isMechanic) {
+      if (!isAdmin && !isDispatcher && !isDriver && !isMechanic) {
         return
       }
 
@@ -102,6 +103,15 @@ export default function DashboardPage() {
             setPreventiveSummary(preventive)
             setWorkOrderSummary(workOrders)
             setSparePartSummary(spareParts)
+          }
+        }
+
+        if (isDispatcher) {
+          const [summary, novelties] = await Promise.all([getFleetSummary(), getNoveltySummary()])
+
+          if (active) {
+            setFleetSummary(summary)
+            setNoveltySummary(novelties)
           }
         }
 
@@ -139,7 +149,7 @@ export default function DashboardPage() {
     return () => {
       active = false
     }
-  }, [isAdmin, isDriver, isMechanic])
+  }, [isAdmin, isDispatcher, isDriver, isMechanic])
 
   if (!user) {
     return null
@@ -235,6 +245,46 @@ export default function DashboardPage() {
           </div>
           <ModuleList items={visibleItems} />
         </>
+      )}
+
+      {isDispatcher && (
+        <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+          <section>
+            <h2 className="mb-3 text-xs font-semibold uppercase text-slate-500">Panel operativo</h2>
+            <ModuleList items={visibleItems} />
+          </section>
+          <div className="space-y-3">
+            <StatCard
+              icon={<Bus size={16} />}
+              label="Flota"
+              note={fleetError ?? 'Buses registrados'}
+              value={fleetSummary?.totalBuses ?? '...'}
+            />
+            <StatCard
+              icon={<Shield size={16} />}
+              label="Operativos"
+              note="Disponibles para despacho"
+              value={fleetSummary?.porEstado.OPERATIVO ?? '...'}
+            />
+            <StatCard
+              icon={<AlertTriangle size={16} />}
+              label="Bloqueados"
+              note="Mantenimiento o fuera de servicio"
+              value={
+                fleetSummary
+                  ? fleetSummary.porEstado.EN_MANTENIMIENTO +
+                    fleetSummary.porEstado.FUERA_DE_SERVICIO
+                  : '...'
+              }
+            />
+            <StatCard
+              icon={<ClipboardList size={16} />}
+              label="Novedades"
+              note="Pendientes de atencion"
+              value={noveltySummary?.pendientes ?? '...'}
+            />
+          </div>
+        </div>
       )}
 
       {isMechanic && (

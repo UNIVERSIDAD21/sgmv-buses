@@ -94,6 +94,12 @@ function ensureAdmin(actor: AuthenticatedUser) {
   }
 }
 
+function ensureAdminOrDispatcher(actor: AuthenticatedUser) {
+  if (actor.rol.codigo !== 'ADMINISTRADOR' && actor.rol.codigo !== 'DESPACHADOR') {
+    throw new AppError(403, 'FORBIDDEN', 'No tiene permisos para realizar esta operacion')
+  }
+}
+
 function ensureDriver(actor: AuthenticatedUser) {
   if (actor.rol.codigo !== 'CONDUCTOR') {
     throw new AppError(403, 'FORBIDDEN', 'No tiene permisos para realizar esta operacion')
@@ -200,7 +206,7 @@ export class NoveltyService {
   }
 
   async getAdminNovelty(noveltyId: string, actor: AuthenticatedUser) {
-    ensureAdmin(actor)
+    ensureAdminOrDispatcher(actor)
 
     const novelty = await this.noveltyRepository.findNoveltyById(noveltyId)
 
@@ -235,7 +241,7 @@ export class NoveltyService {
     query: ListNoveltiesQuery,
     actor: AuthenticatedUser,
   ): Promise<NoveltyListDto> {
-    ensureAdmin(actor)
+    ensureAdminOrDispatcher(actor)
 
     return this.listNovelties(query, true)
   }
@@ -279,7 +285,7 @@ export class NoveltyService {
   }
 
   async summarize(actor: AuthenticatedUser): Promise<NoveltySummaryDto> {
-    ensureAdmin(actor)
+    ensureAdminOrDispatcher(actor)
 
     const [total, grouped, ordenesGeneradas] = await Promise.all([
       this.noveltyRepository.countNovelties(),

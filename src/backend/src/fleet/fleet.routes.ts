@@ -11,7 +11,7 @@ fleetRoutes.use(authenticate)
 
 fleetRoutes.get(
   '/resumen',
-  authorizeRoles('ADMINISTRADOR'),
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
   asyncHandler(fleetController.summarize),
 )
 fleetRoutes.get(
@@ -21,10 +21,14 @@ fleetRoutes.get(
 )
 fleetRoutes.get(
   '/conductores-disponibles',
-  authorizeRoles('ADMINISTRADOR'),
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
   asyncHandler(fleetController.getAvailableDrivers),
 )
-fleetRoutes.get('/buses', authorizeRoles('ADMINISTRADOR'), asyncHandler(fleetController.listBuses))
+fleetRoutes.get(
+  '/buses',
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
+  asyncHandler(fleetController.listBuses),
+)
 fleetRoutes.post(
   '/buses',
   enforceAllowedOrigin,
@@ -33,7 +37,7 @@ fleetRoutes.post(
 )
 fleetRoutes.get(
   '/buses/:busId',
-  authorizeRoles('ADMINISTRADOR', 'CONDUCTOR'),
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR'),
   asyncHandler(fleetController.getBus),
 )
 fleetRoutes.patch(
@@ -45,12 +49,12 @@ fleetRoutes.patch(
 fleetRoutes.post(
   '/buses/:busId/kilometraje',
   enforceAllowedOrigin,
-  authorizeRoles('ADMINISTRADOR'),
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
   asyncHandler(fleetController.registerMileage),
 )
 fleetRoutes.get(
   '/buses/:busId/kilometraje',
-  authorizeRoles('ADMINISTRADOR'),
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
   asyncHandler(fleetController.getMileageReadings),
 )
 fleetRoutes.post(
@@ -61,18 +65,18 @@ fleetRoutes.post(
 )
 fleetRoutes.get(
   '/buses/:busId/estados',
-  authorizeRoles('ADMINISTRADOR'),
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
   asyncHandler(fleetController.getStateHistory),
 )
 fleetRoutes.post(
   '/buses/:busId/asignaciones',
   enforceAllowedOrigin,
-  authorizeRoles('ADMINISTRADOR'),
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
   asyncHandler(fleetController.assignDriver),
 )
 fleetRoutes.get(
   '/buses/:busId/asignaciones',
-  authorizeRoles('ADMINISTRADOR'),
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
   asyncHandler(fleetController.getAssignments),
 )
 

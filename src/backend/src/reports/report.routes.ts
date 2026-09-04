@@ -17,7 +17,7 @@ reportRoutes.get(
 )
 reportRoutes.get(
   '/buses',
-  authorizeRoles('ADMINISTRADOR', 'MECANICO'),
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR', 'MECANICO'),
   asyncHandler(reportController.listBuses),
 )
 reportRoutes.get(
@@ -37,7 +37,7 @@ reportRoutes.get(
 )
 reportRoutes.get(
   '/buses/:busId',
-  authorizeRoles('ADMINISTRADOR', 'MECANICO'),
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR', 'MECANICO'),
   asyncHandler(reportController.getBusHistory),
 )
 

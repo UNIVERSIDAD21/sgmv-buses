@@ -17,19 +17,28 @@ const createdUserIds: string[] = []
 interface AuthFixture {
   adminEmail: string
   conductorEmail: string
+  despachadorEmail: string
   inactiveEmail: string
   mecanicoEmail: string
   rateLimitedEmail: string
 }
 
 async function ensureRoles() {
-  const [admin, mecanico, conductor] = await Promise.all([
+  const [admin, despachador, mecanico, conductor] = await Promise.all([
     prisma.rol.upsert({
       where: { codigo: 'ADMINISTRADOR' },
       update: {},
       create: {
         codigo: 'ADMINISTRADOR',
         nombre: 'Administrador',
+      },
+    }),
+    prisma.rol.upsert({
+      where: { codigo: 'DESPACHADOR' },
+      update: {},
+      create: {
+        codigo: 'DESPACHADOR',
+        nombre: 'Despachador',
       },
     }),
     prisma.rol.upsert({
@@ -50,7 +59,7 @@ async function ensureRoles() {
     }),
   ])
 
-  return { admin, conductor, mecanico }
+  return { admin, conductor, despachador, mecanico }
 }
 
 async function createUser(email: string, role: Rol, estado: 'ACTIVO' | 'INACTIVO' = 'ACTIVO') {
@@ -73,12 +82,14 @@ async function createFixture(): Promise<AuthFixture> {
   const roles = await ensureRoles()
   const suffix = randomUUID().slice(0, 8)
   const adminEmail = `auth-admin-${suffix}@test.sgmv.local`
+  const despachadorEmail = `auth-despachador-${suffix}@test.sgmv.local`
   const mecanicoEmail = `auth-mecanico-${suffix}@test.sgmv.local`
   const conductorEmail = `auth-conductor-${suffix}@test.sgmv.local`
   const inactiveEmail = `auth-inactivo-${suffix}@test.sgmv.local`
   const rateLimitedEmail = `auth-rate-${suffix}@test.sgmv.local`
 
   await createUser(adminEmail, roles.admin)
+  await createUser(despachadorEmail, roles.despachador)
   await createUser(mecanicoEmail, roles.mecanico)
   await createUser(conductorEmail, roles.conductor)
   await createUser(inactiveEmail, roles.admin, 'INACTIVO')
@@ -87,6 +98,7 @@ async function createFixture(): Promise<AuthFixture> {
   return {
     adminEmail,
     conductorEmail,
+    despachadorEmail,
     inactiveEmail,
     mecanicoEmail,
     rateLimitedEmail,
@@ -127,7 +139,7 @@ function createTokenWithRole(userId: string, email: string, rol: string, expires
 function createExpiredToken(
   userId: string,
   email: string,
-  rol: 'ADMINISTRADOR' | 'MECANICO' | 'CONDUCTOR',
+  rol: 'ADMINISTRADOR' | 'DESPACHADOR' | 'MECANICO' | 'CONDUCTOR',
 ) {
   return createTokenWithRole(userId, email, rol, -60)
 }
@@ -174,6 +186,19 @@ describeDb('Auth API', () => {
     expect(response.headers['set-cookie']?.join(';')).toContain('HttpOnly')
     expect(response.body.data.user.email).toBe(fixture.adminEmail)
     expect(response.body.data.user.rol.codigo).toBe('ADMINISTRADOR')
+    expectNoSensitiveUserFields(response.body)
+  })
+
+  it('starts a valid dispatcher session with the canonical role', async () => {
+    const response = await request(createApp())
+      .post('/auth/login')
+      .send({
+        contrasena: password,
+        email: fixture.despachadorEmail,
+      })
+      .expect(200)
+
+    expect(response.body.data.user.rol.codigo).toBe('DESPACHADOR')
     expectNoSensitiveUserFields(response.body)
   })
 
@@ -279,7 +304,7 @@ describeDb('Auth API', () => {
     expectNoSensitiveUserFields(response.body)
   })
 
-  it('keeps only the three canonical roles and rejects legacy role aliases in session tokens', async () => {
+  it('keeps only the canonical roles and rejects legacy role aliases in session tokens', async () => {
     const roles = await prisma.rol.findMany({
       orderBy: { codigo: 'asc' },
       select: { codigo: true, nombre: true },
@@ -291,11 +316,13 @@ describeDb('Auth API', () => {
     expect(roles.map((role) => role.codigo).sort()).toEqual([
       'ADMINISTRADOR',
       'CONDUCTOR',
+      'DESPACHADOR',
       'MECANICO',
     ])
     expect(roles.map((role) => role.nombre).sort()).toEqual([
       'Administrador',
       'Conductor',
+      'Despachador',
       'Mecánico',
     ])
 

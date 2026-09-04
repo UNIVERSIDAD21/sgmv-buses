@@ -818,6 +818,8 @@ function DriverView() {
 }
 
 function AdminView() {
+  const { user } = useSession()
+  const isAdmin = user?.rol.codigo === 'ADMINISTRADOR'
   const [action, setAction] = useState<AdminAction | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
@@ -967,7 +969,7 @@ function AdminView() {
   }
 
   function renderAdminActions(novelty: NoveltyDto) {
-    if (novelty.estado !== 'PENDIENTE_REVISION') {
+    if (!isAdmin || novelty.estado !== 'PENDIENTE_REVISION') {
       return null
     }
 
@@ -1025,16 +1027,20 @@ function AdminView() {
                 Control de novedades operativas
               </h2>
               <p className="mt-1 text-sm leading-6 text-slate-500">
-                {totalLabel} con revision, clasificacion y conversion correctiva.
+                {isAdmin
+                  ? `${totalLabel} con revision, clasificacion y conversion correctiva.`
+                  : `${totalLabel} para seguimiento operativo del despacho.`}
               </p>
             </div>
-            <Link
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-              to="/ordenes-trabajo"
-            >
-              <ClipboardList size={16} />
-              Ver ordenes
-            </Link>
+            {isAdmin && (
+              <Link
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                to="/ordenes-trabajo"
+              >
+                <ClipboardList size={16} />
+                Ver ordenes
+              </Link>
+            )}
           </div>
         </section>
 
@@ -1260,7 +1266,7 @@ export default function NoveltyPage() {
     return <DriverView />
   }
 
-  if (user?.rol.codigo === 'ADMINISTRADOR') {
+  if (user?.rol.codigo === 'ADMINISTRADOR' || user?.rol.codigo === 'DESPACHADOR') {
     return <AdminView />
   }
 

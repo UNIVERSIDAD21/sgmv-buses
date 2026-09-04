@@ -405,7 +405,8 @@ function ActionDialog({
 
 export default function FleetPage() {
   const { user } = useSession()
-  const canManage = user?.rol.codigo === 'ADMINISTRADOR'
+  const canEditMasterData = user?.rol.codigo === 'ADMINISTRADOR'
+  const canManage = user?.rol.codigo === 'ADMINISTRADOR' || user?.rol.codigo === 'DESPACHADOR'
   const isDriver = user?.rol.codigo === 'CONDUCTOR'
   const [busqueda, setBusqueda] = useState('')
   const [estado, setEstado] = useState<BusStatus | ''>('')
@@ -664,11 +665,9 @@ export default function FleetPage() {
               <h2 className="text-lg font-semibold text-slate-900">
                 Gestion de la flota vehicular
               </h2>
-              <p className="mt-1 text-sm leading-6 text-slate-500">
-                {totalLabel} en PostgreSQL/Neon
-              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-500">{totalLabel} en PostgreSQL</p>
             </div>
-            {canManage && (
+            {canEditMasterData && (
               <Link
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-emerald-700 bg-emerald-700 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-800"
                 to="/flota/nuevo"
@@ -804,12 +803,14 @@ export default function FleetPage() {
                           >
                             Detalle
                           </Button>
-                          <Link
-                            className="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                            to={`/flota/${bus.id}/editar`}
-                          >
-                            Editar
-                          </Link>
+                          {canEditMasterData && (
+                            <Link
+                              className="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                              to={`/flota/${bus.id}/editar`}
+                            >
+                              Editar
+                            </Link>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -888,14 +889,16 @@ export default function FleetPage() {
                 >
                   Kilometraje
                 </Button>
-                <Button
-                  icon={<Wrench size={14} />}
-                  onClick={() => openAction('state', selectedBus)}
-                  size="sm"
-                  variant="outline"
-                >
-                  Estado
-                </Button>
+                {canEditMasterData && (
+                  <Button
+                    icon={<Wrench size={14} />}
+                    onClick={() => openAction('state', selectedBus)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Estado
+                  </Button>
+                )}
                 <Button
                   icon={<User size={14} />}
                   onClick={() => openAction('assignment', selectedBus)}

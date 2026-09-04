@@ -40,7 +40,7 @@ function AppRoutes() {
         <Route element={<DashboardPage />} path="/inicio" />
         <Route
           element={
-            <ProtectedRoute roles={['ADMINISTRADOR', 'CONDUCTOR']}>
+            <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR']}>
               <FleetPage />
             </ProtectedRoute>
           }
@@ -64,7 +64,7 @@ function AppRoutes() {
         />
         <Route
           element={
-            <ProtectedRoute roles={['ADMINISTRADOR', 'CONDUCTOR']}>
+            <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR']}>
               <NoveltyPage />
             </ProtectedRoute>
           }
@@ -96,7 +96,7 @@ function AppRoutes() {
         />
         <Route
           element={
-            <ProtectedRoute roles={['ADMINISTRADOR', 'MECANICO', 'CONDUCTOR']}>
+            <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR', 'MECANICO', 'CONDUCTOR']}>
               <HistoryReportsPage />
             </ProtectedRoute>
           }

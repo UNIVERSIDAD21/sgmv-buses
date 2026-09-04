@@ -6,15 +6,22 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:local": "dotenv -e ../../.env.local -- tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/server.js",
     "lint": "eslint .",
     "test": "vitest --run --fileParallelism=false",
+    "test:local": "dotenv -e ../../.env.local -- vitest --run --fileParallelism=false",
     "test:watch": "vitest",
     "prisma:generate": "dotenv -e ../../.env -- prisma generate --schema prisma/schema.prisma",
+    "prisma:generate:local": "dotenv -e ../../.env.local -- prisma generate --schema prisma/schema.prisma",
     "prisma:migrate": "dotenv -e ../../.env -- prisma migrate deploy --schema prisma/schema.prisma",
+    "prisma:migrate:local": "dotenv -e ../../.env.local -- prisma migrate deploy --schema prisma/schema.prisma",
+    "prisma:migrate:dev:local": "dotenv -e ../../.env.local -- prisma migrate dev --schema prisma/schema.prisma",
     "prisma:seed": "dotenv -e ../../.env -- prisma db seed --schema prisma/schema.prisma",
+    "prisma:seed:local": "dotenv -e ../../.env.local -- tsx prisma/seed.ts",
+    "prisma:studio:local": "dotenv -e ../../.env.local -- prisma studio --schema prisma/schema.prisma",
     "prisma:validate": "dotenv -e ../../.env -- prisma validate --schema prisma/schema.prisma"
   },
   "prisma": {

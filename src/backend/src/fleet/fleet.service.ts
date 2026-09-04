@@ -191,11 +191,17 @@ function ensureAdmin(actor: AuthenticatedUser) {
   }
 }
 
+function ensureAdminOrDispatcher(actor: AuthenticatedUser) {
+  if (actor.rol.codigo !== 'ADMINISTRADOR' && actor.rol.codigo !== 'DESPACHADOR') {
+    throw new AppError(403, 'FORBIDDEN', 'No tiene permisos para realizar esta operacion')
+  }
+}
+
 export class FleetService {
   constructor(private readonly fleetRepository = new FleetRepository()) {}
 
   async assignDriver(busId: string, input: AssignDriverInput, actor: AuthenticatedUser) {
-    ensureAdmin(actor)
+    ensureAdminOrDispatcher(actor)
 
     const [bus, conductor] = await Promise.all([
       this.fleetRepository.findBusSummaryById(busId),
@@ -300,7 +306,7 @@ export class FleetService {
   }
 
   async getAssignments(busId: string, limite: number, actor: AuthenticatedUser) {
-    ensureAdmin(actor)
+    ensureAdminOrDispatcher(actor)
     await this.ensureBusExists(busId)
 
     const assignments = await this.fleetRepository.getAssignments(busId, limite)
@@ -344,7 +350,7 @@ export class FleetService {
   }
 
   async getAvailableDrivers(busId: string | undefined, actor: AuthenticatedUser) {
-    ensureAdmin(actor)
+    ensureAdminOrDispatcher(actor)
 
     if (busId) {
       await this.ensureBusExists(busId)
@@ -407,7 +413,7 @@ export class FleetService {
   }
 
   async getMileageReadings(busId: string, limite: number, actor: AuthenticatedUser) {
-    ensureAdmin(actor)
+    ensureAdminOrDispatcher(actor)
     await this.ensureBusExists(busId)
 
     const lecturas = await this.fleetRepository.getMileageReadings(busId, limite)
@@ -418,7 +424,7 @@ export class FleetService {
   }
 
   async getStateHistory(busId: string, limite: number, actor: AuthenticatedUser) {
-    ensureAdmin(actor)
+    ensureAdminOrDispatcher(actor)
     await this.ensureBusExists(busId)
 
     const historial = await this.fleetRepository.getStateHistory(busId, limite)
@@ -429,7 +435,7 @@ export class FleetService {
   }
 
   async listBuses(query: ListBusesQuery, actor: AuthenticatedUser) {
-    ensureAdmin(actor)
+    ensureAdminOrDispatcher(actor)
 
     const where = this.createBusWhere(query)
     const skip = (query.pagina - 1) * query.limite
@@ -451,7 +457,7 @@ export class FleetService {
   }
 
   async registerMileage(busId: string, input: RegisterMileageInput, actor: AuthenticatedUser) {
-    ensureAdmin(actor)
+    ensureAdminOrDispatcher(actor)
 
     try {
       const result = await this.fleetRepository.registerMileage(
@@ -486,7 +492,7 @@ export class FleetService {
   }
 
   async summarize(actor: AuthenticatedUser): Promise<FleetSummaryDto> {
-    ensureAdmin(actor)
+    ensureAdminOrDispatcher(actor)
 
     const [totalBuses, grouped, asignacionesActivas, sinConductor] = await Promise.all([
       this.fleetRepository.countBuses(),

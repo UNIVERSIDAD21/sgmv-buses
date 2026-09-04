@@ -6,11 +6,13 @@ const prisma = new PrismaClient()
 const ids = {
   roles: {
     admin: '10000000-0000-4000-8000-000000000001',
+    despachador: '10000000-0000-4000-8000-000000000004',
     mecanico: '10000000-0000-4000-8000-000000000002',
     conductor: '10000000-0000-4000-8000-000000000003',
   },
   usuarios: {
     admin: '20000000-0000-4000-8000-000000000001',
+    despachador: '20000000-0000-4000-8000-000000000005',
     mecanico: '20000000-0000-4000-8000-000000000002',
     mecanicoApoyo: '20000000-0000-4000-8000-000000000004',
     conductor: '20000000-0000-4000-8000-000000000003',
@@ -97,6 +99,22 @@ async function main() {
       })
 
       await tx.rol.upsert({
+        where: { codigo: 'DESPACHADOR' },
+        update: {
+          nombre: 'Despachador',
+          descripcion:
+            'Coordina jornadas, asignaciones, disponibilidad, salidas, llegadas y alertas operativas.',
+        },
+        create: {
+          id: ids.roles.despachador,
+          codigo: 'DESPACHADOR',
+          nombre: 'Despachador',
+          descripcion:
+            'Coordina jornadas, asignaciones, disponibilidad, salidas, llegadas y alertas operativas.',
+        },
+      })
+
+      await tx.rol.upsert({
         where: { codigo: 'CONDUCTOR' },
         update: {
           nombre: 'Conductor',
@@ -126,6 +144,25 @@ async function main() {
           contrasenaHash,
           estado: 'ACTIVO',
           rolId: ids.roles.admin,
+        },
+      })
+
+      await tx.usuario.upsert({
+        where: { email: 'despachador.demo@sgmv.local' },
+        update: {
+          nombre: 'Despachador Demo',
+          contrasenaHash,
+          estado: 'ACTIVO',
+          rolId: ids.roles.despachador,
+        },
+        create: {
+          id: ids.usuarios.despachador,
+          nombre: 'Despachador Demo',
+          email: 'despachador.demo@sgmv.local',
+          telefono: '3000000005',
+          contrasenaHash,
+          estado: 'ACTIVO',
+          rolId: ids.roles.despachador,
         },
       })
 

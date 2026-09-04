@@ -6,6 +6,7 @@ import App from './App'
 
 const roleNames: Record<RoleCode, string> = {
   ADMINISTRADOR: 'Administrador',
+  DESPACHADOR: 'Despachador',
   CONDUCTOR: 'Conductor',
   MECANICO: 'Mecánico',
 }

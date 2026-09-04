@@ -11,7 +11,7 @@ noveltyRoutes.use(authenticate)
 
 noveltyRoutes.get(
   '/resumen',
-  authorizeRoles('ADMINISTRADOR'),
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
   asyncHandler(noveltyController.summarize),
 )
 noveltyRoutes.get(
@@ -32,12 +32,12 @@ noveltyRoutes.post(
 )
 noveltyRoutes.get(
   '/',
-  authorizeRoles('ADMINISTRADOR'),
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
   asyncHandler(noveltyController.listAdminNovelties),
 )
 noveltyRoutes.get(
   '/:novedadId',
-  authorizeRoles('ADMINISTRADOR'),
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
   asyncHandler(noveltyController.getAdminNovelty),
 )
 noveltyRoutes.post(
