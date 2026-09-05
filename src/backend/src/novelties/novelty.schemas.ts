@@ -8,6 +8,7 @@ export const estadoNovedadValues = [
 ] as const
 
 export const prioridadOrdenValues = ['BAJA', 'MEDIA', 'ALTA'] as const
+export const criticidadNovedadValues = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'] as const
 
 const optionalTrimmedText = (max = 500) =>
   z.preprocess((value) => {
@@ -37,6 +38,8 @@ export const listNoveltiesQuerySchema = z.object({
 export const createNoveltySchema = z
   .object({
     descripcion: trimmedText(10, 2000),
+    fechaOcurrencia: z.iso.datetime({ offset: true }),
+    kilometraje: z.coerce.number().int().min(0),
     tipo: trimmedText(3, 120),
   })
   .strict()
@@ -44,7 +47,10 @@ export const createNoveltySchema = z
 export const reviewNoveltySchema = z
   .object({
     accion: z.enum(['CLASIFICAR', 'RESOLVER_SIN_ORDEN', 'DESCARTAR']),
+    afectaOperacion: z.boolean().optional(),
+    bloqueaDisponibilidad: z.boolean().optional(),
     clasificacion: optionalTrimmedText(120),
+    criticidad: z.enum(criticidadNovedadValues).optional(),
     observacion: optionalTrimmedText(1000),
   })
   .strict()
@@ -54,6 +60,49 @@ export const reviewNoveltySchema = z
         code: 'custom',
         message: 'La clasificacion es obligatoria al clasificar una novedad',
         path: ['clasificacion'],
+      })
+    }
+
+    if (input.accion === 'CLASIFICAR' && !input.criticidad) {
+      context.addIssue({
+        code: 'custom',
+        message: 'La criticidad es obligatoria al clasificar una novedad',
+        path: ['criticidad'],
+      })
+    }
+
+    if (input.accion === 'CLASIFICAR' && input.afectaOperacion === undefined) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Debe indicar si la novedad afecta la operacion',
+        path: ['afectaOperacion'],
+      })
+    }
+
+    if (input.accion === 'CLASIFICAR' && input.bloqueaDisponibilidad === undefined) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Debe indicar si la novedad bloquea la disponibilidad',
+        path: ['bloqueaDisponibilidad'],
+      })
+    }
+
+    if (input.bloqueaDisponibilidad && input.afectaOperacion !== true) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Una novedad bloqueante debe afectar la operacion',
+        path: ['afectaOperacion'],
+      })
+    }
+
+    if (
+      input.criticidad === 'CRITICA' &&
+      (!input.afectaOperacion || !input.bloqueaDisponibilidad)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Una novedad critica debe afectar y bloquear la operacion',
+        path: ['criticidad'],
       })
     }
 

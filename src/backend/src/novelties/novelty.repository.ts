@@ -1,7 +1,14 @@
 import { randomUUID } from 'node:crypto'
 
-import { Prisma, type EstadoNovedad, type PrioridadOrden } from '@prisma/client'
+import {
+  Prisma,
+  type CriticidadNovedad,
+  type EstadoNovedad,
+  type PrioridadOrden,
+} from '@prisma/client'
 
+import { createNoveltyAlerts } from '../alerts/alert.service.js'
+import { registerContextualMileageReading } from '../mileage/mileage.repository.js'
 import { prisma } from '../prisma/client.js'
 
 type NoveltyDbClient = Prisma.TransactionClient | typeof prisma
@@ -35,6 +42,33 @@ export const noveltyInclude = {
   conductor: {
     select: userSelect,
   },
+  jornadaOperativa: {
+    select: {
+      estado: true,
+      finReal: true,
+      id: true,
+      inicioReal: true,
+      ruta: {
+        select: {
+          codigo: true,
+          destino: true,
+          id: true,
+          nombre: true,
+          origen: true,
+        },
+      },
+    },
+  },
+  lecturaKilometraje: {
+    select: {
+      fechaLectura: true,
+      fechaRegistro: true,
+      id: true,
+      kilometrajeAnterior: true,
+      kilometrajeNuevo: true,
+      tipo: true,
+    },
+  },
   ordenTrabajo: {
     include: orderSummaryInclude,
   },
@@ -47,14 +81,18 @@ export type NoveltyRecord = Prisma.NovedadGetPayload<{ include: typeof noveltyIn
 export type WorkOrderRecord = Prisma.OrdenTrabajoGetPayload<{ include: typeof orderSummaryInclude }>
 
 interface CreateNoveltyData {
-  busId: string
   conductorId: string
   descripcion: string
+  fechaOcurrencia: Date
+  kilometraje: number
   tipo: string
 }
 
 interface ReviewNoveltyData {
+  afectaOperacion?: boolean
+  bloqueaDisponibilidad?: boolean
   clasificacion?: string
+  criticidad?: CriticidadNovedad
   estado?: EstadoNovedad
   observacionRevision?: string
   revisadaPorId: string
@@ -92,27 +130,85 @@ export class NoveltyRepository {
   }
 
   createNovelty(data: CreateNoveltyData) {
-    return prisma.novedad.create({
-      data,
-      include: noveltyInclude,
-    })
-  }
+    return prisma.$transaction(
+      async (tx) => {
+        const journey = await tx.jornadaOperativa.findFirst({
+          where: {
+            conductorId: data.conductorId,
+            inicioReal: { lte: data.fechaOcurrencia },
+            OR: [
+              { estado: 'EN_CURSO', finReal: null },
+              {
+                estado: { in: ['FINALIZADA', 'CANCELADA', 'REASIGNADA'] },
+                finReal: { gte: data.fechaOcurrencia },
+              },
+            ],
+          },
+          orderBy: { inicioReal: 'desc' },
+          select: { busId: true, conductorId: true, id: true },
+        })
 
-  findActiveAssignmentWithBusByConductor(conductorId: string) {
-    return prisma.asignacionConductor.findFirst({
-      where: {
-        activa: true,
-        conductorId,
+        if (!journey) {
+          return { novedad: null, status: 'JOURNEY_NOT_FOUND' as const }
+        }
+
+        await tx.$queryRaw`SELECT id FROM buses WHERE id = ${journey.busId}::uuid FOR UPDATE`
+        await tx.$queryRaw`SELECT id FROM jornadas_operativas WHERE id = ${journey.id}::uuid FOR UPDATE`
+
+        const lockedJourney = await tx.jornadaOperativa.findUnique({
+          where: { id: journey.id },
+          select: {
+            busId: true,
+            conductorId: true,
+            estado: true,
+            finReal: true,
+            id: true,
+            inicioReal: true,
+          },
+        })
+        const containsEvent =
+          lockedJourney?.conductorId === data.conductorId &&
+          lockedJourney.inicioReal !== null &&
+          lockedJourney.inicioReal <= data.fechaOcurrencia &&
+          ((lockedJourney.estado === 'EN_CURSO' && lockedJourney.finReal === null) ||
+            (lockedJourney.finReal !== null && lockedJourney.finReal >= data.fechaOcurrencia))
+
+        if (!lockedJourney || !containsEvent) {
+          return { novedad: null, status: 'JOURNEY_NOT_FOUND' as const }
+        }
+
+        const noveltyId = randomUUID()
+        const readingId = randomUUID()
+        await registerContextualMileageReading(
+          {
+            actorId: data.conductorId,
+            busId: lockedJourney.busId,
+            eventDate: data.fechaOcurrencia,
+            journeyId: lockedJourney.id,
+            mileage: data.kilometraje,
+            readingId,
+            type: 'NOVEDAD',
+          },
+          tx,
+        )
+        const novelty = await tx.novedad.create({
+          data: {
+            busId: lockedJourney.busId,
+            conductorId: data.conductorId,
+            descripcion: data.descripcion,
+            fechaOcurrencia: data.fechaOcurrencia,
+            id: noveltyId,
+            jornadaOperativaId: lockedJourney.id,
+            lecturaKilometrajeId: readingId,
+            tipo: data.tipo,
+          },
+          include: noveltyInclude,
+        })
+
+        return { novedad: novelty, status: 'CREATED' as const }
       },
-      include: {
-        bus: {
-          select: busSelect,
-        },
-      },
-      orderBy: {
-        fechaInicio: 'desc',
-      },
-    })
+      { maxWait: 15_000, timeout: 60_000 },
+    )
   }
 
   findNoveltyById(id: string) {
@@ -163,7 +259,10 @@ export class NoveltyRepository {
         const updated = await tx.novedad.update({
           where: { id: novedadId },
           data: {
+            afectaOperacion: data.afectaOperacion,
+            bloqueaDisponibilidad: data.bloqueaDisponibilidad,
             clasificacion: data.clasificacion,
+            criticidad: data.criticidad,
             estado: data.estado,
             fechaRevision: new Date(),
             observacionRevision: data.observacionRevision,
@@ -171,6 +270,30 @@ export class NoveltyRepository {
           },
           include: noveltyInclude,
         })
+
+        if (
+          updated.estado === 'PENDIENTE_REVISION' &&
+          updated.jornadaOperativaId &&
+          updated.fechaOcurrencia &&
+          updated.criticidad &&
+          updated.afectaOperacion !== null &&
+          updated.bloqueaDisponibilidad !== null
+        ) {
+          await createNoveltyAlerts(
+            {
+              afectaOperacion: updated.afectaOperacion,
+              bloqueaDisponibilidad: updated.bloqueaDisponibilidad,
+              busCodigo: updated.bus.codigoInterno,
+              busId: updated.busId,
+              conductorId: updated.conductorId,
+              criticidad: updated.criticidad,
+              eventAt: updated.fechaOcurrencia,
+              jornadaId: updated.jornadaOperativaId,
+              novedadId: updated.id,
+            },
+            tx,
+          )
+        }
 
         return {
           novedad: updated,
@@ -220,6 +343,7 @@ export class NoveltyRepository {
             creadaPorId: actorId,
             descripcion: data.descripcionOrden,
             estado: 'PENDIENTE_ASIGNACION',
+            jornadaOperativaId: novelty.jornadaOperativaId,
             novedadId,
             origen: 'NOVEDAD',
             prioridad: data.prioridad,

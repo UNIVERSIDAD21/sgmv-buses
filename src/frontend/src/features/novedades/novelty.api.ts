@@ -19,12 +19,17 @@ export interface ListNoveltyParams {
 
 export interface CreateNoveltyInput {
   descripcion: string
+  fechaOcurrencia: string
+  kilometraje: number
   tipo: string
 }
 
 export interface ReviewNoveltyInput {
   accion: 'CLASIFICAR' | 'DESCARTAR' | 'RESOLVER_SIN_ORDEN'
+  afectaOperacion?: boolean
+  bloqueaDisponibilidad?: boolean
   clasificacion?: string
+  criticidad?: 'ALTA' | 'BAJA' | 'CRITICA' | 'MEDIA'
   observacion?: string
 }
 

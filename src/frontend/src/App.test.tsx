@@ -540,6 +540,13 @@ const noveltyOrder = {
 }
 
 const noveltyOne = {
+  acciones: {
+    puedeConvertir: true,
+    puedeCoordinarJornada: false,
+    puedeRevisar: true,
+  },
+  afectaOperacion: null,
+  bloqueaDisponibilidad: null,
   bus: {
     codigoInterno: fleetBus.codigoInterno,
     estadoOperativo: fleetBus.estadoOperativo,
@@ -551,11 +558,33 @@ const noveltyOne = {
     id: 'driver-1',
     nombre: 'Conductor Uno',
   },
+  criticidad: null,
   descripcion: 'Se escucha ruido al frenar en pendientes durante la ruta.',
   estado: 'PENDIENTE_REVISION',
+  fechaOcurrencia: '2026-08-27T11:55:00.000Z',
   fechaReporte: '2026-08-27T12:00:00.000Z',
   fechaRevision: null,
   id: 'nov-1',
+  jornada: {
+    estado: 'EN_CURSO',
+    finReal: null,
+    id: 'journey-1',
+    inicioReal: '2026-08-27T10:00:00.000Z',
+    ruta: {
+      codigo: 'RUTA-01',
+      destino: 'Terminal Norte',
+      id: 'route-1',
+      nombre: 'Centro - Norte',
+      origen: 'Patio Central',
+    },
+  },
+  lecturaKilometraje: {
+    fechaLectura: '2026-08-27T11:55:00.000Z',
+    id: 'reading-novelty-1',
+    kilometraje: 45010,
+    kilometrajeAnterior: 45000,
+    tipo: 'NOVEDAD',
+  },
   observacionRevision: null,
   ordenTrabajo: null,
   revisadaPor: null,
@@ -565,7 +594,15 @@ const noveltyOne = {
 
 const reviewedNovelty = {
   ...noveltyOne,
+  acciones: {
+    puedeConvertir: true,
+    puedeCoordinarJornada: true,
+    puedeRevisar: true,
+  },
+  afectaOperacion: true,
+  bloqueaDisponibilidad: true,
   clasificacion: 'Falla mecanica',
+  criticidad: 'CRITICA',
   fechaRevision: '2026-08-27T12:10:00.000Z',
   observacionRevision: 'Revisada por administrador',
   revisadaPor: {
@@ -576,12 +613,20 @@ const reviewedNovelty = {
 
 const convertedNovelty = {
   ...reviewedNovelty,
+  acciones: {
+    puedeConvertir: false,
+    puedeCoordinarJornada: true,
+    puedeRevisar: false,
+  },
   estado: 'CONVERTIDA_A_ORDEN',
   ordenTrabajo: noveltyOrder,
 }
 
 function noveltySummary() {
   return {
+    afectanOperacion: 1,
+    bloqueantes: 1,
+    criticas: 1,
     estados: {
       CONVERTIDA_A_ORDEN: 0,
       DESCARTADA: 0,
@@ -1865,10 +1910,10 @@ function noveltyHandler(
       return ok({ user: userForRole(role) })
     }
 
-    if (path === '/flota/mi-bus') {
+    if (path === '/jornadas/mi-jornada') {
       return ok({
-        asignacion: options.noBus ? null : fleetBus.asignacionesHistorial[0],
-        bus: options.noBus ? null : fleetBus,
+        jornadaActual: options.noBus ? null : journeyFixture('EN_CURSO'),
+        proximaJornada: null,
       })
     }
 
@@ -2444,15 +2489,19 @@ describe('P4 journey frontend', () => {
 })
 
 describe('RF-02 novelty frontend', () => {
-  it('lets a driver register a novelty only for the assigned bus', async () => {
+  it('lets a driver register a novelty from the journey context without free IDs', async () => {
     window.history.pushState({}, '', '/novedades')
     const fetchMock = mockApi(noveltyHandler('CONDUCTOR'))
 
     render(<App />)
 
     expect(await screen.findByText(/Mis novedades operativas/i)).toBeInTheDocument()
-    expect(await screen.findByText(/BUS-001 - ABC123/i)).toBeInTheDocument()
+    expect(await screen.findByText(/BUS-JORNADA-01 - JOR001/i)).toBeInTheDocument()
+    expect(screen.getByText(/No use este dispositivo.*mientras conduce/i)).toBeInTheDocument()
 
+    fireEvent.change(screen.getByLabelText(/Kilometraje observado/i), {
+      target: { value: '45010' },
+    })
     fireEvent.click(screen.getByRole('button', { name: /Enviar novedad/i }))
     expect(await screen.findByText(/El tipo debe tener al menos 3 caracteres/i)).toBeInTheDocument()
     expect(
@@ -2468,25 +2517,30 @@ describe('RF-02 novelty frontend', () => {
     fireEvent.click(screen.getByRole('button', { name: /Enviar novedad/i }))
     fireEvent.click(screen.getByRole('button', { name: /Enviar novedad/i }))
 
-    expect(await screen.findByText(/Novedad registrada para el bus asignado/i)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/Novedad registrada y vinculada a la jornada/i),
+    ).toBeInTheDocument()
 
     const createCalls = fetchMock.mock.calls.filter(
       ([input, init]) => String(input).includes('/novedades') && init?.method === 'POST',
     )
     expect(createCalls).toHaveLength(1)
     expect(String(createCalls[0][1]?.body)).toContain('Ruido en frenos')
+    expect(String(createCalls[0][1]?.body)).toContain('fechaOcurrencia')
+    expect(String(createCalls[0][1]?.body)).toContain('45010')
     expect(String(createCalls[0][1]?.body)).not.toContain('busId')
     expect(String(createCalls[0][1]?.body)).not.toContain('conductorId')
   })
 
-  it('shows a clear empty state when a driver has no active bus assignment', async () => {
+  it('allows a safe late report when the driver has no journey currently in progress', async () => {
     window.history.pushState({}, '', '/novedades')
     mockApi(noveltyHandler('CONDUCTOR', { noBus: true }))
 
     render(<App />)
 
-    expect(await screen.findByText(/Sin bus asignado/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Enviar novedad/i })).not.toBeInTheDocument()
+    expect(await screen.findByText(/Sin jornada en curso/i)).toBeInTheDocument()
+    expect(screen.getByText(/Puede reportar una novedad tardia/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Enviar novedad/i })).toBeInTheDocument()
   })
 
   it('loads own novelty list and authorized detail for a driver', async () => {
@@ -2567,6 +2621,9 @@ describe('RF-02 novelty frontend', () => {
     fireEvent.change(within(classifyDialog).getByLabelText(/Clasificacion/i), {
       target: { value: 'Falla mecanica' },
     })
+    fireEvent.change(within(classifyDialog).getByLabelText(/Criticidad/i), {
+      target: { value: 'CRITICA' },
+    })
     fireEvent.click(within(classifyDialog).getByRole('button', { name: /Guardar clasificacion/i }))
     expect(await screen.findByText(/Novedad actualizada/i)).toBeInTheDocument()
 
@@ -2590,6 +2647,14 @@ describe('RF-02 novelty frontend', () => {
       expect.stringContaining('/novedades/nov-1/revision'),
       expect.objectContaining({ method: 'POST' }),
     )
+    const reviewCall = fetchMock.mock.calls.find(
+      ([input, init]) => getPath(input) === '/novedades/nov-1/revision' && init?.method === 'POST',
+    )
+    expect(JSON.parse(String(reviewCall?.[1]?.body))).toMatchObject({
+      afectaOperacion: true,
+      bloqueaDisponibilidad: true,
+      criticidad: 'CRITICA',
+    })
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/novedades/nov-1/convertir-orden'),
       expect.objectContaining({ method: 'POST' }),

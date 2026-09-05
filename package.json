@@ -19,6 +19,7 @@
     "lint": "npm --workspaces run lint",
     "test": "npm --workspaces run test",
     "test:backend:local": "npm --workspace @sgmv/backend run test:local",
+    "test:e2e:local": "dotenv -e .env.local -- npm --workspace @sgmv/frontend run test:e2e",
     "typecheck": "npm --workspaces run typecheck",
     "format": "prettier --write package.json .prettierrc.json \"src/**/*.{ts,tsx,js,cjs,css,json}\"",
     "format:check": "prettier --check package.json .prettierrc.json \"src/**/*.{ts,tsx,js,cjs,css,json}\"",

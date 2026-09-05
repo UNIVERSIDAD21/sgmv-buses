@@ -1,9 +1,9 @@
-import { randomUUID } from 'node:crypto'
-
 import { type Prisma, PrismaClient } from '@prisma/client'
 
+import { getAvailabilityRecords } from '../availability/availability.repository.js'
+import type { AvailabilityRecords } from '../availability/availability.types.js'
+import { registerContextualMileageReading } from '../mileage/mileage.repository.js'
 import { prisma } from '../prisma/client.js'
-import { AppError } from '../shared/http.js'
 
 const userRefSelect = {
   id: true,
@@ -44,17 +44,6 @@ const journeyInclude = {
 
 export type JourneyRecord = Prisma.JornadaOperativaGetPayload<{ include: typeof journeyInclude }>
 export type JourneyTransaction = Prisma.TransactionClient
-
-export interface AvailabilityRecords {
-  bus: {
-    estadoOperativo: 'OPERATIVO' | 'EN_MANTENIMIENTO' | 'FUERA_DE_SERVICIO' | 'INACTIVO'
-    id: string
-  } | null
-  conflictingJourney: { id: string } | null
-  novelty: { id: string } | null
-  order: { id: string } | null
-  preventive: { id: string } | null
-}
 
 const optionUserSelect = {
   id: true,
@@ -119,61 +108,7 @@ export class JourneyRepository {
     eventDate: Date,
     tx: JourneyTransaction,
   ): Promise<AvailabilityRecords> {
-    return tx.bus
-      .findUnique({
-        where: { id: busId },
-        select: { estadoOperativo: true, id: true, kilometrajeActual: true },
-      })
-      .then(async (bus) => {
-        const [conflictingJourney, novelty, order, preventive] = await Promise.all([
-          tx.jornadaOperativa.findFirst({
-            where: {
-              OR: [{ busId }, { conductorId }],
-              id: journeyId ? { not: journeyId } : undefined,
-              AND: {
-                OR: [
-                  {
-                    estado: 'PROGRAMADA',
-                    inicioProgramado: { lte: eventDate },
-                    finProgramado: { gt: eventDate },
-                  },
-                  {
-                    estado: 'EN_CURSO',
-                    inicioReal: { lte: eventDate },
-                    finReal: null,
-                  },
-                ],
-              },
-            },
-            select: { id: true },
-          }),
-          tx.novedad.findFirst({
-            where: { bloqueaDisponibilidad: true, busId, estado: 'PENDIENTE_REVISION' },
-            select: { id: true },
-          }),
-          tx.ordenTrabajo.findFirst({
-            where: {
-              busId,
-              estado: { in: ['EN_EJECUCION', 'COMPLETADA_TECNICO', 'DEVUELTA_CORRECCION'] },
-            },
-            select: { id: true },
-          }),
-          tx.programacionMantenimiento.findFirst({
-            where: {
-              activa: true,
-              busId,
-              planMantenimientoPreventivo: { bloqueaAlVencer: true },
-              OR: [
-                { fechaProgramada: { lte: eventDate } },
-                ...(bus ? [{ kilometrajeObjetivo: { lte: bus.kilometrajeActual } }] : []),
-              ],
-            },
-            select: { id: true },
-          }),
-        ])
-
-        return { bus, conflictingJourney, novelty, order, preventive }
-      })
+    return getAvailabilityRecords({ busId, conductorId, eventDate, journeyId }, tx)
   }
 
   async listOptions() {
@@ -252,82 +187,7 @@ export class JourneyRepository {
     },
     tx: JourneyTransaction,
   ) {
-    const bus = await tx.bus.findUnique({
-      where: { id: input.busId },
-      select: { kilometrajeActual: true },
-    })
-    if (!bus) throw new AppError(404, 'RESOURCE_NOT_FOUND', 'Bus no encontrado')
-
-    const readings = await tx.lecturaKilometraje.findMany({
-      where: { busId: input.busId },
-      orderBy: [{ fechaRegistro: 'asc' }, { id: 'asc' }],
-      select: {
-        fechaLectura: true,
-        fechaRegistro: true,
-        id: true,
-        kilometrajeAnterior: true,
-        kilometrajeNuevo: true,
-      },
-    })
-    readings.sort((left, right) => {
-      const byEvent =
-        (left.fechaLectura ?? left.fechaRegistro).getTime() -
-        (right.fechaLectura ?? right.fechaRegistro).getTime()
-      if (byEvent !== 0) return byEvent
-      const byRegistration = left.fechaRegistro.getTime() - right.fechaRegistro.getTime()
-      return byRegistration !== 0 ? byRegistration : left.id.localeCompare(right.id)
-    })
-
-    const nextIndex = readings.findIndex(
-      (reading) =>
-        (reading.fechaLectura ?? reading.fechaRegistro).getTime() > input.eventDate.getTime(),
-    )
-    const previous =
-      nextIndex === 0 ? null : readings[nextIndex < 0 ? readings.length - 1 : nextIndex - 1]
-    const next = nextIndex < 0 ? null : readings[nextIndex]
-    const baseline = readings[0]?.kilometrajeAnterior ?? bus.kilometrajeActual
-    const previousMileage = previous?.kilometrajeNuevo ?? baseline
-
-    if (input.mileage < previousMileage || (next && input.mileage > next.kilometrajeNuevo)) {
-      throw new AppError(
-        409,
-        'MILEAGE_OUT_OF_SEQUENCE',
-        'La lectura no conserva la secuencia del odometro',
-        {
-          maximoPermitido: next?.kilometrajeNuevo ?? null,
-          minimoPermitido: previousMileage,
-        },
-      )
-    }
-
-    const reading = await tx.lecturaKilometraje.create({
-      data: {
-        busId: input.busId,
-        fechaLectura: input.eventDate,
-        id: randomUUID(),
-        jornadaOperativaId: input.journeyId,
-        kilometrajeAnterior: previousMileage,
-        kilometrajeNuevo: input.mileage,
-        registradoPorId: input.actorId,
-        tipo: input.type,
-      },
-      include: { registradoPor: { select: userRefSelect } },
-    })
-
-    if (next) {
-      await tx.lecturaKilometraje.update({
-        where: { id: next.id },
-        data: { kilometrajeAnterior: input.mileage },
-      })
-    }
-    if (input.mileage > bus.kilometrajeActual) {
-      await tx.bus.update({
-        where: { id: input.busId },
-        data: { kilometrajeActual: input.mileage },
-      })
-    }
-
-    return reading
+    return registerContextualMileageReading(input, tx)
   }
 
   transaction<T>(operation: (tx: JourneyTransaction) => Promise<T>) {

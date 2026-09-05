@@ -1,5 +1,9 @@
 import type { EstadoBus, EstadoJornada, RolCodigo, TipoLectura } from '@prisma/client'
 
+import type { AvailabilityCauseDto } from '../availability/availability.types.js'
+
+export type { AvailabilityCauseDto, AvailabilityDto } from '../availability/availability.types.js'
+
 export interface JourneyUserRefDto {
   id: string
   nombre: string
@@ -28,29 +32,6 @@ export interface JourneyReadingDto {
   kilometrajeAnterior: number
   registradoPor: JourneyUserRefDto
   tipo: TipoLectura
-}
-
-export interface AvailabilityCauseDto {
-  bloquea: true
-  codigo:
-    | 'BUS_INACTIVO'
-    | 'BUS_FUERA_DE_SERVICIO'
-    | 'BUS_EN_MANTENIMIENTO'
-    | 'ORDEN_TECNICA_ACTIVA'
-    | 'NOVEDAD_BLOQUEANTE'
-    | 'PREVENTIVO_VENCIDO_BLOQUEANTE'
-    | 'CONFLICTO_JORNADA'
-  mensaje: string
-  origenId: string
-  origenTipo: 'BUS' | 'JORNADA' | 'NOVEDAD' | 'ORDEN' | 'PREVENTIVO'
-  prioridad: number
-}
-
-export interface AvailabilityDto {
-  causaPrincipal: AvailabilityCauseDto['codigo'] | null
-  causas: AvailabilityCauseDto[]
-  disponible: boolean
-  evaluadoAt: string
 }
 
 export interface JourneyActionsDto {

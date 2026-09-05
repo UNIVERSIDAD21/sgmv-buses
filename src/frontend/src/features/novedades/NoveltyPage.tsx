@@ -21,8 +21,8 @@ import { BUS_STATUS_LABELS, NOVELTY_STATUS_LABELS, ORDER_STATUS_LABELS } from '.
 import { ApiError } from '../../lib/api'
 import { formatNumber } from '../../lib/format'
 import { useSession } from '../auth/session.context'
-import { getAssignedBus } from '../flota/fleet.api'
-import type { AssignedBusResponse } from '../flota/fleet.types'
+import { getMyJourney } from '../jornadas/journey.api'
+import type { MyJourneyResponse } from '../jornadas/journey.types'
 import {
   convertNoveltyToOrder,
   createNovelty,
@@ -36,6 +36,7 @@ import {
   type ReviewNoveltyInput,
 } from './novelty.api'
 import type {
+  NoveltyCriticality,
   NoveltyDto,
   NoveltyListResponse,
   NoveltyStatus,
@@ -56,6 +57,12 @@ const priorityOptions: Array<[OrderPriority, string]> = [
   ['BAJA', 'Baja'],
   ['MEDIA', 'Media'],
   ['ALTA', 'Alta'],
+]
+const criticalityOptions: Array<[NoveltyCriticality, string]> = [
+  ['BAJA', 'Baja'],
+  ['MEDIA', 'Media'],
+  ['ALTA', 'Alta'],
+  ['CRITICA', 'Critica'],
 ]
 
 const statusTone: Record<NoveltyStatus, BadgeTone> = {
@@ -88,6 +95,12 @@ function formatDateTimeValue(value: string) {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value))
+}
+
+function formatLocalDateTimeInput(value = new Date()) {
+  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000)
+
+  return local.toISOString().slice(0, 16)
 }
 
 function getOrderStatusLabel(status: string) {
@@ -135,6 +148,11 @@ function NoveltyDetail({ actions, novelty }: { actions?: ReactNode; novelty: Nov
             novelty.bus.estadoOperativo}
         </FieldValue>
         <FieldValue label="Autor">{novelty.conductor.nombre}</FieldValue>
+        <FieldValue label="Fecha ocurrencia">
+          {novelty.fechaOcurrencia
+            ? formatDateTimeValue(novelty.fechaOcurrencia)
+            : 'Sin contexto historico'}
+        </FieldValue>
         <FieldValue label="Fecha reporte">{formatDateTimeValue(novelty.fechaReporte)}</FieldValue>
         <FieldValue label="Tipo">{novelty.tipo}</FieldValue>
         <FieldValue label="Estado">
@@ -152,6 +170,31 @@ function NoveltyDetail({ actions, novelty }: { actions?: ReactNode; novelty: Nov
       <section className="grid gap-3 sm:grid-cols-2">
         <FieldValue label="Clasificacion">
           {novelty.clasificacion ?? 'Pendiente de clasificar'}
+        </FieldValue>
+        <FieldValue label="Criticidad">{novelty.criticidad ?? 'Sin clasificar'}</FieldValue>
+        <FieldValue label="Impacto operativo">
+          {novelty.afectaOperacion === null
+            ? 'Sin evaluar'
+            : novelty.afectaOperacion
+              ? 'Si afecta'
+              : 'No afecta'}
+        </FieldValue>
+        <FieldValue label="Disponibilidad">
+          {novelty.bloqueaDisponibilidad === null
+            ? 'Sin evaluar'
+            : novelty.bloqueaDisponibilidad
+              ? 'Bus bloqueado'
+              : 'No bloquea'}
+        </FieldValue>
+        <FieldValue label="Jornada">
+          {novelty.jornada
+            ? `${novelty.jornada.ruta?.codigo ?? 'Sin ruta'} - ${novelty.jornada.estado}`
+            : 'Novedad historica sin jornada'}
+        </FieldValue>
+        <FieldValue label="Kilometraje">
+          {novelty.lecturaKilometraje
+            ? `${formatNumber(novelty.lecturaKilometraje.kilometraje)} km`
+            : 'Sin lectura asociada'}
         </FieldValue>
         <FieldValue label="Responsable revision">
           {novelty.revisadaPor?.nombre ?? 'Sin revision'}
@@ -208,6 +251,13 @@ function AdminActionDialog({
   submitting: boolean
 }) {
   const [clasificacion, setClasificacion] = useState(action.novelty.clasificacion ?? '')
+  const [criticidad, setCriticidad] = useState<NoveltyCriticality>(
+    action.novelty.criticidad ?? 'MEDIA',
+  )
+  const [afectaOperacion, setAfectaOperacion] = useState(action.novelty.afectaOperacion ?? false)
+  const [bloqueaDisponibilidad, setBloqueaDisponibilidad] = useState(
+    action.novelty.bloqueaDisponibilidad ?? false,
+  )
   const [descripcionOrden, setDescripcionOrden] = useState('')
   const [observacion, setObservacion] = useState('')
   const [prioridad, setPrioridad] = useState<OrderPriority>('MEDIA')
@@ -241,7 +291,10 @@ function AdminActionDialog({
 
       onSubmit({
         accion: 'CLASIFICAR',
+        afectaOperacion,
+        bloqueaDisponibilidad,
         clasificacion: value,
+        criticidad,
         observacion: normalizeText(observacion) || undefined,
       })
       return
@@ -316,6 +369,57 @@ function AdminActionDialog({
                 value={clasificacion}
               />
             </label>
+          )}
+
+          {action.type === 'classify' && (
+            <>
+              <label className="block text-sm font-medium text-slate-700">
+                Criticidad
+                <select
+                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  onChange={(event) => {
+                    const value = event.target.value as NoveltyCriticality
+                    setCriticidad(value)
+                    if (value === 'CRITICA') {
+                      setAfectaOperacion(true)
+                      setBloqueaDisponibilidad(true)
+                    }
+                  }}
+                  value={criticidad}
+                >
+                  {criticalityOptions.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <label className="flex items-start gap-3 text-sm text-slate-700">
+                  <input
+                    checked={afectaOperacion}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-700"
+                    onChange={(event) => {
+                      const checked = event.target.checked
+                      setAfectaOperacion(checked)
+                      if (!checked) setBloqueaDisponibilidad(false)
+                    }}
+                    type="checkbox"
+                  />
+                  La novedad afecta la operacion del bus.
+                </label>
+                <label className="flex items-start gap-3 text-sm text-slate-700">
+                  <input
+                    checked={bloqueaDisponibilidad}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-700"
+                    disabled={!afectaOperacion || criticidad === 'CRITICA'}
+                    onChange={(event) => setBloqueaDisponibilidad(event.target.checked)}
+                    type="checkbox"
+                  />
+                  Bloquea la disponibilidad para nuevas jornadas.
+                </label>
+              </div>
+            </>
           )}
 
           {action.type === 'convert' && (
@@ -459,7 +563,7 @@ function Pagination({
 }
 
 function DriverView() {
-  const [assignedData, setAssignedData] = useState<AssignedBusResponse | null>(null)
+  const [journeyData, setJourneyData] = useState<MyJourneyResponse | null>(null)
   const [descripcion, setDescripcion] = useState('')
   const [detailLoading, setDetailLoading] = useState(false)
   const [estado, setEstado] = useState<NoveltyStatus | ''>('')
@@ -473,12 +577,14 @@ function DriverView() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [tipo, setTipo] = useState('')
+  const [fechaOcurrencia, setFechaOcurrencia] = useState(formatLocalDateTimeInput)
+  const [kilometraje, setKilometraje] = useState('')
 
-  const assignedBus = assignedData?.bus ?? null
+  const currentJourney = journeyData?.jornadaActual ?? null
 
   const refreshDriverData = useCallback(async () => {
-    const [assigned, novelties] = await Promise.all([
-      getAssignedBus(),
+    const [journey, novelties] = await Promise.all([
+      getMyJourney(),
       listOwnNovelties({
         estado,
         limite: 6,
@@ -486,7 +592,7 @@ function DriverView() {
       }),
     ])
 
-    setAssignedData(assigned)
+    setJourneyData(journey)
     setListData(novelties)
   }, [estado, pagina])
 
@@ -498,8 +604,8 @@ function DriverView() {
       setLoading(true)
 
       try {
-        const [assigned, novelties] = await Promise.all([
-          getAssignedBus(),
+        const [journey, novelties] = await Promise.all([
+          getMyJourney(),
           listOwnNovelties({
             estado,
             limite: 6,
@@ -508,7 +614,7 @@ function DriverView() {
         ])
 
         if (active) {
-          setAssignedData(assigned)
+          setJourneyData(journey)
           setListData(novelties)
         }
       } catch (error) {
@@ -552,6 +658,18 @@ function DriverView() {
       errors.descripcion = 'La descripcion debe tener al menos 10 caracteres.'
     }
 
+    const eventDate = new Date(fechaOcurrencia)
+    if (!fechaOcurrencia || Number.isNaN(eventDate.getTime())) {
+      errors.fechaOcurrencia = 'Ingrese una fecha y hora validas.'
+    } else if (eventDate.getTime() > Date.now()) {
+      errors.fechaOcurrencia = 'La fecha de ocurrencia no puede estar en el futuro.'
+    }
+
+    const mileageValue = Number(kilometraje)
+    if (!Number.isInteger(mileageValue) || mileageValue < 0) {
+      errors.kilometraje = 'Ingrese un kilometraje entero mayor o igual a cero.'
+    }
+
     setFieldErrors(errors)
 
     return Object.keys(errors).length === 0
@@ -562,11 +680,6 @@ function DriverView() {
     setFeedback(null)
     setSubmitError(null)
 
-    if (!assignedBus) {
-      setSubmitError('No hay un bus activo asignado para registrar novedades.')
-      return
-    }
-
     if (!validateForm()) {
       return
     }
@@ -576,12 +689,16 @@ function DriverView() {
     try {
       await createNovelty({
         descripcion: normalizeText(descripcion),
+        fechaOcurrencia: new Date(fechaOcurrencia).toISOString(),
+        kilometraje: Number(kilometraje),
         tipo: normalizeText(tipo),
       })
 
       setTipo('')
       setDescripcion('')
-      setFeedback('Novedad registrada para el bus asignado.')
+      setFechaOcurrencia(formatLocalDateTimeInput())
+      setKilometraje('')
+      setFeedback('Novedad registrada y vinculada a la jornada correspondiente.')
       await refreshDriverData()
     } catch (error) {
       setSubmitError(getErrorMessage(error))
@@ -613,7 +730,7 @@ function DriverView() {
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Mis novedades operativas</h2>
             <p className="mt-1 text-sm leading-6 text-slate-500">
-              Registro asociado automaticamente a su bus asignado activo.
+              El sistema deriva la jornada, el bus y la lectura desde la fecha de ocurrencia.
             </p>
           </div>
           <p className="text-sm text-slate-500">{totalLabel}</p>
@@ -622,7 +739,7 @@ function DriverView() {
 
       {loading && (
         <StatePanel
-          description="Consultando bus asignado y novedades propias."
+          description="Consultando jornada actual y novedades propias."
           title="Cargando novedades"
           tone="loading"
         />
@@ -632,35 +749,40 @@ function DriverView() {
         <StatePanel description={loadError} title="No fue posible cargar" tone="error" />
       )}
 
-      {!loading && !loadError && !assignedBus && (
-        <StatePanel
-          description="No hay una asignacion activa para registrar novedades. Cuando se asigne un bus, el formulario quedara habilitado."
-          title="Sin bus asignado"
-          tone="empty"
-        />
-      )}
-
-      {!loading && !loadError && assignedBus && (
+      {!loading && !loadError && (
         <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
           <section className="space-y-4">
-            <div className="rounded-lg border border-slate-200 bg-white p-5">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
-                <Bus size={18} />
+            {currentJourney ? (
+              <div className="rounded-lg border border-slate-200 bg-white p-5">
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                  <Bus size={18} />
+                </div>
+                <h3 className="text-base font-semibold text-slate-900">
+                  {currentJourney.bus.codigoInterno} - {currentJourney.bus.placa}
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Jornada en curso · {currentJourney.ruta?.codigo ?? 'Sin ruta'}
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <Badge tone="emerald">Jornada activa</Badge>
+                  <Badge tone="slate">
+                    {BUS_STATUS_LABELS[
+                      currentJourney.bus.estadoOperativo as keyof typeof BUS_STATUS_LABELS
+                    ] ?? currentJourney.bus.estadoOperativo}
+                  </Badge>
+                </div>
               </div>
-              <h3 className="text-base font-semibold text-slate-900">
-                {assignedBus.codigoInterno} - {assignedBus.placa}
-              </h3>
-              <p className="mt-1 text-sm text-slate-500">
-                {assignedBus.marca} {assignedBus.modelo}
-              </p>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Badge tone="emerald">Bus asignado</Badge>
-                <Badge tone="slate">
-                  {BUS_STATUS_LABELS[
-                    assignedBus.estadoOperativo as keyof typeof BUS_STATUS_LABELS
-                  ] ?? assignedBus.estadoOperativo}
-                </Badge>
-              </div>
+            ) : (
+              <StatePanel
+                description="Puede reportar una novedad tardia indicando la fecha real. El sistema buscara una jornada propia que contenga ese momento."
+                title="Sin jornada en curso"
+                tone="empty"
+              />
+            )}
+
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+              <p className="font-semibold">Primero detenga el bus en un lugar seguro.</p>
+              <p>No use este dispositivo ni complete el formulario mientras conduce.</p>
             </div>
 
             <form
@@ -669,7 +791,7 @@ function DriverView() {
             >
               <h3 className="text-base font-semibold text-slate-900">Registrar novedad</h3>
               <p className="mt-1 text-sm leading-6 text-slate-500">
-                El autor y el bus se obtienen de la sesion y la asignacion activa.
+                El autor, la jornada y el bus se obtienen de la sesion y del momento reportado.
               </p>
 
               {feedback && (
@@ -685,6 +807,60 @@ function DriverView() {
               )}
 
               <div className="mt-5 space-y-4">
+                <label className="block text-sm font-medium text-slate-700">
+                  Fecha y hora de ocurrencia
+                  <input
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    max={formatLocalDateTimeInput()}
+                    onChange={(event) => {
+                      setFechaOcurrencia(event.target.value)
+                      setFieldErrors((current) => {
+                        const next = { ...current }
+                        delete next.fechaOcurrencia
+                        return next
+                      })
+                    }}
+                    required
+                    type="datetime-local"
+                    value={fechaOcurrencia}
+                  />
+                  {fieldErrors.fechaOcurrencia && (
+                    <span className="mt-1 block text-xs text-red-600">
+                      {fieldErrors.fechaOcurrencia}
+                    </span>
+                  )}
+                </label>
+
+                <label className="block text-sm font-medium text-slate-700">
+                  Kilometraje observado
+                  <input
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    min="0"
+                    onChange={(event) => {
+                      setKilometraje(event.target.value)
+                      setFieldErrors((current) => {
+                        const next = { ...current }
+                        delete next.kilometraje
+                        return next
+                      })
+                    }}
+                    placeholder={
+                      currentJourney?.lecturaInicial
+                        ? String(currentJourney.lecturaInicial.kilometraje)
+                        : 'Ej. 125000'
+                    }
+                    required
+                    step="1"
+                    type="number"
+                    value={kilometraje}
+                  />
+                  {fieldErrors.kilometraje && (
+                    <span className="mt-1 block text-xs text-red-600">
+                      {fieldErrors.kilometraje}
+                    </span>
+                  )}
+                </label>
+
                 <label className="block text-sm font-medium text-slate-700">
                   Tipo de novedad
                   <input
@@ -737,6 +913,8 @@ function DriverView() {
                   onClick={() => {
                     setTipo('')
                     setDescripcion('')
+                    setFechaOcurrencia(formatLocalDateTimeInput())
+                    setKilometraje('')
                     setFieldErrors({})
                     setSubmitError(null)
                   }}
@@ -969,50 +1147,66 @@ function AdminView() {
   }
 
   function renderAdminActions(novelty: NoveltyDto) {
-    if (!isAdmin || novelty.estado !== 'PENDIENTE_REVISION') {
-      return null
-    }
-
     return (
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <h3 className="text-xs font-semibold uppercase text-slate-500">Acciones administrativas</h3>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <Button
-            icon={<Shield size={14} />}
-            onClick={() => setAction({ novelty, type: 'classify' })}
-            size="sm"
-            variant="outline"
-          >
-            Clasificar
-          </Button>
-          <Button
-            icon={<ClipboardList size={14} />}
-            onClick={() => setAction({ novelty, type: 'resolve' })}
-            size="sm"
-            variant="outline"
-          >
-            Resolver
-          </Button>
-          <Button
-            icon={<AlertTriangle size={14} />}
-            onClick={() => setAction({ novelty, type: 'discard' })}
-            size="sm"
-            variant="outline"
-          >
-            Descartar
-          </Button>
-          {!novelty.ordenTrabajo && (
-            <Button
-              icon={<Wrench size={14} />}
-              onClick={() => setAction({ novelty, type: 'convert' })}
-              size="sm"
-              variant="secondary"
+      <div className="space-y-3">
+        {novelty.acciones.puedeCoordinarJornada && (
+          <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <h3 className="text-sm font-semibold text-amber-900">Reaccion operativa requerida</h3>
+            <p className="mt-1 text-sm leading-6 text-amber-800">
+              Coordine la jornada o reasigne recursos sin modificar el diagnostico tecnico.
+            </p>
+            <Link
+              className="mt-3 inline-flex min-h-9 items-center justify-center rounded-lg bg-amber-900 px-3 text-sm font-medium text-white"
+              to="/jornadas"
             >
-              Generar orden
-            </Button>
-          )}
-        </div>
-      </section>
+              Coordinar jornada
+            </Link>
+          </section>
+        )}
+        {novelty.acciones.puedeRevisar && (
+          <section className="rounded-lg border border-slate-200 bg-white p-4">
+            <h3 className="text-xs font-semibold uppercase text-slate-500">
+              Acciones administrativas
+            </h3>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <Button
+                icon={<Shield size={14} />}
+                onClick={() => setAction({ novelty, type: 'classify' })}
+                size="sm"
+                variant="outline"
+              >
+                Clasificar
+              </Button>
+              <Button
+                icon={<ClipboardList size={14} />}
+                onClick={() => setAction({ novelty, type: 'resolve' })}
+                size="sm"
+                variant="outline"
+              >
+                Resolver
+              </Button>
+              <Button
+                icon={<AlertTriangle size={14} />}
+                onClick={() => setAction({ novelty, type: 'discard' })}
+                size="sm"
+                variant="outline"
+              >
+                Descartar
+              </Button>
+              {novelty.acciones.puedeConvertir && (
+                <Button
+                  icon={<Wrench size={14} />}
+                  onClick={() => setAction({ novelty, type: 'convert' })}
+                  size="sm"
+                  variant="secondary"
+                >
+                  Generar orden
+                </Button>
+              )}
+            </div>
+          </section>
+        )}
+      </div>
     )
   }
 
@@ -1050,13 +1244,12 @@ function AdminView() {
           </div>
         )}
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <FieldValue label="Total novedades">{summary?.total ?? '...'}</FieldValue>
           <FieldValue label="Pendientes">{summary?.pendientes ?? '...'}</FieldValue>
-          <FieldValue label="Convertidas">
-            {summary?.estados.CONVERTIDA_A_ORDEN ?? '...'}
-          </FieldValue>
-          <FieldValue label="Ordenes generadas">{summary?.ordenesGeneradas ?? '...'}</FieldValue>
+          <FieldValue label="Criticas">{summary?.criticas ?? '...'}</FieldValue>
+          <FieldValue label="Afectan operacion">{summary?.afectanOperacion ?? '...'}</FieldValue>
+          <FieldValue label="Bloqueantes">{summary?.bloqueantes ?? '...'}</FieldValue>
         </div>
 
         <section className="rounded-lg border border-slate-200 bg-white p-4">
@@ -1170,12 +1363,13 @@ function AdminView() {
               <table className="w-full min-w-[980px] text-left text-sm">
                 <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500">
                   <tr>
-                    <th className="px-4 py-3">Fecha</th>
+                    <th className="px-4 py-3">Ocurrencia</th>
                     <th className="px-4 py-3">Tipo</th>
                     <th className="px-4 py-3">Bus</th>
                     <th className="px-4 py-3">Conductor</th>
                     <th className="px-4 py-3">Estado</th>
                     <th className="px-4 py-3">Clasificacion</th>
+                    <th className="px-4 py-3">Impacto</th>
                     <th className="px-4 py-3">Orden</th>
                     <th className="px-4 py-3 text-right">Acciones</th>
                   </tr>
@@ -1184,7 +1378,7 @@ function AdminView() {
                   {listData.novedades.map((novelty) => (
                     <tr className="align-top" key={novelty.id}>
                       <td className="px-4 py-3 text-slate-600">
-                        {formatDateTimeValue(novelty.fechaReporte)}
+                        {formatDateTimeValue(novelty.fechaOcurrencia ?? novelty.fechaReporte)}
                       </td>
                       <td className="px-4 py-3 font-semibold text-slate-900">{novelty.tipo}</td>
                       <td className="px-4 py-3 text-slate-600">
@@ -1196,6 +1390,10 @@ function AdminView() {
                       </td>
                       <td className="px-4 py-3 text-slate-600">
                         {novelty.clasificacion ?? 'Pendiente'}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {novelty.criticidad ?? 'Sin evaluar'}
+                        {novelty.bloqueaDisponibilidad ? ' · Bloqueante' : ''}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
                         {novelty.ordenTrabajo ? novelty.ordenTrabajo.codigo : 'Sin orden'}

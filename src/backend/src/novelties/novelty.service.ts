@@ -46,14 +46,17 @@ function mapUser(user: UserRecord, includeEmail: boolean): NoveltyUserDto {
   }
 }
 
-function mapWorkOrder(order: WorkOrderRecord | null | undefined): WorkOrderSummaryDto | null {
+function mapWorkOrder(
+  order: WorkOrderRecord | null | undefined,
+  includeTechnicalData: boolean,
+): WorkOrderSummaryDto | null {
   if (!order) {
     return null
   }
 
   return {
     codigo: order.codigo,
-    descripcion: order.descripcion,
+    ...(includeTechnicalData ? { descripcion: order.descripcion } : {}),
     estado: order.estado,
     fechaCreacion: order.fechaCreacion.toISOString(),
     id: order.id,
@@ -63,8 +66,23 @@ function mapWorkOrder(order: WorkOrderRecord | null | undefined): WorkOrderSumma
   }
 }
 
-function mapNovelty(novelty: NoveltyRecord, includeAdministrativeData: boolean): NoveltyDto {
+function mapNovelty(novelty: NoveltyRecord, actor: AuthenticatedUser): NoveltyDto {
+  const includeAdministrativeData = actor.rol.codigo === 'ADMINISTRADOR'
+  const operationalManager =
+    actor.rol.codigo === 'ADMINISTRADOR' || actor.rol.codigo === 'DESPACHADOR'
+
   return {
+    acciones: {
+      puedeConvertir:
+        actor.rol.codigo === 'ADMINISTRADOR' &&
+        novelty.estado === 'PENDIENTE_REVISION' &&
+        !novelty.ordenTrabajo,
+      puedeCoordinarJornada:
+        operationalManager && novelty.afectaOperacion === true && novelty.jornadaOperativa !== null,
+      puedeRevisar: actor.rol.codigo === 'ADMINISTRADOR' && novelty.estado === 'PENDIENTE_REVISION',
+    },
+    afectaOperacion: novelty.afectaOperacion,
+    bloqueaDisponibilidad: novelty.bloqueaDisponibilidad,
     bus: {
       codigoInterno: novelty.bus.codigoInterno,
       estadoOperativo: novelty.bus.estadoOperativo,
@@ -73,13 +91,35 @@ function mapNovelty(novelty: NoveltyRecord, includeAdministrativeData: boolean):
     },
     clasificacion: novelty.clasificacion,
     conductor: mapUser(novelty.conductor, includeAdministrativeData),
+    criticidad: novelty.criticidad,
     descripcion: novelty.descripcion,
     estado: novelty.estado,
+    fechaOcurrencia: novelty.fechaOcurrencia?.toISOString() ?? null,
     fechaReporte: novelty.fechaReporte.toISOString(),
     fechaRevision: novelty.fechaRevision?.toISOString() ?? null,
     id: novelty.id,
-    observacionRevision: novelty.observacionRevision,
-    ordenTrabajo: mapWorkOrder(novelty.ordenTrabajo),
+    jornada: novelty.jornadaOperativa
+      ? {
+          estado: novelty.jornadaOperativa.estado,
+          finReal: novelty.jornadaOperativa.finReal?.toISOString() ?? null,
+          id: novelty.jornadaOperativa.id,
+          inicioReal: novelty.jornadaOperativa.inicioReal?.toISOString() ?? null,
+          ruta: novelty.jornadaOperativa.ruta,
+        }
+      : null,
+    lecturaKilometraje: novelty.lecturaKilometraje
+      ? {
+          fechaLectura: (
+            novelty.lecturaKilometraje.fechaLectura ?? novelty.lecturaKilometraje.fechaRegistro
+          ).toISOString(),
+          id: novelty.lecturaKilometraje.id,
+          kilometraje: novelty.lecturaKilometraje.kilometrajeNuevo,
+          kilometrajeAnterior: novelty.lecturaKilometraje.kilometrajeAnterior,
+          tipo: 'NOVEDAD',
+        }
+      : null,
+    observacionRevision: includeAdministrativeData ? novelty.observacionRevision : null,
+    ordenTrabajo: mapWorkOrder(novelty.ordenTrabajo, includeAdministrativeData),
     revisadaPor: novelty.revisadaPor
       ? mapUser(novelty.revisadaPor, includeAdministrativeData)
       : null,
@@ -154,8 +194,8 @@ export class NoveltyService {
       }
 
       return {
-        novedad: mapNovelty(result.novedad, true),
-        orden: mapWorkOrder(result.orden),
+        novedad: mapNovelty(result.novedad, actor),
+        orden: mapWorkOrder(result.orden, true),
         yaExistia: result.status === 'ALREADY_CONVERTED',
       }
     } catch (error) {
@@ -169,8 +209,8 @@ export class NoveltyService {
 
         if (novelty && order) {
           return {
-            novedad: mapNovelty(novelty, true),
-            orden: mapWorkOrder(order),
+            novedad: mapNovelty(novelty, actor),
+            orden: mapWorkOrder(order, true),
             yaExistia: true,
           }
         }
@@ -183,25 +223,33 @@ export class NoveltyService {
   async createNovelty(input: CreateNoveltyInput, actor: AuthenticatedUser) {
     ensureDriver(actor)
 
-    const assignment = await this.noveltyRepository.findActiveAssignmentWithBusByConductor(actor.id)
-
-    if (!assignment) {
+    const eventDate = new Date(input.fechaOcurrencia)
+    if (eventDate.getTime() > Date.now()) {
       throw new AppError(
         400,
-        'DRIVER_WITHOUT_ACTIVE_BUS',
-        'No tiene una asignacion activa para registrar novedades',
+        'FUTURE_EVENT_DATE',
+        'La fecha del evento no puede estar en el futuro',
       )
     }
 
-    const novelty = await this.noveltyRepository.createNovelty({
-      busId: assignment.busId,
+    const result = await this.noveltyRepository.createNovelty({
       conductorId: actor.id,
       descripcion: normalizeText(input.descripcion),
+      fechaOcurrencia: eventDate,
+      kilometraje: input.kilometraje,
       tipo: normalizeText(input.tipo),
     })
 
+    if (result.status === 'JOURNEY_NOT_FOUND') {
+      throw new AppError(
+        409,
+        'JOURNEY_NOT_FOUND_FOR_EVENT',
+        'No existe una jornada propia iniciada que contenga la fecha de ocurrencia',
+      )
+    }
+
     return {
-      novedad: mapNovelty(novelty, false),
+      novedad: mapNovelty(result.novedad, actor),
     }
   }
 
@@ -215,7 +263,7 @@ export class NoveltyService {
     }
 
     return {
-      novedad: mapNovelty(novelty, true),
+      novedad: mapNovelty(novelty, actor),
     }
   }
 
@@ -229,11 +277,11 @@ export class NoveltyService {
     }
 
     if (novelty.conductorId !== actor.id) {
-      throw new AppError(403, 'FORBIDDEN', 'No puede consultar novedades de otro conductor')
+      throw new AppError(404, 'NOVELTY_NOT_FOUND', 'Novedad no encontrada')
     }
 
     return {
-      novedad: mapNovelty(novelty, false),
+      novedad: mapNovelty(novelty, actor),
     }
   }
 
@@ -243,7 +291,7 @@ export class NoveltyService {
   ): Promise<NoveltyListDto> {
     ensureAdminOrDispatcher(actor)
 
-    return this.listNovelties(query, true)
+    return this.listNovelties(query, actor)
   }
 
   async listOwnNovelties(
@@ -252,7 +300,7 @@ export class NoveltyService {
   ): Promise<NoveltyListDto> {
     ensureDriver(actor)
 
-    return this.listNovelties(query, false, actor.id)
+    return this.listNovelties(query, actor, actor.id)
   }
 
   async reviewNovelty(noveltyId: string, input: ReviewNoveltyInput, actor: AuthenticatedUser) {
@@ -265,7 +313,10 @@ export class NoveltyService {
     }
 
     const result = await this.noveltyRepository.reviewPendingNovelty(noveltyId, {
+      afectaOperacion: input.afectaOperacion,
+      bloqueaDisponibilidad: input.bloqueaDisponibilidad,
       clasificacion: input.clasificacion ? normalizeText(input.clasificacion) : undefined,
+      criticidad: input.criticidad,
       estado: stateByAction[input.accion],
       observacionRevision: input.observacion ? normalizeText(input.observacion) : undefined,
       revisadaPorId: actor.id,
@@ -280,18 +331,31 @@ export class NoveltyService {
     }
 
     return {
-      novedad: mapNovelty(result.novedad, true),
+      novedad: mapNovelty(result.novedad, actor),
     }
   }
 
   async summarize(actor: AuthenticatedUser): Promise<NoveltySummaryDto> {
     ensureAdminOrDispatcher(actor)
 
-    const [total, grouped, ordenesGeneradas] = await Promise.all([
-      this.noveltyRepository.countNovelties(),
-      this.noveltyRepository.countNoveltiesByStatus(),
-      this.noveltyRepository.countOrdersGenerated(),
-    ])
+    const [total, grouped, ordenesGeneradas, afectanOperacion, bloqueantes, criticas] =
+      await Promise.all([
+        this.noveltyRepository.countNovelties(),
+        this.noveltyRepository.countNoveltiesByStatus(),
+        this.noveltyRepository.countOrdersGenerated(),
+        this.noveltyRepository.countNovelties({
+          afectaOperacion: true,
+          estado: 'PENDIENTE_REVISION',
+        }),
+        this.noveltyRepository.countNovelties({
+          bloqueaDisponibilidad: true,
+          estado: 'PENDIENTE_REVISION',
+        }),
+        this.noveltyRepository.countNovelties({
+          criticidad: 'CRITICA',
+          estado: 'PENDIENTE_REVISION',
+        }),
+      ])
     const estados = { ...noveltyStatusDefaults }
 
     for (const group of grouped) {
@@ -299,6 +363,9 @@ export class NoveltyService {
     }
 
     return {
+      afectanOperacion,
+      bloqueantes,
+      criticas,
       estados,
       ordenesGeneradas,
       pendientes: estados.PENDIENTE_REVISION,
@@ -405,7 +472,7 @@ export class NoveltyService {
 
   private async listNovelties(
     query: ListNoveltiesQuery,
-    includeAdministrativeData: boolean,
+    actor: AuthenticatedUser,
     conductorId?: string,
   ) {
     const where = this.createWhere(query, conductorId)
@@ -416,7 +483,7 @@ export class NoveltyService {
     ])
 
     return {
-      novedades: novedades.map((novelty) => mapNovelty(novelty, includeAdministrativeData)),
+      novedades: novedades.map((novelty) => mapNovelty(novelty, actor)),
       paginacion: {
         limite: query.limite,
         pagina: query.pagina,
