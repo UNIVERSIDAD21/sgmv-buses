@@ -2,8 +2,6 @@ import { type EstadoBus, Prisma } from '@prisma/client'
 
 import { prisma } from '../prisma/client.js'
 
-type FleetDbClient = Prisma.TransactionClient | typeof prisma
-
 const responsibleSelect = {
   email: true,
   id: true,
@@ -20,6 +18,14 @@ const activeAssignmentInclude = {
   },
 } as const
 
+const modeloBusSelect = {
+  activo: true,
+  id: true,
+  marca: true,
+  nombreModelo: true,
+  versionTecnica: true,
+} as const
+
 export const busSummaryInclude = {
   asignaciones: {
     include: activeAssignmentInclude,
@@ -30,6 +36,9 @@ export const busSummaryInclude = {
     where: {
       activa: true,
     },
+  },
+  modeloBus: {
+    select: modeloBusSelect,
   },
 } as const
 
@@ -62,6 +71,9 @@ export const busDetailInclude = {
       fechaRegistro: 'desc',
     },
     take: 20,
+  },
+  modeloBus: {
+    select: modeloBusSelect,
   },
 } as const
 
@@ -134,30 +146,6 @@ export class FleetRepository {
         timeout: 60000,
       },
     )
-  }
-
-  findActiveAssignmentByBus(busId: string, client: FleetDbClient = prisma) {
-    return client.asignacionConductor.findFirst({
-      where: {
-        activa: true,
-        busId,
-      },
-      orderBy: {
-        fechaInicio: 'desc',
-      },
-    })
-  }
-
-  findActiveAssignmentByConductor(conductorId: string, client: FleetDbClient = prisma) {
-    return client.asignacionConductor.findFirst({
-      where: {
-        activa: true,
-        conductorId,
-      },
-      orderBy: {
-        fechaInicio: 'desc',
-      },
-    })
   }
 
   findActiveAssignmentWithBusByConductor(conductorId: string) {
@@ -258,21 +246,10 @@ export class FleetRepository {
     })
   }
 
-  findDriverForAssignment(conductorId: string, client: Prisma.TransactionClient) {
-    return client.usuario.findUnique({
-      where: { id: conductorId },
-      include: {
-        rol: true,
-      },
-    })
-  }
-
-  findDriverById(conductorId: string) {
-    return prisma.usuario.findUnique({
-      where: { id: conductorId },
-      include: {
-        rol: true,
-      },
+  findModeloBusById(modeloBusId: string) {
+    return prisma.modeloBus.findUnique({
+      where: { id: modeloBusId },
+      select: modeloBusSelect,
     })
   }
 
@@ -332,82 +309,6 @@ export class FleetRepository {
       skip,
       take,
     })
-  }
-
-  reassignDriver(busId: string, conductorId: string, actorId: string, motivo: string | null) {
-    return prisma.$transaction(
-      async (tx) => {
-        const bus = await this.findBusByIdForTransaction(busId, tx)
-
-        if (!bus) {
-          return null
-        }
-
-        const conductor = await this.findDriverForAssignment(conductorId, tx)
-
-        if (!conductor) {
-          return { bus, conductor: null, assignment: null }
-        }
-
-        const activeBusAssignment = await this.findActiveAssignmentByBus(busId, tx)
-        const activeDriverAssignment = await this.findActiveAssignmentByConductor(conductorId, tx)
-
-        if (activeBusAssignment?.conductorId === conductorId) {
-          const assignment = await tx.asignacionConductor.findUniqueOrThrow({
-            where: {
-              id: activeBusAssignment.id,
-            },
-            include: activeAssignmentInclude,
-          })
-
-          return {
-            assignment,
-            bus,
-            conductor,
-          }
-        }
-
-        const now = new Date()
-        const assignmentsToClose = [activeBusAssignment?.id, activeDriverAssignment?.id].filter(
-          (id): id is string => Boolean(id),
-        )
-        const uniqueAssignmentsToClose = [...new Set(assignmentsToClose)]
-
-        if (uniqueAssignmentsToClose.length > 0) {
-          await tx.asignacionConductor.updateMany({
-            where: {
-              id: {
-                in: uniqueAssignmentsToClose,
-              },
-            },
-            data: {
-              activa: false,
-              fechaFin: now,
-            },
-          })
-        }
-
-        const assignment = await tx.asignacionConductor.create({
-          data: {
-            asignadoPorId: actorId,
-            busId,
-            conductorId,
-            motivo,
-          },
-          include: activeAssignmentInclude,
-        })
-
-        return {
-          assignment,
-          bus,
-          conductor,
-        }
-      },
-      {
-        maxWait: 15000,
-        timeout: 60000,
-      },
-    )
   }
 
   registerMileage(busId: string, kilometrajeNuevo: number, actorId: string, motivo: string | null) {

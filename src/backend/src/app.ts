@@ -3,10 +3,15 @@ import cors from 'cors'
 import express, { type Express } from 'express'
 import helmet from 'helmet'
 
+import { auditMutations } from './audit/audit.middleware.js'
+import { verifyCsrf } from './auth/auth.middleware.js'
 import { authRoutes } from './auth/auth.routes.js'
 import { env } from './config/env.js'
 import { fleetRoutes } from './fleet/fleet.routes.js'
+import { journeyRoutes } from './journeys/journey.routes.js'
 import { noveltyRoutes } from './novelties/novelty.routes.js'
+import { requestContext } from './observability/request-context.middleware.js'
+import { createReadinessHandler } from './observability/readiness.js'
 import { preventiveRoutes } from './preventive/preventive.routes.js'
 import { reportRoutes } from './reports/report.routes.js'
 import { errorHandler, notFoundHandler } from './shared/http.js'
@@ -17,6 +22,9 @@ export function createApp(configureRoutes?: (app: Express) => void) {
   const app = express()
 
   app.disable('x-powered-by')
+  app.set('trust proxy', env.TRUST_PROXY_HOPS)
+  app.use(requestContext)
+  app.use(auditMutations)
   app.use(helmet())
   app.use(
     cors({
@@ -26,6 +34,7 @@ export function createApp(configureRoutes?: (app: Express) => void) {
   )
   app.use(express.json({ limit: '1mb' }))
   app.use(cookieParser())
+  app.use(verifyCsrf)
 
   app.get('/health', (_request, response) => {
     response.status(200).json({
@@ -35,8 +44,11 @@ export function createApp(configureRoutes?: (app: Express) => void) {
     })
   })
 
+  app.get('/ready', createReadinessHandler())
+
   app.use('/auth', authRoutes)
   app.use('/flota', fleetRoutes)
+  app.use('/jornadas', journeyRoutes)
   app.use('/novedades', noveltyRoutes)
   app.use('/mantenimiento-preventivo', preventiveRoutes)
   app.use('/ordenes-trabajo', workOrderRoutes)

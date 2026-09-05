@@ -21,6 +21,22 @@ const ids = {
     principal: '30000000-0000-4000-8000-000000000001',
     respaldo: '30000000-0000-4000-8000-000000000002',
   },
+  modelosBus: {
+    principal: '31000000-0000-4000-8000-000000000001',
+    respaldo: '31000000-0000-4000-8000-000000000002',
+  },
+  rutas: {
+    centroNorte: '32000000-0000-4000-8000-000000000001',
+    alternaInactiva: '32000000-0000-4000-8000-000000000002',
+  },
+  jornadas: {
+    finalizada: '33000000-0000-4000-8000-000000000001',
+    programada: '33000000-0000-4000-8000-000000000002',
+  },
+  lecturasJornada: {
+    inicio: '34000000-0000-4000-8000-000000000001',
+    fin: '34000000-0000-4000-8000-000000000002',
+  },
   asignacion: '40000000-0000-4000-8000-000000000001',
   lecturaKilometraje: '41000000-0000-4000-8000-000000000001',
   busEstadoHistorial: '42000000-0000-4000-8000-000000000001',
@@ -118,13 +134,13 @@ async function main() {
         where: { codigo: 'CONDUCTOR' },
         update: {
           nombre: 'Conductor',
-          descripcion: 'Consulta su bus asignado y registra novedades operativas.',
+          descripcion: 'Consulta su jornada y registra novedades operativas.',
         },
         create: {
           id: ids.roles.conductor,
           codigo: 'CONDUCTOR',
           nombre: 'Conductor',
-          descripcion: 'Consulta su bus asignado y registra novedades operativas.',
+          descripcion: 'Consulta su jornada y registra novedades operativas.',
         },
       })
 
@@ -223,6 +239,92 @@ async function main() {
         },
       })
 
+      await tx.modeloBus.upsert({
+        where: { id: ids.modelosBus.principal },
+        update: {
+          activo: true,
+          especificaciones: {
+            combustible: 'Diesel',
+            configuracion: 'Bus urbano',
+          },
+          marca: 'Mercedes-Benz',
+          nombreModelo: 'OF-1721',
+          versionTecnica: 'Euro V',
+        },
+        create: {
+          id: ids.modelosBus.principal,
+          activo: true,
+          especificaciones: {
+            combustible: 'Diesel',
+            configuracion: 'Bus urbano',
+          },
+          marca: 'Mercedes-Benz',
+          nombreModelo: 'OF-1721',
+          versionTecnica: 'Euro V',
+        },
+      })
+
+      await tx.modeloBus.upsert({
+        where: { id: ids.modelosBus.respaldo },
+        update: {
+          activo: true,
+          especificaciones: {
+            combustible: 'Diesel',
+            configuracion: 'Bus urbano',
+          },
+          marca: 'Volkswagen',
+          nombreModelo: '17-230',
+          versionTecnica: 'OD',
+        },
+        create: {
+          id: ids.modelosBus.respaldo,
+          activo: true,
+          especificaciones: {
+            combustible: 'Diesel',
+            configuracion: 'Bus urbano',
+          },
+          marca: 'Volkswagen',
+          nombreModelo: '17-230',
+          versionTecnica: 'OD',
+        },
+      })
+
+      await tx.ruta.upsert({
+        where: { codigo: 'RUTA-CENTRO-NORTE' },
+        update: {
+          activa: true,
+          destino: 'Terminal Norte',
+          nombre: 'Centro - Norte',
+          origen: 'Patio Central',
+        },
+        create: {
+          id: ids.rutas.centroNorte,
+          activa: true,
+          codigo: 'RUTA-CENTRO-NORTE',
+          destino: 'Terminal Norte',
+          nombre: 'Centro - Norte',
+          origen: 'Patio Central',
+        },
+      })
+
+      await tx.ruta.upsert({
+        where: { codigo: 'RUTA-ALTERNA-DEMO' },
+        update: {
+          activa: false,
+          destino: 'Terminal Sur',
+          nombre: 'Alterna demo inactiva',
+          origen: 'Patio Central',
+        },
+        create: {
+          id: ids.rutas.alternaInactiva,
+          activa: false,
+          codigo: 'RUTA-ALTERNA-DEMO',
+          destino: 'Terminal Sur',
+          nombre: 'Alterna demo inactiva',
+          origen: 'Patio Central',
+        },
+      })
+
       await tx.bus.upsert({
         where: { codigoInterno: 'BUS-001' },
         update: {
@@ -232,6 +334,7 @@ async function main() {
           anio: 2020,
           kilometrajeActual: 45200,
           estadoOperativo: 'OPERATIVO',
+          modeloBusId: ids.modelosBus.principal,
         },
         create: {
           id: ids.buses.principal,
@@ -242,6 +345,7 @@ async function main() {
           anio: 2020,
           kilometrajeActual: 45200,
           estadoOperativo: 'OPERATIVO',
+          modeloBusId: ids.modelosBus.principal,
         },
       })
 
@@ -254,6 +358,7 @@ async function main() {
           anio: 2019,
           kilometrajeActual: 58750,
           estadoOperativo: 'EN_MANTENIMIENTO',
+          modeloBusId: ids.modelosBus.respaldo,
         },
         create: {
           id: ids.buses.respaldo,
@@ -264,6 +369,7 @@ async function main() {
           anio: 2019,
           kilometrajeActual: 58750,
           estadoOperativo: 'EN_MANTENIMIENTO',
+          modeloBusId: ids.modelosBus.respaldo,
         },
       })
 
@@ -300,6 +406,91 @@ async function main() {
           kilometrajeNuevo: 45200,
           registradoPorId: ids.usuarios.admin,
           motivo: 'Lectura inicial de desarrollo.',
+        },
+      })
+
+      const jornadaFinalizada = {
+        inicioProgramado: new Date('2026-09-01T12:00:00.000Z'),
+        finProgramado: new Date('2026-09-01T20:00:00.000Z'),
+        inicioReal: new Date('2026-09-01T12:05:00.000Z'),
+        finReal: new Date('2026-09-01T19:55:00.000Z'),
+      }
+
+      await tx.jornadaOperativa.upsert({
+        where: { id: ids.jornadas.finalizada },
+        update: {},
+        create: {
+          id: ids.jornadas.finalizada,
+          busId: ids.buses.principal,
+          conductorId: ids.usuarios.conductor,
+          rutaId: ids.rutas.centroNorte,
+          estado: 'FINALIZADA',
+          inicioProgramado: jornadaFinalizada.inicioProgramado,
+          finProgramado: jornadaFinalizada.finProgramado,
+          inicioReal: jornadaFinalizada.inicioReal,
+          finReal: jornadaFinalizada.finReal,
+          programadaPorId: ids.usuarios.despachador,
+          iniciadaPorId: ids.usuarios.conductor,
+          finalizadaPorId: ids.usuarios.conductor,
+        },
+      })
+
+      await tx.lecturaKilometraje.upsert({
+        where: { id: ids.lecturasJornada.inicio },
+        update: {
+          kilometrajeAnterior: 44900,
+          kilometrajeNuevo: 44900,
+          registradoPorId: ids.usuarios.conductor,
+          fechaLectura: jornadaFinalizada.inicioReal,
+        },
+        create: {
+          id: ids.lecturasJornada.inicio,
+          busId: ids.buses.principal,
+          kilometrajeAnterior: 44900,
+          kilometrajeNuevo: 44900,
+          registradoPorId: ids.usuarios.conductor,
+          fechaRegistro: jornadaFinalizada.inicioReal,
+          fechaLectura: jornadaFinalizada.inicioReal,
+          tipo: 'INICIO_JORNADA',
+          jornadaOperativaId: ids.jornadas.finalizada,
+          motivo: 'Inicio de jornada operativa demo.',
+        },
+      })
+
+      await tx.lecturaKilometraje.upsert({
+        where: { id: ids.lecturasJornada.fin },
+        update: {
+          kilometrajeAnterior: 44900,
+          kilometrajeNuevo: 45000,
+          registradoPorId: ids.usuarios.conductor,
+          fechaLectura: jornadaFinalizada.finReal,
+        },
+        create: {
+          id: ids.lecturasJornada.fin,
+          busId: ids.buses.principal,
+          kilometrajeAnterior: 44900,
+          kilometrajeNuevo: 45000,
+          registradoPorId: ids.usuarios.conductor,
+          fechaRegistro: jornadaFinalizada.finReal,
+          fechaLectura: jornadaFinalizada.finReal,
+          tipo: 'FIN_JORNADA',
+          jornadaOperativaId: ids.jornadas.finalizada,
+          motivo: 'Fin de jornada operativa demo.',
+        },
+      })
+
+      await tx.jornadaOperativa.upsert({
+        where: { id: ids.jornadas.programada },
+        update: {},
+        create: {
+          id: ids.jornadas.programada,
+          busId: ids.buses.principal,
+          conductorId: ids.usuarios.conductor,
+          rutaId: ids.rutas.centroNorte,
+          estado: 'PROGRAMADA',
+          inicioProgramado: new Date('2026-09-06T12:00:00.000Z'),
+          finProgramado: new Date('2026-09-06T20:00:00.000Z'),
+          programadaPorId: ids.usuarios.despachador,
         },
       })
 

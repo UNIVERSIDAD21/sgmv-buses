@@ -8,9 +8,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { AuthenticatedUser } from '../src/auth/auth.types.js'
 import { createApp } from '../src/app.js'
 import { NoveltyService } from '../src/novelties/novelty.service.js'
+import { createCsrfAgent } from './http-test-client.js'
 
 const prisma = new PrismaClient()
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip
 const password = 'Clave-demo-segura-123'
 
 const created = {
@@ -162,7 +162,7 @@ async function createFixture(): Promise<NoveltyFixture> {
 }
 
 async function loginAgent(email: string) {
-  const agent = request.agent(createApp())
+  const agent = await createCsrfAgent(createApp())
 
   await agent.post('/auth/login').send({ contrasena: password, email }).expect(200)
 
@@ -251,7 +251,7 @@ async function cleanup() {
   )
 }
 
-describeDb('RF-02 Novelty API', () => {
+describe('RF-02 Novelty API', () => {
   let fixture: NoveltyFixture
 
   beforeAll(async () => {

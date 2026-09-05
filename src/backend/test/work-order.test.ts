@@ -7,9 +7,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createApp } from '../src/app.js'
 import { env } from '../src/config/env.js'
+import { createCsrfAgent } from './http-test-client.js'
 
 const prisma = new PrismaClient()
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip
 const password = 'Clave-demo-segura-123'
 const rf04TestTimeout = 180000
 
@@ -246,7 +246,7 @@ async function createEligibleSchedule(fixture: WorkOrderFixture, busId: string) 
 }
 
 async function loginAgent(email: string) {
-  const agent = request.agent(createApp())
+  const agent = await createCsrfAgent(createApp())
 
   await agent.post('/auth/login').send({ contrasena: password, email }).expect(200)
 
@@ -487,7 +487,7 @@ async function cleanup() {
   )
 }
 
-describeDb('RF-04 Work order tracking API', () => {
+describe('RF-04 Work order tracking API', () => {
   let fixture: WorkOrderFixture
 
   beforeAll(async () => {
@@ -826,9 +826,10 @@ describeDb('RF-04 Work order tracking API', () => {
           claveIdempotencia,
           repuestoId: repuesto.id,
         })
-        .expect(200)
+        .expect(201)
 
-      expect(repeated.body.data.yaExistia).toBe(true)
+      expect(repeated.headers['idempotency-replayed']).toBe('true')
+      expect(repeated.body).toEqual(first.body)
       expect(repeated.body.data.consumo.id).toBe(first.body.data.consumo.id)
 
       await mecanico

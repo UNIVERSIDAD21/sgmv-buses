@@ -172,6 +172,13 @@ enum EstadoAlertaDestinatario {
   @@map("estado_alerta_destinatario")
 }
 
+enum EstadoSolicitudIdempotente {
+  EN_PROCESO
+  COMPLETADA
+
+  @@map("estado_solicitud_idempotente")
+}
+
 model Rol {
   id          String    @id @default(uuid()) @db.Uuid
   codigo      RolCodigo @unique
@@ -228,6 +235,8 @@ model Usuario {
   compatibilidadesDefinidas         CompatibilidadRepuesto[]      @relation("CompatibilidadDefinidaPor")
   consumosAutorizados               ConsumoRepuesto[]             @relation("ConsumoAutorizadoPor")
   alertasRecibidas                  AlertaDestinatario[]
+  eventosAuditoria                  EventoAuditoria[]
+  solicitudesIdempotentes           SolicitudIdempotente[]
 
   @@index([rolId])
   @@index([estado])
@@ -627,7 +636,7 @@ model ModeloBus {
   nombreModelo     String   @map("nombre_modelo") @db.VarChar(100)
   versionTecnica   String?  @map("version_tecnica") @db.VarChar(120)
   especificaciones Json     @db.JsonB
-  activo           Boolean
+  activo           Boolean  @default(true)
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -646,7 +655,7 @@ model Ruta {
   nombre    String   @db.VarChar(160)
   origen    String   @db.VarChar(160)
   destino   String   @db.VarChar(160)
-  activa    Boolean
+  activa    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -818,4 +827,70 @@ model AlertaDestinatario {
   @@unique([alertaInternaId, usuarioId])
   @@index([usuarioId, estado, createdAt])
   @@map("alertas_destinatarios")
+}
+
+// Technical distributed counters. This is infrastructure and does not add a domain RF.
+model LimiteTasa {
+  ambito        String   @db.VarChar(80)
+  claveHash     String   @map("clave_hash") @db.Char(64)
+  ventanaInicio DateTime @map("ventana_inicio") @db.Timestamptz(6)
+  contador      Int
+  expiraAt      DateTime @map("expira_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@id([ambito, claveHash, ventanaInicio])
+  @@index([expiraAt])
+  @@map("limites_tasa")
+}
+
+// Security audit trail. Domain histories remain the source for business state transitions.
+model EventoAuditoria {
+  id          String   @id @default(uuid()) @db.Uuid
+  requestId   String   @map("request_id") @db.Uuid
+  actorId     String?  @map("actor_id") @db.Uuid
+  accion      String   @db.VarChar(180)
+  metodo      String   @db.VarChar(10)
+  ruta        String   @db.VarChar(255)
+  recursoTipo String?  @map("recurso_tipo") @db.VarChar(100)
+  recursoId   String?  @map("recurso_id") @db.VarChar(120)
+  resultado   String   @db.VarChar(30)
+  statusHttp  Int      @map("status_http") @db.SmallInt
+  ipHash      String?  @map("ip_hash") @db.Char(64)
+  detalles    Json     @db.JsonB
+  fechaEvento DateTime @default(now()) @map("fecha_evento") @db.Timestamptz(6)
+
+  actor Usuario? @relation(fields: [actorId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([actorId, fechaEvento])
+  @@index([recursoTipo, recursoId, fechaEvento])
+  @@index([requestId])
+  @@map("eventos_auditoria")
+}
+
+// HTTP idempotency store. This is infrastructure and does not add a domain RF.
+model SolicitudIdempotente {
+  id              String                      @id @default(uuid()) @db.Uuid
+  actorId         String                      @map("actor_id") @db.Uuid
+  metodo          String                      @db.VarChar(10)
+  rutaPlantilla   String                      @map("ruta_plantilla") @db.VarChar(255)
+  operacion       String                      @db.VarChar(280)
+  clave           String                      @db.Uuid
+  hashSolicitud   String                      @map("hash_solicitud") @db.Char(64)
+  estado          EstadoSolicitudIdempotente  @default(EN_PROCESO)
+  statusHttp      Int?                        @map("status_http") @db.SmallInt
+  respuestaSegura Json?                       @map("respuesta_segura") @db.JsonB
+  recursoTipo     String?                     @map("recurso_tipo") @db.VarChar(100)
+  recursoId       String?                     @map("recurso_id") @db.VarChar(120)
+  requestId       String                      @map("request_id") @db.Uuid
+  expiraAt        DateTime                    @map("expira_at") @db.Timestamptz(6)
+  completadaAt    DateTime?                   @map("completada_at") @db.Timestamptz(6)
+  createdAt       DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  actor Usuario @relation(fields: [actorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([actorId, metodo, rutaPlantilla, clave], map: "ux_solicitudes_idempotentes_alcance")
+  @@index([estado, expiraAt])
+  @@index([requestId])
+  @@map("solicitudes_idempotentes")
 }

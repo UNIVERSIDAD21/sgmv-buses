@@ -1,6 +1,7 @@
 import { Router } from 'express'
 
 import { authenticate, authorizeRoles, enforceAllowedOrigin } from '../auth/auth.middleware.js'
+import { idempotent } from '../idempotency/idempotency.middleware.js'
 import { asyncHandler } from '../shared/http.js'
 import { WorkOrderController } from './work-order.controller.js'
 
@@ -28,7 +29,7 @@ workOrderRoutes.post(
   '/',
   enforceAllowedOrigin,
   authorizeRoles('ADMINISTRADOR'),
-  asyncHandler(workOrderController.createManual),
+  idempotent(workOrderController.createManual),
 )
 workOrderRoutes.get(
   '/',
@@ -49,37 +50,37 @@ workOrderRoutes.post(
   '/:ordenId/asignar',
   enforceAllowedOrigin,
   authorizeRoles('ADMINISTRADOR'),
-  asyncHandler(workOrderController.assign),
+  idempotent(workOrderController.assign),
 )
 workOrderRoutes.post(
   '/:ordenId/reasignar',
   enforceAllowedOrigin,
   authorizeRoles('ADMINISTRADOR'),
-  asyncHandler(workOrderController.reassign),
+  idempotent(workOrderController.reassign),
 )
 workOrderRoutes.post(
   '/:ordenId/iniciar',
   enforceAllowedOrigin,
   authorizeRoles('MECANICO'),
-  asyncHandler(workOrderController.start),
+  idempotent(workOrderController.start),
 )
 workOrderRoutes.post(
   '/:ordenId/reanudar',
   enforceAllowedOrigin,
   authorizeRoles('MECANICO'),
-  asyncHandler(workOrderController.resume),
+  idempotent(workOrderController.resume),
 )
 workOrderRoutes.patch(
   '/:ordenId/intervencion',
   enforceAllowedOrigin,
   authorizeRoles('MECANICO'),
-  asyncHandler(workOrderController.updateIntervention),
+  idempotent(workOrderController.updateIntervention),
 )
 workOrderRoutes.post(
   '/:ordenId/actividades',
   enforceAllowedOrigin,
   authorizeRoles('MECANICO'),
-  asyncHandler(workOrderController.createActivity),
+  idempotent(workOrderController.createActivity),
 )
 workOrderRoutes.get(
   '/:ordenId/repuestos-disponibles',
@@ -90,25 +91,25 @@ workOrderRoutes.post(
   '/:ordenId/consumos',
   enforceAllowedOrigin,
   authorizeRoles('MECANICO'),
-  asyncHandler(workOrderController.createConsumption),
+  idempotent(workOrderController.createConsumption),
 )
 workOrderRoutes.post(
   '/:ordenId/completar',
   enforceAllowedOrigin,
   authorizeRoles('MECANICO'),
-  asyncHandler(workOrderController.complete),
+  idempotent(workOrderController.complete),
 )
 workOrderRoutes.post(
   '/:ordenId/devolver',
   enforceAllowedOrigin,
   authorizeRoles('ADMINISTRADOR'),
-  asyncHandler(workOrderController.returnForCorrection),
+  idempotent(workOrderController.returnForCorrection),
 )
 workOrderRoutes.post(
   '/:ordenId/cerrar',
   enforceAllowedOrigin,
   authorizeRoles('ADMINISTRADOR'),
-  asyncHandler(workOrderController.close),
+  idempotent(workOrderController.close),
 )
 workOrderRoutes.get(
   '/:ordenId',

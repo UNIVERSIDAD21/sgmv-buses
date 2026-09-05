@@ -1,29 +1,20 @@
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 
 import type { RolCodigo } from '@prisma/client'
+import { jwtVerify, SignJWT } from 'jose'
+import { z } from 'zod'
 
 import { env } from '../config/env.js'
 import { AppError } from '../shared/http.js'
 import type { SessionTokenPayload } from './auth.types.js'
 
-interface JwtClaims extends SessionTokenPayload {
-  exp: number
-  iat: number
-}
+const sessionClaimsSchema = z.object({
+  email: z.email(),
+  rol: z.enum(['ADMINISTRADOR', 'DESPACHADOR', 'MECANICO', 'CONDUCTOR']),
+  sub: z.uuid(),
+})
 
-function encodeJson(value: unknown) {
-  return Buffer.from(JSON.stringify(value)).toString('base64url')
-}
-
-function decodeJson<T>(value: string): T {
-  return JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as T
-}
-
-function sign(unsignedToken: string, secret: string) {
-  return createHmac('sha256', secret).update(unsignedToken).digest('base64url')
-}
-
-function assertJwtSecret() {
+function getJwtSecret() {
   if (!env.JWT_SECRET) {
     throw new AppError(
       500,
@@ -32,7 +23,7 @@ function assertJwtSecret() {
     )
   }
 
-  return env.JWT_SECRET
+  return new TextEncoder().encode(env.JWT_SECRET)
 }
 
 function parseExpiresIn(value: string) {
@@ -51,75 +42,63 @@ function parseExpiresIn(value: string) {
     s: 1,
   } satisfies Record<typeof unit, number>
 
-  return amount * multiplierByUnit[unit]
+  const seconds = amount * multiplierByUnit[unit]
+
+  if (seconds < 60 || seconds > 86_400) {
+    throw new AppError(
+      500,
+      'AUTH_CONFIGURATION_ERROR',
+      'JWT_EXPIRES_IN debe estar entre 1 minuto y 24 horas',
+    )
+  }
+
+  return seconds
 }
 
 export function getCookieMaxAgeMs() {
   return parseExpiresIn(env.JWT_EXPIRES_IN) * 1000
 }
 
-export function createSessionToken(payload: SessionTokenPayload) {
-  const secret = assertJwtSecret()
-  const now = Math.floor(Date.now() / 1000)
+export async function createSessionToken(payload: SessionTokenPayload) {
   const expiresInSeconds = parseExpiresIn(env.JWT_EXPIRES_IN)
-  const header = { alg: 'HS256', typ: 'JWT' }
-  const claims: JwtClaims = {
-    ...payload,
-    exp: now + expiresInSeconds,
-    iat: now,
-  }
-  const unsignedToken = `${encodeJson(header)}.${encodeJson(claims)}`
-  const signature = sign(unsignedToken, secret)
 
-  return `${unsignedToken}.${signature}`
+  return new SignJWT({ email: payload.email, rol: payload.rol })
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setSubject(payload.sub)
+    .setIssuer(env.JWT_ISSUER)
+    .setAudience(env.JWT_AUDIENCE)
+    .setIssuedAt()
+    .setNotBefore(0)
+    .setExpirationTime(`${expiresInSeconds}s`)
+    .setJti(randomUUID())
+    .sign(getJwtSecret())
 }
 
-function isRolCodigo(value: unknown): value is RolCodigo {
-  return (
-    value === 'ADMINISTRADOR' ||
-    value === 'DESPACHADOR' ||
-    value === 'MECANICO' ||
-    value === 'CONDUCTOR'
-  )
-}
-
-export function verifySessionToken(token: string): SessionTokenPayload {
+export async function verifySessionToken(token: string): Promise<SessionTokenPayload> {
   try {
-    const secret = assertJwtSecret()
-    const [encodedHeader, encodedPayload, encodedSignature] = token.split('.')
+    const { payload, protectedHeader } = await jwtVerify(token, getJwtSecret(), {
+      algorithms: ['HS256'],
+      audience: env.JWT_AUDIENCE,
+      clockTolerance: 5,
+      issuer: env.JWT_ISSUER,
+      maxTokenAge: env.JWT_EXPIRES_IN,
+      requiredClaims: ['sub', 'iat', 'nbf', 'exp', 'iss', 'aud', 'jti'],
+    })
 
-    if (!encodedHeader || !encodedPayload || !encodedSignature) {
+    if (protectedHeader.alg !== 'HS256' || protectedHeader.typ !== 'JWT') {
       throw new AppError(401, 'UNAUTHORIZED', 'Sesion invalida o expirada')
     }
 
-    const unsignedToken = `${encodedHeader}.${encodedPayload}`
-    const expectedSignature = Buffer.from(sign(unsignedToken, secret), 'base64url')
-    const receivedSignature = Buffer.from(encodedSignature, 'base64url')
+    const claims = sessionClaimsSchema.safeParse(payload)
 
-    if (
-      expectedSignature.length !== receivedSignature.length ||
-      !timingSafeEqual(expectedSignature, receivedSignature)
-    ) {
-      throw new AppError(401, 'UNAUTHORIZED', 'Sesion invalida o expirada')
-    }
-
-    const claims = decodeJson<Partial<JwtClaims>>(encodedPayload)
-    const now = Math.floor(Date.now() / 1000)
-
-    if (
-      !claims.sub ||
-      !claims.email ||
-      !isRolCodigo(claims.rol) ||
-      typeof claims.exp !== 'number' ||
-      claims.exp <= now
-    ) {
+    if (!claims.success) {
       throw new AppError(401, 'UNAUTHORIZED', 'Sesion invalida o expirada')
     }
 
     return {
-      email: claims.email,
-      rol: claims.rol,
-      sub: claims.sub,
+      email: claims.data.email,
+      rol: claims.data.rol as RolCodigo,
+      sub: claims.data.sub,
     }
   } catch (error) {
     if (error instanceof AppError) {

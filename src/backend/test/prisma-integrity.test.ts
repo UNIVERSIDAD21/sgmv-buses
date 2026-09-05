@@ -12,7 +12,6 @@ const repoRoot = resolve(currentDir, '../../..')
 config({ path: resolve(repoRoot, '.env') })
 
 const prisma = new PrismaClient()
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip
 
 const created = {
   actividades: [] as string[],
@@ -229,7 +228,7 @@ async function cleanup() {
   )
 }
 
-describeDb('Prisma persistence integrity', () => {
+describe('Prisma persistence integrity', () => {
   beforeAll(async () => {
     await ensureRoles()
   }, 60000)

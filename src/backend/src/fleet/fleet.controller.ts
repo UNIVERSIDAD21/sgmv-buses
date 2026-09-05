@@ -2,7 +2,6 @@ import type { RequestHandler } from 'express'
 
 import { sendData } from '../shared/http.js'
 import {
-  assignDriverSchema,
   availableDriversQuerySchema,
   busIdParamSchema,
   changeBusStateSchema,
@@ -16,14 +15,6 @@ import { FleetService } from './fleet.service.js'
 
 export class FleetController {
   constructor(private readonly fleetService = new FleetService()) {}
-
-  assignDriver: RequestHandler = async (request, response) => {
-    const { busId } = busIdParamSchema.parse(request.params)
-    const input = assignDriverSchema.parse(request.body)
-    const result = await this.fleetService.assignDriver(busId, input, request.user!)
-
-    sendData(response, result, 'Conductor asignado')
-  }
 
   changeState: RequestHandler = async (request, response) => {
     const { busId } = busIdParamSchema.parse(request.params)

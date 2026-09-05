@@ -3,13 +3,14 @@ export type RoleCode = 'ADMINISTRADOR' | 'DESPACHADOR' | 'MECANICO' | 'CONDUCTOR
 export type AppRouteId =
   | 'inicio'
   | 'flota'
+  | 'jornadas'
   | 'novedades'
   | 'mantenimiento-preventivo'
   | 'ordenes-trabajo'
   | 'repuestos'
   | 'historial'
 
-export type RequirementRouteId = Exclude<AppRouteId, 'inicio'>
+export type RequirementRouteId = Exclude<AppRouteId, 'inicio' | 'jornadas'>
 
 export interface RequirementNavItem {
   description: string
@@ -32,7 +33,7 @@ export const REQUIREMENT_NAV_ITEMS: RequirementNavItem[] = [
     id: 'flota',
     label: 'RF-01 — Gestión de la flota vehicular',
     path: '/flota',
-    roles: ['ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR'],
+    roles: ['ADMINISTRADOR', 'DESPACHADOR'],
   },
   {
     description: 'Registro y seguimiento de novedades operativas.',

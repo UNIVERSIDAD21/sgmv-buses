@@ -1,16 +1,25 @@
 import { createApp } from './app.js'
 import { env } from './config/env.js'
+import { logger } from './observability/logger.js'
+import { shutdownServer } from './server-lifecycle.js'
 
 const app = createApp()
 
 const server = app.listen(env.PORT, () => {
-  console.log(`SGMV API listening on port ${env.PORT}`)
+  logger.info({ port: env.PORT }, 'SGMV API iniciada')
 })
 
+let shuttingDown = false
+
 function shutdown(signal: string) {
-  console.log(`Received ${signal}. Closing SGMV API.`)
-  server.close(() => {
-    process.exit(0)
+  if (shuttingDown) {
+    return
+  }
+
+  shuttingDown = true
+  void shutdownServer(server, signal).catch((error: unknown) => {
+    logger.fatal({ err: error, signal }, 'Fallo durante el cierre ordenado')
+    process.exitCode = 1
   })
 }
 

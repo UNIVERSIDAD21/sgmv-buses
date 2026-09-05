@@ -7,8 +7,13 @@ import StatePanel from '../../components/ui/StatePanel'
 import { BUS_STATUS_LABELS } from '../../domain/labels'
 import { ApiError } from '../../lib/api'
 import { formatNumber } from '../../lib/format'
-import { createBus, getBus, updateBus, type BusFormInput } from './fleet.api'
-import type { BusDetailDto, BusStatus } from './fleet.types'
+import { createBus, getBus, listModelosBus, updateBus, type BusFormInput } from './fleet.api'
+import type {
+  BusDetailDto,
+  BusModelReferenceDto,
+  BusStatus,
+  ModeloBusSummaryDto,
+} from './fleet.types'
 
 interface FormState {
   anio: string
@@ -17,6 +22,7 @@ interface FormState {
   kilometrajeActual: string
   marca: string
   modelo: string
+  modeloBusId: string
   motivoEstado: string
   placa: string
 }
@@ -32,6 +38,7 @@ function emptyForm(): FormState {
     kilometrajeActual: '0',
     marca: '',
     modelo: '',
+    modeloBusId: '',
     motivoEstado: '',
     placa: '',
   }
@@ -61,6 +68,7 @@ function formFromBus(bus: BusDetailDto): FormState {
     kilometrajeActual: String(bus.kilometrajeActual),
     marca: bus.marca,
     modelo: bus.modelo,
+    modeloBusId: bus.modeloBus?.id ?? '',
     motivoEstado: '',
     placa: bus.placa,
   }
@@ -76,6 +84,27 @@ export default function BusFormPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [savedBus, setSavedBus] = useState<BusDetailDto | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [modelosBus, setModelosBus] = useState<ModeloBusSummaryDto[]>([])
+  const [currentModel, setCurrentModel] = useState<BusModelReferenceDto | null>(null)
+  const [modelsError, setModelsError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+
+    async function loadModels() {
+      try {
+        const data = await listModelosBus()
+        if (active) setModelosBus(data.modelosBus)
+      } catch (error) {
+        if (active) setModelsError(getErrorMessage(error))
+      }
+    }
+
+    void loadModels()
+    return () => {
+      active = false
+    }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -93,6 +122,7 @@ export default function BusFormPage() {
 
         if (active) {
           setForm(formFromBus(data.bus))
+          setCurrentModel(data.bus.modeloBus)
         }
       } catch (error) {
         if (active) {
@@ -186,6 +216,11 @@ export default function BusFormPage() {
       codigoInterno: normalized.codigoInterno,
       marca: normalized.marca,
       modelo: normalized.modelo,
+      ...(form.modeloBusId
+        ? { modeloBusId: form.modeloBusId }
+        : isEditing
+          ? { modeloBusId: null }
+          : {}),
       placa: normalized.placa,
     }
 
@@ -279,6 +314,37 @@ export default function BusFormPage() {
               Identificacion
             </legend>
             <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
+                Modelo tecnico normalizado
+                <select
+                  aria-label="Modelo tecnico normalizado"
+                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  onChange={(event) => updateField('modeloBusId', event.target.value)}
+                  value={form.modeloBusId}
+                >
+                  <option value="">Sin asociar (registro legado)</option>
+                  {currentModel && !modelosBus.some((model) => model.id === currentModel.id) && (
+                    <option value={currentModel.id}>
+                      {currentModel.marca} {currentModel.nombreModelo} (inactivo)
+                    </option>
+                  )}
+                  {modelosBus.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.marca} {model.nombreModelo}
+                      {model.versionTecnica ? ` - ${model.versionTecnica}` : ''}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-xs text-slate-400">
+                  La marca y el modelo legados se conservan como fueron registrados.
+                </span>
+                {modelsError && (
+                  <span className="mt-1 block text-xs text-amber-700">
+                    No fue posible cargar los modelos: {modelsError}
+                  </span>
+                )}
+              </label>
+
               <label className="block text-sm font-medium text-slate-700">
                 Codigo interno
                 <input
@@ -321,6 +387,7 @@ export default function BusFormPage() {
               <label className="block text-sm font-medium text-slate-700">
                 Marca
                 <input
+                  aria-label="Marca"
                   className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => updateField('marca', event.target.value)}
                   value={form.marca}
@@ -333,6 +400,7 @@ export default function BusFormPage() {
               <label className="block text-sm font-medium text-slate-700">
                 Modelo
                 <input
+                  aria-label="Modelo"
                   className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => updateField('modelo', event.target.value)}
                   value={form.modelo}

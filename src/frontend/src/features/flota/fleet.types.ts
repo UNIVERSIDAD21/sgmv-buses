@@ -40,6 +40,36 @@ export interface StateHistoryDto {
   motivo: string | null
 }
 
+export interface BusModelReferenceDto {
+  activo: boolean
+  id: string
+  marca: string
+  nombreModelo: string
+  versionTecnica: string | null
+}
+
+export interface ModeloBusSummaryDto extends BusModelReferenceDto {
+  busesAsociados: number
+  updatedAt: string
+}
+
+export interface ModeloBusDetailDto extends ModeloBusSummaryDto {
+  createdAt: string
+  especificaciones?: Record<string, unknown>
+}
+
+export interface RutaDto {
+  activa: boolean
+  codigo: string
+  createdAt: string
+  destino: string
+  id: string
+  jornadasAsociadas: number
+  nombre: string
+  origen: string
+  updatedAt: string
+}
+
 export interface BusSummaryDto {
   anio: number
   codigoInterno: string
@@ -49,6 +79,7 @@ export interface BusSummaryDto {
   kilometrajeActual: number
   marca: string
   modelo: string
+  modeloBus: BusModelReferenceDto | null
   placa: string
   updatedAt: string
 }

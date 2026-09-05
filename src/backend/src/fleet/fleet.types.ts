@@ -40,6 +40,14 @@ export interface StateHistoryDto {
   motivo: string | null
 }
 
+export interface BusModelReferenceDto {
+  activo: boolean
+  id: string
+  marca: string
+  nombreModelo: string
+  versionTecnica: string | null
+}
+
 export interface BusSummaryDto {
   anio: number
   codigoInterno: string
@@ -49,6 +57,7 @@ export interface BusSummaryDto {
   kilometrajeActual: number
   marca: string
   modelo: string
+  modeloBus: BusModelReferenceDto | null
   placa: string
   updatedAt: string
 }

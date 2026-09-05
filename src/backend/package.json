@@ -11,9 +11,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/server.js",
     "lint": "eslint .",
-    "test": "vitest --run --fileParallelism=false",
-    "test:local": "dotenv -e ../../.env.local -- vitest --run --fileParallelism=false",
-    "test:watch": "vitest",
+    "test": "dotenv -v NODE_ENV=test -- vitest --run --fileParallelism=false",
+    "test:local": "dotenv -e ../../.env.local -v NODE_ENV=test -- vitest --run --fileParallelism=false",
+    "test:watch": "dotenv -v NODE_ENV=test -- vitest",
     "prisma:generate": "dotenv -e ../../.env -- prisma generate --schema prisma/schema.prisma",
     "prisma:generate:local": "dotenv -e ../../.env.local -- prisma generate --schema prisma/schema.prisma",
     "prisma:migrate": "dotenv -e ../../.env -- prisma migrate deploy --schema prisma/schema.prisma",
@@ -35,6 +35,8 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "helmet": "^8.1.0",
+    "jose": "^6.2.11",
+    "pino": "^10.3.1",
     "zod": "^4.2.1"
   },
   "devDependencies": {

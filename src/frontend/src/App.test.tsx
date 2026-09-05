@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RoleCode } from './domain/labels'
 import App from './App'
 
+const testCsrfToken = 'csrf-token-verificable-de-prueba'
+
 const roleNames: Record<RoleCode, string> = {
   ADMINISTRADOR: 'Administrador',
   DESPACHADOR: 'Despachador',
@@ -52,9 +54,15 @@ function getPath(input: RequestInfo | URL) {
 }
 
 function mockApi(handler: (path: string, init?: RequestInit) => Promise<Response>) {
-  const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
-    handler(getPath(input), init),
-  )
+  const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const path = getPath(input)
+
+    if (path === '/auth/csrf') {
+      return Promise.resolve(ok({ csrfToken: testCsrfToken }))
+    }
+
+    return handler(path, init)
+  })
 
   vi.stubGlobal('fetch', fetchMock)
 
@@ -182,6 +190,9 @@ describe('App authentication and role navigation', () => {
         method: 'POST',
       }),
     )
+    const loginCall = fetchMock.mock.calls.find(([input]) => getPath(input) === '/auth/login')
+
+    expect(new Headers(loginCall?.[1]?.headers).get('X-CSRF-Token')).toBe(testCsrfToken)
   })
 
   it('shows a safe error when login credentials are rejected', async () => {
@@ -248,7 +259,7 @@ describe('App authentication and role navigation', () => {
     render(<App />)
 
     expect(await screen.findByText(/Panel del conductor/i)).toBeInTheDocument()
-    expect(screen.getAllByText(/RF-01/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Jornadas operativas/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/RF-02/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/RF-06/i).length).toBeGreaterThan(0)
     expect(screen.queryByText(/RF-03/i)).not.toBeInTheDocument()
@@ -361,8 +372,39 @@ const fleetBus = {
   ],
   marca: 'Mercedes',
   modelo: 'Padron',
+  modeloBus: {
+    activo: true,
+    id: 'model-1',
+    marca: 'Mercedes-Benz',
+    nombreModelo: 'OF-1721',
+    versionTecnica: 'Euro V',
+  },
   placa: 'ABC123',
   updatedAt: '2026-08-27T11:00:00.000Z',
+}
+
+const catalogModel = {
+  activo: true,
+  busesAsociados: 1,
+  createdAt: '2026-09-04T12:00:00.000Z',
+  especificaciones: { combustible: 'Diesel' },
+  id: 'model-1',
+  marca: 'Mercedes-Benz',
+  nombreModelo: 'OF-1721',
+  updatedAt: '2026-09-04T12:00:00.000Z',
+  versionTecnica: 'Euro V',
+}
+
+const catalogRoute = {
+  activa: true,
+  codigo: 'RUTA-CENTRO-NORTE',
+  createdAt: '2026-09-04T12:00:00.000Z',
+  destino: 'Terminal Norte',
+  id: 'route-1',
+  jornadasAsociadas: 0,
+  nombre: 'Centro - Norte',
+  origen: 'Patio Central',
+  updatedAt: '2026-09-04T12:00:00.000Z',
 }
 
 function fleetSummary() {
@@ -390,6 +432,99 @@ function fleetList(overrides: Partial<{ buses: unknown[]; totalPaginas: number }
       total: buses.length,
       totalPaginas: overrides.totalPaginas ?? 1,
     },
+  }
+}
+
+function journeyFixture(
+  status: 'PROGRAMADA' | 'EN_CURSO' | 'FINALIZADA' | 'CANCELADA' | 'REASIGNADA' = 'PROGRAMADA',
+) {
+  const inProgress = status === 'EN_CURSO' || status === 'FINALIZADA'
+  const finished = status === 'FINALIZADA'
+  return {
+    acciones: {
+      puedeCancelar: status === 'PROGRAMADA' || status === 'EN_CURSO',
+      puedeFinalizar: status === 'EN_CURSO',
+      puedeIniciar: status === 'PROGRAMADA',
+      puedeReasignar: status === 'PROGRAMADA' || status === 'EN_CURSO',
+    },
+    bus: {
+      codigoInterno: 'BUS-JORNADA-01',
+      estadoOperativo: 'OPERATIVO',
+      id: 'bus-journey-1',
+      placa: 'JOR001',
+    },
+    cambioPor: null,
+    causasDisponibilidad: [],
+    conductor: { id: 'user-conductor', nombre: 'Conductor', rol: 'CONDUCTOR' },
+    estado: status,
+    fechaCambio: null,
+    finProgramado: '2026-09-06T22:00:00.000Z',
+    finReal: finished ? '2026-09-06T21:45:00.000Z' : null,
+    finalizadaPor: finished
+      ? { id: 'user-conductor', nombre: 'Conductor', rol: 'CONDUCTOR' }
+      : null,
+    id: 'journey-1',
+    iniciadaPor: inProgress
+      ? { id: 'user-conductor', nombre: 'Conductor', rol: 'CONDUCTOR' }
+      : null,
+    inicioProgramado: '2026-09-06T14:00:00.000Z',
+    inicioReal: inProgress ? '2026-09-06T14:05:00.000Z' : null,
+    jornadaAnteriorId: null,
+    jornadaSucesoraId: null,
+    lecturaFinal: finished
+      ? {
+          fechaLectura: '2026-09-06T21:45:00.000Z',
+          id: 'reading-end-1',
+          kilometraje: 45250,
+          kilometrajeAnterior: 45000,
+          registradoPor: { id: 'user-conductor', nombre: 'Conductor', rol: 'CONDUCTOR' },
+          tipo: 'FIN_JORNADA',
+        }
+      : null,
+    lecturaInicial: inProgress
+      ? {
+          fechaLectura: '2026-09-06T14:05:00.000Z',
+          id: 'reading-start-1',
+          kilometraje: 45000,
+          kilometrajeAnterior: 44900,
+          registradoPor: { id: 'user-conductor', nombre: 'Conductor', rol: 'CONDUCTOR' },
+          tipo: 'INICIO_JORNADA',
+        }
+      : null,
+    motivoCambio: null,
+    programadaPor: { id: 'user-despachador', nombre: 'Despachador', rol: 'DESPACHADOR' },
+    ruta: {
+      codigo: 'RUTA-01',
+      destino: 'Terminal Norte',
+      id: 'route-1',
+      nombre: 'Centro - Norte',
+      origen: 'Patio Central',
+    },
+    updatedAt: '2026-09-06T14:05:00.000Z',
+  }
+}
+
+function journeyOptions() {
+  return {
+    buses: [
+      {
+        codigoInterno: 'BUS-JORNADA-01',
+        estadoOperativo: 'OPERATIVO',
+        id: 'bus-journey-1',
+        kilometrajeActual: 45000,
+        placa: 'JOR001',
+      },
+    ],
+    conductores: [{ id: 'user-conductor', nombre: 'Conductor' }],
+    rutas: [
+      {
+        codigo: 'RUTA-01',
+        destino: 'Terminal Norte',
+        id: 'route-1',
+        nombre: 'Centro - Norte',
+        origen: 'Patio Central',
+      },
+    ],
   }
 }
 
@@ -1579,6 +1714,10 @@ function fleetHandler(role: RoleCode = 'ADMINISTRADOR') {
       })
     }
 
+    if (path === '/flota/modelos-bus' && !init?.method) {
+      return ok({ modelosBus: [catalogModel] })
+    }
+
     if (path === '/flota/buses' && !init?.method) {
       return ok(fleetList({ totalPaginas: 2 }))
     }
@@ -1635,6 +1774,79 @@ function fleetHandler(role: RoleCode = 'ADMINISTRADOR') {
 
     if (path === '/ordenes-trabajo/resumen') {
       return ok(workOrderSummary())
+    }
+
+    return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
+  }
+}
+
+function journeyHandler(
+  role: RoleCode = 'DESPACHADOR',
+  options: { empty?: boolean; fail?: boolean } = {},
+) {
+  let currentStatus: 'PROGRAMADA' | 'EN_CURSO' | 'FINALIZADA' = 'PROGRAMADA'
+
+  return async (path: string, init?: RequestInit) => {
+    if (path === '/auth/me') {
+      return ok({ user: userForRole(role) })
+    }
+    if (path === '/jornadas/opciones') {
+      return options.fail
+        ? apiError(500, 'INTERNAL_ERROR', 'Fallo controlado de jornadas')
+        : ok(journeyOptions())
+    }
+    if (path === '/jornadas/mi-jornada') {
+      if (options.fail) return apiError(500, 'INTERNAL_ERROR', 'Fallo controlado de jornadas')
+      const journey = options.empty ? null : journeyFixture(currentStatus)
+      return ok({
+        jornadaActual: currentStatus === 'EN_CURSO' ? journey : null,
+        proximaJornada: currentStatus === 'PROGRAMADA' ? journey : null,
+      })
+    }
+    if (path === '/jornadas' && !init?.method) {
+      if (options.fail) return apiError(500, 'INTERNAL_ERROR', 'Fallo controlado de jornadas')
+      const jornadas = options.empty ? [] : [journeyFixture(currentStatus)]
+      return ok({
+        jornadas,
+        paginacion: { limite: 12, pagina: 1, paginas: 1, total: jornadas.length },
+      })
+    }
+    if (path === '/jornadas' && init?.method === 'POST') {
+      return ok({ jornada: journeyFixture('PROGRAMADA') })
+    }
+    if (path === '/jornadas/journey-1/iniciar' && init?.method === 'POST') {
+      currentStatus = 'EN_CURSO'
+      return ok({ jornada: journeyFixture(currentStatus) })
+    }
+    if (path === '/jornadas/journey-1/finalizar' && init?.method === 'POST') {
+      currentStatus = 'FINALIZADA'
+      return ok({ jornada: journeyFixture(currentStatus) })
+    }
+    if (path === '/jornadas/journey-1/cancelar' && init?.method === 'POST') {
+      return ok({
+        jornada: {
+          ...journeyFixture('CANCELADA'),
+          acciones: {
+            puedeCancelar: false,
+            puedeFinalizar: false,
+            puedeIniciar: false,
+            puedeReasignar: false,
+          },
+        },
+      })
+    }
+    if (path === '/jornadas/journey-1/reasignar' && init?.method === 'POST') {
+      return ok({
+        jornadaAnterior: journeyFixture('REASIGNADA'),
+        jornadaSucesora: {
+          ...journeyFixture('PROGRAMADA'),
+          id: 'journey-2',
+          jornadaAnteriorId: 'journey-1',
+        },
+      })
+    }
+    if (path === '/novedades/mis-novedades') {
+      return ok(noveltyList([noveltyOne], 1))
     }
 
     return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
@@ -1786,6 +1998,136 @@ function preventiveHandler(
   }
 }
 
+function fleetCatalogHandler(
+  role: RoleCode = 'ADMINISTRADOR',
+  options: Partial<{ empty: boolean; fail: boolean }> = {},
+) {
+  let model = { ...catalogModel }
+  let route = { ...catalogRoute }
+
+  return async (path: string, init?: RequestInit) => {
+    if (path === '/auth/me') {
+      return ok({ user: userForRole(role) })
+    }
+
+    if (path === '/flota/modelos-bus' && !init?.method) {
+      if (options.fail) return apiError(500, 'INTERNAL_ERROR', 'Fallo de catalogos controlado')
+      return ok({ modelosBus: options.empty ? [] : [model] })
+    }
+
+    if (path === '/flota/rutas' && !init?.method) {
+      return ok({ rutas: options.empty ? [] : [route] })
+    }
+
+    if (path === '/flota/modelos-bus' && init?.method === 'POST') {
+      return ok({ modeloBus: model })
+    }
+
+    if (path === '/flota/modelos-bus/model-1') {
+      if (init?.method === 'PATCH') {
+        model = { ...model, nombreModelo: 'OF-1722' }
+      }
+      return ok({ modeloBus: model })
+    }
+
+    if (path === '/flota/modelos-bus/model-1/desactivar') {
+      model = { ...model, activo: false }
+      return ok({ modeloBus: model })
+    }
+
+    if (path === '/flota/modelos-bus/model-1/activar') {
+      model = { ...model, activo: true }
+      return ok({ modeloBus: model })
+    }
+
+    if (path === '/flota/rutas' && init?.method === 'POST') {
+      return ok({ ruta: route })
+    }
+
+    if (path === '/flota/rutas/route-1' && init?.method === 'PATCH') {
+      route = { ...route, destino: 'Terminal Sur' }
+      return ok({ ruta: route })
+    }
+
+    if (path === '/flota/rutas/route-1/desactivar') {
+      route = { ...route, activa: false }
+      return ok({ ruta: route })
+    }
+
+    if (path === '/flota/rutas/route-1/activar') {
+      route = { ...route, activa: true }
+      return ok({ ruta: route })
+    }
+
+    return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
+  }
+}
+
+describe('P3 fleet catalogs frontend', () => {
+  it('loads catalogs and lets an administrator edit a model and a route', async () => {
+    window.history.pushState({}, '', '/flota/catalogos')
+    const fetchMock = mockApi(fleetCatalogHandler())
+
+    render(<App />)
+
+    expect(await screen.findByText(/Mercedes-Benz OF-1721/i)).toBeInTheDocument()
+    expect(screen.getByText(/RUTA-CENTRO-NORTE/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Mostrar inactivos/i)).toBeInTheDocument()
+
+    const modelArticle = screen.getByText(/Mercedes-Benz OF-1721/i).closest('article')!
+    fireEvent.click(within(modelArticle).getByRole('button', { name: /Editar/i }))
+    expect(await screen.findByDisplayValue('Mercedes-Benz')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/Nombre del modelo/i), {
+      target: { value: 'OF-1722' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Guardar modelo/i }))
+    expect(await screen.findByText(/Modelo de bus actualizado/i)).toBeInTheDocument()
+
+    const routeArticle = screen.getByText(/RUTA-CENTRO-NORTE/i).closest('article')!
+    fireEvent.click(within(routeArticle).getByRole('button', { name: /Editar/i }))
+    fireEvent.change(screen.getByLabelText(/^Destino$/i), { target: { value: 'Terminal Sur' } })
+    fireEvent.click(screen.getByRole('button', { name: /Guardar ruta/i }))
+    expect(await screen.findByText(/Ruta actualizada/i)).toBeInTheDocument()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/flota/modelos-bus/model-1'),
+      expect.objectContaining({ method: 'PATCH' }),
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/flota/rutas/route-1'),
+      expect.objectContaining({ method: 'PATCH' }),
+    )
+  })
+
+  it('shows read-only operational catalogs to the dispatcher', async () => {
+    window.history.pushState({}, '', '/flota/catalogos')
+    mockApi(fleetCatalogHandler('DESPACHADOR'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Mercedes-Benz OF-1721/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Guardar modelo/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Inactivar/i })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Mostrar inactivos/i)).not.toBeInTheDocument()
+  })
+
+  it('renders explicit empty and error states for catalogs', async () => {
+    window.history.pushState({}, '', '/flota/catalogos')
+    mockApi(fleetCatalogHandler('ADMINISTRADOR', { empty: true }))
+
+    const firstRender = render(<App />)
+    expect(await screen.findByText(/Sin modelos disponibles/i)).toBeInTheDocument()
+    expect(screen.getByText(/Sin rutas disponibles/i)).toBeInTheDocument()
+
+    firstRender.unmount()
+    vi.restoreAllMocks()
+    mockApi(fleetCatalogHandler('ADMINISTRADOR', { fail: true }))
+    render(<App />)
+
+    expect(await screen.findByText(/No fue posible cargar los catalogos/i)).toBeInTheDocument()
+  })
+})
+
 describe('RF-01 fleet frontend', () => {
   it('loads fleet list with search, filter and pagination', async () => {
     window.history.pushState({}, '', '/flota')
@@ -1827,7 +2169,7 @@ describe('RF-01 fleet frontend', () => {
     })
   })
 
-  it('opens bus detail and completes mileage, state and assignment actions', async () => {
+  it('opens bus detail and completes mileage and state actions without legacy assignment writes', async () => {
     window.history.pushState({}, '', '/flota')
     const fetchMock = mockApi(fleetHandler())
 
@@ -1855,12 +2197,7 @@ describe('RF-01 fleet frontend', () => {
     fireEvent.click(screen.getByRole('button', { name: /Confirmar/i }))
     expect(await screen.findByText(/Estado actualizado/i)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /Asignar/i }))
-    fireEvent.change(await screen.findByLabelText(/^Conductor$/i), {
-      target: { value: 'driver-2' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /Confirmar/i }))
-    expect(await screen.findByText(/Asignacion actualizada/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Asignar/i })).not.toBeInTheDocument()
 
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/flota/buses/bus-1/kilometraje'),
@@ -1870,10 +2207,12 @@ describe('RF-01 fleet frontend', () => {
       expect.stringContaining('/flota/buses/bus-1/estado'),
       expect.objectContaining({ method: 'POST' }),
     )
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/flota/buses/bus-1/asignaciones'),
-      expect.objectContaining({ method: 'POST' }),
-    )
+    expect(
+      fetchMock.mock.calls.some(
+        ([input, init]) =>
+          getPath(input) === '/flota/buses/bus-1/asignaciones' && init?.method === 'POST',
+      ),
+    ).toBe(false)
   })
 
   it('shows empty and error states for the fleet list', async () => {
@@ -1924,13 +2263,17 @@ describe('RF-01 fleet frontend', () => {
   it('registers a bus and shows backend duplicate errors', async () => {
     window.history.pushState({}, '', '/flota/nuevo')
     let duplicate = false
-    mockApi(async (path, init) => {
+    const fetchMock = mockApi(async (path, init) => {
       if (path === '/auth/me') {
         return ok({ user: userForRole('ADMINISTRADOR') })
       }
 
       if (path === '/flota/resumen') {
         return ok(fleetSummary())
+      }
+
+      if (path === '/flota/modelos-bus' && !init?.method) {
+        return ok({ modelosBus: [catalogModel] })
       }
 
       if (path === '/flota/buses' && init?.method === 'POST') {
@@ -1952,13 +2295,20 @@ describe('RF-01 fleet frontend', () => {
 
     fireEvent.change(screen.getByLabelText(/Codigo interno/i), { target: { value: 'bus-001' } })
     fireEvent.change(screen.getByLabelText(/Placa/i), { target: { value: 'abc123' } })
-    fireEvent.change(screen.getByLabelText(/Marca/i), { target: { value: 'Mercedes' } })
-    fireEvent.change(screen.getByLabelText(/Modelo/i), { target: { value: 'Padron' } })
+    fireEvent.change(screen.getByLabelText(/^Marca$/i), { target: { value: 'Mercedes' } })
+    fireEvent.change(screen.getByLabelText(/^Modelo$/i), { target: { value: 'Padron' } })
+    fireEvent.change(await screen.findByLabelText(/Modelo tecnico normalizado/i), {
+      target: { value: 'model-1' },
+    })
     fireEvent.change(screen.getByLabelText(/Anio/i), { target: { value: '2022' } })
     fireEvent.change(screen.getByLabelText(/Kilometraje actual/i), { target: { value: '1000' } })
     fireEvent.click(screen.getByRole('button', { name: /Guardar/i }))
 
     expect(await screen.findByText(/Bus registrado/i)).toBeInTheDocument()
+    const createCall = fetchMock.mock.calls.find(
+      ([input, init]) => getPath(input) === '/flota/buses' && init?.method === 'POST',
+    )
+    expect(JSON.parse(String(createCall?.[1]?.body))).toMatchObject({ modeloBusId: 'model-1' })
 
     fireEvent.click(screen.getByRole('button', { name: /Guardar/i }))
     expect(await screen.findByText(/La placa ya esta registrada/i)).toBeInTheDocument()
@@ -1971,7 +2321,7 @@ describe('RF-01 fleet frontend', () => {
     render(<App />)
 
     expect(await screen.findByDisplayValue('Mercedes')).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText(/Marca/i), { target: { value: 'Volvo' } })
+    fireEvent.change(screen.getByLabelText(/^Marca$/i), { target: { value: 'Volvo' } })
     fireEvent.click(screen.getByRole('button', { name: /Guardar/i }))
 
     expect(await screen.findByText(/Bus actualizado/i)).toBeInTheDocument()
@@ -1981,35 +2331,25 @@ describe('RF-01 fleet frontend', () => {
     )
   })
 
-  it('limits the driver fleet view to the assigned bus', async () => {
-    window.history.pushState({}, '', '/flota')
-    mockApi(fleetHandler('CONDUCTOR'))
+  it('limits the driver operational view to the journey derived from session', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    mockApi(journeyHandler('CONDUCTOR'))
 
     render(<App />)
 
-    expect(await screen.findByText(/Mi bus asignado/i)).toBeInTheDocument()
-    expect(await screen.findByText('BUS-001')).toBeInTheDocument()
+    expect(await screen.findByText(/Mi jornada/i)).toBeInTheDocument()
+    expect(await screen.findByText(/BUS-JORNADA-01/i)).toBeInTheDocument()
     expect(screen.queryByText(/Registrar bus/i)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Kilometraje/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Iniciar jornada/i })).toBeInTheDocument()
   })
 
-  it('shows the driver empty state and denies mechanic access to RF-01', async () => {
-    window.history.pushState({}, '', '/flota')
-    mockApi(async (path) => {
-      if (path === '/auth/me') {
-        return ok({ user: userForRole('CONDUCTOR') })
-      }
-
-      if (path === '/flota/mi-bus') {
-        return ok({ asignacion: null, bus: null })
-      }
-
-      return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
-    })
+  it('shows the driver journey empty state and denies mechanic access to RF-01', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    mockApi(journeyHandler('CONDUCTOR', { empty: true }))
 
     render(<App />)
 
-    expect(await screen.findByText(/Sin bus asignado/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Sin jornada asignada/i)).toBeInTheDocument()
 
     vi.restoreAllMocks()
     window.history.pushState({}, '', '/flota')
@@ -2024,6 +2364,82 @@ describe('RF-01 fleet frontend', () => {
     render(<App />)
 
     expect(await screen.findByText(/Acceso denegado/i)).toBeInTheDocument()
+  })
+})
+
+describe('P4 journey frontend', () => {
+  it('lets the dispatcher program a journey from controlled options and session authorship', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    const fetchMock = mockApi(journeyHandler('DESPACHADOR'))
+
+    render(<App />)
+
+    expect(
+      (await screen.findAllByRole('heading', { name: /Jornadas operativas/i })).length,
+    ).toBeGreaterThan(0)
+    fireEvent.change(await screen.findByLabelText(/Bus de jornada/i), {
+      target: { value: 'bus-journey-1' },
+    })
+    fireEvent.change(screen.getByLabelText(/Conductor de jornada/i), {
+      target: { value: 'user-conductor' },
+    })
+    fireEvent.change(screen.getByLabelText(/Ruta de jornada/i), {
+      target: { value: 'route-1' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Programar jornada/i }))
+
+    expect(await screen.findByText(/^Jornada programada$/i)).toBeInTheDocument()
+    const createCall = fetchMock.mock.calls.find(
+      ([input, init]) => getPath(input) === '/jornadas' && init?.method === 'POST',
+    )
+    const body = JSON.parse(String(createCall?.[1]?.body))
+    expect(body).toMatchObject({
+      busId: 'bus-journey-1',
+      conductorId: 'user-conductor',
+      rutaId: 'route-1',
+    })
+    expect(body).not.toHaveProperty('programadaPorId')
+    expect(body).not.toHaveProperty('estado')
+  })
+
+  it('lets the conductor start only the journey returned by the own-session endpoint', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    const fetchMock = mockApi(journeyHandler('CONDUCTOR'))
+
+    render(<App />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Iniciar jornada/i }))
+    fireEvent.change(screen.getByLabelText(/^Kilometraje/i), { target: { value: '45000' } })
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar/i }))
+
+    expect(await screen.findByText(/Jornada iniciada con lectura inicial/i)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Finalizar jornada/i })).toBeInTheDocument()
+    const startCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        getPath(input) === '/jornadas/journey-1/iniciar' && init?.method === 'POST',
+    )
+    const body = JSON.parse(String(startCall?.[1]?.body))
+    expect(body).toMatchObject({ kilometraje: 45000 })
+    expect(body).not.toHaveProperty('busId')
+    expect(body).not.toHaveProperty('conductorId')
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/jornadas/mi-jornada'),
+      expect.any(Object),
+    )
+  })
+
+  it('renders explicit empty and error states for the operational agenda', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    mockApi(journeyHandler('DESPACHADOR', { empty: true }))
+    const emptyRender = render(<App />)
+    expect(await screen.findByText(/^Sin jornadas$/i)).toBeInTheDocument()
+
+    emptyRender.unmount()
+    vi.restoreAllMocks()
+    window.history.pushState({}, '', '/jornadas')
+    mockApi(journeyHandler('DESPACHADOR', { fail: true }))
+    render(<App />)
+    expect(await screen.findByText(/No fue posible cargar las jornadas/i)).toBeInTheDocument()
   })
 })
 
@@ -2891,6 +3307,9 @@ describe('RF-05 spare parts frontend', () => {
       motivo: string
     }
     expect(entryBody.claveIdempotencia).toEqual(expect.any(String))
+    expect(new Headers(entryCall?.[1]?.headers).get('Idempotency-Key')).toBe(
+      entryBody.claveIdempotencia,
+    )
     expect(entryBody.costoUnitario).toBe('125000')
     expect(entryBody.motivo).toBe('Reposicion operativa')
 
@@ -2939,6 +3358,9 @@ describe('RF-05 spare parts frontend', () => {
       direccion: string
     }
     expect(adjustmentBody.claveIdempotencia).toEqual(expect.any(String))
+    expect(new Headers(adjustmentCall?.[1]?.headers).get('Idempotency-Key')).toBe(
+      adjustmentBody.claveIdempotencia,
+    )
     expect(adjustmentBody.direccion).toBe('INCREMENTO')
   })
 })

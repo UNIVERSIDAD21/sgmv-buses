@@ -75,6 +75,14 @@ function getPageTitle(pathname: string) {
     return 'Registro de bus'
   }
 
+  if (pathname.startsWith('/flota/catalogos')) {
+    return 'Catalogos de operacion'
+  }
+
+  if (pathname.startsWith('/jornadas')) {
+    return 'Jornadas operativas'
+  }
+
   if (pathname.includes('/editar')) {
     return 'Edición de bus'
   }
@@ -143,6 +151,13 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
         label: 'Inicio',
         path: '/inicio',
         roles: allRoles,
+      },
+      {
+        icon: <ClipboardList size={18} />,
+        id: 'jornadas',
+        label: 'Jornadas operativas',
+        path: '/jornadas',
+        roles: ['ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR'],
       },
       ...requirements,
     ]

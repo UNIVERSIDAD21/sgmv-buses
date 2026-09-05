@@ -8,9 +8,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { AuthenticatedUser } from '../src/auth/auth.types.js'
 import { createApp } from '../src/app.js'
 import { FleetService } from '../src/fleet/fleet.service.js'
+import { createCsrfAgent } from './http-test-client.js'
 
 const prisma = new PrismaClient()
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip
 const password = 'Clave-demo-segura-123'
 
 const created = {
@@ -136,7 +136,7 @@ async function createFixture(): Promise<FleetFixture> {
 }
 
 async function loginAgent(email: string) {
-  const agent = request.agent(createApp())
+  const agent = await createCsrfAgent(createApp())
 
   await agent.post('/auth/login').send({ contrasena: password, email }).expect(200)
 
@@ -203,7 +203,7 @@ async function cleanup() {
   )
 }
 
-describeDb('RF-01 Fleet API', () => {
+describe('RF-01 Fleet API', () => {
   let fixture: FleetFixture
 
   beforeAll(async () => {
@@ -387,12 +387,10 @@ describeDb('RF-01 Fleet API', () => {
     expect(history.body.data.historial[0].estadoNuevo).toBe('FUERA_DE_SERVICIO')
   }, 60000)
 
-  it('assigns and reassigns drivers while closing previous active assignments', async () => {
+  it('retires legacy assignment writes because new agendas use JornadaOperativa', async () => {
     const admin = await loginAgent(fixture.adminEmail)
     const bus = await createBus()
-    const secondBus = await createBus()
     const firstDriver = await createDriver('reassign-one')
-    const secondDriver = await createDriver('reassign-two')
 
     await admin
       .post(`/flota/buses/${bus.id}/asignaciones`)
@@ -400,58 +398,14 @@ describeDb('RF-01 Fleet API', () => {
         conductorId: firstDriver.id,
         motivo: 'Asignacion inicial de ruta',
       })
-      .expect(200)
+      .expect(404)
 
-    await admin
-      .post(`/flota/buses/${bus.id}/asignaciones`)
-      .send({
-        conductorId: secondDriver.id,
-        motivo: 'Reasignacion por disponibilidad',
-      })
-      .expect(200)
-
-    await admin
-      .post(`/flota/buses/${secondBus.id}/asignaciones`)
-      .send({
-        conductorId: secondDriver.id,
-        motivo: 'Cambio de bus operativo',
-      })
-      .expect(200)
-
-    const activeForFirstBus = await prisma.asignacionConductor.count({
-      where: {
-        activa: true,
-        busId: bus.id,
-      },
-    })
-    const activeForDriver = await prisma.asignacionConductor.findMany({
-      where: {
-        activa: true,
-        conductorId: secondDriver.id,
-      },
-    })
-    const historicalAssignments = await prisma.asignacionConductor.count({
-      where: {
-        OR: [{ busId: bus.id }, { busId: secondBus.id }],
-      },
-    })
-
-    expect(activeForFirstBus).toBe(0)
-    expect(activeForDriver).toHaveLength(1)
-    expect(activeForDriver[0].busId).toBe(secondBus.id)
-    expect(historicalAssignments).toBe(3)
+    expect(await prisma.asignacionConductor.count({ where: { busId: bus.id } })).toBe(0)
   }, 60000)
 
-  it('rejects non-driver assignments and returns available drivers', async () => {
+  it('keeps the legacy available-driver projection read-only and excludes non-drivers', async () => {
     const admin = await loginAgent(fixture.adminEmail)
     const bus = await createBus()
-
-    await admin
-      .post(`/flota/buses/${bus.id}/asignaciones`)
-      .send({
-        conductorId: fixture.mecanicoId,
-      })
-      .expect(400)
 
     const available = await admin
       .get('/flota/conductores-disponibles')
@@ -462,18 +416,19 @@ describeDb('RF-01 Fleet API', () => {
   }, 60000)
 
   it('returns assigned bus for the driver and blocks access to another bus', async () => {
-    const admin = await loginAgent(fixture.adminEmail)
     const conductor = await createDriver('own-bus')
     const driver = await loginAgent(conductor.email)
     const bus = await createBus()
     const otherBus = await createBus()
 
-    await admin
-      .post(`/flota/buses/${bus.id}/asignaciones`)
-      .send({
+    await prisma.asignacionConductor.create({
+      data: {
+        asignadoPorId: fixture.adminId,
+        busId: bus.id,
         conductorId: conductor.id,
-      })
-      .expect(200)
+        motivo: 'Registro historico previo a JornadaOperativa',
+      },
+    })
 
     const ownBus = await driver.get('/flota/mi-bus').expect(200)
 

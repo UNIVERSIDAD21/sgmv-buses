@@ -1,6 +1,7 @@
 import { Router } from 'express'
 
 import { authenticate, authorizeRoles, enforceAllowedOrigin } from '../auth/auth.middleware.js'
+import { idempotent } from '../idempotency/idempotency.middleware.js'
 import { asyncHandler } from '../shared/http.js'
 import { SparePartController } from './spare-part.controller.js'
 
@@ -12,34 +13,30 @@ sparePartRoutes.use(authenticate)
 sparePartRoutes.use(authorizeRoles('ADMINISTRADOR'))
 
 sparePartRoutes.get('/resumen', asyncHandler(sparePartController.summarize))
-sparePartRoutes.post('/', enforceAllowedOrigin, asyncHandler(sparePartController.create))
+sparePartRoutes.post('/', enforceAllowedOrigin, idempotent(sparePartController.create))
 sparePartRoutes.get('/', asyncHandler(sparePartController.list))
 sparePartRoutes.post(
   '/:repuestoId/activar',
   enforceAllowedOrigin,
-  asyncHandler(sparePartController.activate),
+  idempotent(sparePartController.activate),
 )
 sparePartRoutes.post(
   '/:repuestoId/desactivar',
   enforceAllowedOrigin,
-  asyncHandler(sparePartController.deactivate),
+  idempotent(sparePartController.deactivate),
 )
 sparePartRoutes.post(
   '/:repuestoId/entradas',
   enforceAllowedOrigin,
-  asyncHandler(sparePartController.registerEntry),
+  idempotent(sparePartController.registerEntry),
 )
 sparePartRoutes.post(
   '/:repuestoId/ajustes',
   enforceAllowedOrigin,
-  asyncHandler(sparePartController.registerAdjustment),
+  idempotent(sparePartController.registerAdjustment),
 )
 sparePartRoutes.get('/:repuestoId/movimientos', asyncHandler(sparePartController.listPartMovements))
-sparePartRoutes.patch(
-  '/:repuestoId',
-  enforceAllowedOrigin,
-  asyncHandler(sparePartController.update),
-)
+sparePartRoutes.patch('/:repuestoId', enforceAllowedOrigin, idempotent(sparePartController.update))
 sparePartRoutes.get('/:repuestoId', asyncHandler(sparePartController.getById))
 
 inventoryRoutes.use(authenticate)

@@ -51,6 +51,7 @@ export const createBusSchema = z
     kilometrajeActual: z.coerce.number().int().min(0).default(0),
     marca: trimmedText(100),
     modelo: trimmedText(100),
+    modeloBusId: z.uuid().optional(),
     motivoEstado: optionalTrimmedText(500),
     placa: trimmedText(20),
   })
@@ -67,6 +68,7 @@ export const updateBusSchema = z
     codigoInterno: trimmedText(60).optional(),
     marca: trimmedText(100).optional(),
     modelo: trimmedText(100).optional(),
+    modeloBusId: z.uuid().nullable().optional(),
     placa: trimmedText(20).optional(),
   })
   .strict()
@@ -88,14 +90,6 @@ export const changeBusStateSchema = z
   })
   .strict()
 
-export const assignDriverSchema = z
-  .object({
-    conductorId: z.uuid(),
-    motivo: optionalTrimmedText(500),
-  })
-  .strict()
-
-export type AssignDriverInput = z.infer<typeof assignDriverSchema>
 export type ChangeBusStateInput = z.infer<typeof changeBusStateSchema>
 export type CreateBusInput = z.infer<typeof createBusSchema>
 export type ListBusesQuery = z.infer<typeof listBusesQuerySchema>

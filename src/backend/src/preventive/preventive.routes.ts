@@ -1,6 +1,7 @@
 import { Router } from 'express'
 
 import { authenticate, authorizeRoles, enforceAllowedOrigin } from '../auth/auth.middleware.js'
+import { idempotent } from '../idempotency/idempotency.middleware.js'
 import { asyncHandler } from '../shared/http.js'
 import { PreventiveController } from './preventive.controller.js'
 
@@ -23,7 +24,7 @@ preventiveRoutes.post(
   '/programaciones',
   enforceAllowedOrigin,
   authorizeRoles('ADMINISTRADOR'),
-  asyncHandler(preventiveController.createSchedule),
+  idempotent(preventiveController.createSchedule),
 )
 preventiveRoutes.get(
   '/programaciones/:programacionId',
@@ -34,13 +35,13 @@ preventiveRoutes.patch(
   '/programaciones/:programacionId',
   enforceAllowedOrigin,
   authorizeRoles('ADMINISTRADOR'),
-  asyncHandler(preventiveController.updateSchedule),
+  idempotent(preventiveController.updateSchedule),
 )
 preventiveRoutes.post(
   '/programaciones/:programacionId/generar-orden',
   enforceAllowedOrigin,
   authorizeRoles('ADMINISTRADOR'),
-  asyncHandler(preventiveController.generateOrder),
+  idempotent(preventiveController.generateOrder),
 )
 
 export { preventiveRoutes }

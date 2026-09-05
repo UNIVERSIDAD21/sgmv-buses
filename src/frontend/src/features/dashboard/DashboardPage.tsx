@@ -22,8 +22,10 @@ import {
 } from '../../domain/labels'
 import { formatDateTime } from '../../lib/format'
 import { useSession } from '../auth/session.context'
-import { getAssignedBus, getFleetSummary } from '../flota/fleet.api'
-import type { AssignedBusResponse, FleetSummaryDto } from '../flota/fleet.types'
+import { getFleetSummary } from '../flota/fleet.api'
+import type { FleetSummaryDto } from '../flota/fleet.types'
+import { getMyJourney } from '../jornadas/journey.api'
+import type { MyJourneyResponse } from '../jornadas/journey.types'
 import { getNoveltySummary, listOwnNovelties } from '../novedades/novelty.api'
 import type { NoveltyListResponse, NoveltySummaryDto } from '../novedades/novelty.types'
 import { getWorkOrderSummary } from '../ordenes-trabajo/work-order.api'
@@ -61,7 +63,7 @@ function ModuleList({ items }: { items: RequirementNavItem[] }) {
 export default function DashboardPage() {
   const { user } = useSession()
   const [fleetSummary, setFleetSummary] = useState<FleetSummaryDto | null>(null)
-  const [driverBus, setDriverBus] = useState<AssignedBusResponse | null>(null)
+  const [driverJourney, setDriverJourney] = useState<MyJourneyResponse | null>(null)
   const [driverNovelties, setDriverNovelties] = useState<NoveltyListResponse | null>(null)
   const [fleetError, setFleetError] = useState<string | null>(null)
   const [noveltySummary, setNoveltySummary] = useState<NoveltySummaryDto | null>(null)
@@ -124,8 +126,8 @@ export default function DashboardPage() {
         }
 
         if (isDriver) {
-          const [assigned, novelties] = await Promise.all([
-            getAssignedBus(),
+          const [journey, novelties] = await Promise.all([
+            getMyJourney(),
             listOwnNovelties({
               limite: 3,
               pagina: 1,
@@ -133,7 +135,7 @@ export default function DashboardPage() {
           ])
 
           if (active) {
-            setDriverBus(assigned)
+            setDriverJourney(journey)
             setDriverNovelties(novelties)
           }
         }
@@ -154,6 +156,8 @@ export default function DashboardPage() {
   if (!user) {
     return null
   }
+
+  const activeDriverJourney = driverJourney?.jornadaActual ?? driverJourney?.proximaJornada ?? null
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
@@ -329,31 +333,33 @@ export default function DashboardPage() {
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
                 <Wrench size={18} />
               </div>
-              <h3 className="text-base font-semibold text-slate-900">Bus asignado</h3>
+              <h3 className="text-base font-semibold text-slate-900">Mi jornada</h3>
               {fleetError && <p className="mt-2 text-sm leading-6 text-red-600">{fleetError}</p>}
-              {!fleetError && driverBus?.bus && (
+              {!fleetError && activeDriverJourney && (
                 <>
                   <p className="mt-2 text-sm font-semibold text-slate-800">
-                    {driverBus.bus.codigoInterno} - {driverBus.bus.placa}
+                    {activeDriverJourney.bus.codigoInterno} - {activeDriverJourney.bus.placa}
                   </p>
                   <p className="mt-1 text-sm leading-6 text-slate-500">
-                    {driverBus.bus.marca} {driverBus.bus.modelo}
+                    {activeDriverJourney.ruta
+                      ? `${activeDriverJourney.ruta.codigo} · ${activeDriverJourney.ruta.nombre}`
+                      : 'Sin ruta contextual'}
                   </p>
                   <Link
                     className="mt-5 inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                    to="/flota"
+                    to="/jornadas"
                   >
-                    Ver detalle
+                    Ver mi jornada
                   </Link>
                 </>
               )}
-              {!fleetError && driverBus && !driverBus.bus && (
+              {!fleetError && driverJourney && !activeDriverJourney && (
                 <p className="mt-2 text-sm leading-6 text-slate-500">
-                  No hay una asignacion activa vinculada a este usuario.
+                  No hay una jornada en curso ni una proxima jornada programada.
                 </p>
               )}
-              {!fleetError && !driverBus && (
-                <p className="mt-2 text-sm leading-6 text-slate-500">Consultando asignacion.</p>
+              {!fleetError && !driverJourney && (
+                <p className="mt-2 text-sm leading-6 text-slate-500">Consultando jornada.</p>
               )}
             </div>
 

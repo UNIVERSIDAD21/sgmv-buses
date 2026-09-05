@@ -8,8 +8,10 @@ import { useSession } from './features/auth/session.context'
 import { SessionProvider } from './features/auth/session'
 import DashboardPage from './features/dashboard/DashboardPage'
 import BusFormPage from './features/flota/BusFormPage'
+import FleetCatalogPage from './features/flota/FleetCatalogPage'
 import FleetPage from './features/flota/FleetPage'
 import HistoryReportsPage from './features/historial/HistoryReportsPage'
+import JourneyPage from './features/jornadas/JourneyPage'
 import NoveltyPage from './features/novedades/NoveltyPage'
 import WorkOrderPage from './features/ordenes-trabajo/WorkOrderPage'
 import PreventivePage from './features/preventivo/PreventivePage'
@@ -40,11 +42,27 @@ function AppRoutes() {
         <Route element={<DashboardPage />} path="/inicio" />
         <Route
           element={
-            <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR']}>
+            <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR']}>
+              <FleetCatalogPage />
+            </ProtectedRoute>
+          }
+          path="/flota/catalogos"
+        />
+        <Route
+          element={
+            <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR']}>
               <FleetPage />
             </ProtectedRoute>
           }
           path="/flota"
+        />
+        <Route
+          element={
+            <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR']}>
+              <JourneyPage />
+            </ProtectedRoute>
+          }
+          path="/jornadas"
         />
         <Route
           element={

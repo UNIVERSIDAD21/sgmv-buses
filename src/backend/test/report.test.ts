@@ -6,9 +6,9 @@ import request from 'supertest'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createApp } from '../src/app.js'
+import { createCsrfAgent } from './http-test-client.js'
 
 const prisma = new PrismaClient()
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip
 const password = 'Clave-demo-segura-123'
 const suffix = randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase()
 
@@ -260,7 +260,7 @@ async function createFixture(): Promise<ReportFixture> {
 }
 
 async function loginAgent(email: string) {
-  const agent = request.agent(createApp())
+  const agent = await createCsrfAgent(createApp())
   await agent.post('/auth/login').send({ contrasena: password, email }).expect(200)
   return agent
 }
@@ -296,7 +296,7 @@ async function cleanup() {
   )
 }
 
-describeDb('RF-06 History and reports API', () => {
+describe('RF-06 History and reports API', () => {
   let fixture: ReportFixture
 
   beforeAll(async () => {

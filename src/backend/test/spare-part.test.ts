@@ -6,9 +6,9 @@ import request from 'supertest'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createApp } from '../src/app.js'
+import { createCsrfAgent } from './http-test-client.js'
 
 const prisma = new PrismaClient()
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip
 const password = 'Clave-demo-segura-123'
 const rf05TestTimeout = 180000
 
@@ -106,7 +106,7 @@ async function createFixture(): Promise<SparePartFixture> {
 }
 
 async function loginAgent(email: string) {
-  const agent = request.agent(createApp())
+  const agent = await createCsrfAgent(createApp())
 
   await agent.post('/auth/login').send({ contrasena: password, email }).expect(200)
 
@@ -281,7 +281,7 @@ async function cleanup() {
   )
 }
 
-describeDb('RF-05 spare parts inventory API', () => {
+describe('RF-05 spare parts inventory API', () => {
   let adminAgent: request.Agent
   let conductorAgent: request.Agent
   let fixture: SparePartFixture
@@ -382,9 +382,10 @@ describeDb('RF-05 spare parts inventory API', () => {
           stockMinimo: '2',
           unidadMedida: 'unidad',
         })
-        .expect(200)
+        .expect(201)
 
-      expect(retry.body.data.yaExistia).toBe(true)
+      expect(retry.headers['idempotency-replayed']).toBe('true')
+      expect(retry.body).toEqual(response.body)
 
       await adminAgent
         .post('/repuestos')
@@ -465,13 +466,13 @@ describeDb('RF-05 spare parts inventory API', () => {
 
       const retry = await adminAgent
         .post(`/repuestos/${part.id}/entradas`)
+        .set('Idempotency-Key', key)
         .send({
           cantidad: '3',
-          claveIdempotencia: key,
           costoUnitario: '300.00',
           motivo: 'Entrada RF-05',
         })
-        .expect(200)
+        .expect(201)
 
       const reloaded = await prisma.repuesto.findUniqueOrThrow({ where: { id: part.id } })
       const movementCount = await prisma.movimientoInventario.count({
@@ -481,7 +482,8 @@ describeDb('RF-05 spare parts inventory API', () => {
       })
 
       expect(first.body.data.stockAnterior).toBe('0.00')
-      expect(retry.body.data.yaExistia).toBe(true)
+      expect(retry.headers['idempotency-replayed']).toBe('true')
+      expect(retry.body).toEqual(first.body)
       expect(reloaded.stockActual.toFixed(2)).toBe('3.00')
       expect(reloaded.costoUnitario.toFixed(2)).toBe('300.00')
       expect(movementCount).toBe(1)

@@ -10,9 +10,9 @@ import { createApp } from '../src/app.js'
 import { env } from '../src/config/env.js'
 import { classifyPreventiveSchedule } from '../src/preventive/preventive.classification.js'
 import { PreventiveService } from '../src/preventive/preventive.service.js'
+import { createCsrfAgent } from './http-test-client.js'
 
 const prisma = new PrismaClient()
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip
 const password = 'Clave-demo-segura-123'
 const fixedNow = new Date('2026-08-27T15:00:00.000Z')
 const thresholds = {
@@ -192,7 +192,7 @@ async function createSchedule(
 }
 
 async function loginAgent(email: string) {
-  const agent = request.agent(createApp())
+  const agent = await createCsrfAgent(createApp())
 
   await agent.post('/auth/login').send({ contrasena: password, email }).expect(200)
 
@@ -382,7 +382,7 @@ describe('Preventive classification rule', () => {
   })
 })
 
-describeDb('RF-03 Preventive maintenance API', () => {
+describe('RF-03 Preventive maintenance API', () => {
   let fixture: PreventiveFixture
 
   beforeAll(async () => {

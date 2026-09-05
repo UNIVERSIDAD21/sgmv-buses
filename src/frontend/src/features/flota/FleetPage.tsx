@@ -11,7 +11,6 @@ import {
   Gauge,
   PlusCircle,
   Search,
-  User,
   Wrench,
   X,
 } from '../../components/ui/Icons'
@@ -20,22 +19,8 @@ import { BUS_STATUS_LABELS } from '../../domain/labels'
 import { ApiError } from '../../lib/api'
 import { formatNumber } from '../../lib/format'
 import { useSession } from '../auth/session.context'
-import {
-  assignDriver,
-  changeBusState,
-  getAssignedBus,
-  getAvailableDrivers,
-  getBus,
-  listBuses,
-  registerMileage,
-} from './fleet.api'
-import type {
-  AssignedBusResponse,
-  BusDetailDto,
-  BusStatus,
-  DriverOptionDto,
-  ListBusesResponse,
-} from './fleet.types'
+import { changeBusState, getBus, listBuses, registerMileage } from './fleet.api'
+import type { BusDetailDto, BusStatus, ListBusesResponse } from './fleet.types'
 
 const statusOptions = Object.entries(BUS_STATUS_LABELS) as Array<[BusStatus, string]>
 
@@ -46,10 +31,7 @@ const statusTone: Record<BusStatus, 'amber' | 'emerald' | 'red' | 'slate' | 'tea
   OPERATIVO: 'emerald',
 }
 
-type FleetAction =
-  | { bus: BusDetailDto; type: 'assignment' }
-  | { bus: BusDetailDto; type: 'mileage' }
-  | { bus: BusDetailDto; type: 'state' }
+type FleetAction = { bus: BusDetailDto; type: 'mileage' } | { bus: BusDetailDto; type: 'state' }
 
 function getErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
@@ -188,20 +170,15 @@ function BusHistory({ bus, showAssignments }: { bus: BusDetailDto; showAssignmen
 
 function ActionDialog({
   action,
-  drivers,
   error,
-  loadingDrivers,
   onClose,
   onSubmit,
   submitting,
 }: {
   action: FleetAction
-  drivers: DriverOptionDto[]
   error: string | null
-  loadingDrivers: boolean
   onClose: () => void
   onSubmit: (payload: {
-    conductorId?: string
     estadoNuevo?: BusStatus
     kilometrajeNuevo?: number
     motivo?: string
@@ -212,12 +189,10 @@ function ActionDialog({
     String(action.bus.kilometrajeActual),
   )
   const [estadoNuevo, setEstadoNuevo] = useState<BusStatus>(() => action.bus.estadoOperativo)
-  const [conductorId, setConductorId] = useState('')
   const [motivo, setMotivo] = useState('')
   const [validationError, setValidationError] = useState<string | null>(null)
 
   const titleByType = {
-    assignment: 'Asignar conductor',
     mileage: 'Registrar kilometraje',
     state: 'Cambiar estado',
   }
@@ -252,13 +227,6 @@ function ActionDialog({
       onSubmit({ estadoNuevo, motivo: motivo.trim() })
       return
     }
-
-    if (!conductorId) {
-      setValidationError('Seleccione un conductor activo.')
-      return
-    }
-
-    onSubmit({ conductorId, motivo: motivo.trim() || undefined })
   }
 
   return (
@@ -346,43 +314,6 @@ function ActionDialog({
             </>
           )}
 
-          {action.type === 'assignment' && (
-            <>
-              <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-                Conductor actual: {action.bus.conductorAsignado?.nombre ?? 'Sin conductor'}
-              </div>
-              <label className="block text-sm font-medium text-slate-700">
-                Conductor
-                <select
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
-                  disabled={loadingDrivers}
-                  onChange={(event) => setConductorId(event.target.value)}
-                  value={conductorId}
-                >
-                  <option value="">
-                    {loadingDrivers ? 'Cargando...' : 'Seleccione conductor'}
-                  </option>
-                  {drivers.map((driver) => (
-                    <option key={driver.id} value={driver.id}>
-                      {driver.nombre}
-                      {driver.asignacionActiva
-                        ? ` - actual ${driver.asignacionActiva.bus.codigoInterno}`
-                        : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-sm font-medium text-slate-700">
-                Motivo
-                <textarea
-                  className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  onChange={(event) => setMotivo(event.target.value)}
-                  value={motivo}
-                />
-              </label>
-            </>
-          )}
-
           {(validationError || error) && (
             <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {validationError ?? error}
@@ -407,20 +338,16 @@ export default function FleetPage() {
   const { user } = useSession()
   const canEditMasterData = user?.rol.codigo === 'ADMINISTRADOR'
   const canManage = user?.rol.codigo === 'ADMINISTRADOR' || user?.rol.codigo === 'DESPACHADOR'
-  const isDriver = user?.rol.codigo === 'CONDUCTOR'
   const [busqueda, setBusqueda] = useState('')
   const [estado, setEstado] = useState<BusStatus | ''>('')
   const [pagina, setPagina] = useState(1)
   const [listData, setListData] = useState<ListBusesResponse | null>(null)
-  const [assignedData, setAssignedData] = useState<AssignedBusResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [selectedBus, setSelectedBus] = useState<BusDetailDto | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [action, setAction] = useState<FleetAction | null>(null)
-  const [drivers, setDrivers] = useState<DriverOptionDto[]>([])
-  const [loadingDrivers, setLoadingDrivers] = useState(false)
   const [operationError, setOperationError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -458,12 +385,6 @@ export default function FleetPage() {
           if (active) {
             setListData(data)
           }
-        } else if (isDriver) {
-          const data = await getAssignedBus()
-
-          if (active) {
-            setAssignedData(data)
-          }
         }
       } catch (loadError) {
         if (active) {
@@ -481,42 +402,7 @@ export default function FleetPage() {
     return () => {
       active = false
     }
-  }, [busqueda, canManage, estado, isDriver, pagina])
-
-  useEffect(() => {
-    let active = true
-
-    async function loadDrivers() {
-      if (action?.type !== 'assignment') {
-        setDrivers([])
-        return
-      }
-
-      setLoadingDrivers(true)
-
-      try {
-        const data = await getAvailableDrivers(action.bus.id)
-
-        if (active) {
-          setDrivers(data.conductores)
-        }
-      } catch (loadError) {
-        if (active) {
-          setOperationError(getErrorMessage(loadError))
-        }
-      } finally {
-        if (active) {
-          setLoadingDrivers(false)
-        }
-      }
-    }
-
-    loadDrivers()
-
-    return () => {
-      active = false
-    }
-  }, [action])
+  }, [busqueda, canManage, estado, pagina])
 
   const totalLabel = useMemo(() => {
     if (!listData) {
@@ -558,7 +444,6 @@ export default function FleetPage() {
   }
 
   async function handleActionSubmit(payload: {
-    conductorId?: string
     estadoNuevo?: BusStatus
     kilometrajeNuevo?: number
     motivo?: string
@@ -582,11 +467,6 @@ export default function FleetPage() {
         setFeedback('Estado actualizado')
       }
 
-      if (action.type === 'assignment' && payload.conductorId) {
-        await assignDriver(action.bus.id, payload.conductorId, payload.motivo)
-        setFeedback('Asignacion actualizada')
-      }
-
       await refreshAfterOperation(action.bus.id)
       setAction(null)
     } catch (submitError) {
@@ -594,66 +474,6 @@ export default function FleetPage() {
     } finally {
       setSubmitting(false)
     }
-  }
-
-  if (isDriver) {
-    const assignedBus = assignedData?.bus ?? null
-
-    return (
-      <div className="mx-auto max-w-6xl space-y-5 p-4 md:p-6">
-        <section className="rounded-lg border border-slate-200 bg-white p-5">
-          <Badge tone="emerald">Conductor</Badge>
-          <h2 className="mt-3 text-lg font-semibold text-slate-900">Mi bus asignado</h2>
-        </section>
-
-        {loading && (
-          <StatePanel
-            description="Consultando asignacion activa."
-            title="Cargando bus asignado"
-            tone="loading"
-          />
-        )}
-
-        {error && !loading && (
-          <StatePanel description={error} title="No fue posible cargar" tone="error" />
-        )}
-
-        {!loading && !error && !assignedBus && (
-          <StatePanel
-            description="No hay una asignacion activa vinculada a su usuario."
-            title="Sin bus asignado"
-            tone="empty"
-          />
-        )}
-
-        {!loading && !error && assignedBus && (
-          <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
-            <section className="space-y-3">
-              <div className="rounded-lg border border-slate-200 bg-white p-5">
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
-                  <Bus size={18} />
-                </div>
-                <h3 className="text-base font-semibold text-slate-900">
-                  {assignedBus.codigoInterno}
-                </h3>
-                <p className="mt-1 text-sm text-slate-500">{assignedBus.placa}</p>
-                <div className="mt-4">
-                  <StatusBadge status={assignedBus.estadoOperativo} />
-                </div>
-              </div>
-              <FieldValue label="Vehiculo" value={`${assignedBus.marca} ${assignedBus.modelo}`} />
-              <FieldValue label="Anio" value={String(assignedBus.anio)} />
-              <FieldValue
-                label="Kilometraje"
-                value={`${formatNumber(assignedBus.kilometrajeActual)} km`}
-              />
-            </section>
-
-            <BusHistory bus={assignedBus} showAssignments={false} />
-          </div>
-        )}
-      </div>
-    )
   }
 
   return (
@@ -667,15 +487,23 @@ export default function FleetPage() {
               </h2>
               <p className="mt-1 text-sm leading-6 text-slate-500">{totalLabel} en PostgreSQL</p>
             </div>
-            {canEditMasterData && (
+            <div className="flex flex-wrap gap-2">
               <Link
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-emerald-700 bg-emerald-700 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-800"
-                to="/flota/nuevo"
+                className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                to="/flota/catalogos"
               >
-                <PlusCircle size={16} />
-                Registrar bus
+                Modelos y rutas
               </Link>
-            )}
+              {canEditMasterData && (
+                <Link
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-emerald-700 bg-emerald-700 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-800"
+                  to="/flota/nuevo"
+                >
+                  <PlusCircle size={16} />
+                  Registrar bus
+                </Link>
+              )}
+            </div>
           </div>
         </section>
 
@@ -861,6 +689,18 @@ export default function FleetPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <FieldValue label="Marca" value={selectedBus.marca} />
                 <FieldValue label="Modelo" value={selectedBus.modelo} />
+                <FieldValue
+                  label="Modelo tecnico"
+                  value={
+                    selectedBus.modeloBus
+                      ? `${selectedBus.modeloBus.marca} ${selectedBus.modeloBus.nombreModelo}${
+                          selectedBus.modeloBus.versionTecnica
+                            ? ` - ${selectedBus.modeloBus.versionTecnica}`
+                            : ''
+                        }`
+                      : 'Sin asociar'
+                  }
+                />
                 <FieldValue label="Anio" value={String(selectedBus.anio)} />
                 <FieldValue
                   label="Kilometraje"
@@ -880,7 +720,7 @@ export default function FleetPage() {
                 />
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-2">
                 <Button
                   icon={<Gauge size={14} />}
                   onClick={() => openAction('mileage', selectedBus)}
@@ -899,14 +739,6 @@ export default function FleetPage() {
                     Estado
                   </Button>
                 )}
-                <Button
-                  icon={<User size={14} />}
-                  onClick={() => openAction('assignment', selectedBus)}
-                  size="sm"
-                  variant="outline"
-                >
-                  Asignar
-                </Button>
               </div>
 
               <BusHistory bus={selectedBus} showAssignments />
@@ -917,10 +749,8 @@ export default function FleetPage() {
         {action && (
           <ActionDialog
             action={action}
-            drivers={drivers}
             error={operationError}
             key={`${action.type}-${action.bus.id}`}
-            loadingDrivers={loadingDrivers}
             onClose={() => setAction(null)}
             onSubmit={handleActionSubmit}
             submitting={submitting}

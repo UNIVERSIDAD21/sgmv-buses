@@ -1,6 +1,7 @@
 import { Router } from 'express'
 
 import { authenticate, authorizeRoles, enforceAllowedOrigin } from '../auth/auth.middleware.js'
+import { idempotent } from '../idempotency/idempotency.middleware.js'
 import { asyncHandler } from '../shared/http.js'
 import { NoveltyController } from './novelty.controller.js'
 
@@ -28,7 +29,7 @@ noveltyRoutes.post(
   '/',
   enforceAllowedOrigin,
   authorizeRoles('CONDUCTOR'),
-  asyncHandler(noveltyController.createNovelty),
+  idempotent(noveltyController.createNovelty),
 )
 noveltyRoutes.get(
   '/',
@@ -44,13 +45,13 @@ noveltyRoutes.post(
   '/:novedadId/revision',
   enforceAllowedOrigin,
   authorizeRoles('ADMINISTRADOR'),
-  asyncHandler(noveltyController.reviewNovelty),
+  idempotent(noveltyController.reviewNovelty),
 )
 noveltyRoutes.post(
   '/:novedadId/convertir-orden',
   enforceAllowedOrigin,
   authorizeRoles('ADMINISTRADOR'),
-  asyncHandler(noveltyController.convertToCorrectiveOrder),
+  idempotent(noveltyController.convertToCorrectiveOrder),
 )
 
 export { noveltyRoutes }

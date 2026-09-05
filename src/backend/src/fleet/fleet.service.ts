@@ -14,7 +14,6 @@ import type {
   StateHistoryDto,
 } from './fleet.types.js'
 import type {
-  AssignDriverInput,
   ChangeBusStateInput,
   CreateBusInput,
   ListBusesQuery,
@@ -139,6 +138,15 @@ function mapBusSummary(bus: BusSummaryRecord | BusDetailRecord): BusSummaryDto {
     kilometrajeActual: bus.kilometrajeActual,
     marca: bus.marca,
     modelo: bus.modelo,
+    modeloBus: bus.modeloBus
+      ? {
+          activo: bus.modeloBus.activo,
+          id: bus.modeloBus.id,
+          marca: bus.modeloBus.marca,
+          nombreModelo: bus.modeloBus.nombreModelo,
+          versionTecnica: bus.modeloBus.versionTecnica,
+        }
+      : null,
     placa: bus.placa,
     updatedAt: bus.updatedAt.toISOString(),
   }
@@ -200,54 +208,6 @@ function ensureAdminOrDispatcher(actor: AuthenticatedUser) {
 export class FleetService {
   constructor(private readonly fleetRepository = new FleetRepository()) {}
 
-  async assignDriver(busId: string, input: AssignDriverInput, actor: AuthenticatedUser) {
-    ensureAdminOrDispatcher(actor)
-
-    const [bus, conductor] = await Promise.all([
-      this.fleetRepository.findBusSummaryById(busId),
-      this.fleetRepository.findDriverById(input.conductorId),
-    ])
-
-    if (!bus) {
-      throw new AppError(404, 'BUS_NOT_FOUND', 'Bus no encontrado')
-    }
-
-    if (bus.estadoOperativo === 'INACTIVO') {
-      throw new AppError(400, 'BUS_INACTIVE', 'No se puede asignar un bus inactivo')
-    }
-
-    if (!conductor || conductor.estado !== 'ACTIVO' || conductor.rol.codigo !== 'CONDUCTOR') {
-      throw new AppError(
-        400,
-        'INVALID_DRIVER',
-        'Solo se pueden asignar usuarios activos con rol Conductor',
-      )
-    }
-
-    try {
-      const result = await this.fleetRepository.reassignDriver(
-        busId,
-        input.conductorId,
-        actor.id,
-        input.motivo ?? null,
-      )
-
-      if (!result) {
-        throw new AppError(404, 'BUS_NOT_FOUND', 'Bus no encontrado')
-      }
-
-      if (!result.assignment) {
-        throw new AppError(400, 'ASSIGNMENT_NOT_CREATED', 'No fue posible crear la asignacion')
-      }
-
-      return {
-        asignacion: mapAssignment(result.assignment),
-      }
-    } catch (error) {
-      translatePrismaError(error)
-    }
-  }
-
   async changeState(busId: string, input: ChangeBusStateInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
@@ -282,6 +242,10 @@ export class FleetService {
   async createBus(input: CreateBusInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
+    if (input.modeloBusId) {
+      await this.ensureActiveModeloBus(input.modeloBusId)
+    }
+
     try {
       const bus = await this.fleetRepository.createBusWithInitialState(
         {
@@ -291,6 +255,11 @@ export class FleetService {
           kilometrajeActual: input.kilometrajeActual,
           marca: normalizeText(input.marca),
           modelo: normalizeText(input.modelo),
+          modeloBus: input.modeloBusId
+            ? {
+                connect: { id: input.modeloBusId },
+              }
+            : undefined,
           placa: normalizeIdentifier(input.placa),
         },
         actor.id,
@@ -519,6 +488,24 @@ export class FleetService {
 
     const data: Prisma.BusUpdateInput = {}
 
+    if (input.modeloBusId !== undefined) {
+      if (input.modeloBusId === null) {
+        data.modeloBus = { disconnect: true }
+      } else {
+        const currentBus = await this.fleetRepository.findBusSummaryById(busId)
+
+        if (!currentBus) {
+          throw new AppError(404, 'BUS_NOT_FOUND', 'Bus no encontrado')
+        }
+
+        if (currentBus.modeloBus?.id !== input.modeloBusId) {
+          await this.ensureActiveModeloBus(input.modeloBusId)
+        }
+
+        data.modeloBus = { connect: { id: input.modeloBusId } }
+      }
+    }
+
     if (input.anio !== undefined) {
       data.anio = input.anio
     }
@@ -592,6 +579,18 @@ export class FleetService {
 
     if (!bus) {
       throw new AppError(404, 'BUS_NOT_FOUND', 'Bus no encontrado')
+    }
+  }
+
+  private async ensureActiveModeloBus(modeloBusId: string) {
+    const modeloBus = await this.fleetRepository.findModeloBusById(modeloBusId)
+
+    if (!modeloBus) {
+      throw new AppError(404, 'BUS_MODEL_NOT_FOUND', 'Modelo de bus no encontrado')
+    }
+
+    if (!modeloBus.activo) {
+      throw new AppError(400, 'BUS_MODEL_INACTIVE', 'No se puede asociar un modelo de bus inactivo')
     }
   }
 }

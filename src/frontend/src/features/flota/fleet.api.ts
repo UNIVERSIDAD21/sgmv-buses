@@ -3,9 +3,11 @@ import type {
   AssignedBusResponse,
   BusDetailDto,
   BusStatus,
-  DriverOptionDto,
   FleetSummaryDto,
   ListBusesResponse,
+  ModeloBusDetailDto,
+  ModeloBusSummaryDto,
+  RutaDto,
 } from './fleet.types'
 
 interface ListBusesParams {
@@ -22,8 +24,23 @@ export interface BusFormInput {
   kilometrajeActual?: number
   marca: string
   modelo: string
+  modeloBusId?: string | null
   motivoEstado?: string
   placa: string
+}
+
+export interface ModeloBusFormInput {
+  especificaciones: Record<string, unknown>
+  marca: string
+  nombreModelo: string
+  versionTecnica?: string | null
+}
+
+export interface RutaFormInput {
+  codigo: string
+  destino: string
+  nombre: string
+  origen: string
 }
 
 export function getFleetSummary() {
@@ -72,6 +89,72 @@ export function updateBus(
   })
 }
 
+function catalogQuery(incluirInactivos: boolean, busqueda?: string) {
+  const searchParams = new URLSearchParams()
+
+  if (incluirInactivos) searchParams.set('incluirInactivos', 'true')
+  if (busqueda?.trim()) searchParams.set('busqueda', busqueda.trim())
+
+  const query = searchParams.toString()
+  return query ? `?${query}` : ''
+}
+
+export function listModelosBus(incluirInactivos = false, busqueda?: string) {
+  return apiRequest<{ modelosBus: ModeloBusSummaryDto[] }>(
+    `/flota/modelos-bus${catalogQuery(incluirInactivos, busqueda)}`,
+  )
+}
+
+export function getModeloBus(modeloBusId: string) {
+  return apiRequest<{ modeloBus: ModeloBusDetailDto }>(`/flota/modelos-bus/${modeloBusId}`)
+}
+
+export function createModeloBus(input: ModeloBusFormInput) {
+  return apiRequest<{ modeloBus: ModeloBusDetailDto }>('/flota/modelos-bus', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function updateModeloBus(modeloBusId: string, input: Partial<ModeloBusFormInput>) {
+  return apiRequest<{ modeloBus: ModeloBusDetailDto }>(`/flota/modelos-bus/${modeloBusId}`, {
+    body: JSON.stringify(input),
+    method: 'PATCH',
+  })
+}
+
+export function setModeloBusActive(modeloBusId: string, activo: boolean) {
+  return apiRequest<{ modeloBus: ModeloBusDetailDto }>(
+    `/flota/modelos-bus/${modeloBusId}/${activo ? 'activar' : 'desactivar'}`,
+    { body: JSON.stringify({}), method: 'POST' },
+  )
+}
+
+export function listRutas(incluirInactivos = false, busqueda?: string) {
+  return apiRequest<{ rutas: RutaDto[] }>(`/flota/rutas${catalogQuery(incluirInactivos, busqueda)}`)
+}
+
+export function createRuta(input: RutaFormInput) {
+  return apiRequest<{ ruta: RutaDto }>('/flota/rutas', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function updateRuta(rutaId: string, input: Partial<RutaFormInput>) {
+  return apiRequest<{ ruta: RutaDto }>(`/flota/rutas/${rutaId}`, {
+    body: JSON.stringify(input),
+    method: 'PATCH',
+  })
+}
+
+export function setRutaActive(rutaId: string, activa: boolean) {
+  return apiRequest<{ ruta: RutaDto }>(
+    `/flota/rutas/${rutaId}/${activa ? 'activar' : 'desactivar'}`,
+    { body: JSON.stringify({}), method: 'POST' },
+  )
+}
+
 export function registerMileage(busId: string, kilometrajeNuevo: number, motivo?: string) {
   return apiRequest(`/flota/buses/${busId}/kilometraje`, {
     body: JSON.stringify({ kilometrajeNuevo, motivo }),
@@ -84,17 +167,4 @@ export function changeBusState(busId: string, estadoNuevo: BusStatus, motivo: st
     body: JSON.stringify({ estadoNuevo, motivo }),
     method: 'POST',
   })
-}
-
-export function assignDriver(busId: string, conductorId: string, motivo?: string) {
-  return apiRequest(`/flota/buses/${busId}/asignaciones`, {
-    body: JSON.stringify({ conductorId, motivo }),
-    method: 'POST',
-  })
-}
-
-export function getAvailableDrivers(busId?: string) {
-  const suffix = busId ? `?${new URLSearchParams({ busId }).toString()}` : ''
-
-  return apiRequest<{ conductores: DriverOptionDto[] }>(`/flota/conductores-disponibles${suffix}`)
 }
