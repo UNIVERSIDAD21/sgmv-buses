@@ -1,5 +1,6 @@
 import { type EstadoBus, Prisma } from '@prisma/client'
 
+import { evaluatePreventiveAlertsForBus } from '../alerts/alert.service.js'
 import { prisma } from '../prisma/client.js'
 
 const responsibleSelect = {
@@ -353,6 +354,8 @@ export class FleetRepository {
             },
           },
         })
+
+        await evaluatePreventiveAlertsForBus(busId, tx)
 
         return {
           bus: updatedBus,

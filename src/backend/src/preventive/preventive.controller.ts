@@ -9,9 +9,13 @@ import {
   updatePreventiveScheduleSchema,
 } from './preventive.schemas.js'
 import { PreventiveService } from './preventive.service.js'
+import { PreventiveRestrictionsService } from './preventive-restrictions.service.js'
 
 export class PreventiveController {
-  constructor(private readonly preventiveService = new PreventiveService()) {}
+  constructor(
+    private readonly preventiveService = new PreventiveService(),
+    private readonly preventiveRestrictionsService = new PreventiveRestrictionsService(),
+  ) {}
 
   createSchedule: RequestHandler = async (request, response) => {
     const input = createPreventiveScheduleSchema.parse(request.body)
@@ -47,6 +51,11 @@ export class PreventiveController {
     const result = await this.preventiveService.listSchedules(query, request.user!)
 
     sendData(response, result, 'Programaciones preventivas consultadas')
+  }
+
+  listRestrictions: RequestHandler = async (request, response) => {
+    const result = await this.preventiveRestrictionsService.list(request.user!)
+    sendData(response, result, 'Restricciones preventivas consultadas')
   }
 
   summarize: RequestHandler = async (request, response) => {

@@ -3,6 +3,7 @@ import type {
   AvailabilityDto,
   AvailabilityRecords,
 } from './availability.types.js'
+import { classifyPreventiveCycle } from '../preventive/preventive-cycle.js'
 
 export function buildAvailability(
   records: AvailabilityRecords,
@@ -59,12 +60,26 @@ export function buildAvailability(
       prioridad: 300,
     })
   }
-  if (records.preventive) {
+  const preventive = records.preventive.find(
+    (schedule) =>
+      schedule.plan.bloqueaAlVencer &&
+      classifyPreventiveCycle(
+        {
+          fechaProgramada: schedule.fechaProgramada,
+          kilometrajeActual: records.bus?.kilometrajeActual ?? 0,
+          kilometrajeObjetivo: schedule.kilometrajeObjetivo,
+          planMantenimientoPreventivo: schedule.plan,
+        },
+        evaluatedAt,
+      ).estado === 'VENCIDO',
+  )
+
+  if (preventive) {
     causas.push({
       bloquea: true,
       codigo: 'PREVENTIVO_VENCIDO_BLOQUEANTE',
       mensaje: 'El bus tiene mantenimiento preventivo vencido que bloquea la operacion',
-      origenId: records.preventive.id,
+      origenId: preventive.id,
       origenTipo: 'PREVENTIVO',
       prioridad: 250,
     })

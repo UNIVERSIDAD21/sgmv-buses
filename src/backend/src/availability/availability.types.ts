@@ -30,5 +30,15 @@ export interface AvailabilityRecords {
   conflictingJourney: { id: string } | null
   novelty: { id: string } | null
   order: { id: string } | null
-  preventive: { id: string } | null
+  preventive: Array<{
+    fechaProgramada: Date | null
+    id: string
+    kilometrajeObjetivo: number | null
+    plan: {
+      anticipacionDias: number | null
+      anticipacionKm: number | null
+      bloqueaAlVencer: boolean
+      claveTarea: string
+    }
+  }>
 }

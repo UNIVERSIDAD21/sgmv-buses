@@ -42,6 +42,12 @@ preventiveRoutes.post(
 )
 
 preventiveRoutes.get(
+  '/restricciones',
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
+  asyncHandler(preventiveController.listRestrictions),
+)
+
+preventiveRoutes.get(
   '/resumen',
   authorizeRoles('ADMINISTRADOR'),
   asyncHandler(preventiveController.summarize),

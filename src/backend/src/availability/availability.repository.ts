@@ -64,19 +64,38 @@ export async function getAvailabilityRecords(
       },
       select: { id: true },
     }),
-    tx.programacionMantenimiento.findFirst({
+    tx.programacionMantenimiento.findMany({
       where: {
         activa: true,
         busId: input.busId,
-        planMantenimientoPreventivo: { bloqueaAlVencer: true },
-        OR: [
-          { fechaProgramada: { lte: input.eventDate } },
-          ...(bus ? [{ kilometrajeObjetivo: { lte: bus.kilometrajeActual } }] : []),
-        ],
+        planMantenimientoPreventivoId: { not: null },
       },
-      select: { id: true },
+      orderBy: [{ planMantenimientoPreventivo: { claveTarea: 'asc' } }, { id: 'asc' }],
+      select: {
+        fechaProgramada: true,
+        id: true,
+        kilometrajeObjetivo: true,
+        planMantenimientoPreventivo: {
+          select: {
+            anticipacionDias: true,
+            anticipacionKm: true,
+            bloqueaAlVencer: true,
+            claveTarea: true,
+          },
+        },
+      },
     }),
   ])
 
-  return { bus, conflictingJourney, novelty, order, preventive }
+  return {
+    bus,
+    conflictingJourney,
+    novelty,
+    order,
+    preventive: preventive.flatMap((schedule) =>
+      schedule.planMantenimientoPreventivo
+        ? [{ ...schedule, plan: schedule.planMantenimientoPreventivo }]
+        : [],
+    ),
+  }
 }

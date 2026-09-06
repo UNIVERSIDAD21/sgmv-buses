@@ -200,7 +200,7 @@ export class JourneyService {
         conflictingJourney: null,
         novelty: null,
         order: null,
-        preventive: null,
+        preventive: [],
       })
     }
 
@@ -212,6 +212,7 @@ export class JourneyService {
         eventDate,
         tx,
       ),
+      eventDate,
     )
   }
 

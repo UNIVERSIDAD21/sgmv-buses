@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { Prisma, type CriterioMantenimiento, type PrioridadOrden } from '@prisma/client'
 
+import { evaluatePreventiveAlertsForBus } from '../alerts/alert.service.js'
 import { prisma } from '../prisma/client.js'
 import {
   buildPreventivePlanSnapshot,
@@ -152,7 +153,10 @@ export class PreventiveRepository {
           },
           include: preventiveScheduleInclude,
         })
-        if (existing) return { programacion: existing, status: 'EXISTING' as const }
+        if (existing) {
+          await evaluatePreventiveAlertsForBus(busId, tx)
+          return { programacion: existing, status: 'EXISTING' as const }
+        }
 
         const targets = initialPreventiveTargets(effectivePlan, bus.kilometrajeActual)
         const programacion = await tx.programacionMantenimiento.create({
@@ -169,6 +173,7 @@ export class PreventiveRepository {
           },
           include: preventiveScheduleInclude,
         })
+        await evaluatePreventiveAlertsForBus(busId, tx)
         return { programacion, status: 'CREATED' as const }
       },
       { maxWait: 15000, timeout: 60000 },

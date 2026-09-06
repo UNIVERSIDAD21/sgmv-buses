@@ -8,6 +8,7 @@ import {
   type TipoOrdenTrabajo,
 } from '@prisma/client'
 
+import { evaluatePreventiveAlertsForBus } from '../alerts/alert.service.js'
 import { prisma } from '../prisma/client.js'
 import {
   hasValidPreventivePlanSnapshot,
@@ -1414,6 +1415,8 @@ export class WorkOrderRepository {
             }
           }
         }
+
+        await evaluatePreventiveAlertsForBus(order.busId, tx)
 
         return {
           orden: await this.findOrderByIdForTransaction(orderId, tx),

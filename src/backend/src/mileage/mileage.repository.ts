@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import type { Prisma, TipoLectura } from '@prisma/client'
 
+import { evaluatePreventiveAlertsForBus } from '../alerts/alert.service.js'
 import { AppError } from '../shared/http.js'
 
 const userRefSelect = {
@@ -98,6 +99,8 @@ export async function registerContextualMileageReading(
       data: { kilometrajeActual: input.mileage },
     })
   }
+
+  await evaluatePreventiveAlertsForBus(input.busId, tx)
 
   return reading
 }
