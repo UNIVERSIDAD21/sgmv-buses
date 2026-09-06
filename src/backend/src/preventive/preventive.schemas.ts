@@ -110,7 +110,7 @@ export const listPreventiveSchedulesQuerySchema = z.object({
   pagina: z.coerce.number().int().min(1).default(1),
 })
 
-export const createPreventiveScheduleSchema = z
+const createIndependentPreventiveScheduleSchema = z
   .object({
     actividad: trimmedText(10, 2000),
     busId: z.uuid(),
@@ -121,6 +121,18 @@ export const createPreventiveScheduleSchema = z
   })
   .strict()
   .superRefine(validateCriterionShape)
+
+const applyPreventivePlanSchema = z
+  .object({
+    busId: z.uuid().optional(),
+    planId: z.uuid(),
+  })
+  .strict()
+
+export const createPreventiveScheduleSchema = z.union([
+  applyPreventivePlanSchema,
+  createIndependentPreventiveScheduleSchema,
+])
 
 export const updatePreventiveScheduleSchema = z
   .object({

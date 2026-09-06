@@ -3,6 +3,11 @@ import { randomUUID } from 'node:crypto'
 import { Prisma, type CriterioMantenimiento, type PrioridadOrden } from '@prisma/client'
 
 import { prisma } from '../prisma/client.js'
+import {
+  buildPreventivePlanSnapshot,
+  classifyPreventiveCycle,
+  initialPreventiveTargets,
+} from './preventive-cycle.js'
 
 type PreventiveDbClient = Prisma.TransactionClient | typeof prisma
 
@@ -20,6 +25,7 @@ const busSelect = {
   kilometrajeActual: true,
   marca: true,
   modelo: true,
+  modeloBusId: true,
   placa: true,
 } as const
 
@@ -53,6 +59,7 @@ export const preventiveScheduleInclude = {
       tipo: 'PREVENTIVA',
     },
   },
+  planMantenimientoPreventivo: true,
 } as const
 
 export type PreventiveScheduleRecord = Prisma.ProgramacionMantenimientoGetPayload<{
@@ -74,8 +81,6 @@ interface UpsertScheduleData {
 
 interface GenerateOrderData {
   descripcionOrden: string
-  fechaObjetivoPreventivo: Date | null
-  kilometrajeObjetivoPreventivo: number | null
   observacion: string | null
   prioridad: PrioridadOrden
 }
@@ -109,6 +114,65 @@ export class PreventiveRepository {
       },
       include: preventiveScheduleInclude,
     })
+  }
+
+  materializePlanSchedule(planId: string, requestedBusId: string | undefined, actorId: string) {
+    return prisma.$transaction(
+      async (tx) => {
+        const requestedPlan = await tx.planMantenimientoPreventivo.findUnique({
+          where: { id: planId },
+        })
+        if (!requestedPlan) return { programacion: null, status: 'PLAN_NOT_FOUND' as const }
+        if (!requestedPlan.activo) return { programacion: null, status: 'PLAN_INACTIVE' as const }
+
+        const busId = requestedPlan.busId ?? requestedBusId
+        if (!busId) return { programacion: null, status: 'BUS_REQUIRED' as const }
+        if (requestedPlan.busId && requestedBusId && requestedPlan.busId !== requestedBusId) {
+          return { programacion: null, status: 'PLAN_BUS_MISMATCH' as const }
+        }
+
+        const bus = await tx.bus.findUnique({ where: { id: busId } })
+        if (!bus) return { programacion: null, status: 'BUS_NOT_FOUND' as const }
+        if (bus.estadoOperativo === 'INACTIVO') {
+          return { programacion: null, status: 'BUS_INACTIVE' as const }
+        }
+        if (requestedPlan.modeloBusId && requestedPlan.modeloBusId !== bus.modeloBusId) {
+          return { programacion: null, status: 'PLAN_BUS_MISMATCH' as const }
+        }
+
+        await this.lockPreventiveObligation(tx, busId, requestedPlan.claveTarea)
+        const effectivePlan = await this.resolveEffectivePlan(tx, busId, requestedPlan.claveTarea)
+        if (!effectivePlan) return { programacion: null, status: 'NO_EFFECTIVE_PLAN' as const }
+
+        const existing = await tx.programacionMantenimiento.findFirst({
+          where: {
+            activa: true,
+            busId,
+            planMantenimientoPreventivo: { claveTarea: effectivePlan.claveTarea },
+          },
+          include: preventiveScheduleInclude,
+        })
+        if (existing) return { programacion: existing, status: 'EXISTING' as const }
+
+        const targets = initialPreventiveTargets(effectivePlan, bus.kilometrajeActual)
+        const programacion = await tx.programacionMantenimiento.create({
+          data: {
+            actividad: effectivePlan.actividad,
+            busId,
+            creadaPorId: actorId,
+            criterio: effectivePlan.criterio,
+            fechaProgramada: targets.fechaProgramada,
+            kilometrajeObjetivo: targets.kilometrajeObjetivo,
+            planMantenimientoPreventivoId: effectivePlan.id,
+            prioridad: effectivePlan.prioridad,
+            tipo: effectivePlan.componente,
+          },
+          include: preventiveScheduleInclude,
+        })
+        return { programacion, status: 'CREATED' as const }
+      },
+      { maxWait: 15000, timeout: 60000 },
+    )
   }
 
   findBusById(id: string) {
@@ -204,27 +268,60 @@ export class PreventiveRepository {
           }
         }
 
-        const existingOrder = schedule.ordenesTrabajo[0]
+        if (!schedule.activa) {
+          return { orden: null, programacion: schedule, status: 'INACTIVE' as const }
+        }
+
+        const taskKey = schedule.planMantenimientoPreventivo?.claveTarea ?? schedule.id
+        await this.lockPreventiveObligation(tx, schedule.busId, taskKey)
+        const lockedSchedule = await this.findScheduleByIdForTransaction(programacionId, tx)
+        if (!lockedSchedule) {
+          return { orden: null, programacion: null, status: 'NOT_FOUND' as const }
+        }
+
+        const existingOrder = lockedSchedule.ordenesTrabajo[0]
 
         if (existingOrder) {
           return {
             orden: existingOrder,
-            programacion: schedule,
+            programacion: lockedSchedule,
             status: 'ALREADY_GENERATED' as const,
           }
         }
 
+        const classification = classifyPreventiveCycle({
+          fechaProgramada: lockedSchedule.fechaProgramada,
+          kilometrajeActual: lockedSchedule.bus.kilometrajeActual,
+          kilometrajeObjetivo: lockedSchedule.kilometrajeObjetivo,
+          planMantenimientoPreventivo: lockedSchedule.planMantenimientoPreventivo,
+        })
+        if (classification.estado === 'VIGENTE') {
+          return { orden: null, programacion: lockedSchedule, status: 'NOT_ELIGIBLE' as const }
+        }
+
+        const planAplicado = lockedSchedule.planMantenimientoPreventivo
+          ? buildPreventivePlanSnapshot({
+              busId: lockedSchedule.busId,
+              createdAt: lockedSchedule.createdAt,
+              fechaProgramada: lockedSchedule.fechaProgramada,
+              id: lockedSchedule.id,
+              kilometrajeObjetivo: lockedSchedule.kilometrajeObjetivo,
+              planMantenimientoPreventivo: lockedSchedule.planMantenimientoPreventivo,
+            })
+          : undefined
+
         const order = await tx.ordenTrabajo.create({
           data: {
-            busId: schedule.busId,
+            busId: lockedSchedule.busId,
             codigo: this.createPreventiveOrderCode(),
             creadaPorId: actorId,
             descripcion: data.descripcionOrden,
             estado: 'PENDIENTE_ASIGNACION',
-            fechaObjetivoPreventivo: data.fechaObjetivoPreventivo,
-            kilometrajeObjetivoPreventivo: data.kilometrajeObjetivoPreventivo,
+            fechaObjetivoPreventivo: lockedSchedule.fechaProgramada,
+            kilometrajeObjetivoPreventivo: lockedSchedule.kilometrajeObjetivo,
             origen: 'PREVENTIVO',
-            prioridad: data.prioridad,
+            ...(planAplicado ? { planAplicado } : {}),
+            prioridad: lockedSchedule.planMantenimientoPreventivo?.prioridad ?? data.prioridad,
             programacionMantenimientoId: programacionId,
             tecnicoAsignadoId: null,
             tipo: 'PREVENTIVA',
@@ -272,6 +369,38 @@ export class PreventiveRepository {
     return client.programacionMantenimiento.findUnique({
       where: { id },
       include: preventiveScheduleInclude,
+    })
+  }
+
+  private lockPreventiveObligation(
+    tx: Prisma.TransactionClient,
+    busId: string,
+    claveTarea: string,
+  ) {
+    return tx.$executeRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${`sgmv:obligacion:${busId}:${claveTarea}`}, 0))`,
+    )
+  }
+
+  private async resolveEffectivePlan(
+    tx: Prisma.TransactionClient,
+    busId: string,
+    claveTarea: string,
+  ) {
+    const bus = await tx.bus.findUnique({
+      where: { id: busId },
+      select: { modeloBusId: true },
+    })
+    if (!bus) return null
+    const byBus = await tx.planMantenimientoPreventivo.findFirst({
+      where: { activo: true, busId, claveTarea },
+      orderBy: { version: 'desc' },
+    })
+    if (byBus) return byBus
+    if (!bus.modeloBusId) return null
+    return tx.planMantenimientoPreventivo.findFirst({
+      where: { activo: true, claveTarea, modeloBusId: bus.modeloBusId },
+      orderBy: { version: 'desc' },
     })
   }
 }

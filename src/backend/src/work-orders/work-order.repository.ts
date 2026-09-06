@@ -9,6 +9,12 @@ import {
 } from '@prisma/client'
 
 import { prisma } from '../prisma/client.js'
+import {
+  hasValidPreventivePlanSnapshot,
+  nextPreventiveTargets,
+  type PreventiveCycleTargets,
+  type PreventivePlanCycleData,
+} from '../preventive/preventive-cycle.js'
 import { reassignableWorkOrderStates } from './work-order.state.js'
 
 type WorkOrderDbClient = Prisma.TransactionClient | typeof prisma
@@ -111,10 +117,14 @@ export const workOrderDetailInclude = {
     select: {
       activa: true,
       actividad: true,
+      busId: true,
+      createdAt: true,
       criterio: true,
       fechaProgramada: true,
       id: true,
       kilometrajeObjetivo: true,
+      planMantenimientoPreventivo: true,
+      prioridad: true,
       tipo: true,
     },
   },
@@ -1299,6 +1309,48 @@ export class WorkOrderRepository {
           }
         }
 
+        const preventiveSchedule =
+          order.origen === 'PREVENTIVO' ? order.programacionMantenimiento : null
+        let successor: { plan: PreventivePlanCycleData; targets: PreventiveCycleTargets } | null =
+          null
+
+        if (preventiveSchedule?.planMantenimientoPreventivo) {
+          const originalPlan = preventiveSchedule.planMantenimientoPreventivo
+          await this.lockPreventiveObligation(tx, order.busId, originalPlan.claveTarea)
+
+          const targetsMatchOrder =
+            this.sameDate(order.fechaObjetivoPreventivo, preventiveSchedule.fechaProgramada) &&
+            order.kilometrajeObjetivoPreventivo === preventiveSchedule.kilometrajeObjetivo
+          const validSnapshot = hasValidPreventivePlanSnapshot(order.planAplicado, {
+            fechaObjetivo: preventiveSchedule.fechaProgramada,
+            kilometrajeObjetivo: preventiveSchedule.kilometrajeObjetivo,
+            plan: originalPlan,
+            programacionId: preventiveSchedule.id,
+          })
+          if (!targetsMatchOrder || !validSnapshot) {
+            return { orden: order, status: 'INVALID_PREVENTIVE_SNAPSHOT' as const }
+          }
+
+          const effectivePlan = await this.resolveEffectivePreventivePlan(
+            tx,
+            order.busId,
+            originalPlan.claveTarea,
+          )
+          if (effectivePlan) {
+            try {
+              successor = {
+                plan: effectivePlan,
+                targets: nextPreventiveTargets(effectivePlan, {
+                  fechaProgramada: preventiveSchedule.fechaProgramada,
+                  kilometrajeObjetivo: preventiveSchedule.kilometrajeObjetivo,
+                }),
+              }
+            } catch {
+              return { orden: order, status: 'INVALID_PREVENTIVE_SUCCESSOR' as const }
+            }
+          }
+        }
+
         const now = new Date()
 
         const closed = await tx.ordenTrabajo.updateMany({
@@ -1329,6 +1381,39 @@ export class WorkOrderRepository {
             ordenTrabajoId: orderId,
           },
         })
+
+        if (preventiveSchedule) {
+          await tx.programacionMantenimiento.updateMany({
+            where: { activa: true, id: preventiveSchedule.id },
+            data: { activa: false },
+          })
+
+          if (successor) {
+            const existing = await tx.programacionMantenimiento.findFirst({
+              where: {
+                activa: true,
+                busId: order.busId,
+                planMantenimientoPreventivo: { claveTarea: successor.plan.claveTarea },
+              },
+              select: { id: true },
+            })
+            if (!existing) {
+              await tx.programacionMantenimiento.create({
+                data: {
+                  actividad: successor.plan.actividad,
+                  busId: order.busId,
+                  creadaPorId: actorId,
+                  criterio: successor.plan.criterio,
+                  fechaProgramada: successor.targets.fechaProgramada,
+                  kilometrajeObjetivo: successor.targets.kilometrajeObjetivo,
+                  planMantenimientoPreventivoId: successor.plan.id,
+                  prioridad: successor.plan.prioridad,
+                  tipo: successor.plan.componente,
+                },
+              })
+            }
+          }
+        }
 
         return {
           orden: await this.findOrderByIdForTransaction(orderId, tx),
@@ -1375,6 +1460,42 @@ export class WorkOrderRepository {
     await client.$executeRaw(
       Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(CAST(${orderId} AS text))::bigint)`,
     )
+  }
+
+  private lockPreventiveObligation(
+    client: Prisma.TransactionClient,
+    busId: string,
+    claveTarea: string,
+  ) {
+    return client.$executeRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${`sgmv:obligacion:${busId}:${claveTarea}`}, 0))`,
+    )
+  }
+
+  private async resolveEffectivePreventivePlan(
+    client: Prisma.TransactionClient,
+    busId: string,
+    claveTarea: string,
+  ) {
+    const bus = await client.bus.findUnique({
+      where: { id: busId },
+      select: { modeloBusId: true },
+    })
+    if (!bus) return null
+    const byBus = await client.planMantenimientoPreventivo.findFirst({
+      where: { activo: true, busId, claveTarea },
+      orderBy: { version: 'desc' },
+    })
+    if (byBus) return byBus
+    if (!bus.modeloBusId) return null
+    return client.planMantenimientoPreventivo.findFirst({
+      where: { activo: true, claveTarea, modeloBusId: bus.modeloBusId },
+      orderBy: { version: 'desc' },
+    })
+  }
+
+  private sameDate(left: Date | null, right: Date | null) {
+    return left?.getTime() === right?.getTime()
   }
 
   private async lockSparePart(client: Prisma.TransactionClient, repuestoId: string) {

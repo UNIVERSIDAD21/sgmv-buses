@@ -3,10 +3,8 @@ import { Prisma, type CriterioMantenimiento, type PrioridadOrden } from '@prisma
 import type { AuthenticatedUser } from '../auth/auth.types.js'
 import { env } from '../config/env.js'
 import { AppError } from '../shared/http.js'
-import {
-  classifyPreventiveSchedule,
-  type PreventiveClassification,
-} from './preventive.classification.js'
+import { type PreventiveClassification } from './preventive.classification.js'
+import { classifyPreventiveCycle, effectivePreventiveThresholds } from './preventive-cycle.js'
 import {
   PreventiveRepository,
   type PreventiveScheduleRecord,
@@ -32,8 +30,6 @@ const classificationDefaults: Record<PreventiveClassification, number> = {
   VENCIDO: 0,
   VIGENTE: 0,
 }
-
-const timeZone = 'America/Bogota'
 
 interface PreparedScheduleData {
   actividad: string
@@ -175,6 +171,39 @@ export class PreventiveService {
   async createSchedule(input: CreatePreventiveScheduleInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
+    if ('planId' in input) {
+      const result = await this.preventiveRepository.materializePlanSchedule(
+        input.planId,
+        input.busId,
+        actor.id,
+      )
+      if (result.status === 'PLAN_NOT_FOUND') {
+        throw new AppError(404, 'PREVENTIVE_PLAN_NOT_FOUND', 'Plan preventivo no encontrado')
+      }
+      if (result.status === 'PLAN_INACTIVE' || result.status === 'NO_EFFECTIVE_PLAN') {
+        throw new AppError(400, 'PREVENTIVE_PLAN_INACTIVE', 'El plan preventivo no esta activo')
+      }
+      if (result.status === 'BUS_REQUIRED') {
+        throw new AppError(400, 'BUS_REQUIRED', 'Debe indicar el bus al aplicar un plan por modelo')
+      }
+      if (result.status === 'BUS_NOT_FOUND') {
+        throw new AppError(404, 'BUS_NOT_FOUND', 'Bus no encontrado')
+      }
+      if (result.status === 'BUS_INACTIVE') {
+        throw new AppError(400, 'BUS_NOT_ELIGIBLE', 'No se puede programar un bus inactivo')
+      }
+      if (result.status === 'PLAN_BUS_MISMATCH') {
+        throw new AppError(400, 'PREVENTIVE_PLAN_BUS_MISMATCH', 'El plan no aplica al bus indicado')
+      }
+      if (!result.programacion) {
+        throw new AppError(409, 'PREVENTIVE_PLAN_NOT_APPLICABLE', 'No fue posible aplicar el plan')
+      }
+      return {
+        programacion: this.mapSchedule(result.programacion),
+        yaExistia: result.status === 'EXISTING',
+      }
+    }
+
     const data = this.prepareCreateData(input)
     const bus = await this.preventiveRepository.findBusById(data.busId)
 
@@ -248,14 +277,26 @@ export class PreventiveService {
         actor.id,
         {
           descripcionOrden: normalizeText(descripcionOrden),
-          fechaObjetivoPreventivo: schedule.fechaProgramada,
-          kilometrajeObjetivoPreventivo: schedule.kilometrajeObjetivo,
           observacion: input.observacion ? normalizeText(input.observacion) : null,
           prioridad: input.prioridad as PrioridadOrden,
         },
       )
 
       if (result.status === 'NOT_FOUND' || !result.programacion || !result.orden) {
+        if (result.status === 'INACTIVE') {
+          throw new AppError(
+            400,
+            'PREVENTIVE_SCHEDULE_INACTIVE',
+            'No se puede generar orden desde una programacion inactiva',
+          )
+        }
+        if (result.status === 'NOT_ELIGIBLE') {
+          throw new AppError(
+            400,
+            'PREVENTIVE_SCHEDULE_NOT_ELIGIBLE',
+            'Solo las programaciones proximas o vencidas pueden generar orden preventiva',
+          )
+        }
         throw new AppError(404, 'PREVENTIVE_SCHEDULE_NOT_FOUND', 'Programacion no encontrada')
       }
 
@@ -388,6 +429,14 @@ export class PreventiveService {
       )
     }
 
+    if (schedule.planMantenimientoPreventivoId) {
+      throw new AppError(
+        400,
+        'PREVENTIVE_PLAN_SCHEDULE_IMMUTABLE',
+        'Las obligaciones generadas por plan no pueden editarse manualmente',
+      )
+    }
+
     const data = this.prepareUpdateData(schedule, input)
 
     if (data.activa && schedule.bus.estadoOperativo === 'INACTIVO') {
@@ -419,15 +468,11 @@ export class PreventiveService {
   }
 
   private classify(schedule: PreventiveScheduleRecord) {
-    return classifyPreventiveSchedule({
+    return classifyPreventiveCycle({
       fechaProgramada: schedule.fechaProgramada,
       kilometrajeActual: schedule.bus.kilometrajeActual,
       kilometrajeObjetivo: schedule.kilometrajeObjetivo,
-      thresholds: {
-        soonDays: env.PREVENTIVE_SOON_DAYS,
-        soonKm: env.PREVENTIVE_SOON_KM,
-        timeZone,
-      },
+      planMantenimientoPreventivo: schedule.planMantenimientoPreventivo,
     })
   }
 
@@ -508,12 +553,31 @@ export class PreventiveService {
       id: schedule.id,
       kilometrajeObjetivo: schedule.kilometrajeObjetivo,
       ordenActiva: mapOrder(schedule.ordenesTrabajo[0]),
+      plan: schedule.planMantenimientoPreventivo
+        ? {
+            anticipacionDiasEfectiva: effectivePreventiveThresholds(
+              schedule.planMantenimientoPreventivo,
+            ).soonDays,
+            anticipacionKmEfectiva: effectivePreventiveThresholds(
+              schedule.planMantenimientoPreventivo,
+            ).soonKm,
+            claveTarea: schedule.planMantenimientoPreventivo.claveTarea,
+            id: schedule.planMantenimientoPreventivo.id,
+            origen: schedule.planMantenimientoPreventivo.busId ? 'BUS' : 'MODELO',
+            version: schedule.planMantenimientoPreventivo.version,
+          }
+        : null,
+      prioridad: schedule.prioridad,
+      fuente: schedule.planMantenimientoPreventivo ? 'PLAN' : 'INDEPENDIENTE',
       tipo: schedule.tipo,
       updatedAt: schedule.updatedAt.toISOString(),
     }
   }
 
   private prepareCreateData(input: CreatePreventiveScheduleInput): PreparedScheduleData {
+    if ('planId' in input) {
+      throw new AppError(400, 'INVALID_PREVENTIVE_SCHEDULE', 'Solicitud de programacion invalida')
+    }
     return {
       actividad: normalizeText(input.actividad),
       busId: input.busId,

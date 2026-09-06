@@ -1007,6 +1007,22 @@ export class WorkOrderService {
       )
     }
 
+    if (result.status === 'INVALID_PREVENTIVE_SNAPSHOT') {
+      throw new AppError(
+        409,
+        'INVALID_PREVENTIVE_SNAPSHOT',
+        'La orden preventiva no conserva un snapshot valido de la obligacion completada',
+      )
+    }
+
+    if (result.status === 'INVALID_PREVENTIVE_SUCCESSOR') {
+      throw new AppError(
+        409,
+        'INVALID_PREVENTIVE_SUCCESSOR',
+        'El plan vigente no permite derivar el siguiente objetivo sin inventar contexto',
+      )
+    }
+
     const viewer = actor ?? {
       email: '',
       estado: 'ACTIVO' as const,
