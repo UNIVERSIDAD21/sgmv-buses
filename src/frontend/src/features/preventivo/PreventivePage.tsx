@@ -1019,7 +1019,9 @@ export default function PreventivePage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                      <p className="font-semibold text-slate-900">{schedule.bus.codigoInterno}</p>
+                          <p className="font-semibold text-slate-900">
+                            {schedule.bus.codigoInterno}
+                          </p>
                           <p className="mt-1 text-xs text-slate-500">{schedule.bus.placa}</p>
                         </div>
                         <StatusBadge status={schedule.clasificacion.estado} />
@@ -1033,7 +1035,9 @@ export default function PreventivePage() {
                           <CriterionBadge criterion={schedule.criterio} />
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-semibold uppercase text-slate-400">Fecha</span>
+                          <span className="text-xs font-semibold uppercase text-slate-400">
+                            Fecha
+                          </span>
                           <span>{formatDateValue(schedule.fechaProgramada)}</span>
                         </div>
                         <div className="flex items-center justify-between gap-3">
@@ -1047,7 +1051,9 @@ export default function PreventivePage() {
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-semibold uppercase text-slate-400">Orden</span>
+                          <span className="text-xs font-semibold uppercase text-slate-400">
+                            Orden
+                          </span>
                           <span className="text-right">
                             {schedule.ordenActiva ? schedule.ordenActiva.codigo : 'Sin orden'}
                           </span>

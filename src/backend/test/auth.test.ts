@@ -31,7 +31,7 @@ async function ensureRoles() {
   const [admin, despachador, mecanico, conductor] = await Promise.all([
     prisma.rol.upsert({
       where: { codigo: 'ADMINISTRADOR' },
-      update: {},
+      update: { nombre: 'Administrador' },
       create: {
         codigo: 'ADMINISTRADOR',
         nombre: 'Administrador',
@@ -39,7 +39,7 @@ async function ensureRoles() {
     }),
     prisma.rol.upsert({
       where: { codigo: 'DESPACHADOR' },
-      update: {},
+      update: { nombre: 'Despachador' },
       create: {
         codigo: 'DESPACHADOR',
         nombre: 'Despachador',
@@ -55,7 +55,7 @@ async function ensureRoles() {
     }),
     prisma.rol.upsert({
       where: { codigo: 'CONDUCTOR' },
-      update: {},
+      update: { nombre: 'Conductor' },
       create: {
         codigo: 'CONDUCTOR',
         nombre: 'Conductor',
