@@ -4,9 +4,26 @@ import type {
   PreventiveCriterion,
   PreventiveListResponse,
   PreventiveScheduleDto,
+  PreventivePlanDto,
+  PreventiveRestrictionDto,
   PreventiveStatus,
   PreventiveSummaryDto,
 } from './preventive.types'
+
+export interface PreventivePlanInput {
+  actividad: string
+  anticipacionDias?: number
+  anticipacionKm?: number
+  bloqueaAlVencer: boolean
+  busId?: string
+  claveTarea?: string
+  componente: string
+  criterio: PreventiveCriterion
+  intervaloDias?: number
+  intervaloKm?: number
+  modeloBusId?: string
+  prioridad: OrderPriority
+}
 
 export interface ListPreventiveParams {
   activa?: boolean | ''
@@ -76,6 +93,48 @@ function buildPreventiveQuery(params: ListPreventiveParams) {
 
 export function getPreventiveSummary() {
   return apiRequest<PreventiveSummaryDto>('/mantenimiento-preventivo/resumen')
+}
+
+export function listPreventivePlans(incluirHistoricos = false) {
+  return apiRequest<{ planes: PreventivePlanDto[] }>(
+    `/mantenimiento-preventivo/planes${incluirHistoricos ? '?incluirHistoricos=true' : ''}`,
+  )
+}
+
+export function createPreventivePlan(input: PreventivePlanInput) {
+  return apiRequest<{ plan: PreventivePlanDto }>('/mantenimiento-preventivo/planes', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function createPreventivePlanVersion(
+  planId: string,
+  input: Omit<PreventivePlanInput, 'busId' | 'claveTarea' | 'modeloBusId'>,
+) {
+  return apiRequest<{ plan: PreventivePlanDto }>(
+    `/mantenimiento-preventivo/planes/${planId}/versiones`,
+    {
+      body: JSON.stringify(input),
+      method: 'POST',
+    },
+  )
+}
+
+export function deactivatePreventivePlan(planId: string) {
+  return apiRequest<{ plan: PreventivePlanDto }>(
+    `/mantenimiento-preventivo/planes/${planId}/desactivar`,
+    {
+      body: JSON.stringify({}),
+      method: 'POST',
+    },
+  )
+}
+
+export function listPreventiveRestrictions() {
+  return apiRequest<{ evaluadoAt: string; restricciones: PreventiveRestrictionDto[] }>(
+    '/mantenimiento-preventivo/restricciones',
+  )
 }
 
 export function listPreventiveSchedules(params: ListPreventiveParams) {

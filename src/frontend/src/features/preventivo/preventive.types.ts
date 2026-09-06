@@ -87,3 +87,31 @@ export interface PreventiveSummaryDto {
     kilometros: number
   }
 }
+
+export interface PreventivePlanDto {
+  activa: boolean
+  actividad: string
+  anticipacionDias: number | null
+  anticipacionKm: number | null
+  bloqueaAlVencer: boolean
+  claveTarea: string
+  componente: string
+  criterio: PreventiveCriterion
+  destino: { busId: string; tipo: 'BUS' } | { modeloBusId: string; tipo: 'MODELO' }
+  id: string
+  intervaloDias: number | null
+  intervaloKm: number | null
+  prioridad: OrderPriority
+  programacionesAsociadas: number
+  version: number
+}
+
+export interface PreventiveRestrictionDto {
+  bloqueaDespacho: boolean
+  bus: { codigoInterno: string; id: string }
+  estado: Exclude<PreventiveStatus, 'VIGENTE'>
+  objetivos: { fecha: string | null; kilometraje: number | null }
+  programacionId: string
+  restantes: { dias: number | null; kilometros: number | null }
+  restriccion: 'PREVENTIVO_VENCIDO_BLOQUEANTE' | null
+}

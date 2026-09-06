@@ -47,7 +47,7 @@ export const REQUIREMENT_NAV_ITEMS: RequirementNavItem[] = [
     id: 'mantenimiento-preventivo',
     label: 'RF-03 — Administración del mantenimiento preventivo',
     path: '/mantenimiento-preventivo',
-    roles: ['ADMINISTRADOR'],
+    roles: ['ADMINISTRADOR', 'DESPACHADOR'],
   },
   {
     description: 'Asignación, ejecución técnica y cierre administrativo.',

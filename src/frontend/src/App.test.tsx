@@ -1990,6 +1990,67 @@ function preventiveHandler(
       })
     }
 
+    if (path === '/flota/modelos-bus' && !init?.method) {
+      return ok({
+        modelosBus: [
+          {
+            activo: true,
+            busesAsociados: 1,
+            id: 'model-1',
+            marca: 'Volvo',
+            nombreModelo: 'B340',
+            updatedAt: '2026-09-01T00:00:00.000Z',
+            versionTecnica: null,
+          },
+        ],
+      })
+    }
+    if (path === '/mantenimiento-preventivo/planes' && !init?.method) {
+      return ok({
+        planes: [
+          {
+            activa: true,
+            actividad: 'Revision preventiva de frenos completa.',
+            anticipacionDias: 7,
+            anticipacionKm: null,
+            bloqueaAlVencer: true,
+            claveTarea: 'FRENOS.001',
+            componente: 'Frenos',
+            criterio: 'FECHA',
+            destino: { busId: 'bus-1', tipo: 'BUS' },
+            id: 'plan-1',
+            intervaloDias: 30,
+            intervaloKm: null,
+            prioridad: 'MEDIA',
+            programacionesAsociadas: 1,
+            version: 1,
+          },
+        ],
+      })
+    }
+    if (path === '/mantenimiento-preventivo/planes' && init?.method === 'POST')
+      return ok({ plan: { id: 'plan-new' } })
+    if (path === '/mantenimiento-preventivo/planes/plan-1/versiones' && init?.method === 'POST')
+      return ok({ plan: { id: 'plan-2' } })
+    if (path === '/mantenimiento-preventivo/planes/plan-1/desactivar' && init?.method === 'POST')
+      return ok({ plan: { id: 'plan-1', activa: false } })
+    if (path === '/mantenimiento-preventivo/restricciones') {
+      return ok({
+        evaluadoAt: '2026-09-06T00:00:00.000Z',
+        restricciones: [
+          {
+            bloqueaDespacho: true,
+            bus: { codigoInterno: 'ABC123', id: 'bus-1' },
+            estado: 'VENCIDO',
+            objetivos: { fecha: '2026-09-01', kilometraje: null },
+            programacionId: 'prev-1',
+            restantes: { dias: -5, kilometros: null },
+            restriccion: 'PREVENTIVO_VENCIDO_BLOQUEANTE',
+          },
+        ],
+      })
+    }
+
     if (path === '/ordenes-trabajo/resumen') {
       return ok(workOrderSummary())
     }
@@ -2919,6 +2980,54 @@ describe('RF-03 preventive maintenance frontend', () => {
     render(<App />)
 
     expect(await screen.findByText(/Acceso denegado/i)).toBeInTheDocument()
+  })
+
+  it('administers plans with an XOR destination, versioning and inactivation', async () => {
+    window.history.pushState({}, '', '/mantenimiento-preventivo')
+    const fetchMock = mockApi(preventiveHandler('ADMINISTRADOR'))
+    render(<App />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Planes recurrentes/i }))
+    expect(await screen.findByText('FRENOS.001')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Crear plan$/i }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText(/Clave de tarea/i), {
+      target: { value: 'ACEITE.001' },
+    })
+    fireEvent.change(within(dialog).getByLabelText(/Componente/i), { target: { value: 'Motor' } })
+    fireEvent.change(within(dialog).getByLabelText(/Actividad/i), {
+      target: { value: 'Cambio preventivo de aceite del motor.' },
+    })
+    fireEvent.change(within(dialog).getByLabelText(/Intervalo dias/i), { target: { value: '30' } })
+    fireEvent.change(within(dialog).getByLabelText(/Bus destino/i), { target: { value: 'bus-1' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Crear plan$/i }))
+    expect(await screen.findByText(/Plan preventivo registrado/i)).toBeInTheDocument()
+    const createCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        String(input).endsWith('/mantenimiento-preventivo/planes') && init?.method === 'POST',
+    )
+    expect(String(createCall?.[1]?.body)).toContain('bus-1')
+    expect(String(createCall?.[1]?.body)).not.toContain('modeloBusId')
+
+    fireEvent.click(screen.getByRole('button', { name: /^Versionar$/i }))
+    expect(await screen.findByText(/Versionar FRENOS.001/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Crear version$/i }))
+    expect(await screen.findByText(/Nueva version registrada/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Inactivar$/i }))
+    expect(await screen.findByText(/Plan FRENOS.001 inactivado/i)).toBeInTheDocument()
+  })
+
+  it('shows only the operational restriction projection to dispatchers', async () => {
+    window.history.pushState({}, '', '/mantenimiento-preventivo')
+    mockApi(preventiveHandler('DESPACHADOR'))
+    render(<App />)
+    expect(
+      await screen.findByRole('heading', { name: /Restricciones preventivas/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Bloquea despacho/i)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Crear plan|Versionar|Inactivar/i }),
+    ).not.toBeInTheDocument()
   })
 })
 

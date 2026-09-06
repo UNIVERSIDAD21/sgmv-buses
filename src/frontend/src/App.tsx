@@ -90,7 +90,7 @@ function AppRoutes() {
         />
         <Route
           element={
-            <ProtectedRoute roles={['ADMINISTRADOR']}>
+            <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR']}>
               <PreventivePage />
             </ProtectedRoute>
           }

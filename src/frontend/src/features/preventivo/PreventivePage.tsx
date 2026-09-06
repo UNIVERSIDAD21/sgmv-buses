@@ -42,6 +42,8 @@ import type {
   PreventiveStatus,
   PreventiveSummaryDto,
 } from './preventive.types'
+import PreventivePlansPanel from './PreventivePlansPanel'
+import PreventiveRestrictionsPanel from './PreventiveRestrictionsPanel'
 
 type BadgeTone = 'amber' | 'emerald' | 'red' | 'slate' | 'teal'
 type SortField =
@@ -589,6 +591,7 @@ export default function PreventivePage() {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [summary, setSummary] = useState<PreventiveSummaryDto | null>(null)
+  const [adminView, setAdminView] = useState<'planes' | 'programaciones'>('programaciones')
 
   const isAdmin = user?.rol.codigo === 'ADMINISTRADOR'
 
@@ -804,6 +807,10 @@ export default function PreventivePage() {
     )
   }
 
+  if (user?.rol.codigo === 'DESPACHADOR') {
+    return <PreventiveRestrictionsPanel />
+  }
+
   if (!isAdmin) {
     return (
       <div className="mx-auto max-w-2xl p-4 md:p-6">
@@ -830,383 +837,407 @@ export default function PreventivePage() {
                 {totalLabel} por fecha, kilometraje o criterio combinado.
               </p>
             </div>
-            <Button icon={<PlusCircle size={16} />} onClick={() => setShowCreateForm(true)}>
-              Crear programacion
-            </Button>
+            {adminView === 'programaciones' && (
+              <Button icon={<PlusCircle size={16} />} onClick={() => setShowCreateForm(true)}>
+                Crear programacion
+              </Button>
+            )}
           </div>
-        </section>
-
-        {feedback && (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            {feedback}
-          </div>
-        )}
-
-        <ScheduleSummaryMetrics summary={summary} />
-
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="grid gap-3 lg:grid-cols-[1fr_190px_190px_170px_120px]">
-            <label className="relative">
-              <span className="sr-only">Buscar programaciones</span>
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                size={15}
-              />
-              <input
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                onChange={(event) => {
-                  setPagina(1)
-                  setBusqueda(event.target.value)
-                }}
-                placeholder="Buscar por actividad, tipo, placa o codigo"
-                type="search"
-                value={busqueda}
-              />
-            </label>
-            <label>
-              <span className="sr-only">Bus</span>
-              <select
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                onChange={(event) => {
-                  setPagina(1)
-                  setBusId(event.target.value)
-                }}
-                value={busId}
-              >
-                <option value="">Bus</option>
-                {buses.map((bus) => (
-                  <option key={bus.id} value={bus.id}>
-                    {bus.codigoInterno}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span className="sr-only">Criterio</span>
-              <select
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                onChange={(event) => {
-                  setPagina(1)
-                  setCriterio(event.target.value as PreventiveCriterion | '')
-                }}
-                value={criterio}
-              >
-                <option value="">Criterio</option>
-                {criterionOptions.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span className="sr-only">Ordenar por</span>
-              <select
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                onChange={(event) => setOrdenarPor(event.target.value as SortField)}
-                value={ordenarPor}
-              >
-                {sortOptions.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span className="sr-only">Direccion</span>
-              <select
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                onChange={(event) => setDireccion(event.target.value as 'asc' | 'desc')}
-                value={direccion}
-              >
-                <option value="desc">Desc</option>
-                <option value="asc">Asc</option>
-              </select>
-            </label>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button onClick={clearFilters} size="sm" variant="outline">
-              Limpiar
+          <div className="mt-4 flex gap-2">
+            <Button
+              onClick={() => setAdminView('programaciones')}
+              size="sm"
+              variant={adminView === 'programaciones' ? 'secondary' : 'outline'}
+            >
+              Programaciones
             </Button>
             <Button
-              onClick={() => {
-                setPagina(1)
-                setEstado('')
-              }}
+              onClick={() => setAdminView('planes')}
               size="sm"
-              variant={estado === '' ? 'secondary' : 'outline'}
+              variant={adminView === 'planes' ? 'secondary' : 'outline'}
             >
-              Todas
+              Planes recurrentes
             </Button>
-            {statusOptions.map(([value, label]) => (
-              <Button
-                key={value}
-                onClick={() => {
-                  setPagina(1)
-                  setEstado(value)
-                }}
-                size="sm"
-                variant={estado === value ? 'secondary' : 'outline'}
-              >
-                {label}
-              </Button>
-            ))}
           </div>
         </section>
 
-        {loading && (
-          <StatePanel
-            description="Consultando programaciones preventivas."
-            title="Cargando programaciones"
-            tone="loading"
-          />
-        )}
-
-        {loadError && !loading && (
-          <StatePanel description={loadError} title="No fue posible cargar" tone="error" />
-        )}
-
-        {!loading && !loadError && listData?.programaciones.length === 0 && (
-          <StatePanel
-            action={
-              <Button onClick={clearFilters} variant="outline">
-                Limpiar filtros
-              </Button>
-            }
-            description="No hay programaciones que coincidan con los filtros actuales."
-            title="Sin resultados"
-            tone="empty"
-          />
-        )}
-
-        {!loading && !loadError && listData && listData.programaciones.length > 0 && (
+        {adminView === 'planes' ? (
+          <PreventivePlansPanel />
+        ) : (
           <>
-            <div className="space-y-3 md:hidden">
-              {listData.programaciones.map((schedule) => (
-                <article
-                  className="rounded-lg border border-slate-200 bg-white p-4"
-                  key={schedule.id}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-slate-900">{schedule.bus.codigoInterno}</p>
-                      <p className="mt-1 text-xs text-slate-500">{schedule.bus.placa}</p>
-                    </div>
-                    <StatusBadge status={schedule.clasificacion.estado} />
-                  </div>
-                  <p className="mt-3 text-sm font-medium text-slate-800">{schedule.tipo}</p>
-                  <div className="mt-3 grid gap-2 text-sm text-slate-600">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-semibold uppercase text-slate-400">
-                        Criterio
-                      </span>
-                      <CriterionBadge criterion={schedule.criterio} />
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-semibold uppercase text-slate-400">Fecha</span>
-                      <span>{formatDateValue(schedule.fechaProgramada)}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-semibold uppercase text-slate-400">
-                        Kilometraje
-                      </span>
-                      <span>
-                        {schedule.kilometrajeObjetivo
-                          ? `${formatNumber(schedule.kilometrajeObjetivo)} km`
-                          : 'No aplica'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-semibold uppercase text-slate-400">Orden</span>
-                      <span className="text-right">
-                        {schedule.ordenActiva ? schedule.ordenActiva.codigo : 'Sin orden'}
-                      </span>
-                    </div>
-                  </div>
-                  <Button
-                    className="mt-4 w-full"
-                    icon={<ClipboardList size={14} />}
-                    onClick={() => openDetail(schedule.id)}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Detalle
-                  </Button>
-                </article>
-              ))}
-              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
-                <p className="text-sm text-slate-500">
-                  Pagina {listData.paginacion.pagina} de {listData.paginacion.totalPaginas}
-                </p>
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    disabled={pagina <= 1}
-                    icon={<ChevronLeft size={14} />}
-                    onClick={() => setPagina((current) => Math.max(1, current - 1))}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Anterior
-                  </Button>
-                  <Button
-                    disabled={pagina >= listData.paginacion.totalPaginas}
-                    icon={<ChevronRight size={14} />}
-                    onClick={() => setPagina((current) => current + 1)}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Siguiente
-                  </Button>
-                </div>
+            {feedback && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                {feedback}
               </div>
-            </div>
+            )}
 
-            <div className="hidden overflow-hidden rounded-lg border border-slate-200 bg-white md:block">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[1080px] text-left text-sm">
-                  <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3">Bus</th>
-                      <th className="px-4 py-3">Tipo</th>
-                      <th className="px-4 py-3">Criterio</th>
-                      <th className="px-4 py-3">Fecha</th>
-                      <th className="px-4 py-3 text-right">Kilometraje</th>
-                      <th className="px-4 py-3">Estado</th>
-                      <th className="px-4 py-3">Orden</th>
-                      <th className="px-4 py-3 text-right">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {listData.programaciones.map((schedule) => (
-                      <tr className="align-top" key={schedule.id}>
-                        <td className="px-4 py-3">
-                          <p className="font-semibold text-slate-900">
-                            {schedule.bus.codigoInterno}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">{schedule.bus.placa}</p>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">{schedule.tipo}</td>
-                        <td className="px-4 py-3">
-                          <CriterionBadge criterion={schedule.criterio} />
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">
-                          {formatDateValue(schedule.fechaProgramada)}
-                        </td>
-                        <td className="px-4 py-3 text-right text-slate-600">
-                          {schedule.kilometrajeObjetivo
-                            ? `${formatNumber(schedule.kilometrajeObjetivo)} km`
-                            : 'No aplica'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <StatusBadge status={schedule.clasificacion.estado} />
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">
-                          {schedule.ordenActiva ? schedule.ordenActiva.codigo : 'Sin orden'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex justify-end">
-                            <Button
-                              icon={<ClipboardList size={14} />}
-                              onClick={() => openDetail(schedule.id)}
-                              size="sm"
-                              variant="outline"
-                            >
-                              Detalle
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
+            <ScheduleSummaryMetrics summary={summary} />
+
+            <section className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="grid gap-3 lg:grid-cols-[1fr_190px_190px_170px_120px]">
+                <label className="relative">
+                  <span className="sr-only">Buscar programaciones</span>
+                  <Search
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={15}
+                  />
+                  <input
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    onChange={(event) => {
+                      setPagina(1)
+                      setBusqueda(event.target.value)
+                    }}
+                    placeholder="Buscar por actividad, tipo, placa o codigo"
+                    type="search"
+                    value={busqueda}
+                  />
+                </label>
+                <label>
+                  <span className="sr-only">Bus</span>
+                  <select
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    onChange={(event) => {
+                      setPagina(1)
+                      setBusId(event.target.value)
+                    }}
+                    value={busId}
+                  >
+                    <option value="">Bus</option>
+                    {buses.map((bus) => (
+                      <option key={bus.id} value={bus.id}>
+                        {bus.codigoInterno}
+                      </option>
                     ))}
-                  </tbody>
-                </table>
+                  </select>
+                </label>
+                <label>
+                  <span className="sr-only">Criterio</span>
+                  <select
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    onChange={(event) => {
+                      setPagina(1)
+                      setCriterio(event.target.value as PreventiveCriterion | '')
+                    }}
+                    value={criterio}
+                  >
+                    <option value="">Criterio</option>
+                    {criterionOptions.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="sr-only">Ordenar por</span>
+                  <select
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    onChange={(event) => setOrdenarPor(event.target.value as SortField)}
+                    value={ordenarPor}
+                  >
+                    {sortOptions.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="sr-only">Direccion</span>
+                  <select
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    onChange={(event) => setDireccion(event.target.value as 'asc' | 'desc')}
+                    value={direccion}
+                  >
+                    <option value="desc">Desc</option>
+                    <option value="asc">Asc</option>
+                  </select>
+                </label>
               </div>
-              <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-slate-500">
-                  Pagina {listData.paginacion.pagina} de {listData.paginacion.totalPaginas}
-                </p>
-                <div className="flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button onClick={clearFilters} size="sm" variant="outline">
+                  Limpiar
+                </Button>
+                <Button
+                  onClick={() => {
+                    setPagina(1)
+                    setEstado('')
+                  }}
+                  size="sm"
+                  variant={estado === '' ? 'secondary' : 'outline'}
+                >
+                  Todas
+                </Button>
+                {statusOptions.map(([value, label]) => (
                   <Button
-                    disabled={pagina <= 1}
-                    icon={<ChevronLeft size={14} />}
-                    onClick={() => setPagina((current) => Math.max(1, current - 1))}
+                    key={value}
+                    onClick={() => {
+                      setPagina(1)
+                      setEstado(value)
+                    }}
                     size="sm"
-                    variant="outline"
+                    variant={estado === value ? 'secondary' : 'outline'}
                   >
-                    Anterior
+                    {label}
                   </Button>
-                  <Button
-                    disabled={pagina >= listData.paginacion.totalPaginas}
-                    icon={<ChevronRight size={14} />}
-                    onClick={() => setPagina((current) => current + 1)}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Siguiente
+                ))}
+              </div>
+            </section>
+
+            {loading && (
+              <StatePanel
+                description="Consultando programaciones preventivas."
+                title="Cargando programaciones"
+                tone="loading"
+              />
+            )}
+
+            {loadError && !loading && (
+              <StatePanel description={loadError} title="No fue posible cargar" tone="error" />
+            )}
+
+            {!loading && !loadError && listData?.programaciones.length === 0 && (
+              <StatePanel
+                action={
+                  <Button onClick={clearFilters} variant="outline">
+                    Limpiar filtros
                   </Button>
+                }
+                description="No hay programaciones que coincidan con los filtros actuales."
+                title="Sin resultados"
+                tone="empty"
+              />
+            )}
+
+            {!loading && !loadError && listData && listData.programaciones.length > 0 && (
+              <>
+                <div className="space-y-3 md:hidden">
+                  {listData.programaciones.map((schedule) => (
+                    <article
+                      className="rounded-lg border border-slate-200 bg-white p-4"
+                      key={schedule.id}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                      <p className="font-semibold text-slate-900">{schedule.bus.codigoInterno}</p>
+                          <p className="mt-1 text-xs text-slate-500">{schedule.bus.placa}</p>
+                        </div>
+                        <StatusBadge status={schedule.clasificacion.estado} />
+                      </div>
+                      <p className="mt-3 text-sm font-medium text-slate-800">{schedule.tipo}</p>
+                      <div className="mt-3 grid gap-2 text-sm text-slate-600">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-xs font-semibold uppercase text-slate-400">
+                            Criterio
+                          </span>
+                          <CriterionBadge criterion={schedule.criterio} />
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-semibold uppercase text-slate-400">Fecha</span>
+                          <span>{formatDateValue(schedule.fechaProgramada)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-xs font-semibold uppercase text-slate-400">
+                            Kilometraje
+                          </span>
+                          <span>
+                            {schedule.kilometrajeObjetivo
+                              ? `${formatNumber(schedule.kilometrajeObjetivo)} km`
+                              : 'No aplica'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-semibold uppercase text-slate-400">Orden</span>
+                          <span className="text-right">
+                            {schedule.ordenActiva ? schedule.ordenActiva.codigo : 'Sin orden'}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        className="mt-4 w-full"
+                        icon={<ClipboardList size={14} />}
+                        onClick={() => openDetail(schedule.id)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Detalle
+                      </Button>
+                    </article>
+                  ))}
+                  <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-sm text-slate-500">
+                      Pagina {listData.paginacion.pagina} de {listData.paginacion.totalPaginas}
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        disabled={pagina <= 1}
+                        icon={<ChevronLeft size={14} />}
+                        onClick={() => setPagina((current) => Math.max(1, current - 1))}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Anterior
+                      </Button>
+                      <Button
+                        disabled={pagina >= listData.paginacion.totalPaginas}
+                        icon={<ChevronRight size={14} />}
+                        onClick={() => setPagina((current) => current + 1)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Siguiente
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+
+                <div className="hidden overflow-hidden rounded-lg border border-slate-200 bg-white md:block">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[1080px] text-left text-sm">
+                      <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500">
+                        <tr>
+                          <th className="px-4 py-3">Bus</th>
+                          <th className="px-4 py-3">Tipo</th>
+                          <th className="px-4 py-3">Criterio</th>
+                          <th className="px-4 py-3">Fecha</th>
+                          <th className="px-4 py-3 text-right">Kilometraje</th>
+                          <th className="px-4 py-3">Estado</th>
+                          <th className="px-4 py-3">Orden</th>
+                          <th className="px-4 py-3 text-right">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {listData.programaciones.map((schedule) => (
+                          <tr className="align-top" key={schedule.id}>
+                            <td className="px-4 py-3">
+                              <p className="font-semibold text-slate-900">
+                                {schedule.bus.codigoInterno}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">{schedule.bus.placa}</p>
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">{schedule.tipo}</td>
+                            <td className="px-4 py-3">
+                              <CriterionBadge criterion={schedule.criterio} />
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">
+                              {formatDateValue(schedule.fechaProgramada)}
+                            </td>
+                            <td className="px-4 py-3 text-right text-slate-600">
+                              {schedule.kilometrajeObjetivo
+                                ? `${formatNumber(schedule.kilometrajeObjetivo)} km`
+                                : 'No aplica'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <StatusBadge status={schedule.clasificacion.estado} />
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">
+                              {schedule.ordenActiva ? schedule.ordenActiva.codigo : 'Sin orden'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex justify-end">
+                                <Button
+                                  icon={<ClipboardList size={14} />}
+                                  onClick={() => openDetail(schedule.id)}
+                                  size="sm"
+                                  variant="outline"
+                                >
+                                  Detalle
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-slate-500">
+                      Pagina {listData.paginacion.pagina} de {listData.paginacion.totalPaginas}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        disabled={pagina <= 1}
+                        icon={<ChevronLeft size={14} />}
+                        onClick={() => setPagina((current) => Math.max(1, current - 1))}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Anterior
+                      </Button>
+                      <Button
+                        disabled={pagina >= listData.paginacion.totalPaginas}
+                        icon={<ChevronRight size={14} />}
+                        onClick={() => setPagina((current) => current + 1)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Siguiente
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <Drawer
+              onClose={() => setSelectedSchedule(null)}
+              open={Boolean(selectedSchedule)}
+              subtitle={
+                selectedSchedule
+                  ? `${selectedSchedule.bus.codigoInterno} - ${selectedSchedule.tipo}`
+                  : undefined
+              }
+              title="Detalle preventivo"
+            >
+              {selectedSchedule && (
+                <PreventiveDetail
+                  actions={renderActions(selectedSchedule)}
+                  schedule={selectedSchedule}
+                />
+              )}
+            </Drawer>
+
+            {showCreateForm && (
+              <ScheduleFormDialog
+                buses={buses}
+                error={formError}
+                onClose={() => {
+                  setShowCreateForm(false)
+                  setFormError(null)
+                }}
+                onSubmit={handleScheduleSubmit}
+                submitting={submitting}
+              />
+            )}
+
+            {editingSchedule && (
+              <ScheduleFormDialog
+                buses={buses}
+                error={formError}
+                initial={editingSchedule}
+                key={editingSchedule.id}
+                onClose={() => {
+                  setEditingSchedule(null)
+                  setFormError(null)
+                }}
+                onSubmit={handleScheduleSubmit}
+                submitting={submitting}
+              />
+            )}
+
+            {generatingSchedule && (
+              <GenerateOrderDialog
+                error={operationError}
+                onClose={() => {
+                  setGeneratingSchedule(null)
+                  setOperationError(null)
+                }}
+                onSubmit={handleGenerateOrder}
+                schedule={generatingSchedule}
+                submitting={submitting}
+              />
+            )}
           </>
-        )}
-
-        <Drawer
-          onClose={() => setSelectedSchedule(null)}
-          open={Boolean(selectedSchedule)}
-          subtitle={
-            selectedSchedule
-              ? `${selectedSchedule.bus.codigoInterno} - ${selectedSchedule.tipo}`
-              : undefined
-          }
-          title="Detalle preventivo"
-        >
-          {selectedSchedule && (
-            <PreventiveDetail
-              actions={renderActions(selectedSchedule)}
-              schedule={selectedSchedule}
-            />
-          )}
-        </Drawer>
-
-        {showCreateForm && (
-          <ScheduleFormDialog
-            buses={buses}
-            error={formError}
-            onClose={() => {
-              setShowCreateForm(false)
-              setFormError(null)
-            }}
-            onSubmit={handleScheduleSubmit}
-            submitting={submitting}
-          />
-        )}
-
-        {editingSchedule && (
-          <ScheduleFormDialog
-            buses={buses}
-            error={formError}
-            initial={editingSchedule}
-            key={editingSchedule.id}
-            onClose={() => {
-              setEditingSchedule(null)
-              setFormError(null)
-            }}
-            onSubmit={handleScheduleSubmit}
-            submitting={submitting}
-          />
-        )}
-
-        {generatingSchedule && (
-          <GenerateOrderDialog
-            error={operationError}
-            onClose={() => {
-              setGeneratingSchedule(null)
-              setOperationError(null)
-            }}
-            onSubmit={handleGenerateOrder}
-            schedule={generatingSchedule}
-            submitting={submitting}
-          />
         )}
       </div>
     </div>
