@@ -16,6 +16,7 @@ const rf04TestTimeout = 180000
 const created = {
   asignaciones: [] as string[],
   buses: [] as string[],
+  compatibilidades: [] as string[],
   consumos: [] as string[],
   jornadas: [] as string[],
   movimientos: [] as string[],
@@ -232,6 +233,23 @@ async function createRepuesto(overrides: Partial<Prisma.RepuestoUncheckedCreateI
   })
 }
 
+async function allowPartForBus(repuestoId: string, busId: string, adminId: string) {
+  const id = track('compatibilidades')
+  await prisma.compatibilidadRepuesto.create({
+    data: {
+      busId,
+      definidaPorId: adminId,
+      especificacionesValidadas: { fuente: 'fixture RF-04' },
+      fechaDefinicion: new Date('2026-01-01T00:00:00.000Z'),
+      id,
+      permitido: true,
+      repuestoId,
+      version: 1,
+      vigente: true,
+    },
+  })
+}
+
 async function createNovelty(
   fixture: WorkOrderFixture,
   busId: string,
@@ -395,6 +413,9 @@ async function cleanup() {
             },
           ],
         },
+      })
+      await tx.compatibilidadRepuesto.deleteMany({
+        where: { id: { in: created.compatibilidades } },
       })
       await tx.actividadOrden.deleteMany({
         where: {
@@ -879,6 +900,7 @@ describe('RF-04 Work order tracking API', () => {
     async () => {
       const { mecanico, order } = await prepareCompletableOrder(fixture)
       const repuesto = await createRepuesto({ costoUnitario: '123.45', stockActual: '2' })
+      await allowPartForBus(repuesto.id, order.busId, fixture.adminId)
       const inactivePart = await createRepuesto({ estado: 'INACTIVO', stockActual: '5' })
       const claveIdempotencia = randomUUID()
 
@@ -997,6 +1019,7 @@ describe('RF-04 Work order tracking API', () => {
 
       const { mecanico, order } = await prepareCompletableOrder(fixture)
       const repuesto = await createRepuesto({ stockActual: '1' })
+      await allowPartForBus(repuesto.id, order.busId, fixture.adminId)
       const consumptionResults = await Promise.all([
         mecanico.post(`/ordenes-trabajo/${order.id}/consumos`).send({
           cantidad: '1',

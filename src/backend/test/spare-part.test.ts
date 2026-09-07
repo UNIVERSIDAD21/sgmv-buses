@@ -14,11 +14,14 @@ const rf05TestTimeout = 180000
 
 const created = {
   buses: [] as string[],
+  compatibilidades: [] as string[],
+  modelos: [] as string[],
   consumos: [] as string[],
   intervenciones: [] as string[],
   movimientos: [] as string[],
   ordenes: [] as string[],
   repuestos: [] as string[],
+  autorizaciones: [] as string[],
   usuarios: [] as string[],
 }
 
@@ -146,6 +149,81 @@ async function createSparePart(overrides: Partial<Prisma.RepuestoUncheckedCreate
   })
 }
 
+async function allowPartForBus(repuestoId: string, busId: string, adminId: string) {
+  const id = track('compatibilidades')
+  await prisma.compatibilidadRepuesto.create({
+    data: {
+      busId,
+      definidaPorId: adminId,
+      especificacionesValidadas: { fuente: 'fixture RF-05' },
+      fechaDefinicion: new Date('2026-01-01T00:00:00.000Z'),
+      id,
+      permitido: true,
+      repuestoId,
+      version: 1,
+      vigente: true,
+    },
+  })
+}
+
+async function purgeStaleRf05Fixtures() {
+  const [parts, orders, buses] = await Promise.all([
+    prisma.repuesto.findMany({
+      where: { codigo: { startsWith: 'REP-RF05-' } },
+      select: { id: true },
+    }),
+    prisma.ordenTrabajo.findMany({
+      where: { codigo: { startsWith: 'OT-RF05-' } },
+      select: { id: true },
+    }),
+    prisma.bus.findMany({
+      where: { codigoInterno: { startsWith: 'BUS-RF05-' } },
+      select: { id: true },
+    }),
+  ])
+  const partIds = parts.map((part) => part.id)
+  const orderIds = orders.map((order) => order.id)
+  const busIds = buses.map((bus) => bus.id)
+  if (partIds.length === 0 && orderIds.length === 0 && busIds.length === 0) return
+
+  await prisma.$transaction(async (tx) => {
+    const alerts = await tx.alertaInterna.findMany({
+      where: { OR: [{ ordenTrabajoId: { in: orderIds } }, { repuestoId: { in: partIds } }] },
+      select: { id: true },
+    })
+    await tx.alertaDestinatario.deleteMany({
+      where: { alertaInternaId: { in: alerts.map((alert) => alert.id) } },
+    })
+    await tx.alertaInterna.deleteMany({ where: { id: { in: alerts.map((alert) => alert.id) } } })
+    await tx.movimientoInventario.deleteMany({
+      where: {
+        OR: [
+          { repuestoId: { in: partIds } },
+          { consumoRepuesto: { ordenTrabajoId: { in: orderIds } } },
+        ],
+      },
+    })
+    await tx.consumoRepuesto.deleteMany({
+      where: { OR: [{ repuestoId: { in: partIds } }, { ordenTrabajoId: { in: orderIds } }] },
+    })
+    await tx.autorizacionExcepcionConsumo.deleteMany({
+      where: { OR: [{ repuestoId: { in: partIds } }, { ordenTrabajoId: { in: orderIds } }] },
+    })
+    await tx.compatibilidadRepuesto.deleteMany({
+      where: { OR: [{ repuestoId: { in: partIds } }, { busId: { in: busIds } }] },
+    })
+    await tx.actividadOrden.deleteMany({
+      where: { intervencion: { ordenTrabajoId: { in: orderIds } } },
+    })
+    await tx.intervencion.deleteMany({ where: { ordenTrabajoId: { in: orderIds } } })
+    await tx.ordenEstadoHistorial.deleteMany({ where: { ordenTrabajoId: { in: orderIds } } })
+    await tx.ordenTrabajo.deleteMany({ where: { id: { in: orderIds } } })
+    await tx.bus.updateMany({ data: { modeloBusId: null }, where: { id: { in: busIds } } })
+    await tx.bus.deleteMany({ where: { id: { in: busIds } } })
+    await tx.repuesto.deleteMany({ where: { id: { in: partIds } } })
+  })
+}
+
 async function createExecutingOrder(fixture: SparePartFixture) {
   const bus = await createBus()
   const orderId = track('ordenes')
@@ -210,6 +288,16 @@ async function cleanup() {
           ],
         },
       })
+      const alertas = await tx.alertaInterna.findMany({
+        select: { id: true },
+        where: { ordenTrabajoId: { in: created.ordenes } },
+      })
+      await tx.alertaDestinatario.deleteMany({
+        where: { alertaInternaId: { in: alertas.map((alerta) => alerta.id) } },
+      })
+      await tx.alertaInterna.deleteMany({
+        where: { id: { in: alertas.map((alerta) => alerta.id) } },
+      })
       await tx.consumoRepuesto.deleteMany({
         where: {
           OR: [
@@ -228,6 +316,24 @@ async function cleanup() {
                 in: created.ordenes,
               },
             },
+          ],
+        },
+      })
+      await tx.autorizacionExcepcionConsumo.deleteMany({
+        where: {
+          OR: [
+            { id: { in: created.autorizaciones } },
+            { ordenTrabajoId: { in: created.ordenes } },
+            { repuestoId: { in: created.repuestos } },
+          ],
+        },
+      })
+      await tx.compatibilidadRepuesto.deleteMany({
+        where: {
+          OR: [
+            { id: { in: created.compatibilidades } },
+            { repuestoId: { in: created.repuestos } },
+            { busId: { in: created.buses } },
           ],
         },
       })
@@ -259,6 +365,11 @@ async function cleanup() {
           },
         },
       })
+      await tx.bus.updateMany({
+        data: { modeloBusId: null },
+        where: { id: { in: created.buses } },
+      })
+      await tx.modeloBus.deleteMany({ where: { id: { in: created.modelos } } })
       await tx.bus.deleteMany({
         where: {
           id: {
@@ -288,6 +399,7 @@ describe('RF-05 spare parts inventory API', () => {
   let mecanicoAgent: request.Agent
 
   beforeAll(async () => {
+    await purgeStaleRf05Fixtures()
     fixture = await createFixture()
     adminAgent = await loginAgent(fixture.adminEmail)
     mecanicoAgent = await loginAgent(fixture.mecanicoEmail)
@@ -301,6 +413,465 @@ describe('RF-05 spare parts inventory API', () => {
       await prisma.$disconnect()
     }
   }, 60000)
+
+  it(
+    'versions compatibility rules, applies bus precedence and rejects without positive evidence',
+    async () => {
+      const part = await createSparePart({ stockActual: '2.00' })
+      const order = await createExecutingOrder(fixture)
+      const orderBus = await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: order.id } })
+      const model = await prisma.modeloBus.create({
+        data: {
+          id: track('modelos'),
+          marca: `Modelo P8 ${shortCode()}`,
+          nombreModelo: `Modelo P8 ${shortCode()}`,
+          especificaciones: { fuente: 'test' },
+        },
+      })
+      await prisma.bus.update({ where: { id: orderBus.busId }, data: { modeloBusId: model.id } })
+      created.buses.push(orderBus.busId)
+      const modelRule = await adminAgent
+        .post(`/repuestos/${part.id}/compatibilidades`)
+        .send({
+          modeloBusId: model.id,
+          permitido: false,
+          especificacionesValidadas: { homologacion: 'modelo' },
+        })
+        .expect(201)
+      const busRule = await adminAgent
+        .post(`/repuestos/${part.id}/compatibilidades`)
+        .send({
+          busId: orderBus.busId,
+          permitido: true,
+          especificacionesValidadas: { homologacion: 'bus' },
+        })
+        .expect(201)
+      const rules = await adminAgent.get(`/repuestos/${part.id}/compatibilidades`).expect(200)
+      expect(
+        rules.body.data.compatibilidades.map((rule: { version: number }) => rule.version).sort(),
+      ).toEqual([1, 1])
+      expect(modelRule.body.data.compatibilidad.vigente).toBe(true)
+      expect(busRule.body.data.compatibilidad.permitido).toBe(true)
+      const compatible = await mecanicoAgent
+        .post(`/ordenes-trabajo/${order.id}/consumos`)
+        .send({ cantidad: '1.25', claveIdempotencia: randomUUID(), repuestoId: part.id })
+        .expect(201)
+      expect(compatible.body.data.consumo.resultadoCompatibilidad).toBe('COMPATIBLE')
+      expect(compatible.body.data.consumo.reglaCompatibilidadId).toBe(
+        busRule.body.data.compatibilidad.id,
+      )
+    },
+    rf05TestTimeout,
+  )
+
+  it(
+    'creates a rejected-consumption alert and consumes only with a prior admin exception',
+    async () => {
+      const part = await createSparePart({ stockActual: '2.00' })
+      const order = await createExecutingOrder(fixture)
+      const orderRecord = await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: order.id } })
+      const intervention = await prisma.intervencion.findFirstOrThrow({
+        where: { ordenTrabajoId: order.id },
+      })
+      const key = randomUUID()
+      await mecanicoAgent
+        .post(`/ordenes-trabajo/${order.id}/consumos`)
+        .send({ cantidad: '1', claveIdempotencia: key, repuestoId: part.id })
+        .expect(409)
+      const alert = await prisma.alertaInterna.findFirstOrThrow({
+        where: { ordenTrabajoId: order.id, repuestoId: null, tipo: 'CONSUMO_INCOMPATIBLE' },
+        include: { destinatarios: { include: { usuario: { include: { rol: true } } } } },
+      })
+      expect(alert.contextoEvento).toMatchObject({ repuestoId: part.id })
+      expect(alert.destinatarios.length).toBeGreaterThan(0)
+      expect(
+        alert.destinatarios.every(({ usuario }) =>
+          ['ADMINISTRADOR', 'DESPACHADOR'].includes(usuario.rol.codigo),
+        ),
+      ).toBe(true)
+      expect(alert.destinatarios.some(({ usuario }) => usuario.id === fixture.mecanicoId)).toBe(
+        false,
+      )
+      expect(await prisma.consumoRepuesto.count({ where: { ordenTrabajoId: order.id } })).toBe(0)
+
+      const replay = await mecanicoAgent
+        .post(`/ordenes-trabajo/${order.id}/consumos`)
+        .send({ cantidad: '1', claveIdempotencia: key, repuestoId: part.id })
+        .expect(409)
+      expect(replay.headers['idempotency-replayed']).toBe('true')
+      expect(
+        await prisma.alertaInterna.count({
+          where: { claveDeduplicacion: `consumo-incompatible:${key}` },
+        }),
+      ).toBe(1)
+      const authorization = await adminAgent
+        .post(`/ordenes-trabajo/${order.id}/excepciones-consumo`)
+        .send({
+          cantidadMaxima: '1.25',
+          intervencionId: intervention.id,
+          motivo: 'Autorizacion puntual por disponibilidad operacional',
+          repuestoId: part.id,
+        })
+        .expect(201)
+      created.autorizaciones.push(authorization.body.data.autorizacion.id)
+      const consumed = await mecanicoAgent
+        .post(`/ordenes-trabajo/${order.id}/consumos`)
+        .send({
+          autorizacionExcepcionId: authorization.body.data.autorizacion.id,
+          cantidad: '1.25',
+          claveIdempotencia: randomUUID(),
+          repuestoId: part.id,
+        })
+        .then((response) => {
+          expect(response.status).toBe(201)
+          return response
+        })
+      expect(consumed.body.data.consumo.resultadoCompatibilidad).toBe('EXCEPCION_AUTORIZADA')
+      expect(consumed.body.data.consumo.autorizadoPorId).toBe(fixture.adminId)
+      expect(
+        (await prisma.repuesto.findUniqueOrThrow({ where: { id: part.id } })).stockActual.toFixed(
+          2,
+        ),
+      ).toBe('0.75')
+      expect(orderRecord.tecnicoAsignadoId).toBe(fixture.mecanicoId)
+      await mecanicoAgent
+        .post(`/ordenes-trabajo/${order.id}/consumos`)
+        .send({
+          autorizacionExcepcionId: authorization.body.data.autorizacion.id,
+          cantidad: '0.5',
+          claveIdempotencia: randomUUID(),
+          repuestoId: part.id,
+        })
+        .expect(409)
+    },
+    rf05TestTimeout,
+  )
+
+  it(
+    'versions and inactivates a compatibility rule idempotently',
+    async () => {
+      const part = await createSparePart()
+      const bus = await createBus()
+      const firstKey = randomUUID()
+      const firstInput = {
+        busId: bus.id,
+        permitido: true,
+        especificacionesValidadas: { homologacion: 'primera-version' },
+      }
+
+      const first = await adminAgent
+        .post(`/repuestos/${part.id}/compatibilidades`)
+        .set('Idempotency-Key', firstKey)
+        .send(firstInput)
+        .expect(201)
+      const firstRuleId = first.body.data.compatibilidad.id as string
+      created.compatibilidades.push(firstRuleId)
+
+      const retry = await adminAgent
+        .post(`/repuestos/${part.id}/compatibilidades`)
+        .set('Idempotency-Key', firstKey)
+        .send(firstInput)
+        .expect(201)
+
+      expect(retry.headers['idempotency-replayed']).toBe('true')
+      expect(retry.body).toEqual(first.body)
+
+      const second = await adminAgent
+        .post(`/repuestos/${part.id}/compatibilidades`)
+        .set('Idempotency-Key', randomUUID())
+        .send({
+          ...firstInput,
+          permitido: false,
+          especificacionesValidadas: { homologacion: 'segunda-version' },
+        })
+        .expect(201)
+      const secondRuleId = second.body.data.compatibilidad.id as string
+      created.compatibilidades.push(secondRuleId)
+
+      expect(second.body.data.compatibilidad.version).toBe(2)
+      expect(second.body.data.compatibilidad.vigente).toBe(true)
+
+      const deactivateKey = randomUUID()
+      const deactivated = await adminAgent
+        .post(`/repuestos/${part.id}/compatibilidades/${secondRuleId}/inactivar`)
+        .set('Idempotency-Key', deactivateKey)
+        .send({})
+        .expect(200)
+      const deactivateRetry = await adminAgent
+        .post(`/repuestos/${part.id}/compatibilidades/${secondRuleId}/inactivar`)
+        .set('Idempotency-Key', deactivateKey)
+        .send({})
+        .expect(200)
+
+      expect(deactivated.body.data.compatibilidad.vigente).toBe(false)
+      expect(deactivateRetry.headers['idempotency-replayed']).toBe('true')
+      expect(deactivateRetry.body).toEqual(deactivated.body)
+
+      const rules = await prisma.compatibilidadRepuesto.findMany({
+        orderBy: { version: 'asc' },
+        where: { repuestoId: part.id, busId: bus.id },
+      })
+      expect(rules.map((rule) => [rule.version, rule.vigente])).toEqual([
+        [1, false],
+        [2, false],
+      ])
+    },
+    rf05TestTimeout,
+  )
+
+  it(
+    'serializes competing compatibility versions and leaves one current rule',
+    async () => {
+      const part = await createSparePart()
+      const bus = await createBus()
+      const requestVersion = (homologacion: string) =>
+        adminAgent
+          .post(`/repuestos/${part.id}/compatibilidades`)
+          .set('Idempotency-Key', randomUUID())
+          .send({
+            busId: bus.id,
+            permitido: true,
+            especificacionesValidadas: { homologacion },
+          })
+
+      const responses = await Promise.all([
+        requestVersion('concurrente-a'),
+        requestVersion('concurrente-b'),
+      ])
+      responses.forEach((response) => expect(response.status).toBe(201))
+      created.compatibilidades.push(
+        ...responses.map((response) => response.body.data.compatibilidad.id as string),
+      )
+
+      const rules = await prisma.compatibilidadRepuesto.findMany({
+        orderBy: { version: 'asc' },
+        where: { busId: bus.id, repuestoId: part.id },
+      })
+      expect(rules.map((rule) => rule.version)).toEqual([1, 2])
+      expect(rules.filter((rule) => rule.vigente)).toHaveLength(1)
+      expect(rules.find((rule) => rule.vigente)?.version).toBe(2)
+    },
+    rf05TestTimeout,
+  )
+
+  it(
+    'does not fall back to a compatible model rule when the bus rule is negative',
+    async () => {
+      const part = await createSparePart({ stockActual: '2.00' })
+      const order = await createExecutingOrder(fixture)
+      const orderBus = await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: order.id } })
+      const model = await prisma.modeloBus.create({
+        data: {
+          id: track('modelos'),
+          marca: `Modelo P8 ${shortCode()}`,
+          nombreModelo: `Modelo P8 ${shortCode()}`,
+          especificaciones: { fuente: 'test' },
+        },
+      })
+      await prisma.bus.update({ where: { id: orderBus.busId }, data: { modeloBusId: model.id } })
+      created.buses.push(orderBus.busId)
+
+      const modelRule = await adminAgent
+        .post(`/repuestos/${part.id}/compatibilidades`)
+        .send({
+          modeloBusId: model.id,
+          permitido: true,
+          especificacionesValidadas: { homologacion: 'modelo-compatible' },
+        })
+        .expect(201)
+      created.compatibilidades.push(modelRule.body.data.compatibilidad.id)
+
+      const busRule = await adminAgent
+        .post(`/repuestos/${part.id}/compatibilidades`)
+        .send({
+          busId: orderBus.busId,
+          permitido: false,
+          especificacionesValidadas: { homologacion: 'bus-no-compatible' },
+        })
+        .expect(201)
+      created.compatibilidades.push(busRule.body.data.compatibilidad.id)
+
+      await mecanicoAgent
+        .post(`/ordenes-trabajo/${order.id}/consumos`)
+        .send({ cantidad: '1', claveIdempotencia: randomUUID(), repuestoId: part.id })
+        .expect(409)
+
+      const reloaded = await prisma.repuesto.findUniqueOrThrow({ where: { id: part.id } })
+      expect(reloaded.stockActual.toFixed(2)).toBe('2.00')
+      expect(await prisma.consumoRepuesto.count({ where: { ordenTrabajoId: order.id } })).toBe(0)
+      const alert = await prisma.alertaInterna.findFirstOrThrow({
+        where: { ordenTrabajoId: order.id, tipo: 'CONSUMO_INCOMPATIBLE' },
+      })
+      expect(alert.contextoEvento).toMatchObject({
+        destino: 'BUS',
+        permitido: false,
+        reglaId: busRule.body.data.compatibilidad.id,
+      })
+    },
+    rf05TestTimeout,
+  )
+
+  it(
+    'rejects consumption with a revoked exception',
+    async () => {
+      const part = await createSparePart({ stockActual: '2.00' })
+      const order = await createExecutingOrder(fixture)
+      const intervention = await prisma.intervencion.findFirstOrThrow({
+        where: { ordenTrabajoId: order.id, fechaFin: null },
+      })
+      const authorization = await adminAgent
+        .post(`/ordenes-trabajo/${order.id}/excepciones-consumo`)
+        .send({
+          cantidadMaxima: '1.00',
+          intervencionId: intervention.id,
+          motivo: 'Excepcion revocable de prueba',
+          repuestoId: part.id,
+        })
+        .expect(201)
+      const authorizationId = authorization.body.data.autorizacion.id as string
+      created.autorizaciones.push(authorizationId)
+
+      await adminAgent
+        .post(`/ordenes-trabajo/${order.id}/excepciones-consumo/${authorizationId}/revocar`)
+        .send({})
+        .expect(200)
+
+      const revoked = await prisma.autorizacionExcepcionConsumo.findUniqueOrThrow({
+        where: { id: authorizationId },
+      })
+      expect(revoked.estado).toBe('REVOCADA')
+
+      await mecanicoAgent
+        .post(`/ordenes-trabajo/${order.id}/consumos`)
+        .send({
+          autorizacionExcepcionId: authorizationId,
+          cantidad: '1',
+          claveIdempotencia: randomUUID(),
+          repuestoId: part.id,
+        })
+        .expect(409)
+
+      expect(await prisma.consumoRepuesto.count({ where: { ordenTrabajoId: order.id } })).toBe(0)
+      expect(
+        (await prisma.repuesto.findUniqueOrThrow({ where: { id: part.id } })).stockActual.toFixed(
+          2,
+        ),
+      ).toBe('2.00')
+    },
+    rf05TestTimeout,
+  )
+
+  it(
+    'rejects an expired exception without changing stock or creating consumption',
+    async () => {
+      const part = await createSparePart({ stockActual: '2.00' })
+      const order = await createExecutingOrder(fixture)
+      const intervention = await prisma.intervencion.findFirstOrThrow({
+        where: { ordenTrabajoId: order.id, fechaFin: null },
+      })
+      const authorizationId = track('autorizaciones')
+      const now = Date.now()
+      await prisma.autorizacionExcepcionConsumo.create({
+        data: {
+          autorizadoPorId: fixture.adminId,
+          cantidadMaxima: '1.00',
+          fechaAutorizacion: new Date(now - 120_000),
+          fechaExpiracion: new Date(now - 60_000),
+          id: authorizationId,
+          intervencionId: intervention.id,
+          motivo: 'Excepcion expirada de prueba P8',
+          ordenTrabajoId: order.id,
+          repuestoId: part.id,
+        },
+      })
+
+      await mecanicoAgent
+        .post(`/ordenes-trabajo/${order.id}/consumos`)
+        .send({
+          autorizacionExcepcionId: authorizationId,
+          cantidad: '1',
+          claveIdempotencia: randomUUID(),
+          repuestoId: part.id,
+        })
+        .expect(409)
+
+      expect(await prisma.consumoRepuesto.count({ where: { ordenTrabajoId: order.id } })).toBe(0)
+      expect(
+        (await prisma.repuesto.findUniqueOrThrow({ where: { id: part.id } })).stockActual.toFixed(
+          2,
+        ),
+      ).toBe('2.00')
+    },
+    rf05TestTimeout,
+  )
+
+  it(
+    'rejects reused and out-of-context consumption exceptions',
+    async () => {
+      const part = await createSparePart({ stockActual: '3.00' })
+      const order = await createExecutingOrder(fixture)
+      const otherOrder = await createExecutingOrder(fixture)
+      const intervention = await prisma.intervencion.findFirstOrThrow({
+        where: { ordenTrabajoId: order.id, fechaFin: null },
+      })
+      const authorization = await adminAgent
+        .post(`/ordenes-trabajo/${order.id}/excepciones-consumo`)
+        .send({
+          cantidadMaxima: '1.00',
+          intervencionId: intervention.id,
+          motivo: 'Excepcion de un solo uso',
+          repuestoId: part.id,
+        })
+        .expect(201)
+      const authorizationId = authorization.body.data.autorizacion.id as string
+      created.autorizaciones.push(authorizationId)
+
+      await mecanicoAgent
+        .post(`/ordenes-trabajo/${otherOrder.id}/consumos`)
+        .send({
+          autorizacionExcepcionId: authorizationId,
+          cantidad: '1',
+          claveIdempotencia: randomUUID(),
+          repuestoId: part.id,
+        })
+        .expect(409)
+
+      const consumed = await mecanicoAgent
+        .post(`/ordenes-trabajo/${order.id}/consumos`)
+        .send({
+          autorizacionExcepcionId: authorizationId,
+          cantidad: '1',
+          claveIdempotencia: randomUUID(),
+          repuestoId: part.id,
+        })
+        .expect(201)
+      created.consumos.push(consumed.body.data.consumo.id)
+      created.movimientos.push(consumed.body.data.consumo.movimientoInventario.id)
+
+      const used = await prisma.autorizacionExcepcionConsumo.findUniqueOrThrow({
+        where: { id: authorizationId },
+      })
+      expect(used.estado).toBe('USADA')
+
+      await mecanicoAgent
+        .post(`/ordenes-trabajo/${order.id}/consumos`)
+        .send({
+          autorizacionExcepcionId: authorizationId,
+          cantidad: '1',
+          claveIdempotencia: randomUUID(),
+          repuestoId: part.id,
+        })
+        .expect(409)
+
+      expect(await prisma.consumoRepuesto.count({ where: { repuestoId: part.id } })).toBe(1)
+      expect(
+        (await prisma.repuesto.findUniqueOrThrow({ where: { id: part.id } })).stockActual.toFixed(
+          2,
+        ),
+      ).toBe('2.00')
+    },
+    rf05TestTimeout,
+  )
 
   it(
     'enforces authentication and RF-05 administrative roles',
@@ -620,6 +1191,8 @@ describe('RF-05 spare parts inventory API', () => {
         stockActual: '3.00',
       })
       const order = await createExecutingOrder(fixture)
+      const orderBus = await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: order.id } })
+      await allowPartForBus(part.id, orderBus.busId, fixture.adminId)
 
       const consumption = await mecanicoAgent
         .post(`/ordenes-trabajo/${order.id}/consumos`)
@@ -671,6 +1244,8 @@ describe('RF-05 spare parts inventory API', () => {
     async () => {
       const part = await createSparePart({ stockActual: '1.00' })
       const order = await createExecutingOrder(fixture)
+      const orderBus = await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: order.id } })
+      await allowPartForBus(part.id, orderBus.busId, fixture.adminId)
       const results = await Promise.all([
         mecanicoAgent.post(`/ordenes-trabajo/${order.id}/consumos`).send({
           cantidad: '1',

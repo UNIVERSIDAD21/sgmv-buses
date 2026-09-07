@@ -58,8 +58,17 @@ export interface CreateActivityInput {
 }
 
 export interface CreateConsumptionInput {
+  autorizacionExcepcionId?: string
   cantidad: string
   claveIdempotencia: string
+  repuestoId: string
+}
+
+export interface AuthorizeConsumptionExceptionInput {
+  cantidadMaxima: string
+  fechaExpiracion?: string
+  intervencionId: string
+  motivo: string
   repuestoId: string
 }
 
@@ -219,6 +228,23 @@ export function createWorkOrderConsumption(ordenId: string, input: CreateConsump
       body: JSON.stringify(input),
       method: 'POST',
     },
+  )
+}
+
+export function authorizeWorkOrderConsumptionException(
+  ordenId: string,
+  input: AuthorizeConsumptionExceptionInput,
+) {
+  return apiRequest<{ autorizacion: { id: string } }>(
+    `/ordenes-trabajo/${ordenId}/excepciones-consumo`,
+    { body: JSON.stringify(input), method: 'POST' },
+  )
+}
+
+export function revokeWorkOrderConsumptionException(ordenId: string, autorizacionId: string) {
+  return apiRequest<{ autorizacion: { id: string } }>(
+    `/ordenes-trabajo/${ordenId}/excepciones-consumo/${autorizacionId}/revocar`,
+    { body: '{}', method: 'POST' },
   )
 }
 

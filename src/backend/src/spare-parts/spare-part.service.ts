@@ -81,6 +81,10 @@ function mapSparePart(part: SparePartRecord): SparePartDto {
   return {
     ...mapSparePartSummary(part),
     createdAt: part.createdAt.toISOString(),
+    dimensiones: part.dimensiones as Record<string, unknown> | null,
+    especificaciones: part.especificaciones as Record<string, unknown> | null,
+    fabricante: part.fabricante,
+    numeroParte: part.numeroParte,
     updatedAt: part.updatedAt.toISOString(),
   }
 }
@@ -207,6 +211,8 @@ export class SparePartService {
       codigo: normalizeCode(input.codigo),
       motivoStockInicial: normalizeOptionalText(input.motivoStockInicial),
       nombre: normalizeText(input.nombre),
+      fabricante: normalizeOptionalText(input.fabricante),
+      numeroParte: normalizeOptionalText(input.numeroParte),
       unidadMedida: normalizeText(input.unidadMedida),
     }
 
@@ -269,7 +275,11 @@ export class SparePartService {
       ...input,
       categoria: normalizeOptionalText(input.categoria),
       codigo: input.codigo ? normalizeCode(input.codigo) : undefined,
+      dimensiones: input.dimensiones,
+      especificaciones: input.especificaciones,
+      fabricante: normalizeOptionalText(input.fabricante),
       nombre: input.nombre ? normalizeText(input.nombre) : undefined,
+      numeroParte: normalizeOptionalText(input.numeroParte),
       unidadMedida: input.unidadMedida ? normalizeText(input.unidadMedida) : undefined,
     }
 

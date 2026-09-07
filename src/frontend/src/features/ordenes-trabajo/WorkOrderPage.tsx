@@ -28,6 +28,7 @@ import type { BusSummaryDto } from '../flota/fleet.types'
 import type { OrderPriority } from '../novedades/novelty.types'
 import {
   assignWorkOrder,
+  authorizeWorkOrderConsumptionException,
   closeWorkOrder,
   completeWorkOrder,
   createManualWorkOrder,
@@ -41,6 +42,7 @@ import {
   listMyWorkOrders,
   listWorkOrders,
   reassignWorkOrder,
+  revokeWorkOrderConsumptionException,
   resumeWorkOrder,
   returnWorkOrder,
   startWorkOrder,
@@ -828,6 +830,14 @@ function TechnicalPanel({
   const [repuestoId, setRepuestoId] = useState('')
   const [technicalSubmitting, setTechnicalSubmitting] = useState(false)
   const isBusy = submitting || technicalSubmitting
+  const selectedPart = parts.find((part) => part.id === repuestoId)
+  const applicableAuthorization = (order.autorizacionesExcepcion ?? []).find(
+    (authorization) =>
+      authorization.estado === 'VIGENTE' &&
+      authorization.intervencionId === activeIntervention?.id &&
+      authorization.repuesto.id === repuestoId &&
+      (!authorization.fechaExpiracion || new Date(authorization.fechaExpiracion) > new Date()),
+  )
 
   useEffect(() => {
     if (!order.acciones.puedeRegistrarTecnica) {
@@ -935,6 +945,7 @@ function TechnicalPanel({
 
     runOperation(
       createWorkOrderConsumption(order.id, {
+        ...(applicableAuthorization ? { autorizacionExcepcionId: applicableAuthorization.id } : {}),
         cantidad,
         claveIdempotencia: idempotencyKey(),
         repuestoId,
@@ -1073,13 +1084,39 @@ function TechnicalPanel({
                 value={repuestoId}
               >
                 <option value="">{partsLoading ? 'Cargando...' : 'Seleccione repuesto'}</option>
-                {parts.map((part) => (
-                  <option key={part.id} value={part.id}>
-                    {part.codigo} - {part.nombre} - stock {part.stockActual}
-                  </option>
-                ))}
+                {parts.map((part) => {
+                  const authorization = (order.autorizacionesExcepcion ?? []).find(
+                    (candidate) =>
+                      candidate.estado === 'VIGENTE' &&
+                      candidate.intervencionId === activeIntervention?.id &&
+                      candidate.repuesto.id === part.id &&
+                      (!candidate.fechaExpiracion ||
+                        new Date(candidate.fechaExpiracion) > new Date()),
+                  )
+                  const compatibilityResult = part.compatibilidad?.resultado ?? 'COMPATIBLE'
+                  const permitted = compatibilityResult === 'COMPATIBLE'
+                  return (
+                    <option disabled={!permitted && !authorization} key={part.id} value={part.id}>
+                      {part.codigo} - {part.nombre} - stock {part.stockActual} -{' '}
+                      {permitted
+                        ? `Compatible${part.compatibilidad?.condicionUso ? `: ${part.compatibilidad.condicionUso}` : ''}`
+                        : authorization
+                          ? `Excepcion autorizada hasta ${authorization.cantidadMaxima}`
+                          : compatibilityResult === 'INCOMPATIBLE'
+                            ? 'Incompatible'
+                            : 'Sin evidencia'}
+                    </option>
+                  )
+                })}
               </select>
             </label>
+            {selectedPart && applicableAuthorization && (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                Excepcion puntual autorizada por {applicableAuthorization.autorizadoPor.nombre}:{' '}
+                maximo {applicableAuthorization.cantidadMaxima}. Motivo:{' '}
+                {applicableAuthorization.motivo}
+              </p>
+            )}
             <div className="flex justify-end">
               <Button icon={<Package size={14} />} loading={isBusy} size="sm" type="submit">
                 Registrar consumo
@@ -1130,6 +1167,183 @@ function TechnicalPanel({
             </div>
           </div>
         </ModalFrame>
+      )}
+    </section>
+  )
+}
+
+function ConsumptionExceptionPanel({
+  onFeedback,
+  onOrderChange,
+  order,
+}: {
+  onFeedback: (message: string) => void
+  onOrderChange: (order: WorkOrderDetailDto) => void
+  order: WorkOrderDetailDto
+}) {
+  const activeIntervention = order.intervenciones.find((intervention) => !intervention.fechaFin)
+  const [parts, setParts] = useState<AvailableSparePartDto[]>([])
+  const [partId, setPartId] = useState('')
+  const [quantity, setQuantity] = useState('')
+  const [reason, setReason] = useState('')
+  const [expiresAt, setExpiresAt] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (!activeIntervention || order.estado !== 'EN_EJECUCION') return
+    let active = true
+    getAvailableSpareParts(order.id)
+      .then((response) => {
+        if (active) setParts(response.repuestos)
+      })
+      .catch((loadError) => {
+        if (active) setError(getErrorMessage(loadError))
+      })
+    return () => {
+      active = false
+    }
+  }, [activeIntervention, order.estado, order.id])
+
+  if (!activeIntervention || order.estado !== 'EN_EJECUCION') return null
+
+  async function refresh(message: string) {
+    const response = await getWorkOrder(order.id)
+    onOrderChange(response.orden)
+    onFeedback(message)
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!partId || !Number(quantity) || Number(quantity) <= 0 || normalizeText(reason).length < 3) {
+      setError('Seleccione repuesto, cantidad positiva y motivo de al menos 3 caracteres.')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      await authorizeWorkOrderConsumptionException(order.id, {
+        cantidadMaxima: quantity,
+        ...(expiresAt ? { fechaExpiracion: new Date(expiresAt).toISOString() } : {}),
+        intervencionId: activeIntervention!.id,
+        motivo: normalizeText(reason),
+        repuestoId: partId,
+      })
+      setPartId('')
+      setQuantity('')
+      setReason('')
+      setExpiresAt('')
+      await refresh('Excepcion puntual autorizada.')
+    } catch (operationError) {
+      setError(getErrorMessage(operationError))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function revoke(authorizationId: string) {
+    setBusy(true)
+    setError(null)
+    try {
+      await revokeWorkOrderConsumptionException(order.id, authorizationId)
+      await refresh('Excepcion revocada.')
+    } catch (operationError) {
+      setError(getErrorMessage(operationError))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="space-y-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+      <div>
+        <h3 className="text-sm font-semibold text-amber-950">Excepciones de compatibilidad</h3>
+        <p className="mt-1 text-sm text-amber-800">
+          Autorizacion puntual para esta orden, intervencion, repuesto y cantidad maxima.
+        </p>
+      </div>
+      {error && <p className="text-sm text-red-700">{error}</p>}
+      <form className="grid gap-3 sm:grid-cols-2" onSubmit={submit}>
+        <label className="block text-sm font-medium text-slate-700">
+          Repuesto
+          <select
+            className="mt-1.5 h-10 w-full rounded-lg border border-amber-200 bg-white px-3 text-sm"
+            onChange={(event) => setPartId(event.target.value)}
+            required
+            value={partId}
+          >
+            <option value="">Seleccione</option>
+            {parts.map((part) => (
+              <option key={part.id} value={part.id}>
+                {part.codigo} - {part.nombre} - {part.compatibilidad.resultado}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          Cantidad maxima
+          <input
+            className="mt-1.5 h-10 w-full rounded-lg border border-amber-200 px-3 text-sm"
+            min="0.01"
+            onChange={(event) => setQuantity(event.target.value)}
+            required
+            step="0.01"
+            type="number"
+            value={quantity}
+          />
+        </label>
+        <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
+          Motivo administrativo
+          <textarea
+            className="mt-1.5 min-h-20 w-full rounded-lg border border-amber-200 p-3 text-sm"
+            maxLength={1000}
+            onChange={(event) => setReason(event.target.value)}
+            required
+            value={reason}
+          />
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          Expiracion (opcional)
+          <input
+            className="mt-1.5 h-10 w-full rounded-lg border border-amber-200 px-3 text-sm"
+            onChange={(event) => setExpiresAt(event.target.value)}
+            type="datetime-local"
+            value={expiresAt}
+          />
+        </label>
+        <div className="flex items-end justify-end">
+          <Button loading={busy} type="submit" variant="secondary">
+            Autorizar excepcion
+          </Button>
+        </div>
+      </form>
+      {(order.autorizacionesExcepcion ?? []).length > 0 && (
+        <div className="space-y-2 border-t border-amber-200 pt-3">
+          {(order.autorizacionesExcepcion ?? []).map((authorization) => (
+            <div
+              className="rounded-lg border border-amber-200 bg-white p-3 text-sm"
+              key={authorization.id}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  {authorization.repuesto.codigo} - max. {authorization.cantidadMaxima} -{' '}
+                  {authorization.estado}
+                </span>
+                {authorization.estado === 'VIGENTE' && (
+                  <Button
+                    disabled={busy}
+                    onClick={() => revoke(authorization.id)}
+                    size="sm"
+                    variant="danger"
+                  >
+                    Revocar
+                  </Button>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-slate-600">{authorization.motivo}</p>
+            </div>
+          ))}
+        </div>
       )}
     </section>
   )
@@ -1288,6 +1502,14 @@ function WorkOrderDetail({
               )}
           </div>
         </section>
+      )}
+
+      {isAdmin && (
+        <ConsumptionExceptionPanel
+          onFeedback={onFeedback}
+          onOrderChange={onOrderChange}
+          order={order}
+        />
       )}
 
       {isMechanic && (

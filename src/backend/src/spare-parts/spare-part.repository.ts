@@ -33,8 +33,12 @@ const sparePartSelect = {
   costoUnitario: true,
   createdAt: true,
   estado: true,
+  dimensiones: true,
+  especificaciones: true,
+  fabricante: true,
   id: true,
   nombre: true,
+  numeroParte: true,
   stockActual: true,
   stockMinimo: true,
   unidadMedida: true,
@@ -440,7 +444,15 @@ export class SparePartRepository {
             categoria: input.categoria ?? null,
             codigo: input.codigo,
             costoUnitario: currentCost,
+            dimensiones: input.dimensiones
+              ? (input.dimensiones as Prisma.InputJsonObject)
+              : Prisma.JsonNull,
+            especificaciones: input.especificaciones
+              ? (input.especificaciones as Prisma.InputJsonObject)
+              : Prisma.JsonNull,
+            fabricante: input.fabricante ?? null,
             nombre: input.nombre,
+            numeroParte: input.numeroParte ?? null,
             stockActual: initialStock,
             stockMinimo: new Prisma.Decimal(input.stockMinimo),
             unidadMedida: input.unidadMedida,
@@ -514,6 +526,14 @@ export class SparePartRepository {
               ? { costoUnitario: new Prisma.Decimal(input.costoUnitario) }
               : {}),
             ...(input.nombre ? { nombre: input.nombre } : {}),
+            ...(input.fabricante !== undefined ? { fabricante: input.fabricante ?? null } : {}),
+            ...(input.numeroParte !== undefined ? { numeroParte: input.numeroParte ?? null } : {}),
+            ...(input.especificaciones !== undefined
+              ? { especificaciones: input.especificaciones as Prisma.InputJsonObject }
+              : {}),
+            ...(input.dimensiones !== undefined
+              ? { dimensiones: input.dimensiones as Prisma.InputJsonObject }
+              : {}),
             ...(input.stockMinimo !== undefined
               ? { stockMinimo: new Prisma.Decimal(input.stockMinimo) }
               : {}),

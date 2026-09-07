@@ -4,8 +4,10 @@ import { authenticate, authorizeRoles, enforceAllowedOrigin } from '../auth/auth
 import { idempotent } from '../idempotency/idempotency.middleware.js'
 import { asyncHandler } from '../shared/http.js'
 import { SparePartController } from './spare-part.controller.js'
+import { CompatibilityController } from './compatibility.controller.js'
 
 const sparePartController = new SparePartController()
+const compatibilityController = new CompatibilityController()
 const sparePartRoutes = Router()
 const inventoryRoutes = Router()
 
@@ -36,6 +38,17 @@ sparePartRoutes.post(
   idempotent(sparePartController.registerAdjustment),
 )
 sparePartRoutes.get('/:repuestoId/movimientos', asyncHandler(sparePartController.listPartMovements))
+sparePartRoutes.get('/:repuestoId/compatibilidades', asyncHandler(compatibilityController.list))
+sparePartRoutes.post(
+  '/:repuestoId/compatibilidades',
+  enforceAllowedOrigin,
+  idempotent(compatibilityController.create),
+)
+sparePartRoutes.post(
+  '/:repuestoId/compatibilidades/:compatibilidadId/inactivar',
+  enforceAllowedOrigin,
+  idempotent(compatibilityController.deactivate),
+)
 sparePartRoutes.patch('/:repuestoId', enforceAllowedOrigin, idempotent(sparePartController.update))
 sparePartRoutes.get('/:repuestoId', asyncHandler(sparePartController.getById))
 

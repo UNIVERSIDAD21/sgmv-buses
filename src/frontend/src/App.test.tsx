@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { RoleCode } from './domain/labels'
+import type { CompatibilityRuleDto } from './features/repuestos/spare-part.types'
 import App from './App'
 
 const testCsrfToken = 'csrf-token-verificable-de-prueba'
@@ -828,6 +829,16 @@ const workOrderPart = {
   unidadMedida: 'unidad',
 }
 
+const workOrderAvailablePart = {
+  ...workOrderPart,
+  compatibilidad: {
+    condicionUso: null,
+    reglaId: null,
+    resultado: 'SIN_EVIDENCIA',
+    version: null,
+  },
+}
+
 function workOrderSummary() {
   return {
     activas: 4,
@@ -935,6 +946,7 @@ function createWorkOrderDetail(status = 'PENDIENTE_ASIGNACION') {
 
   return {
     acciones: {},
+    autorizacionesExcepcion: [],
     bus: {
       anio: fleetBus.anio,
       codigoInterno: fleetBus.codigoInterno,
@@ -1247,7 +1259,44 @@ function workOrderHandler(
     }
 
     if (path.endsWith('/repuestos-disponibles')) {
-      return ok({ repuestos: [workOrderPart] })
+      return ok({ repuestos: [workOrderAvailablePart] })
+    }
+
+    if (path.endsWith('/excepciones-consumo') && init?.method === 'POST') {
+      const payload = JSON.parse(String(init.body ?? '{}')) as {
+        cantidadMaxima: string
+        fechaExpiracion?: string
+        intervencionId: string
+        motivo: string
+        repuestoId: string
+      }
+      const authorization = {
+        autorizadoPor: { id: workOrderAdmin.id, nombre: workOrderAdmin.nombre },
+        cantidadMaxima: payload.cantidadMaxima,
+        estado: 'VIGENTE',
+        fechaAutorizacion: '2026-08-28T12:15:00.000Z',
+        fechaExpiracion: payload.fechaExpiracion ?? null,
+        id: 'authorization-p8-1',
+        intervencionId: payload.intervencionId,
+        motivo: payload.motivo,
+        repuesto: workOrderPart,
+      }
+      order = {
+        ...order,
+        autorizacionesExcepcion: [authorization],
+      }
+
+      return ok({ autorizacion: authorization })
+    }
+
+    if (path.endsWith('/excepciones-consumo/authorization-p8-1/revocar')) {
+      const authorization = {
+        ...order.autorizacionesExcepcion[0],
+        estado: 'REVOCADA',
+      }
+      order = { ...order, autorizacionesExcepcion: [authorization] }
+
+      return ok({ autorizacion: authorization })
     }
 
     if (path.endsWith('/consumos') && init?.method === 'POST') {
@@ -1540,6 +1589,7 @@ function sparePartHandler(
   })
 
   let parts = options.empty ? [] : [available, low, empty, inactive]
+  let compatibilityRules: CompatibilityRuleDto[] = []
   let movements = options.empty
     ? []
     : [
@@ -1643,6 +1693,14 @@ function sparePartHandler(
       return ok(movementPage(movements))
     }
 
+    if (path === '/flota/buses' && !init?.method) {
+      return ok(fleetList())
+    }
+
+    if (path === '/flota/modelos-bus' && !init?.method) {
+      return ok({ modelosBus: [catalogModel] })
+    }
+
     if (path === '/repuestos' && init?.method === 'POST') {
       if (options.slowCreate) {
         await new Promise((resolve) => setTimeout(resolve, 40))
@@ -1692,6 +1750,76 @@ function sparePartHandler(
       }
 
       return ok({ movimientoInicial: movement, repuesto: part, yaExistia: false })
+    }
+
+    const compatibilityMatch = path.match(
+      /^\/repuestos\/([^/]+)\/compatibilidades(?:\/([^/]+)\/inactivar)?$/,
+    )
+
+    if (compatibilityMatch) {
+      const [, partId, compatibilityId] = compatibilityMatch
+      const part = findPart(partId)
+
+      if (!part) {
+        return apiError(404, 'SPARE_PART_NOT_FOUND', 'Repuesto no encontrado')
+      }
+
+      if (!compatibilityId && !init?.method) {
+        return ok({ compatibilidades: compatibilityRules })
+      }
+
+      if (!compatibilityId && init?.method === 'POST') {
+        const body = parseRequestBody<{
+          busId?: string
+          condicionUso?: string
+          especificacionesValidadas: Record<string, unknown>
+          modeloBusId?: string
+          permitido: boolean
+        }>(init)
+        const targetRules = compatibilityRules.filter(
+          (rule) =>
+            rule.busId === (body.busId ?? null) && rule.modeloBusId === (body.modeloBusId ?? null),
+        )
+        compatibilityRules = compatibilityRules.map((rule) =>
+          targetRules.some((target) => target.id === rule.id) ? { ...rule, vigente: false } : rule,
+        )
+        const rule: CompatibilityRuleDto = {
+          bus: body.busId ? { codigoInterno: fleetBus.codigoInterno, id: fleetBus.id } : null,
+          busId: body.busId ?? null,
+          condicionUso: body.condicionUso ?? null,
+          definidaPor: { id: 'user-administrador', nombre: 'Administrador' },
+          especificacionesValidadas: body.especificacionesValidadas,
+          fechaDefinicion: '2026-09-07T16:00:00.000Z',
+          id: `compatibility-${compatibilityRules.length + 1}`,
+          modeloBus: body.modeloBusId
+            ? {
+                id: catalogModel.id,
+                marca: catalogModel.marca,
+                nombreModelo: catalogModel.nombreModelo,
+              }
+            : null,
+          modeloBusId: body.modeloBusId ?? null,
+          permitido: body.permitido,
+          version: targetRules.length + 1,
+          vigente: true,
+        }
+        compatibilityRules = [rule, ...compatibilityRules]
+
+        return ok({ compatibilidad: rule })
+      }
+
+      if (compatibilityId && init?.method === 'POST') {
+        const current = compatibilityRules.find((rule) => rule.id === compatibilityId)
+        if (!current) {
+          return apiError(404, 'COMPATIBILITY_RULE_NOT_FOUND', 'Regla no encontrada')
+        }
+        const compatibility = { ...current, vigente: false }
+        compatibilityRules = compatibilityRules.map((rule) =>
+          rule.id === compatibilityId ? compatibility : rule,
+        )
+
+        return ok({ compatibilidad: compatibility })
+      }
     }
 
     const partIdMatch = path.match(/^\/repuestos\/([^/]+)(?:\/([^/]+))?$/)
@@ -3268,6 +3396,43 @@ describe('RF-04 work order frontend', () => {
     expect((await screen.findAllByText(/Mecanico Dos/i)).length).toBeGreaterThan(0)
   })
 
+  it('lets an administrator authorize and revoke a scoped P8 consumption exception', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo')
+    const fetchMock = mockApi(workOrderHandler('ADMINISTRADOR', { initialStatus: 'EN_EJECUCION' }))
+
+    render(<App />)
+
+    fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
+    expect(
+      await screen.findByRole('heading', { name: /Excepciones de compatibilidad/i }),
+    ).toBeInTheDocument()
+
+    const partSelect = await screen.findByLabelText(/^Repuesto$/i)
+    expect(await within(partSelect).findByRole('option', { name: /REP-001/i })).toBeInTheDocument()
+    fireEvent.change(partSelect, {
+      target: { value: workOrderPart.id },
+    })
+    fireEvent.change(screen.getByLabelText(/Cantidad maxima/i), { target: { value: '1.25' } })
+    fireEvent.change(screen.getByLabelText(/Motivo administrativo/i), {
+      target: { value: 'Autorizacion puntual controlada P8' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Autorizar excepcion/i }))
+
+    expect(await screen.findByText(/Excepcion puntual autorizada/i)).toBeInTheDocument()
+    expect(await screen.findByText(/REP-001 - max\. 1\.25 - VIGENTE/i)).toBeInTheDocument()
+    const authorizationCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        getPath(input) === '/ordenes-trabajo/order-rf04-1/excepciones-consumo' &&
+        init?.method === 'POST',
+    )
+    expect(authorizationCall).toBeTruthy()
+    expect(String(authorizationCall?.[1]?.body)).not.toContain('autorizadoPor')
+
+    fireEvent.click(screen.getByRole('button', { name: /^Revocar$/i }))
+    expect(await screen.findByText(/Excepcion revocada/i)).toBeInTheDocument()
+    expect(await screen.findByText(/REP-001 - max\. 1\.25 - REVOCADA/i)).toBeInTheDocument()
+  })
+
   it('lets the assigned mechanic execute, consume stock and complete technically', async () => {
     window.history.pushState({}, '', '/ordenes-trabajo')
     const fetchMock = mockApi(workOrderHandler('MECANICO', { initialStatus: 'ASIGNADA' }))
@@ -3605,6 +3770,55 @@ describe('RF-05 spare parts frontend', () => {
       expect.stringContaining('/repuestos/part-available/desactivar'),
       expect.objectContaining({ method: 'POST' }),
     )
+  })
+
+  it('creates and inactivates a versioned P8 compatibility rule from the part detail', async () => {
+    window.history.pushState({}, '', '/repuestos')
+    const fetchMock = mockApi(sparePartHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    const detailButtons = await screen.findAllByRole('button', { name: /^Detalle$/i })
+    fireEvent.click(detailButtons[0])
+
+    const detailDialog = await screen.findByRole('dialog', { name: /Detalle de repuesto/i })
+    expect(await within(detailDialog).findByText(/Sin reglas definidas/i)).toBeInTheDocument()
+    fireEvent.click(within(detailDialog).getByRole('button', { name: /Nueva regla o version/i }))
+
+    const ruleDialog = await screen.findByRole('dialog', {
+      name: /Nueva regla de compatibilidad/i,
+    })
+    fireEvent.change(within(ruleDialog).getByLabelText(/^Bus$/i), {
+      target: { value: fleetBus.id },
+    })
+    fireEvent.change(within(ruleDialog).getByLabelText(/^Resultado$/i), {
+      target: { value: 'false' },
+    })
+    fireEvent.change(within(ruleDialog).getByLabelText(/Condicion de uso/i), {
+      target: { value: 'Solo con autorizacion P8' },
+    })
+    fireEvent.click(within(ruleDialog).getByRole('button', { name: /Crear nueva version/i }))
+
+    expect(await screen.findByText(/Nueva version de compatibilidad creada/i)).toBeInTheDocument()
+    expect(await within(detailDialog).findByText(/No permitido.*v1.*Vigente/i)).toBeInTheDocument()
+    expect(
+      fetchMock.mock.calls.some(
+        ([input, init]) =>
+          getPath(input) === '/repuestos/part-available/compatibilidades' &&
+          init?.method === 'POST',
+      ),
+    ).toBe(true)
+
+    fireEvent.click(within(detailDialog).getByRole('button', { name: /Inactivar regla/i }))
+    const deactivateDialog = await screen.findByRole('dialog', {
+      name: /Confirmar inactivacion de regla/i,
+    })
+    fireEvent.click(
+      within(deactivateDialog).getByRole('button', { name: /Confirmar inactivacion/i }),
+    )
+
+    expect(await screen.findByText(/Regla de compatibilidad inactivada/i)).toBeInTheDocument()
+    expect(await within(detailDialog).findByText(/No permitido.*v1.*Inactiva/i)).toBeInTheDocument()
   })
 
   it('registers entries and explicit adjustments with confirmation and stock-insufficient feedback', async () => {

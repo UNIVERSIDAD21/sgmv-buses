@@ -63,6 +63,14 @@ const ids = {
     preventivaCreada: '82000000-0000-4000-8000-000000000005',
   },
   repuesto: '90000000-0000-4000-8000-000000000001',
+  compatibilidades: {
+    modeloAnterior: '93000000-0000-4000-8000-000000000001',
+    modeloVigente: '93000000-0000-4000-8000-000000000002',
+    busAnterior: '93000000-0000-4000-8000-000000000003',
+    busVigente: '93000000-0000-4000-8000-000000000004',
+    negativaModelo: '93000000-0000-4000-8000-000000000005',
+  },
+  autorizacionExcepcion: '94000000-0000-4000-8000-000000000001',
   repuestosRf05: {
     agotado: '90000000-0000-4000-8000-000000000003',
     bajo: '90000000-0000-4000-8000-000000000002',
@@ -805,6 +813,10 @@ async function main() {
           stockMinimo: '2',
           costoUnitario: '80000',
           estado: 'ACTIVO',
+          dimensiones: { largoMm: 320, anchoMm: 145, altoMm: 18 },
+          especificaciones: { material: 'Ceramica reforzada', eje: 'Delantero' },
+          fabricante: 'Frenos Andinos',
+          numeroParte: 'FA-OF1721-001',
         },
         create: {
           id: ids.repuesto,
@@ -816,8 +828,91 @@ async function main() {
           stockMinimo: '2',
           costoUnitario: '80000',
           estado: 'ACTIVO',
+          dimensiones: { largoMm: 320, anchoMm: 145, altoMm: 18 },
+          especificaciones: { material: 'Ceramica reforzada', eje: 'Delantero' },
+          fabricante: 'Frenos Andinos',
+          numeroParte: 'FA-OF1721-001',
         },
       })
+
+      const compatibilityRows = [
+        {
+          id: ids.compatibilidades.modeloAnterior,
+          modeloBusId: ids.modelosBus.principal,
+          permitido: false,
+          version: 1,
+          vigente: false,
+          especificacionesValidadas: { homologacion: 'historica', fuente: 'catalogo-2025' },
+          condicionUso: 'No usar; version historica.',
+        },
+        {
+          id: ids.compatibilidades.modeloVigente,
+          modeloBusId: ids.modelosBus.principal,
+          permitido: true,
+          version: 2,
+          vigente: true,
+          especificacionesValidadas: { homologacion: 'OF-1721-Euro-V', fuente: 'fabricante' },
+          condicionUso: 'Instalar en eje delantero y verificar desgaste.',
+        },
+        {
+          id: ids.compatibilidades.busAnterior,
+          busId: ids.buses.principal,
+          permitido: false,
+          version: 1,
+          vigente: false,
+          especificacionesValidadas: { homologacion: 'version anterior', fuente: 'inspeccion' },
+          condicionUso: 'No usar; regla reemplazada.',
+        },
+        {
+          id: ids.compatibilidades.busVigente,
+          busId: ids.buses.principal,
+          permitido: true,
+          version: 2,
+          vigente: true,
+          especificacionesValidadas: { homologacion: 'BUS-001', fuente: 'inspeccion' },
+          condicionUso: 'Compatible solo con la configuracion vigente del BUS-001.',
+        },
+        {
+          id: ids.compatibilidades.negativaModelo,
+          modeloBusId: ids.modelosBus.respaldo,
+          permitido: false,
+          version: 1,
+          vigente: true,
+          especificacionesValidadas: { homologacion: '17-230', fuente: 'fabricante' },
+          condicionUso: 'Requiere repuesto alternativo homologado.',
+        },
+      ]
+
+      for (const row of compatibilityRows) {
+        await tx.compatibilidadRepuesto.upsert({
+          where: { id: row.id },
+          update: {
+            busId: row.busId ?? null,
+            condicionUso: row.condicionUso,
+            definidaPorId: ids.usuarios.admin,
+            especificacionesValidadas: row.especificacionesValidadas,
+            fechaDefinicion: new Date('2026-08-20T12:00:00.000Z'),
+            modeloBusId: row.modeloBusId ?? null,
+            permitido: row.permitido,
+            repuestoId: ids.repuesto,
+            version: row.version,
+            vigente: row.vigente,
+          },
+          create: {
+            busId: row.busId ?? null,
+            condicionUso: row.condicionUso,
+            definidaPorId: ids.usuarios.admin,
+            especificacionesValidadas: row.especificacionesValidadas,
+            fechaDefinicion: new Date('2026-08-20T12:00:00.000Z'),
+            id: row.id,
+            modeloBusId: row.modeloBusId ?? null,
+            permitido: row.permitido,
+            repuestoId: ids.repuesto,
+            version: row.version,
+            vigente: row.vigente,
+          },
+        })
+      }
 
       await tx.repuesto.upsert({
         where: { codigo: 'REP-FILTRO-001' },
@@ -963,23 +1058,81 @@ async function main() {
         },
       })
 
+      const seedCompatibilityEvidence = {
+        busId: ids.buses.principal,
+        condicionUso: 'Compatible solo con la configuracion vigente del BUS-001.',
+        destino: 'BUS',
+        dimensionesRepuesto: { largoMm: 320, anchoMm: 145, altoMm: 18 },
+        evaluadoAt: '2026-09-02T12:00:05.000Z',
+        especificacionesRepuesto: { material: 'Ceramica reforzada', eje: 'Delantero' },
+        especificacionesValidadas: { homologacion: 'BUS-001', fuente: 'inspeccion' },
+        fabricanteRepuesto: 'Frenos Andinos',
+        modeloBusId: ids.modelosBus.principal,
+        numeroParteRepuesto: 'FA-OF1721-001',
+        permitido: true,
+        precedencia: 'BUS',
+        repuestoId: ids.repuesto,
+        reglaId: ids.compatibilidades.busVigente,
+        reglaVersion: 2,
+        schemaVersion: 1,
+      }
+
       await tx.consumoRepuesto.upsert({
         where: { id: ids.consumo },
         update: {
           cantidad: '2',
+          claveIdempotencia: '95000000-0000-4000-8000-000000000001',
           costoUnitario: '80000',
+          evidenciaCompatibilidad: seedCompatibilityEvidence,
+          fechaConsumo: new Date('2026-09-02T12:00:05.000Z'),
           subtotal: '160000',
           intervencionId: ids.intervencion,
+          resultadoCompatibilidad: 'COMPATIBLE',
+          reglaCompatibilidadId: ids.compatibilidades.busVigente,
+          reglaVersion: 2,
         },
         create: {
           id: ids.consumo,
           ordenTrabajoId: ids.ordenes.correctiva,
           repuestoId: ids.repuesto,
           cantidad: '2',
+          claveIdempotencia: '95000000-0000-4000-8000-000000000001',
           costoUnitario: '80000',
           subtotal: '160000',
           consumidoPorId: ids.usuarios.mecanico,
           intervencionId: ids.intervencion,
+          fechaConsumo: new Date('2026-09-02T12:00:05.000Z'),
+          resultadoCompatibilidad: 'COMPATIBLE',
+          reglaCompatibilidadId: ids.compatibilidades.busVigente,
+          reglaVersion: 2,
+          evidenciaCompatibilidad: seedCompatibilityEvidence,
+        },
+      })
+
+      await tx.autorizacionExcepcionConsumo.upsert({
+        where: { id: ids.autorizacionExcepcion },
+        update: {
+          cantidadMaxima: '1.00',
+          estado: 'VIGENTE',
+          fechaAutorizacion: new Date('2026-09-02T12:00:10.000Z'),
+          fechaExpiracion: new Date('2026-12-31T23:59:59.000Z'),
+          intervencionId: ids.intervencion,
+          motivo: 'Autorizacion demo para repuesto sin evidencia positiva.',
+          ordenTrabajoId: ids.ordenes.correctiva,
+          repuestoId: ids.repuestosRf05.bajo,
+          autorizadoPorId: ids.usuarios.admin,
+        },
+        create: {
+          id: ids.autorizacionExcepcion,
+          cantidadMaxima: '1.00',
+          estado: 'VIGENTE',
+          fechaAutorizacion: new Date('2026-09-02T12:00:10.000Z'),
+          fechaExpiracion: new Date('2026-12-31T23:59:59.000Z'),
+          intervencionId: ids.intervencion,
+          motivo: 'Autorizacion demo para repuesto sin evidencia positiva.',
+          ordenTrabajoId: ids.ordenes.correctiva,
+          repuestoId: ids.repuestosRf05.bajo,
+          autorizadoPorId: ids.usuarios.admin,
         },
       })
 

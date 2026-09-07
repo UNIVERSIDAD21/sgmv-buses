@@ -46,6 +46,11 @@ export const orderIdParamSchema = z.object({
   ordenId: z.uuid(),
 })
 
+export const consumptionExceptionParamSchema = z.object({
+  autorizacionId: z.uuid(),
+  ordenId: z.uuid(),
+})
+
 export const listWorkOrdersQuerySchema = z.object({
   busId: z.uuid().optional(),
   busqueda: optionalTrimmedText(120),
@@ -127,8 +132,19 @@ export const createTechnicalReadingSchema = z
 
 export const createConsumptionSchema = z
   .object({
+    autorizacionExcepcionId: z.uuid().optional(),
     cantidad: decimalQuantity,
     claveIdempotencia: z.uuid(),
+    repuestoId: z.uuid(),
+  })
+  .strict()
+
+export const authorizeConsumptionExceptionSchema = z
+  .object({
+    cantidadMaxima: decimalQuantity,
+    fechaExpiracion: z.coerce.date().optional(),
+    intervencionId: z.uuid(),
+    motivo: trimmedText(3, 1000),
     repuestoId: z.uuid(),
   })
   .strict()
@@ -144,6 +160,7 @@ export type AvailableMechanicsQuery = z.infer<typeof availableMechanicsQuerySche
 export type AvailablePartsQuery = z.infer<typeof availablePartsQuerySchema>
 export type CreateActivityInput = z.infer<typeof createActivitySchema>
 export type CreateConsumptionInput = z.infer<typeof createConsumptionSchema>
+export type AuthorizeConsumptionExceptionInput = z.infer<typeof authorizeConsumptionExceptionSchema>
 export type CreateTechnicalReadingInput = z.infer<typeof createTechnicalReadingSchema>
 export type CreateManualWorkOrderInput = z.infer<typeof createManualWorkOrderSchema>
 export type InterventionUpdateInput = z.infer<typeof interventionUpdateSchema>

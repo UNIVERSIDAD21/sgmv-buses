@@ -105,6 +105,18 @@ workOrderRoutes.post(
   idempotent(workOrderController.createConsumption),
 )
 workOrderRoutes.post(
+  '/:ordenId/excepciones-consumo',
+  enforceAllowedOrigin,
+  authorizeRoles('ADMINISTRADOR'),
+  idempotent(workOrderController.authorizeConsumptionException),
+)
+workOrderRoutes.post(
+  '/:ordenId/excepciones-consumo/:autorizacionId/revocar',
+  enforceAllowedOrigin,
+  authorizeRoles('ADMINISTRADOR'),
+  idempotent(workOrderController.revokeConsumptionException),
+)
+workOrderRoutes.post(
   '/:ordenId/completar',
   enforceAllowedOrigin,
   authorizeRoles('MECANICO'),

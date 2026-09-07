@@ -17,19 +17,25 @@ import StatePanel from '../../components/ui/StatePanel'
 import { ApiError } from '../../lib/api'
 import { formatCurrency, formatNumber } from '../../lib/format'
 import { useSession } from '../auth/session.context'
+import { listBuses, listModelosBus } from '../flota/fleet.api'
+import type { BusSummaryDto, ModeloBusSummaryDto } from '../flota/fleet.types'
 import {
   activateSparePart,
+  createCompatibilityRule,
   createSparePart,
+  deactivateCompatibilityRule,
   deactivateSparePart,
   getSparePart,
   getSparePartSummary,
   listInventoryMovements,
+  listCompatibilityRules,
   listSparePartMovements,
   listSpareParts,
   registerStockAdjustment,
   registerStockEntry,
   updateSparePart,
   type CreateSparePartInput,
+  type CreateCompatibilityInput,
   type StockAdjustmentInput,
   type StockEntryInput,
   type UpdateSparePartInput,
@@ -37,6 +43,7 @@ import {
 import type {
   InventoryMovementType,
   SparePartAvailability,
+  CompatibilityRuleDto,
   SparePartDto,
   SparePartListResponse,
   SparePartMovementDto,
@@ -51,6 +58,8 @@ type MovementSortField = NonNullable<Parameters<typeof listInventoryMovements>[0
 
 type ActionState =
   | { type: 'adjustment'; part: SparePartDto }
+  | { type: 'compatibility'; part: SparePartDto }
+  | { rule: CompatibilityRuleDto; type: 'compatibility-deactivate'; part: SparePartDto }
   | { type: 'create' }
   | { type: 'edit'; part: SparePartDto }
   | { type: 'entry'; part: SparePartDto }
@@ -104,6 +113,18 @@ function getErrorMessage(error: unknown) {
 
 function normalizeText(value: string) {
   return value.trim().replace(/\s+/g, ' ')
+}
+
+function parseJsonObjectInput(value: string) {
+  if (!value.trim()) return undefined
+  try {
+    const parsed: unknown = JSON.parse(value)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null
+  } catch {
+    return null
+  }
 }
 
 function idempotencyKey() {
@@ -475,9 +496,13 @@ function CreateForm({
   const [categoria, setCategoria] = useState('')
   const [codigo, setCodigo] = useState('')
   const [costoUnitario, setCostoUnitario] = useState('0')
+  const [dimensiones, setDimensiones] = useState('')
+  const [especificaciones, setEspecificaciones] = useState('')
+  const [fabricante, setFabricante] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
   const [motivoStockInicial, setMotivoStockInicial] = useState('')
   const [nombre, setNombre] = useState('')
+  const [numeroParte, setNumeroParte] = useState('')
   const [stockInicial, setStockInicial] = useState('0')
   const [stockMinimo, setStockMinimo] = useState('0')
   const [unidadMedida, setUnidadMedida] = useState('unidad')
@@ -500,6 +525,13 @@ function CreateForm({
       return
     }
 
+    const parsedDimensions = parseJsonObjectInput(dimensiones)
+    const parsedSpecifications = parseJsonObjectInput(especificaciones)
+    if (parsedDimensions === null || parsedSpecifications === null) {
+      setLocalError('Dimensiones y especificaciones deben ser JSON objeto valido.')
+      return
+    }
+
     await onSubmit({
       categoria: normalizeText(categoria) || undefined,
       claveIdempotencia: Number(initial) > 0 ? idempotencyKey() : undefined,
@@ -510,6 +542,10 @@ function CreateForm({
           ? normalizeText(motivoStockInicial) || 'Existencia inicial autorizada'
           : undefined,
       nombre: normalizeText(nombre),
+      ...(parsedDimensions ? { dimensiones: parsedDimensions } : {}),
+      ...(parsedSpecifications ? { especificaciones: parsedSpecifications } : {}),
+      ...(normalizeText(fabricante) ? { fabricante: normalizeText(fabricante) } : {}),
+      ...(normalizeText(numeroParte) ? { numeroParte: normalizeText(numeroParte) } : {}),
       stockInicial: initial,
       stockMinimo: minimum,
       unidadMedida: normalizeText(unidadMedida),
@@ -526,6 +562,26 @@ function CreateForm({
       <TextInput label="Codigo" onChange={setCodigo} required value={codigo} />
       <TextInput label="Nombre" onChange={setNombre} required value={nombre} />
       <TextInput label="Categoria" onChange={setCategoria} value={categoria} />
+      <TextInput label="Fabricante" onChange={setFabricante} value={fabricante} />
+      <TextInput label="Numero de parte" onChange={setNumeroParte} value={numeroParte} />
+      <label className="block text-sm font-medium text-slate-700">
+        Especificaciones (JSON)
+        <textarea
+          className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          onChange={(event) => setEspecificaciones(event.target.value)}
+          placeholder='{"voltaje":"24V"}'
+          value={especificaciones}
+        />
+      </label>
+      <label className="block text-sm font-medium text-slate-700">
+        Dimensiones (JSON)
+        <textarea
+          className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          onChange={(event) => setDimensiones(event.target.value)}
+          placeholder='{"largoMm":100}'
+          value={dimensiones}
+        />
+      </label>
       <TextInput
         label="Unidad de medida"
         onChange={setUnidadMedida}
@@ -573,8 +629,16 @@ function EditForm({
   const [categoria, setCategoria] = useState(part.categoria ?? '')
   const [codigo, setCodigo] = useState(part.codigo)
   const [costoUnitario, setCostoUnitario] = useState(part.costoUnitario)
+  const [dimensiones, setDimensiones] = useState(
+    part.dimensiones ? JSON.stringify(part.dimensiones, null, 2) : '',
+  )
+  const [especificaciones, setEspecificaciones] = useState(
+    part.especificaciones ? JSON.stringify(part.especificaciones, null, 2) : '',
+  )
+  const [fabricante, setFabricante] = useState(part.fabricante ?? '')
   const [localError, setLocalError] = useState<string | null>(null)
   const [nombre, setNombre] = useState(part.nombre)
+  const [numeroParte, setNumeroParte] = useState(part.numeroParte ?? '')
   const [stockMinimo, setStockMinimo] = useState(part.stockMinimo)
   const [unidadMedida, setUnidadMedida] = useState(part.unidadMedida)
 
@@ -590,11 +654,22 @@ function EditForm({
       return
     }
 
+    const parsedDimensions = parseJsonObjectInput(dimensiones)
+    const parsedSpecifications = parseJsonObjectInput(especificaciones)
+    if (parsedDimensions === null || parsedSpecifications === null) {
+      setLocalError('Dimensiones y especificaciones deben ser JSON objeto valido.')
+      return
+    }
+
     await onSubmit({
       categoria: normalizeText(categoria) || undefined,
       codigo: normalizeText(codigo),
       costoUnitario: cost,
       nombre: normalizeText(nombre),
+      dimensiones: parsedDimensions,
+      especificaciones: parsedSpecifications,
+      fabricante: normalizeText(fabricante),
+      numeroParte: normalizeText(numeroParte),
       stockMinimo: minimum,
       unidadMedida: normalizeText(unidadMedida),
     })
@@ -610,6 +685,24 @@ function EditForm({
       <TextInput label="Codigo" onChange={setCodigo} required value={codigo} />
       <TextInput label="Nombre" onChange={setNombre} required value={nombre} />
       <TextInput label="Categoria" onChange={setCategoria} value={categoria} />
+      <TextInput label="Fabricante" onChange={setFabricante} value={fabricante} />
+      <TextInput label="Numero de parte" onChange={setNumeroParte} value={numeroParte} />
+      <label className="block text-sm font-medium text-slate-700">
+        Especificaciones (JSON)
+        <textarea
+          className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          onChange={(event) => setEspecificaciones(event.target.value)}
+          value={especificaciones}
+        />
+      </label>
+      <label className="block text-sm font-medium text-slate-700">
+        Dimensiones (JSON)
+        <textarea
+          className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          onChange={(event) => setDimensiones(event.target.value)}
+          value={dimensiones}
+        />
+      </label>
       <TextInput
         label="Unidad de medida"
         onChange={setUnidadMedida}
@@ -856,12 +949,139 @@ function StatusConfirm({
   )
 }
 
+function CompatibilityRuleForm({
+  buses,
+  error,
+  models,
+  onSubmit,
+  submitting,
+}: {
+  buses: BusSummaryDto[]
+  error: string | null
+  models: ModeloBusSummaryDto[]
+  onSubmit: (input: CreateCompatibilityInput) => Promise<void>
+  submitting: boolean
+}) {
+  const [destination, setDestination] = useState<'BUS' | 'MODELO'>('BUS')
+  const [destinationId, setDestinationId] = useState('')
+  const [allowed, setAllowed] = useState(true)
+  const [condition, setCondition] = useState('')
+  const [validatedSpecs, setValidatedSpecs] = useState('{"revision":"P8"}')
+  const [localError, setLocalError] = useState<string | null>(null)
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const specifications = parseJsonObjectInput(validatedSpecs)
+    if (!destinationId) {
+      setLocalError('Seleccione un bus o modelo.')
+      return
+    }
+    if (!specifications || Object.keys(specifications).length === 0) {
+      setLocalError('Ingrese especificaciones validadas como JSON no vacio.')
+      return
+    }
+    setLocalError(null)
+    await onSubmit({
+      ...(destination === 'BUS' ? { busId: destinationId } : { modeloBusId: destinationId }),
+      condicionUso: normalizeText(condition) || undefined,
+      especificacionesValidadas: specifications,
+      permitido: allowed,
+    })
+  }
+
+  return (
+    <form className="space-y-4" onSubmit={submit}>
+      {(error || localError) && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {localError ?? error}
+        </p>
+      )}
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-slate-700">Destino de la regla</legend>
+        <div className="flex gap-4 text-sm">
+          {(['BUS', 'MODELO'] as const).map((value) => (
+            <label className="flex items-center gap-2" key={value}>
+              <input
+                checked={destination === value}
+                name="compatibilityDestination"
+                onChange={() => {
+                  setDestination(value)
+                  setDestinationId('')
+                }}
+                type="radio"
+              />
+              {value === 'BUS' ? 'Bus especifico' : 'Modelo de bus'}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <label className="block text-sm font-medium text-slate-700">
+        {destination === 'BUS' ? 'Bus' : 'Modelo de bus'}
+        <select
+          className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+          onChange={(event) => setDestinationId(event.target.value)}
+          required
+          value={destinationId}
+        >
+          <option value="">Seleccione</option>
+          {destination === 'BUS'
+            ? buses.map((bus) => (
+                <option key={bus.id} value={bus.id}>
+                  {bus.codigoInterno} - {bus.placa}
+                </option>
+              ))
+            : models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.marca} - {model.nombreModelo}
+                </option>
+              ))}
+        </select>
+      </label>
+      <label className="block text-sm font-medium text-slate-700">
+        Resultado
+        <select
+          className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+          onChange={(event) => setAllowed(event.target.value === 'true')}
+          value={String(allowed)}
+        >
+          <option value="true">Permitido</option>
+          <option value="false">No permitido</option>
+        </select>
+      </label>
+      <label className="block text-sm font-medium text-slate-700">
+        Condicion de uso
+        <textarea
+          className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 p-3 text-sm"
+          maxLength={1000}
+          onChange={(event) => setCondition(event.target.value)}
+          value={condition}
+        />
+      </label>
+      <label className="block text-sm font-medium text-slate-700">
+        Especificaciones validadas (JSON)
+        <textarea
+          className="mt-1.5 min-h-28 w-full rounded-lg border border-slate-200 p-3 font-mono text-sm"
+          onChange={(event) => setValidatedSpecs(event.target.value)}
+          required
+          value={validatedSpecs}
+        />
+      </label>
+      <Button icon={<PlusCircle size={14} />} loading={submitting} type="submit">
+        Crear nueva version
+      </Button>
+    </form>
+  )
+}
+
 export default function SparePartsPage() {
   const { user } = useSession()
   const [action, setAction] = useState<ActionState | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [categoria, setCategoria] = useState('')
   const [detailMovements, setDetailMovements] = useState<SparePartMovementListResponse | null>(null)
+  const [compatibilityRules, setCompatibilityRules] = useState<CompatibilityRuleDto[]>([])
+  const [compatibilityBuses, setCompatibilityBuses] = useState<BusSummaryDto[]>([])
+  const [compatibilityModels, setCompatibilityModels] = useState<ModeloBusSummaryDto[]>([])
   const [direccion, setDireccion] = useState<'asc' | 'desc'>('asc')
   const [disponibilidad, setDisponibilidad] = useState<SparePartAvailability | ''>('')
   const [estado, setEstado] = useState<SparePartStatus | ''>('')
@@ -967,9 +1187,11 @@ export default function SparePartsPage() {
           pagina: 1,
         }),
       ])
+      const compatibility = await listCompatibilityRules(part.id)
 
       setSelectedPart(detail.repuesto)
       setDetailMovements(movements)
+      setCompatibilityRules(compatibility.compatibilidades)
     } catch (error) {
       setLoadError(getErrorMessage(error))
     }
@@ -988,6 +1210,7 @@ export default function SparePartsPage() {
 
     setSelectedPart(detail.repuesto)
     setDetailMovements(movements)
+    setCompatibilityRules((await listCompatibilityRules(partId)).compatibilidades)
   }
 
   async function runAction(operation: () => Promise<{ id: string }>, message: string) {
@@ -1015,6 +1238,56 @@ export default function SparePartsPage() {
       setSelectedPart(result.repuesto)
       return { id: result.repuesto.id }
     }, 'Repuesto creado.')
+  }
+
+  async function handleCompatibilityCreate(part: SparePartDto, input: CreateCompatibilityInput) {
+    setSubmitting(true)
+    setFormError(null)
+    setFeedback(null)
+    try {
+      await createCompatibilityRule(part.id, input)
+      setFeedback('Nueva version de compatibilidad creada.')
+      setAction(null)
+      await refreshSelected(part.id)
+    } catch (error) {
+      setFormError(getErrorMessage(error))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function openCompatibilityAction(part: SparePartDto) {
+    setSubmitting(true)
+    setFormError(null)
+    try {
+      const [busesResponse, modelsResponse] = await Promise.all([
+        listBuses({ limite: 100, pagina: 1 }),
+        listModelosBus(),
+      ])
+      setCompatibilityBuses(busesResponse.buses)
+      setCompatibilityModels(modelsResponse.modelosBus)
+      setAction({ part, type: 'compatibility' })
+    } catch (error) {
+      setFormError(getErrorMessage(error))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleCompatibilityDeactivate(part: SparePartDto, rule: CompatibilityRuleDto) {
+    setSubmitting(true)
+    setFormError(null)
+    setFeedback(null)
+    try {
+      await deactivateCompatibilityRule(part.id, rule.id)
+      setFeedback('Regla de compatibilidad inactivada.')
+      setAction(null)
+      await refreshSelected(part.id)
+    } catch (error) {
+      setFormError(getErrorMessage(error))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   async function handleUpdate(input: UpdateSparePartInput) {
@@ -1335,10 +1608,81 @@ export default function SparePartsPage() {
                 {formatCurrency(selectedPart.valorActual)}
               </FieldValue>
               <FieldValue label="Categoria">{selectedPart.categoria ?? 'Sin categoria'}</FieldValue>
+              <FieldValue label="Fabricante">
+                {selectedPart.fabricante ?? 'Sin fabricante'}
+              </FieldValue>
+              <FieldValue label="Numero de parte">
+                {selectedPart.numeroParte ?? 'Sin numero'}
+              </FieldValue>
               <FieldValue label="Actualizacion">
                 {formatDateTimeValue(selectedPart.updatedAt)}
               </FieldValue>
             </div>
+            <section className="rounded-lg border border-cyan-200 bg-cyan-50 p-4">
+              <h3 className="text-xs font-semibold uppercase text-cyan-800">
+                Compatibilidad tecnica
+              </h3>
+              <p className="mt-1 text-xs text-cyan-700">
+                Historial versionado; la regla vigente aparece primero.
+              </p>
+              <div className="mt-3">
+                <Button
+                  icon={<PlusCircle size={14} />}
+                  loading={submitting}
+                  onClick={() => void openCompatibilityAction(selectedPart)}
+                  size="sm"
+                  variant="outline"
+                >
+                  Nueva regla o version
+                </Button>
+              </div>
+              <div className="mt-3 space-y-2">
+                {compatibilityRules.length === 0 ? (
+                  <p className="text-sm text-cyan-800">Sin reglas definidas.</p>
+                ) : (
+                  compatibilityRules.map((rule) => (
+                    <div
+                      className="rounded border border-cyan-200 bg-white p-3 text-sm"
+                      key={rule.id}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <strong>
+                          {rule.bus
+                            ? `Bus ${rule.bus.codigoInterno}`
+                            : `Modelo ${rule.modeloBus?.nombreModelo ?? rule.modeloBusId}`}
+                        </strong>
+                        <span>
+                          {rule.permitido ? 'Permitido' : 'No permitido'} · v{rule.version}
+                          {rule.vigente ? ' · Vigente' : ' · Inactiva'}
+                        </span>
+                      </div>
+                      {rule.condicionUso && (
+                        <p className="mt-1 text-xs text-slate-600">
+                          Condicion: {rule.condicionUso}
+                        </p>
+                      )}
+                      {rule.vigente && (
+                        <div className="mt-2">
+                          <Button
+                            onClick={() =>
+                              setAction({
+                                part: selectedPart,
+                                rule,
+                                type: 'compatibility-deactivate',
+                              })
+                            }
+                            size="sm"
+                            variant="danger"
+                          >
+                            Inactivar regla
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
             <div className="flex flex-wrap gap-2">
               <Button
                 icon={<ClipboardList size={14} />}
@@ -1413,17 +1757,50 @@ export default function SparePartsPage() {
         title={
           action?.type === 'create'
             ? 'Nuevo repuesto'
-            : action?.type === 'edit'
-              ? 'Editar repuesto'
-              : action?.type === 'entry'
-                ? 'Registrar entrada'
-                : action?.type === 'adjustment'
-                  ? 'Registrar ajuste'
-                  : 'Confirmar estado'
+            : action?.type === 'compatibility'
+              ? 'Nueva regla de compatibilidad'
+              : action?.type === 'compatibility-deactivate'
+                ? 'Confirmar inactivacion de regla'
+                : action?.type === 'edit'
+                  ? 'Editar repuesto'
+                  : action?.type === 'entry'
+                    ? 'Registrar entrada'
+                    : action?.type === 'adjustment'
+                      ? 'Registrar ajuste'
+                      : 'Confirmar estado'
         }
       >
         {action?.type === 'create' && (
           <CreateForm error={formError} onSubmit={handleCreate} submitting={submitting} />
+        )}
+        {action?.type === 'compatibility' && (
+          <CompatibilityRuleForm
+            buses={compatibilityBuses}
+            error={formError}
+            models={compatibilityModels}
+            onSubmit={(input) => handleCompatibilityCreate(action.part, input)}
+            submitting={submitting}
+          />
+        )}
+        {action?.type === 'compatibility-deactivate' && (
+          <div className="space-y-4">
+            {formError && (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {formError}
+              </p>
+            )}
+            <p className="text-sm leading-6 text-slate-700">
+              La regla vigente v{action.rule.version} quedara inactiva. El historial se conserva y
+              no se aplicara a consumos nuevos.
+            </p>
+            <Button
+              loading={submitting}
+              onClick={() => handleCompatibilityDeactivate(action.part, action.rule)}
+              variant="danger"
+            >
+              Confirmar inactivacion
+            </Button>
+          </div>
         )}
         {action?.type === 'edit' && (
           <EditForm

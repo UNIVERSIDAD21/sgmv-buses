@@ -1,6 +1,7 @@
 import { apiRequest } from '../../lib/api'
 import type {
   InventoryMovementType,
+  CompatibilityRuleDto,
   SparePartAvailability,
   SparePartDto,
   SparePartListResponse,
@@ -45,19 +46,27 @@ export interface CreateSparePartInput {
   categoria?: string
   claveIdempotencia?: string
   codigo: string
+  dimensiones?: Record<string, unknown>
   costoUnitario: string
   motivoStockInicial?: string
   nombre: string
+  especificaciones?: Record<string, unknown>
+  fabricante?: string
   stockInicial: string
   stockMinimo: string
+  numeroParte?: string
   unidadMedida: string
 }
 
 export interface UpdateSparePartInput {
   categoria?: string
   codigo?: string
+  dimensiones?: Record<string, unknown>
   costoUnitario?: string
   nombre?: string
+  especificaciones?: Record<string, unknown>
+  fabricante?: string
+  numeroParte?: string
   stockMinimo?: string
   unidadMedida?: string
 }
@@ -74,6 +83,14 @@ export interface StockAdjustmentInput {
   claveIdempotencia: string
   direccion: 'DISMINUCION' | 'INCREMENTO'
   motivo: string
+}
+
+export interface CreateCompatibilityInput {
+  busId?: string
+  condicionUso?: string
+  especificacionesValidadas: Record<string, unknown>
+  modeloBusId?: string
+  permitido: boolean
 }
 
 function buildSparePartQuery(params: ListSparePartsParams) {
@@ -156,6 +173,26 @@ export function listSpareParts(params: ListSparePartsParams) {
 
 export function getSparePart(repuestoId: string) {
   return apiRequest<{ repuesto: SparePartDto }>(`/repuestos/${repuestoId}`)
+}
+
+export function listCompatibilityRules(repuestoId: string) {
+  return apiRequest<{ compatibilidades: CompatibilityRuleDto[] }>(
+    `/repuestos/${repuestoId}/compatibilidades`,
+  )
+}
+
+export function createCompatibilityRule(repuestoId: string, input: CreateCompatibilityInput) {
+  return apiRequest<{ compatibilidad: CompatibilityRuleDto }>(
+    `/repuestos/${repuestoId}/compatibilidades`,
+    { body: JSON.stringify(input), method: 'POST' },
+  )
+}
+
+export function deactivateCompatibilityRule(repuestoId: string, compatibilidadId: string) {
+  return apiRequest<{ compatibilidad: CompatibilityRuleDto }>(
+    `/repuestos/${repuestoId}/compatibilidades/${compatibilidadId}/inactivar`,
+    { body: '{}', method: 'POST' },
+  )
 }
 
 export function createSparePart(input: CreateSparePartInput) {

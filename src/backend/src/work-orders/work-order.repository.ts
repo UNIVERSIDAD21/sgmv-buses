@@ -8,7 +8,10 @@ import {
   type TipoOrdenTrabajo,
 } from '@prisma/client'
 
-import { evaluatePreventiveAlertsForBus } from '../alerts/alert.service.js'
+import {
+  createConsumptionIncompatibilityAlert,
+  evaluatePreventiveAlertsForBus,
+} from '../alerts/alert.service.js'
 import { buildAvailability } from '../availability/availability.policy.js'
 import { getAvailabilityRecords } from '../availability/availability.repository.js'
 import { registerTechnicalMileageReading } from '../mileage/technical-mileage.js'
@@ -20,6 +23,7 @@ import {
   type PreventivePlanCycleData,
 } from '../preventive/preventive-cycle.js'
 import { reassignableWorkOrderStates } from './work-order.state.js'
+import { resolveCompatibility } from '../spare-parts/compatibility.resolver.js'
 
 type WorkOrderDbClient = Prisma.TransactionClient | typeof prisma
 
@@ -28,6 +32,11 @@ const userSelect = {
   id: true,
   nombre: true,
   telefono: true,
+} as const
+
+const authorizationActorSelect = {
+  id: true,
+  nombre: true,
 } as const
 
 const busSelect = {
@@ -60,6 +69,13 @@ const technicalReadingOrderBy: Prisma.LecturaKilometrajeOrderByWithRelationInput
 ]
 
 export const workOrderDetailInclude = {
+  autorizacionesExcepcion: {
+    include: {
+      autorizadoPor: { select: authorizationActorSelect },
+      repuesto: { select: sparePartSelect },
+    },
+    orderBy: { fechaAutorizacion: 'desc' as const },
+  },
   bus: {
     select: busSelect,
   },
@@ -212,8 +228,17 @@ interface UpdateInterventionData {
 }
 
 interface ConsumptionData {
+  autorizacionExcepcionId?: string
   cantidad: Prisma.Decimal
   claveIdempotencia: string
+  repuestoId: string
+}
+
+interface ConsumptionExceptionData {
+  cantidadMaxima: Prisma.Decimal
+  fechaExpiracion: Date | null
+  intervencionId: string
+  motivo: string
   repuestoId: string
 }
 
@@ -392,43 +417,33 @@ export class WorkOrderRepository {
     })
   }
 
-  findAvailableSpareParts(busqueda: string | undefined, take: number) {
-    return prisma.repuesto.findMany({
-      where: {
-        estado: 'ACTIVO',
-        stockActual: {
-          gt: 0,
+  findAvailableSpareParts(busqueda: string | undefined, take: number, busId?: string) {
+    return prisma.$transaction(async (tx) => {
+      const parts = await tx.repuesto.findMany({
+        where: {
+          estado: 'ACTIVO',
+          stockActual: { gt: 0 },
+          ...(busqueda
+            ? {
+                OR: [
+                  { codigo: { contains: busqueda, mode: 'insensitive' } },
+                  { nombre: { contains: busqueda, mode: 'insensitive' } },
+                  { categoria: { contains: busqueda, mode: 'insensitive' } },
+                ],
+              }
+            : {}),
         },
-        ...(busqueda
-          ? {
-              OR: [
-                {
-                  codigo: {
-                    contains: busqueda,
-                    mode: 'insensitive',
-                  },
-                },
-                {
-                  nombre: {
-                    contains: busqueda,
-                    mode: 'insensitive',
-                  },
-                },
-                {
-                  categoria: {
-                    contains: busqueda,
-                    mode: 'insensitive',
-                  },
-                },
-              ],
-            }
-          : {}),
-      },
-      select: sparePartSelect,
-      orderBy: {
-        codigo: 'asc',
-      },
-      take,
+        select: sparePartSelect,
+        orderBy: { codigo: 'asc' },
+        take,
+      })
+      if (!busId) return parts.map((part) => ({ ...part, evaluacion: null }))
+      return Promise.all(
+        parts.map(async (part) => ({
+          ...part,
+          evaluacion: await resolveCompatibility(tx, busId, part.id),
+        })),
+      )
     })
   }
 
@@ -1015,6 +1030,63 @@ export class WorkOrderRepository {
     )
   }
 
+  authorizeConsumptionException(orderId: string, actorId: string, data: ConsumptionExceptionData) {
+    return prisma.$transaction(
+      async (tx) => {
+        await this.lockWorkOrder(tx, orderId)
+        const order = await this.findOrderByIdForTransaction(orderId, tx)
+        if (!order) return { autorizacion: null, status: 'ORDER_NOT_FOUND' as const }
+        if (order.estado !== 'EN_EJECUCION')
+          return { autorizacion: null, status: 'INVALID_STATE' as const }
+        const intervention = await tx.intervencion.findFirst({
+          where: { fechaFin: null, id: data.intervencionId, ordenTrabajoId: orderId },
+        })
+        if (!intervention || intervention.id !== data.intervencionId) {
+          return { autorizacion: null, status: 'INTERVENTION_NOT_ACTIVE' as const }
+        }
+        const part = await this.lockSparePart(tx, data.repuestoId)
+        if (!part) return { autorizacion: null, status: 'SPARE_PART_NOT_FOUND' as const }
+        if (part.estado !== 'ACTIVO')
+          return { autorizacion: null, status: 'SPARE_PART_INACTIVE' as const }
+        const autorizacion = await tx.autorizacionExcepcionConsumo.create({
+          data: {
+            cantidadMaxima: data.cantidadMaxima,
+            fechaExpiracion: data.fechaExpiracion,
+            id: randomUUID(),
+            intervencionId: data.intervencionId,
+            motivo: data.motivo,
+            ordenTrabajoId: orderId,
+            repuestoId: data.repuestoId,
+            autorizadoPorId: actorId,
+          },
+        })
+        return { autorizacion, status: 'CREATED' as const }
+      },
+      { maxWait: 15000, timeout: 60000 },
+    )
+  }
+
+  revokeConsumptionException(orderId: string, authorizationId: string) {
+    return prisma.$transaction(
+      async (tx) => {
+        await this.lockWorkOrder(tx, orderId)
+        const authorization = await tx.autorizacionExcepcionConsumo.findFirst({
+          where: { id: authorizationId, ordenTrabajoId: orderId },
+        })
+        if (!authorization) return { autorizacion: null, status: 'NOT_FOUND' as const }
+        if (authorization.estado !== 'VIGENTE') {
+          return { autorizacion: authorization, status: 'INVALID_STATE' as const }
+        }
+        const updated = await tx.autorizacionExcepcionConsumo.update({
+          data: { estado: 'REVOCADA' },
+          where: { id: authorizationId },
+        })
+        return { autorizacion: updated, status: 'REVOKED' as const }
+      },
+      { maxWait: 15000, timeout: 60000 },
+    )
+  }
+
   createConsumption(orderId: string, actorId: string, data: ConsumptionData) {
     return prisma.$transaction(
       async (tx) => {
@@ -1042,7 +1114,12 @@ export class WorkOrderRepository {
         })
 
         if (existing) {
-          if (existing.ordenTrabajoId !== orderId || existing.consumidoPorId !== actorId) {
+          if (
+            existing.ordenTrabajoId !== orderId ||
+            existing.consumidoPorId !== actorId ||
+            existing.repuestoId !== data.repuestoId ||
+            !existing.cantidad.equals(data.cantidad)
+          ) {
             return {
               consumo: existing,
               orden: order,
@@ -1101,6 +1178,49 @@ export class WorkOrderRepository {
           }
         }
 
+        const evaluation = await resolveCompatibility(tx, order.busId, data.repuestoId)
+        let exception: {
+          autorizadoPorId: string
+          fechaAutorizacion: Date
+          id: string
+          motivo: string
+        } | null = null
+
+        if (data.autorizacionExcepcionId) {
+          const authorization = await tx.autorizacionExcepcionConsumo.findUnique({
+            where: { id: data.autorizacionExcepcionId },
+          })
+          if (
+            !authorization ||
+            authorization.estado !== 'VIGENTE' ||
+            authorization.ordenTrabajoId !== orderId ||
+            authorization.intervencionId !== intervention.id ||
+            authorization.repuestoId !== data.repuestoId ||
+            data.cantidad.greaterThan(authorization.cantidadMaxima) ||
+            (authorization.fechaExpiracion && authorization.fechaExpiracion <= new Date())
+          ) {
+            return { consumo: null, orden: order, status: 'INVALID_EXCEPTION' as const }
+          }
+          if (evaluation.resultado === 'COMPATIBLE') {
+            return { consumo: null, orden: order, status: 'EXCEPTION_NOT_NEEDED' as const }
+          }
+          exception = authorization
+        } else if (evaluation.resultado !== 'COMPATIBLE') {
+          await createConsumptionIncompatibilityAlert(
+            {
+              busCodigo: order.bus.codigoInterno,
+              busId: order.bus.id,
+              claveIdempotencia: data.claveIdempotencia,
+              contexto: evaluation.evidencia,
+              ordenId: orderId,
+              repuestoCodigo: part.codigo,
+              repuestoId: data.repuestoId,
+            },
+            tx,
+          )
+          return { consumo: null, orden: order, status: 'INCOMPATIBLE' as const }
+        }
+
         if (part.stockActual.lessThan(data.cantidad)) {
           return {
             consumo: null,
@@ -1139,12 +1259,31 @@ export class WorkOrderRepository {
             claveIdempotencia: data.claveIdempotencia,
             consumidoPorId: actorId,
             costoUnitario: part.costoUnitario,
+            autorizadoPorId: exception?.autorizadoPorId,
+            autorizacionExcepcionId: exception?.id,
+            evidenciaCompatibilidad: evaluation.evidencia,
+            fechaAutorizacion: exception?.fechaAutorizacion,
             intervencionId: intervention.id,
             ordenTrabajoId: orderId,
             repuestoId: data.repuestoId,
+            motivoExcepcion: exception?.motivo,
+            ...(exception
+              ? { resultadoCompatibilidad: 'EXCEPCION_AUTORIZADA' as const }
+              : {
+                  reglaCompatibilidadId: evaluation.regla!.id,
+                  reglaVersion: evaluation.regla!.version,
+                  resultadoCompatibilidad: 'COMPATIBLE' as const,
+                }),
             subtotal,
           },
         })
+
+        if (exception) {
+          await tx.autorizacionExcepcionConsumo.update({
+            data: { estado: 'USADA' },
+            where: { id: exception.id },
+          })
+        }
 
         await tx.movimientoInventario.create({
           data: {

@@ -16,7 +16,9 @@ const prisma = new PrismaClient()
 const created = {
   actividades: [] as string[],
   asignaciones: [] as string[],
+  autorizaciones: [] as string[],
   buses: [] as string[],
+  compatibilidades: [] as string[],
   consumos: [] as string[],
   intervenciones: [] as string[],
   movimientos: [] as string[],
@@ -231,6 +233,9 @@ async function cleanup() {
     async (tx) => {
       await tx.movimientoInventario.deleteMany({ where: { id: { in: created.movimientos } } })
       await tx.consumoRepuesto.deleteMany({ where: { id: { in: created.consumos } } })
+      await tx.autorizacionExcepcionConsumo.deleteMany({
+        where: { id: { in: created.autorizaciones } },
+      })
       await tx.actividadOrden.deleteMany({ where: { id: { in: created.actividades } } })
       await tx.intervencion.deleteMany({ where: { id: { in: created.intervenciones } } })
       await tx.ordenTrabajo.deleteMany({ where: { id: { in: created.ordenes } } })
@@ -239,6 +244,9 @@ async function cleanup() {
         where: { id: { in: created.programaciones } },
       })
       await tx.asignacionConductor.deleteMany({ where: { id: { in: created.asignaciones } } })
+      await tx.compatibilidadRepuesto.deleteMany({
+        where: { id: { in: created.compatibilidades } },
+      })
       await tx.repuesto.deleteMany({ where: { id: { in: created.repuestos } } })
       await tx.bus.deleteMany({ where: { id: { in: created.buses } } })
       await tx.usuario.deleteMany({ where: { id: { in: created.usuarios } } })
@@ -706,6 +714,99 @@ describe('Prisma persistence integrity', () => {
     expect(Object.values(Prisma.OrdenTrabajoScalarFieldEnum) as string[]).not.toContain(
       'repuestoId',
     )
+  }, 60000)
+
+  it('physically validates and consumes a P8 exception exactly once', async () => {
+    const core = await createCore('p8-exception')
+    const orden = await createAssignedCorrectiveOrder(core, 'P8EXCEPTION')
+    const intervention = await startActiveIntervention(core, orden)
+    const repuesto = await createRepuesto()
+    const authorizationId = track('autorizaciones')
+    const consumoId = track('consumos')
+    const movimientoId = track('movimientos')
+    const secondConsumptionId = track('consumos')
+    const authorizedAt = new Date(Date.now() - 60_000)
+    const consumedAt = new Date()
+
+    await prisma.autorizacionExcepcionConsumo.create({
+      data: {
+        autorizadoPorId: core.adminId,
+        cantidadMaxima: '1',
+        fechaAutorizacion: authorizedAt,
+        fechaExpiracion: new Date(consumedAt.getTime() + 60_000),
+        id: authorizationId,
+        intervencionId: intervention.id,
+        motivo: 'Excepcion P8 controlada para prueba fisica.',
+        ordenTrabajoId: orden.id,
+        repuestoId: repuesto.id,
+      },
+    })
+
+    await prisma.$transaction(async (tx) => {
+      await tx.consumoRepuesto.create({
+        data: {
+          autorizadoPorId: core.adminId,
+          autorizacionExcepcionId: authorizationId,
+          cantidad: '1',
+          consumidoPorId: core.mecanicoId,
+          costoUnitario: '25000',
+          evidenciaCompatibilidad: {
+            busId: core.busId,
+            evaluadoAt: consumedAt.toISOString(),
+            precedencia: 'SIN_EVIDENCIA_POSITIVA',
+            repuestoId: repuesto.id,
+            schemaVersion: 1,
+          },
+          fechaAutorizacion: authorizedAt,
+          fechaConsumo: consumedAt,
+          id: consumoId,
+          intervencionId: intervention.id,
+          motivoExcepcion: 'Excepcion P8 controlada para prueba fisica.',
+          ordenTrabajoId: orden.id,
+          repuestoId: repuesto.id,
+          resultadoCompatibilidad: 'EXCEPCION_AUTORIZADA',
+          subtotal: '25000',
+        },
+      })
+
+      const authorization = await tx.autorizacionExcepcionConsumo.findUniqueOrThrow({
+        where: { id: authorizationId },
+      })
+      expect(authorization.estado).toBe('USADA')
+
+      await tx.movimientoInventario.create({
+        data: {
+          cantidad: '1',
+          consumoRepuestoId: consumoId,
+          costoUnitario: '25000',
+          id: movimientoId,
+          repuestoId: repuesto.id,
+          responsableId: core.mecanicoId,
+          tipo: 'CONSUMO',
+        },
+      })
+    })
+
+    await expect(
+      prisma.consumoRepuesto.create({
+        data: {
+          autorizadoPorId: core.adminId,
+          autorizacionExcepcionId: authorizationId,
+          cantidad: '1',
+          consumidoPorId: core.mecanicoId,
+          costoUnitario: '25000',
+          evidenciaCompatibilidad: { schemaVersion: 1 },
+          fechaAutorizacion: authorizedAt,
+          id: secondConsumptionId,
+          intervencionId: intervention.id,
+          motivoExcepcion: 'Intento de reutilizacion P8.',
+          ordenTrabajoId: orden.id,
+          repuestoId: repuesto.id,
+          resultadoCompatibilidad: 'EXCEPCION_AUTORIZADA',
+          subtotal: '25000',
+        },
+      }),
+    ).rejects.toBeTruthy()
   }, 60000)
 
   it('rejects inconsistent spare-part movements, orphan consumptions and manual subtotals', async () => {

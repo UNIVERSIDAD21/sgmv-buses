@@ -20,6 +20,11 @@ export interface WorkOrderUserDto {
   telefono: string | null
 }
 
+export interface WorkOrderActorReferenceDto {
+  id: string
+  nombre: string
+}
+
 export interface WorkOrderBusDto {
   anio: number
   codigoInterno: string
@@ -108,13 +113,32 @@ export interface WorkOrderSparePartDto {
 }
 
 export interface WorkOrderConsumptionDto {
+  autorizadoPorId: string | null
+  autorizacionExcepcionId: string | null
   cantidad: string
   costoUnitario: string
   fechaConsumo: string
   id: string
   movimientoInventario: WorkOrderInventoryMovementDto | null
   repuesto: WorkOrderSparePartDto
+  resultadoCompatibilidad: 'COMPATIBLE' | 'EXCEPCION_AUTORIZADA' | 'NO_EVALUADA_LEGADO' | null
+  reglaCompatibilidadId: string | null
+  reglaVersion: number | null
+  evidenciaCompatibilidad: Record<string, unknown> | null
+  motivoExcepcion: string | null
   subtotal: string
+}
+
+export interface WorkOrderConsumptionAuthorizationDto {
+  autorizadoPor: WorkOrderActorReferenceDto
+  cantidadMaxima: string
+  estado: 'REVOCADA' | 'USADA' | 'VIGENTE'
+  fechaAutorizacion: string
+  fechaExpiracion: string | null
+  id: string
+  intervencionId: string
+  motivo: string
+  repuesto: WorkOrderSparePartDto
 }
 
 export interface WorkOrderJourneyDto {
@@ -190,6 +214,7 @@ export interface WorkOrderTechnicalHistoryItemDto {
 
 export interface WorkOrderDetailDto extends WorkOrderSummaryItemDto {
   acciones: WorkOrderActionFlagsDto
+  autorizacionesExcepcion: WorkOrderConsumptionAuthorizationDto[]
   cerradaPor: WorkOrderUserDto | null
   consumosRepuesto: WorkOrderConsumptionDto[]
   creadaPor: WorkOrderUserDto
@@ -229,4 +254,12 @@ export interface WorkOrderSummaryDto {
 
 export type MechanicOptionDto = WorkOrderUserDto
 
-export type AvailableSparePartDto = WorkOrderSparePartDto
+export interface AvailableSparePartDto extends WorkOrderSparePartDto {
+  compatibilidad: {
+    condicionUso: string | null
+    evidencia: Record<string, unknown>
+    resultado: 'COMPATIBLE' | 'INCOMPATIBLE' | 'SIN_EVIDENCIA'
+    reglaId: string | null
+    version: number | null
+  }
+}

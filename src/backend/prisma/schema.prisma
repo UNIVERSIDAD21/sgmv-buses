@@ -138,6 +138,14 @@ enum ResultadoCompatibilidad {
   @@map("resultado_compatibilidad")
 }
 
+enum EstadoAutorizacionExcepcion {
+  VIGENTE
+  USADA
+  REVOCADA
+
+  @@map("estado_autorizacion_excepcion")
+}
+
 enum TipoAlerta {
   MANTENIMIENTO_PROXIMO
   MANTENIMIENTO_VENCIDO
@@ -234,6 +242,7 @@ model Usuario {
   planesPreventivosCreados          PlanMantenimientoPreventivo[] @relation("PlanCreadoPor")
   compatibilidadesDefinidas         CompatibilidadRepuesto[]      @relation("CompatibilidadDefinidaPor")
   consumosAutorizados               ConsumoRepuesto[]             @relation("ConsumoAutorizadoPor")
+  autorizacionesExcepcion           AutorizacionExcepcionConsumo[] @relation("ExcepcionAutorizadaPor")
   alertasRecibidas                  AlertaDestinatario[]
   eventosAuditoria                  EventoAuditoria[]
   solicitudesIdempotentes           SolicitudIdempotente[]
@@ -452,6 +461,7 @@ model OrdenTrabajo {
   reasignaciones      OrdenReasignacion[]
   lecturasKilometraje LecturaKilometraje[]
   alertasInternas     AlertaInterna[]
+  autorizacionesExcepcion AutorizacionExcepcionConsumo[]
 
   @@unique([id, busId])
   @@index([busId, estado])
@@ -480,6 +490,7 @@ model Intervencion {
   actividades         ActividadOrden[]
   lecturasKilometraje LecturaKilometraje[]
   consumosRepuesto    ConsumoRepuesto[]
+  autorizacionesExcepcion AutorizacionExcepcionConsumo[]
 
   @@unique([id, ordenTrabajoId])
   @@index([ordenTrabajoId])
@@ -560,6 +571,7 @@ model Repuesto {
   consumosRepuesto      ConsumoRepuesto[]
   movimientosInventario MovimientoInventario[]
   compatibilidades      CompatibilidadRepuesto[]
+  autorizacionesExcepcion AutorizacionExcepcionConsumo[]
   alertasInternas       AlertaInterna[]
 
   @@index([estado])
@@ -585,6 +597,7 @@ model ConsumoRepuesto {
   autorizadoPorId         String?                  @map("autorizado_por_id") @db.Uuid
   fechaAutorizacion       DateTime?                @map("fecha_autorizacion") @db.Timestamptz(6)
   motivoExcepcion         String?                  @map("motivo_excepcion") @db.Text
+  autorizacionExcepcionId String?                  @unique @map("autorizacion_excepcion_id") @db.Uuid
 
   consumidoPor        Usuario                 @relation("ConsumoConsumidoPor", fields: [consumidoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   ordenTrabajo        OrdenTrabajo            @relation(fields: [ordenTrabajoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -592,6 +605,7 @@ model ConsumoRepuesto {
   intervencion        Intervencion?           @relation(fields: [intervencionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   reglaCompatibilidad CompatibilidadRepuesto? @relation(fields: [reglaCompatibilidadId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   autorizadoPor       Usuario?                @relation("ConsumoAutorizadoPor", fields: [autorizadoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  autorizacionExcepcion AutorizacionExcepcionConsumo? @relation(fields: [autorizacionExcepcionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   movimientoInventario MovimientoInventario?
 
@@ -603,6 +617,33 @@ model ConsumoRepuesto {
   @@index([reglaCompatibilidadId])
   @@index([autorizadoPorId])
   @@map("consumos_repuesto")
+}
+
+model AutorizacionExcepcionConsumo {
+  id                String                     @id @default(uuid()) @db.Uuid
+  ordenTrabajoId    String                     @map("orden_trabajo_id") @db.Uuid
+  intervencionId    String                     @map("intervencion_id") @db.Uuid
+  repuestoId        String                     @map("repuesto_id") @db.Uuid
+  cantidadMaxima    Decimal                    @map("cantidad_maxima") @db.Decimal(12, 2)
+  motivo            String                     @db.Text
+  autorizadoPorId   String                     @map("autorizado_por_id") @db.Uuid
+  fechaAutorizacion DateTime                   @default(now()) @map("fecha_autorizacion") @db.Timestamptz(6)
+  fechaExpiracion   DateTime?                  @map("fecha_expiracion") @db.Timestamptz(6)
+  estado            EstadoAutorizacionExcepcion @default(VIGENTE)
+  createdAt         DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  ordenTrabajo  OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  intervencion  Intervencion @relation(fields: [intervencionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  repuesto      Repuesto     @relation(fields: [repuestoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  autorizadoPor Usuario      @relation("ExcepcionAutorizadaPor", fields: [autorizadoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  consumo       ConsumoRepuesto?
+
+  @@index([ordenTrabajoId, estado])
+  @@index([intervencionId, estado])
+  @@index([repuestoId, estado])
+  @@index([autorizadoPorId])
+  @@map("autorizaciones_excepcion_consumo")
 }
 
 model MovimientoInventario {

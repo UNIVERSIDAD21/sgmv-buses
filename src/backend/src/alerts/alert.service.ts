@@ -34,12 +34,15 @@ async function recipientIdsByRoles(
 
 async function createAlert(
   input: {
+    busId?: string
     context: Prisma.InputJsonObject
     deduplicationKey?: string
     message: string
     noveltyId?: string
+    orderId?: string
     priority: PrioridadAlerta
     preventiveScheduleId?: string
+    sparePartId?: string
     recipients: string[]
     title: string
     type: TipoAlerta
@@ -82,14 +85,45 @@ async function createAlert(
       id: randomUUID(),
       mensaje: input.message,
       ...(input.noveltyId ? { novedadId: input.noveltyId } : {}),
+      ...(input.orderId ? { ordenTrabajoId: input.orderId } : {}),
       ...(input.preventiveScheduleId
         ? { programacionMantenimientoId: input.preventiveScheduleId }
         : {}),
+      ...(input.sparePartId ? { repuestoId: input.sparePartId } : {}),
+      ...(input.busId ? { busId: input.busId } : {}),
       prioridad: input.priority,
       tipo: input.type,
       titulo: input.title,
     },
   })
+}
+
+export async function createConsumptionIncompatibilityAlert(
+  input: {
+    busId: string
+    busCodigo: string
+    claveIdempotencia: string
+    contexto: Prisma.InputJsonObject
+    ordenId: string
+    repuestoCodigo: string
+    repuestoId: string
+  },
+  tx: Prisma.TransactionClient,
+) {
+  const recipients = await recipientIdsByRoles(['ADMINISTRADOR', 'DESPACHADOR'], tx)
+  await createAlert(
+    {
+      context: input.contexto,
+      deduplicationKey: `consumo-incompatible:${input.claveIdempotencia}`,
+      message: `El repuesto ${input.repuestoCodigo} no esta autorizado para el bus ${input.busCodigo}.`,
+      orderId: input.ordenId,
+      priority: 'ALTA',
+      recipients,
+      title: 'Consumo incompatible rechazado',
+      type: 'CONSUMO_INCOMPATIBLE',
+    },
+    tx,
+  )
 }
 
 export async function createNoveltyAlerts(input: NoveltyAlertInput, tx: Prisma.TransactionClient) {

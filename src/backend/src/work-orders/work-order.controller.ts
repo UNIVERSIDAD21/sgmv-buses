@@ -3,6 +3,8 @@ import type { RequestHandler } from 'express'
 import { sendData } from '../shared/http.js'
 import {
   assignWorkOrderSchema,
+  authorizeConsumptionExceptionSchema,
+  consumptionExceptionParamSchema,
   availableMechanicsQuerySchema,
   availablePartsQuerySchema,
   createActivitySchema,
@@ -59,11 +61,38 @@ export class WorkOrderController {
     const input = createConsumptionSchema.parse(request.body)
     const result = await this.workOrderService.createConsumption(ordenId, input, request.user!)
 
+    if (result.rechazado) {
+      response.status(409)
+      sendData(response, result, 'Consumo rechazado por incompatibilidad')
+      return
+    }
+
     if (!result.yaExistia) {
       response.status(201)
     }
 
     sendData(response, result, result.yaExistia ? 'Consumo ya registrado' : 'Consumo registrado')
+  }
+
+  authorizeConsumptionException: RequestHandler = async (request, response) => {
+    const { ordenId } = orderIdParamSchema.parse(request.params)
+    const result = await this.workOrderService.authorizeConsumptionException(
+      ordenId,
+      authorizeConsumptionExceptionSchema.parse(request.body),
+      request.user!,
+    )
+    response.status(201)
+    sendData(response, result, 'Excepcion de consumo autorizada')
+  }
+
+  revokeConsumptionException: RequestHandler = async (request, response) => {
+    const { autorizacionId, ordenId } = consumptionExceptionParamSchema.parse(request.params)
+    const result = await this.workOrderService.revokeConsumptionException(
+      ordenId,
+      autorizacionId,
+      request.user!,
+    )
+    sendData(response, result, 'Excepcion de consumo revocada')
   }
 
   createManual: RequestHandler = async (request, response) => {

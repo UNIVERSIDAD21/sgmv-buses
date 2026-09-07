@@ -6,10 +6,12 @@ import {
 } from '@prisma/client'
 
 import type { AuthenticatedUser } from '../auth/auth.types.js'
+import { resolveCompatibility } from '../spare-parts/compatibility.resolver.js'
 import { AppError } from '../shared/http.js'
 import type {
   AvailableMechanicsQuery,
   AvailablePartsQuery,
+  AuthorizeConsumptionExceptionInput,
   AssignWorkOrderInput,
   CreateActivityInput,
   CreateConsumptionInput,
@@ -247,6 +249,22 @@ function mapSparePart(part: SparePartRecord): WorkOrderSparePartDto {
   }
 }
 
+function mapAvailableSparePart(
+  part: SparePartRecord & { evaluacion: Awaited<ReturnType<typeof resolveCompatibility>> | null },
+): AvailableSparePartDto {
+  const base = mapSparePart(part)
+  return {
+    ...base,
+    compatibilidad: {
+      condicionUso: part.evaluacion?.regla?.condicionUso ?? null,
+      evidencia: (part.evaluacion?.evidencia ?? {}) as Record<string, unknown>,
+      resultado: part.evaluacion?.resultado ?? 'SIN_EVIDENCIA',
+      reglaId: part.evaluacion?.regla?.id ?? null,
+      version: part.evaluacion?.regla?.version ?? null,
+    },
+  }
+}
+
 function mapMovement(
   movement: ConsumptionRecord['movimientoInventario'],
 ): WorkOrderInventoryMovementDto | null {
@@ -266,12 +284,19 @@ function mapMovement(
 
 function mapConsumption(consumption: ConsumptionRecord): WorkOrderConsumptionDto {
   return {
+    autorizadoPorId: consumption.autorizadoPorId,
+    autorizacionExcepcionId: consumption.autorizacionExcepcionId,
     cantidad: decimalToString(consumption.cantidad),
     costoUnitario: decimalToString(consumption.costoUnitario),
     fechaConsumo: consumption.fechaConsumo.toISOString(),
     id: consumption.id,
     movimientoInventario: mapMovement(consumption.movimientoInventario),
     repuesto: mapSparePart(consumption.repuesto),
+    resultadoCompatibilidad: consumption.resultadoCompatibilidad,
+    reglaCompatibilidadId: consumption.reglaCompatibilidadId,
+    reglaVersion: consumption.reglaVersion,
+    evidenciaCompatibilidad: consumption.evidenciaCompatibilidad as Record<string, unknown> | null,
+    motivoExcepcion: consumption.motivoExcepcion,
     subtotal: decimalToString(consumption.subtotal),
   }
 }
@@ -349,6 +374,20 @@ function mapDetailOrder(
   return {
     ...mapSummaryOrder(order),
     acciones: buildActions(order, actor),
+    autorizacionesExcepcion: order.autorizacionesExcepcion.map((authorization) => ({
+      autorizadoPor: {
+        id: authorization.autorizadoPor.id,
+        nombre: authorization.autorizadoPor.nombre,
+      },
+      cantidadMaxima: decimalToString(authorization.cantidadMaxima),
+      estado: authorization.estado,
+      fechaAutorizacion: authorization.fechaAutorizacion.toISOString(),
+      fechaExpiracion: authorization.fechaExpiracion?.toISOString() ?? null,
+      id: authorization.id,
+      intervencionId: authorization.intervencionId,
+      motivo: authorization.motivo,
+      repuesto: mapSparePart(authorization.repuesto),
+    })),
     cerradaPor: mapNullableUser(order.cerradaPor),
     consumosRepuesto: order.consumosRepuesto.map(mapConsumption),
     creadaPor: mapUser(order.creadaPor),
@@ -492,10 +531,30 @@ export class WorkOrderService {
 
     try {
       const result = await this.workOrderRepository.createConsumption(orderId, actor.id, {
+        autorizacionExcepcionId: input.autorizacionExcepcionId,
         cantidad: new Prisma.Decimal(input.cantidad),
         claveIdempotencia: input.claveIdempotencia,
         repuestoId: input.repuestoId,
       })
+
+      if (result.status === 'INCOMPATIBLE') {
+        return {
+          consumo: null,
+          orden: this.mapOperationResult(result, actor),
+          rechazado: true as const,
+          yaExistia: false,
+        }
+      }
+      if (result.status === 'INVALID_EXCEPTION') {
+        throw new AppError(
+          409,
+          'INVALID_CONSUMPTION_EXCEPTION',
+          'La excepcion no esta vigente o no corresponde',
+        )
+      }
+      if (result.status === 'EXCEPTION_NOT_NEEDED') {
+        throw new AppError(400, 'EXCEPTION_NOT_NEEDED', 'El repuesto ya es compatible con el bus')
+      }
 
       const orden = this.mapOperationResult(result, actor)
 
@@ -531,6 +590,91 @@ export class WorkOrderService {
         }
       }
 
+      translatePrismaError(error)
+    }
+  }
+
+  async authorizeConsumptionException(
+    orderId: string,
+    input: AuthorizeConsumptionExceptionInput,
+    actor: AuthenticatedUser,
+  ) {
+    ensureAdmin(actor)
+    try {
+      const result = await this.workOrderRepository.authorizeConsumptionException(
+        orderId,
+        actor.id,
+        {
+          cantidadMaxima: new Prisma.Decimal(input.cantidadMaxima),
+          fechaExpiracion: input.fechaExpiracion ?? null,
+          intervencionId: input.intervencionId,
+          motivo: normalizeText(input.motivo),
+          repuestoId: input.repuestoId,
+        },
+      )
+      if (result.status === 'ORDER_NOT_FOUND')
+        throw new AppError(404, 'ORDER_NOT_FOUND', 'Orden no encontrada')
+      if (result.status === 'INVALID_STATE')
+        throw new AppError(409, 'ORDER_NOT_IN_EXECUTION', 'La orden no esta en ejecucion')
+      if (result.status === 'INTERVENTION_NOT_ACTIVE')
+        throw new AppError(409, 'INTERVENTION_NOT_ACTIVE', 'La intervencion no esta activa')
+      if (result.status === 'SPARE_PART_NOT_FOUND')
+        throw new AppError(404, 'SPARE_PART_NOT_FOUND', 'Repuesto no encontrado')
+      if (result.status === 'SPARE_PART_INACTIVE')
+        throw new AppError(409, 'SPARE_PART_INACTIVE', 'El repuesto esta inactivo')
+      return {
+        autorizacion: {
+          cantidadMaxima: result.autorizacion!.cantidadMaxima.toFixed(2),
+          estado: result.autorizacion!.estado,
+          fechaAutorizacion: result.autorizacion!.fechaAutorizacion.toISOString(),
+          fechaExpiracion: result.autorizacion!.fechaExpiracion?.toISOString() ?? null,
+          id: result.autorizacion!.id,
+          intervencionId: result.autorizacion!.intervencionId,
+          motivo: result.autorizacion!.motivo,
+          ordenTrabajoId: result.autorizacion!.ordenTrabajoId,
+          repuestoId: result.autorizacion!.repuestoId,
+        },
+      }
+    } catch (error) {
+      translatePrismaError(error)
+    }
+  }
+
+  async revokeConsumptionException(
+    orderId: string,
+    authorizationId: string,
+    actor: AuthenticatedUser,
+  ) {
+    ensureAdmin(actor)
+    try {
+      const result = await this.workOrderRepository.revokeConsumptionException(
+        orderId,
+        authorizationId,
+      )
+      if (result.status === 'NOT_FOUND') {
+        throw new AppError(
+          404,
+          'CONSUMPTION_EXCEPTION_NOT_FOUND',
+          'La excepcion no existe para esta orden',
+        )
+      }
+      if (result.status === 'INVALID_STATE') {
+        throw new AppError(409, 'CONSUMPTION_EXCEPTION_NOT_ACTIVE', 'La excepcion no esta vigente')
+      }
+      return {
+        autorizacion: {
+          cantidadMaxima: result.autorizacion!.cantidadMaxima.toFixed(2),
+          estado: result.autorizacion!.estado,
+          fechaAutorizacion: result.autorizacion!.fechaAutorizacion.toISOString(),
+          fechaExpiracion: result.autorizacion!.fechaExpiracion?.toISOString() ?? null,
+          id: result.autorizacion!.id,
+          intervencionId: result.autorizacion!.intervencionId,
+          motivo: result.autorizacion!.motivo,
+          ordenTrabajoId: result.autorizacion!.ordenTrabajoId,
+          repuestoId: result.autorizacion!.repuestoId,
+        },
+      }
+    } catch (error) {
       translatePrismaError(error)
     }
   }
@@ -643,10 +787,11 @@ export class WorkOrderService {
     const repuestos = await this.workOrderRepository.findAvailableSpareParts(
       query.busqueda ? normalizeText(query.busqueda) : undefined,
       query.limite,
+      order.busId,
     )
 
     return {
-      repuestos: repuestos.map((part): AvailableSparePartDto => mapSparePart(part)),
+      repuestos: repuestos.map((part) => mapAvailableSparePart(part)),
     }
   }
 

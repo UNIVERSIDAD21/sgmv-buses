@@ -39,6 +39,10 @@ export interface SparePartSummaryItemDto {
 
 export interface SparePartDto extends SparePartSummaryItemDto {
   createdAt: string
+  dimensiones: Record<string, unknown> | null
+  especificaciones: Record<string, unknown> | null
+  fabricante: string | null
+  numeroParte: string | null
   updatedAt: string
 }
 
