@@ -36,6 +36,11 @@ const ids = {
   lecturasJornada: {
     inicio: '34000000-0000-4000-8000-000000000001',
     fin: '34000000-0000-4000-8000-000000000002',
+    novedad: '34000000-0000-4000-8000-000000000005',
+  },
+  lecturasTecnicas: {
+    ingreso: '34000000-0000-4000-8000-000000000003',
+    revision: '34000000-0000-4000-8000-000000000004',
   },
   asignacion: '40000000-0000-4000-8000-000000000001',
   lecturaKilometraje: '41000000-0000-4000-8000-000000000001',
@@ -397,15 +402,15 @@ async function main() {
       await tx.lecturaKilometraje.upsert({
         where: { id: ids.lecturaKilometraje },
         update: {
-          kilometrajeAnterior: 45000,
-          kilometrajeNuevo: 45200,
+          kilometrajeAnterior: 45210,
+          kilometrajeNuevo: 45210,
           registradoPorId: ids.usuarios.admin,
         },
         create: {
           id: ids.lecturaKilometraje,
           busId: ids.buses.principal,
-          kilometrajeAnterior: 45000,
-          kilometrajeNuevo: 45200,
+          kilometrajeAnterior: 45210,
+          kilometrajeNuevo: 45210,
           registradoPorId: ids.usuarios.admin,
           motivo: 'Lectura inicial de desarrollo.',
         },
@@ -462,7 +467,7 @@ async function main() {
       await tx.lecturaKilometraje.upsert({
         where: { id: ids.lecturasJornada.fin },
         update: {
-          kilometrajeAnterior: 44900,
+          kilometrajeAnterior: 44980,
           kilometrajeNuevo: 45000,
           registradoPorId: ids.usuarios.conductor,
           fechaLectura: jornadaFinalizada.finReal,
@@ -470,7 +475,7 @@ async function main() {
         create: {
           id: ids.lecturasJornada.fin,
           busId: ids.buses.principal,
-          kilometrajeAnterior: 44900,
+          kilometrajeAnterior: 44980,
           kilometrajeNuevo: 45000,
           registradoPorId: ids.usuarios.conductor,
           fechaRegistro: jornadaFinalizada.finReal,
@@ -478,6 +483,31 @@ async function main() {
           tipo: 'FIN_JORNADA',
           jornadaOperativaId: ids.jornadas.finalizada,
           motivo: 'Fin de jornada operativa demo.',
+        },
+      })
+
+      const fechaNovedad = new Date('2026-09-01T18:30:00.000Z')
+      await tx.lecturaKilometraje.upsert({
+        where: { id: ids.lecturasJornada.novedad },
+        update: {
+          fechaLectura: fechaNovedad,
+          jornadaOperativaId: ids.jornadas.finalizada,
+          kilometrajeAnterior: 44900,
+          kilometrajeNuevo: 44980,
+          registradoPorId: ids.usuarios.conductor,
+          tipo: 'NOVEDAD',
+        },
+        create: {
+          id: ids.lecturasJornada.novedad,
+          busId: ids.buses.principal,
+          fechaRegistro: fechaNovedad,
+          fechaLectura: fechaNovedad,
+          jornadaOperativaId: ids.jornadas.finalizada,
+          kilometrajeAnterior: 44900,
+          kilometrajeNuevo: 44980,
+          motivo: 'Kilometraje al reportar la novedad operativa demo.',
+          registradoPorId: ids.usuarios.conductor,
+          tipo: 'NOVEDAD',
         },
       })
 
@@ -519,6 +549,11 @@ async function main() {
           revisadaPorId: ids.usuarios.admin,
           fechaRevision: now,
           observacionRevision: 'Convertida a orden correctiva demo.',
+          jornadaOperativaId: ids.jornadas.finalizada,
+          lecturaKilometrajeId: ids.lecturasJornada.novedad,
+          fechaOcurrencia: fechaNovedad,
+          afectaOperacion: true,
+          bloqueaDisponibilidad: true,
         },
         create: {
           id: ids.novedad,
@@ -531,6 +566,11 @@ async function main() {
           revisadaPorId: ids.usuarios.admin,
           fechaRevision: now,
           observacionRevision: 'Convertida a orden correctiva demo.',
+          jornadaOperativaId: ids.jornadas.finalizada,
+          lecturaKilometrajeId: ids.lecturasJornada.novedad,
+          fechaOcurrencia: fechaNovedad,
+          afectaOperacion: true,
+          bloqueaDisponibilidad: true,
         },
       })
 
@@ -604,7 +644,7 @@ async function main() {
         },
       })
 
-      const fechaCorrectivaCreacion = new Date()
+      const fechaCorrectivaCreacion = new Date('2026-09-02T12:00:00.000Z')
       const fechaCorrectivaAsignacion = new Date(fechaCorrectivaCreacion.getTime() + 1000)
       const fechaCorrectivaInicio = new Date(fechaCorrectivaCreacion.getTime() + 2000)
       const fechaCorrectivaCompletada = new Date(fechaCorrectivaCreacion.getTime() + 3000)
@@ -612,12 +652,13 @@ async function main() {
       await tx.ordenTrabajo.upsert({
         where: { codigo: 'OT-DEMO-CORR-001' },
         update: {
-          estado: 'COMPLETADA_TECNICO',
+          estado: 'EN_EJECUCION',
           tecnicoAsignadoId: ids.usuarios.mecanico,
           fechaCreacion: fechaCorrectivaCreacion,
           fechaAsignacion: fechaCorrectivaAsignacion,
           fechaInicioEjecucion: fechaCorrectivaInicio,
-          fechaCompletadaTecnico: fechaCorrectivaCompletada,
+          fechaCompletadaTecnico: null,
+          jornadaOperativaId: ids.jornadas.finalizada,
         },
         create: {
           id: ids.ordenes.correctiva,
@@ -627,18 +668,18 @@ async function main() {
           origen: 'NOVEDAD',
           prioridad: 'ALTA',
           descripcion: 'Revision correctiva por vibracion en frenado.',
-          estado: 'COMPLETADA_TECNICO',
+          estado: 'EN_EJECUCION',
           tecnicoAsignadoId: ids.usuarios.mecanico,
           creadaPorId: ids.usuarios.admin,
           fechaCreacion: fechaCorrectivaCreacion,
           fechaAsignacion: fechaCorrectivaAsignacion,
           fechaInicioEjecucion: fechaCorrectivaInicio,
-          fechaCompletadaTecnico: fechaCorrectivaCompletada,
+          jornadaOperativaId: ids.jornadas.finalizada,
           novedadId: ids.novedad,
         },
       })
 
-      const fechaPreventivaCreacion = new Date()
+      const fechaPreventivaCreacion = new Date('2026-09-02T13:00:00.000Z')
       const fechaPreventivaAsignacion = new Date(fechaPreventivaCreacion.getTime() + 1000)
 
       await tx.ordenTrabajo.upsert({
@@ -675,13 +716,14 @@ async function main() {
         update: {
           diagnostico: 'Se identifica desgaste en componente de freno.',
           observaciones: 'Trabajo tecnico demo completado.',
+          fechaFin: null,
         },
         create: {
           id: ids.intervencion,
           ordenTrabajoId: ids.ordenes.correctiva,
           tecnicoId: ids.usuarios.mecanico,
           fechaInicio: fechaCorrectivaInicio,
-          fechaFin: fechaCorrectivaCompletada,
+          fechaFin: null,
           diagnostico: 'Se identifica desgaste en componente de freno.',
           observaciones: 'Trabajo tecnico demo completado.',
         },
@@ -698,6 +740,59 @@ async function main() {
           descripcion: 'Inspeccion, ajuste y prueba de frenado.',
           registradaPorId: ids.usuarios.mecanico,
         },
+      })
+
+      await tx.lecturaKilometraje.upsert({
+        where: { id: ids.lecturasTecnicas.ingreso },
+        update: {
+          fechaLectura: fechaCorrectivaAsignacion,
+          kilometrajeAnterior: 45200,
+          kilometrajeNuevo: 45200,
+          ordenTrabajoId: ids.ordenes.correctiva,
+          registradoPorId: ids.usuarios.mecanico,
+          tipo: 'INGRESO_TALLER',
+        },
+        create: {
+          id: ids.lecturasTecnicas.ingreso,
+          busId: ids.buses.principal,
+          fechaLectura: fechaCorrectivaAsignacion,
+          kilometrajeAnterior: 45200,
+          kilometrajeNuevo: 45200,
+          motivo: 'Ingreso al taller del escenario P7.',
+          ordenTrabajoId: ids.ordenes.correctiva,
+          registradoPorId: ids.usuarios.mecanico,
+          tipo: 'INGRESO_TALLER',
+        },
+      })
+
+      await tx.lecturaKilometraje.upsert({
+        where: { id: ids.lecturasTecnicas.revision },
+        update: {
+          fechaLectura: new Date(fechaCorrectivaInicio.getTime() + 500),
+          intervencionId: ids.intervencion,
+          kilometrajeAnterior: 45200,
+          kilometrajeNuevo: 45210,
+          ordenTrabajoId: ids.ordenes.correctiva,
+          registradoPorId: ids.usuarios.mecanico,
+          tipo: 'REVISION_TECNICA',
+        },
+        create: {
+          id: ids.lecturasTecnicas.revision,
+          busId: ids.buses.principal,
+          fechaLectura: new Date(fechaCorrectivaInicio.getTime() + 500),
+          intervencionId: ids.intervencion,
+          kilometrajeAnterior: 45200,
+          kilometrajeNuevo: 45210,
+          motivo: 'Revision tecnica durante la intervencion P7.',
+          ordenTrabajoId: ids.ordenes.correctiva,
+          registradoPorId: ids.usuarios.mecanico,
+          tipo: 'REVISION_TECNICA',
+        },
+      })
+
+      await tx.bus.update({
+        where: { id: ids.buses.principal },
+        data: { kilometrajeActual: 45210 },
       })
 
       await tx.repuesto.upsert({
@@ -874,6 +969,7 @@ async function main() {
           cantidad: '2',
           costoUnitario: '80000',
           subtotal: '160000',
+          intervencionId: ids.intervencion,
         },
         create: {
           id: ids.consumo,
@@ -883,6 +979,7 @@ async function main() {
           costoUnitario: '80000',
           subtotal: '160000',
           consumidoPorId: ids.usuarios.mecanico,
+          intervencionId: ids.intervencion,
         },
       })
 
@@ -957,6 +1054,18 @@ async function main() {
           },
         })
       }
+
+      await tx.intervencion.update({
+        where: { id: ids.intervencion },
+        data: { fechaFin: fechaCorrectivaCompletada },
+      })
+      await tx.ordenTrabajo.update({
+        where: { id: ids.ordenes.correctiva },
+        data: {
+          estado: 'COMPLETADA_TECNICO',
+          fechaCompletadaTecnico: fechaCorrectivaCompletada,
+        },
+      })
     },
     {
       maxWait: 15000,

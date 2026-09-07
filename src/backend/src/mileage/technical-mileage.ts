@@ -1,29 +1,27 @@
-import { randomUUID } from 'node:crypto'
-
 import type { Prisma, TipoLectura } from '@prisma/client'
 
 import { evaluatePreventiveAlertsForBus } from '../alerts/alert.service.js'
 import { AppError } from '../shared/http.js'
 import { lockBusMileage } from './mileage-lock.js'
 
-const userRefSelect = {
-  id: true,
-  nombre: true,
-  rol: { select: { codigo: true } },
-} satisfies Prisma.UsuarioSelect
-
-interface RegisterContextualMileageInput {
+export interface RegisterTechnicalMileageInput {
   actorId: string
   busId: string
   eventDate: Date
-  journeyId: string
+  interventionId?: string
   mileage: number
-  readingId?: string
-  type: Extract<TipoLectura, 'INICIO_JORNADA' | 'FIN_JORNADA' | 'NOVEDAD'>
+  motivo?: string
+  orderId: string
+  type: Extract<TipoLectura, 'INGRESO_TALLER' | 'REVISION_TECNICA' | 'CIERRE_MANTENIMIENTO'>
 }
 
-export async function registerContextualMileageReading(
-  input: RegisterContextualMileageInput,
+/**
+ * Persists an immutable technical odometer event using the same chronological
+ * neighbour policy used by operational journeys. Context ownership is resolved
+ * by the work-order transaction; this helper never accepts a free bus id from HTTP.
+ */
+export async function registerTechnicalMileageReading(
+  input: RegisterTechnicalMileageInput,
   tx: Prisma.TransactionClient,
 ) {
   await lockBusMileage(tx, input.busId)
@@ -32,7 +30,7 @@ export async function registerContextualMileageReading(
     where: { id: input.busId },
     select: { kilometrajeActual: true },
   })
-  if (!bus) throw new AppError(404, 'RESOURCE_NOT_FOUND', 'Bus no encontrado')
+  if (!bus) throw new AppError(404, 'BUS_NOT_FOUND', 'Bus no encontrado')
 
   const readings = await tx.lecturaKilometraje.findMany({
     where: { busId: input.busId },
@@ -46,12 +44,12 @@ export async function registerContextualMileageReading(
     },
   })
   readings.sort((left, right) => {
-    const byEvent =
+    const eventDifference =
       (left.fechaLectura ?? left.fechaRegistro).getTime() -
       (right.fechaLectura ?? right.fechaRegistro).getTime()
-    if (byEvent !== 0) return byEvent
-    const byRegistration = left.fechaRegistro.getTime() - right.fechaRegistro.getTime()
-    return byRegistration !== 0 ? byRegistration : left.id.localeCompare(right.id)
+    if (eventDifference !== 0) return eventDifference
+    const registrationDifference = left.fechaRegistro.getTime() - right.fechaRegistro.getTime()
+    return registrationDifference !== 0 ? registrationDifference : left.id.localeCompare(right.id)
   })
 
   const nextIndex = readings.findIndex(
@@ -80,14 +78,14 @@ export async function registerContextualMileageReading(
     data: {
       busId: input.busId,
       fechaLectura: input.eventDate,
-      id: input.readingId ?? randomUUID(),
-      jornadaOperativaId: input.journeyId,
+      ...(input.interventionId ? { intervencionId: input.interventionId } : {}),
       kilometrajeAnterior: previousMileage,
       kilometrajeNuevo: input.mileage,
+      ...(input.motivo ? { motivo: input.motivo } : {}),
+      ordenTrabajoId: input.orderId,
       registradoPorId: input.actorId,
       tipo: input.type,
     },
-    include: { registradoPor: { select: userRefSelect } },
   })
 
   if (next) {
@@ -104,6 +102,5 @@ export async function registerContextualMileageReading(
   }
 
   await evaluatePreventiveAlertsForBus(input.busId, tx)
-
   return reading
 }

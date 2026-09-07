@@ -13,6 +13,7 @@ import FleetPage from './features/flota/FleetPage'
 import HistoryReportsPage from './features/historial/HistoryReportsPage'
 import JourneyPage from './features/jornadas/JourneyPage'
 import NoveltyPage from './features/novedades/NoveltyPage'
+import DispatchWorkOrdersPage from './features/ordenes-trabajo/DispatchWorkOrdersPage'
 import WorkOrderPage from './features/ordenes-trabajo/WorkOrderPage'
 import PreventivePage from './features/preventivo/PreventivePage'
 import SparePartsPage from './features/repuestos/SparePartsPage'
@@ -103,6 +104,14 @@ function AppRoutes() {
             </ProtectedRoute>
           }
           path="/ordenes-trabajo"
+        />
+        <Route
+          element={
+            <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR']}>
+              <DispatchWorkOrdersPage />
+            </ProtectedRoute>
+          }
+          path="/ordenes-trabajo/despacho"
         />
         <Route
           element={

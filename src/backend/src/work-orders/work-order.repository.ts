@@ -9,6 +9,9 @@ import {
 } from '@prisma/client'
 
 import { evaluatePreventiveAlertsForBus } from '../alerts/alert.service.js'
+import { buildAvailability } from '../availability/availability.policy.js'
+import { getAvailabilityRecords } from '../availability/availability.repository.js'
+import { registerTechnicalMileageReading } from '../mileage/technical-mileage.js'
 import { prisma } from '../prisma/client.js'
 import {
   hasValidPreventivePlanSnapshot,
@@ -49,6 +52,12 @@ const sparePartSelect = {
   stockMinimo: true,
   unidadMedida: true,
 } as const
+
+const technicalReadingOrderBy: Prisma.LecturaKilometrajeOrderByWithRelationInput[] = [
+  { fechaLectura: 'asc' },
+  { fechaRegistro: 'asc' },
+  { id: 'asc' },
+]
 
 export const workOrderDetailInclude = {
   bus: {
@@ -100,6 +109,23 @@ export const workOrderDetailInclude = {
     orderBy: {
       fechaInicio: 'asc',
     },
+  },
+  jornadaOperativa: {
+    select: {
+      estado: true,
+      finProgramado: true,
+      finReal: true,
+      id: true,
+      inicioProgramado: true,
+      inicioReal: true,
+      ruta: { select: { codigo: true, id: true, nombre: true } },
+    },
+  },
+  lecturasKilometraje: {
+    include: {
+      registradoPor: { select: userSelect },
+    },
+    orderBy: technicalReadingOrderBy,
   },
   novedad: {
     select: {
@@ -191,7 +217,70 @@ interface ConsumptionData {
   repuestoId: string
 }
 
+export interface TechnicalReadingData {
+  fechaEvento: Date
+  kilometraje: number
+  motivo: string | null
+  tipo: 'INGRESO_TALLER' | 'REVISION_TECNICA' | 'CIERRE_MANTENIMIENTO'
+}
+
+export interface DispatchOrderProjectionRecord {
+  disponibilidad: ReturnType<typeof buildAvailability>
+  orden: {
+    bus: { codigoInterno: string; id: string; placa: string }
+    codigo: string
+    disponibilidadAlCierre: boolean | null
+    estado: EstadoOrdenTrabajo
+    fechaCierre: Date | null
+    id: string
+  }
+}
+
 export class WorkOrderRepository {
+  listDispatchProjections(): Promise<DispatchOrderProjectionRecord[]> {
+    return prisma.$transaction(
+      async (tx) => {
+        const orders = await tx.ordenTrabajo.findMany({
+          orderBy: { fechaCreacion: 'desc' },
+          select: {
+            bus: { select: { codigoInterno: true, id: true, placa: true } },
+            busId: true,
+            codigo: true,
+            disponibilidadAlCierre: true,
+            estado: true,
+            fechaCierre: true,
+            id: true,
+            jornadaOperativaId: true,
+          },
+          take: 100,
+        })
+        return Promise.all(
+          orders.map(async (order) => ({
+            disponibilidad: buildAvailability(
+              await getAvailabilityRecords(
+                {
+                  busId: order.busId,
+                  eventDate: new Date(),
+                  journeyId: order.jornadaOperativaId,
+                },
+                tx,
+              ),
+            ),
+            orden: {
+              bus: order.bus,
+              codigo: order.codigo,
+              disponibilidadAlCierre: order.disponibilidadAlCierre,
+              estado: order.estado,
+              fechaCierre: order.fechaCierre,
+              id: order.id,
+            },
+          })),
+        )
+      },
+      { maxWait: 15000, timeout: 60000 },
+    )
+  }
+
   countOrders(where: Prisma.OrdenTrabajoWhereInput = {}) {
     return prisma.ordenTrabajo.count({ where })
   }
@@ -857,6 +946,75 @@ export class WorkOrderRepository {
     )
   }
 
+  createTechnicalReading(
+    orderId: string,
+    actorId: string,
+    actorRole: 'ADMINISTRADOR' | 'MECANICO',
+    data: TechnicalReadingData,
+  ) {
+    return prisma.$transaction(
+      async (tx) => {
+        await this.lockWorkOrder(tx, orderId)
+        const order = await this.findOrderByIdForTransaction(orderId, tx)
+
+        if (!order) return { orden: null, status: 'ORDER_NOT_FOUND' as const }
+        if (actorRole === 'MECANICO' && order.tecnicoAsignadoId !== actorId) {
+          return { orden: order, status: 'NOT_ASSIGNED_MECHANIC' as const }
+        }
+        if (order.estado === 'CERRADA') return { orden: order, status: 'INVALID_STATE' as const }
+
+        let interventionId: string | undefined
+        if (data.tipo === 'REVISION_TECNICA') {
+          const activeIntervention = await tx.intervencion.findFirst({
+            where: {
+              fechaFin: null,
+              ordenTrabajoId: orderId,
+              ...(actorRole === 'MECANICO' ? { tecnicoId: actorId } : {}),
+            },
+            orderBy: { fechaInicio: 'desc' },
+            select: { id: true },
+          })
+          if (!activeIntervention)
+            return { orden: order, status: 'NO_ACTIVE_INTERVENTION' as const }
+          interventionId = activeIntervention.id
+        }
+
+        if (data.tipo === 'CIERRE_MANTENIMIENTO' && actorRole !== 'ADMINISTRADOR') {
+          return { orden: order, status: 'FORBIDDEN_TECHNICAL_CLOSURE' as const }
+        }
+        if (data.tipo === 'CIERRE_MANTENIMIENTO' && order.estado !== 'COMPLETADA_TECNICO') {
+          return { orden: order, status: 'INVALID_STATE' as const }
+        }
+        if (
+          data.tipo !== 'CIERRE_MANTENIMIENTO' &&
+          !['ASIGNADA', 'EN_EJECUCION', 'DEVUELTA_CORRECCION'].includes(order.estado)
+        ) {
+          return { orden: order, status: 'INVALID_STATE' as const }
+        }
+
+        await registerTechnicalMileageReading(
+          {
+            actorId,
+            busId: order.busId,
+            eventDate: data.fechaEvento,
+            ...(interventionId ? { interventionId } : {}),
+            mileage: data.kilometraje,
+            ...(data.motivo ? { motivo: data.motivo } : {}),
+            orderId,
+            type: data.tipo,
+          },
+          tx,
+        )
+
+        return {
+          orden: await this.findOrderByIdForTransaction(orderId, tx),
+          status: 'TECHNICAL_READING_CREATED' as const,
+        }
+      },
+      { maxWait: 15000, timeout: 60000 },
+    )
+  }
+
   createConsumption(orderId: string, actorId: string, data: ConsumptionData) {
     return prisma.$transaction(
       async (tx) => {
@@ -981,6 +1139,7 @@ export class WorkOrderRepository {
             claveIdempotencia: data.claveIdempotencia,
             consumidoPorId: actorId,
             costoUnitario: part.costoUnitario,
+            intervencionId: intervention.id,
             ordenTrabajoId: orderId,
             repuestoId: data.repuestoId,
             subtotal,
@@ -1372,6 +1531,24 @@ export class WorkOrderRepository {
             status: 'INVALID_STATE' as const,
           }
         }
+
+        // The row is already terminal inside this transaction, so the policy sees
+        // every remaining cause while excluding the work order being closed.
+        const availabilityAtClose = buildAvailability(
+          await getAvailabilityRecords(
+            {
+              busId: order.busId,
+              eventDate: now,
+              journeyId: order.jornadaOperativaId,
+            },
+            tx,
+          ),
+          now,
+        )
+        await tx.ordenTrabajo.update({
+          where: { id: orderId },
+          data: { disponibilidadAlCierre: availabilityAtClose.disponible },
+        })
 
         await tx.ordenEstadoHistorial.create({
           data: {

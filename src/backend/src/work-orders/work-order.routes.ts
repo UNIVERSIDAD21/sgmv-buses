@@ -37,6 +37,11 @@ workOrderRoutes.get(
   asyncHandler(workOrderController.listAdminOrders),
 )
 workOrderRoutes.get(
+  '/despacho',
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
+  asyncHandler(workOrderController.listDispatchProjections),
+)
+workOrderRoutes.get(
   '/:ordenId/historial',
   authorizeRoles('ADMINISTRADOR', 'MECANICO'),
   asyncHandler(workOrderController.getStateHistory),
@@ -81,6 +86,12 @@ workOrderRoutes.post(
   enforceAllowedOrigin,
   authorizeRoles('MECANICO'),
   idempotent(workOrderController.createActivity),
+)
+workOrderRoutes.post(
+  '/:ordenId/lecturas',
+  enforceAllowedOrigin,
+  authorizeRoles('ADMINISTRADOR', 'MECANICO'),
+  idempotent(workOrderController.createTechnicalReading),
 )
 workOrderRoutes.get(
   '/:ordenId/repuestos-disponibles',

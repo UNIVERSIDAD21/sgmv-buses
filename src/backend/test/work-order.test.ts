@@ -17,6 +17,7 @@ const created = {
   asignaciones: [] as string[],
   buses: [] as string[],
   consumos: [] as string[],
+  jornadas: [] as string[],
   movimientos: [] as string[],
   novedades: [] as string[],
   ordenes: [] as string[],
@@ -36,6 +37,8 @@ interface WorkOrderFixture {
   mecanicoAltId: string
   mecanicoEmail: string
   mecanicoId: string
+  despachadorEmail: string
+  despachadorId: string
 }
 
 function track(bucket: keyof typeof created) {
@@ -71,7 +74,7 @@ function dateOnlyFromTodayOffset(days: number) {
 }
 
 async function ensureRoles() {
-  const [admin, mecanico, conductor] = await Promise.all([
+  const [admin, mecanico, conductor, despachador] = await Promise.all([
     prisma.rol.upsert({
       where: { codigo: 'ADMINISTRADOR' },
       update: { nombre: 'Administrador' },
@@ -96,9 +99,17 @@ async function ensureRoles() {
         nombre: 'Conductor',
       },
     }),
+    prisma.rol.upsert({
+      where: { codigo: 'DESPACHADOR' },
+      update: { nombre: 'Despachador' },
+      create: {
+        codigo: 'DESPACHADOR',
+        nombre: 'Despachador',
+      },
+    }),
   ])
 
-  return { admin, conductor, mecanico }
+  return { admin, conductor, despachador, mecanico }
 }
 
 async function createUser(email: string, role: Rol, estado: 'ACTIVO' | 'INACTIVO' = 'ACTIVO') {
@@ -133,6 +144,10 @@ async function createFixture(): Promise<WorkOrderFixture> {
     'INACTIVO',
   )
   const conductor = await createUser(`ot-conductor-${suffix}@test.sgmv.local`, roles.conductor)
+  const despachador = await createUser(
+    `ot-despachador-${suffix}@test.sgmv.local`,
+    roles.despachador,
+  )
 
   return {
     adminEmail: admin.email,
@@ -145,6 +160,8 @@ async function createFixture(): Promise<WorkOrderFixture> {
     mecanicoAltId: mecanicoAlt.id,
     mecanicoEmail: mecanico.email,
     mecanicoId: mecanico.id,
+    despachadorEmail: despachador.email,
+    despachadorId: despachador.id,
   }
 }
 
@@ -215,7 +232,11 @@ async function createRepuesto(overrides: Partial<Prisma.RepuestoUncheckedCreateI
   })
 }
 
-async function createNovelty(fixture: WorkOrderFixture, busId: string) {
+async function createNovelty(
+  fixture: WorkOrderFixture,
+  busId: string,
+  overrides: Partial<Prisma.NovedadUncheckedCreateInput> = {},
+) {
   const novelty = await prisma.novedad.create({
     data: {
       id: track('novedades'),
@@ -223,6 +244,7 @@ async function createNovelty(fixture: WorkOrderFixture, busId: string) {
       conductorId: fixture.conductorId,
       descripcion: 'Novedad operativa que origina una orden correctiva RF-04',
       tipo: 'Falla mecanica RF-04',
+      ...overrides,
     },
   })
 
@@ -383,6 +405,11 @@ async function cleanup() {
           },
         },
       })
+      await tx.lecturaKilometraje.deleteMany({
+        where: {
+          ordenTrabajoId: { in: orderIds },
+        },
+      })
       await tx.intervencion.deleteMany({
         where: {
           ordenTrabajoId: {
@@ -431,6 +458,9 @@ async function cleanup() {
             in: created.buses,
           },
         },
+      })
+      await tx.jornadaOperativa.deleteMany({
+        where: { id: { in: created.jornadas } },
       })
       await tx.asignacionConductor.deleteMany({
         where: {
@@ -583,7 +613,61 @@ describe('RF-04 Work order tracking API', () => {
       const admin = await loginAgent(fixture.adminEmail)
       const noveltyBus = await createBus()
       const preventiveBus = await createBus()
-      const novelty = await createNovelty(fixture, noveltyBus.id)
+      const journeyId = track('jornadas')
+      const noveltyId = track('novedades')
+      const journeyStartedAt = new Date(Date.now() - 7_140_000)
+      const noveltyAt = new Date(Date.now() - 3_900_000)
+      const novelty = await prisma.$transaction(async (tx) => {
+        await tx.jornadaOperativa.create({
+          data: {
+            busId: noveltyBus.id,
+            conductorId: fixture.conductorId,
+            estado: 'EN_CURSO',
+            finProgramado: new Date(Date.now() + 60_000),
+            id: journeyId,
+            iniciadaPorId: fixture.conductorId,
+            inicioProgramado: new Date(Date.now() - 7_200_000),
+            inicioReal: journeyStartedAt,
+            programadaPorId: fixture.despachadorId,
+          },
+        })
+        await tx.lecturaKilometraje.create({
+          data: {
+            busId: noveltyBus.id,
+            fechaLectura: journeyStartedAt,
+            jornadaOperativaId: journeyId,
+            kilometrajeAnterior: 20000,
+            kilometrajeNuevo: 20000,
+            registradoPorId: fixture.conductorId,
+            tipo: 'INICIO_JORNADA',
+          },
+        })
+        const noveltyReading = await tx.lecturaKilometraje.create({
+          data: {
+            busId: noveltyBus.id,
+            fechaLectura: noveltyAt,
+            jornadaOperativaId: journeyId,
+            kilometrajeAnterior: 20000,
+            kilometrajeNuevo: 20000,
+            registradoPorId: fixture.conductorId,
+            tipo: 'NOVEDAD',
+          },
+        })
+        return tx.novedad.create({
+          data: {
+            afectaOperacion: true,
+            bloqueaDisponibilidad: true,
+            busId: noveltyBus.id,
+            conductorId: fixture.conductorId,
+            descripcion: 'Novedad operativa que origina una orden correctiva RF-04',
+            fechaOcurrencia: noveltyAt,
+            id: noveltyId,
+            jornadaOperativaId: journeyId,
+            lecturaKilometrajeId: noveltyReading.id,
+            tipo: 'Falla mecanica RF-04',
+          },
+        })
+      })
       const schedule = await createEligibleSchedule(fixture, preventiveBus.id)
 
       const corrective = await admin
@@ -612,6 +696,9 @@ describe('RF-04 Work order tracking API', () => {
 
       expect(noveltyDetail.body.data.orden.bus.id).toBe(noveltyBus.id)
       expect(noveltyDetail.body.data.orden.novedad.id).toBe(novelty.id)
+      expect(noveltyDetail.body.data.orden.jornadaOperativa).toEqual(
+        expect.objectContaining({ estado: 'EN_CURSO', id: journeyId }),
+      )
       expect(noveltyDetail.body.data.orden.origen).toBe('NOVEDAD')
       expect(noveltyDetail.body.data.orden.tipo).toBe('CORRECTIVA')
       expect(preventiveDetail.body.data.orden.bus.id).toBe(preventiveBus.id)
@@ -1069,6 +1156,293 @@ describe('RF-04 Work order tracking API', () => {
         .post(`/ordenes-trabajo/${context.order.id}/actividades`)
         .send({ descripcion: 'Intento sobre cerrada' })
         .expect(400)
+      await context.admin
+        .post(`/ordenes-trabajo/${context.order.id}/lecturas`)
+        .send({
+          fechaEvento: new Date().toISOString(),
+          kilometraje: 20001,
+          tipo: 'CIERRE_MANTENIMIENTO',
+        })
+        .expect(400)
+    },
+    rf04TestTimeout,
+  )
+
+  it(
+    'registra lecturas tecnicas con fecha de evento, intervencion y replay idempotente',
+    async () => {
+      const context = await prepareCompletableOrder(fixture)
+      const ingresoAt = new Date(Date.now() - 120_000)
+      const ingresoKey = randomUUID()
+
+      const ingreso = await context.mecanico
+        .post(`/ordenes-trabajo/${context.order.id}/lecturas`)
+        .set('Idempotency-Key', ingresoKey)
+        .send({
+          fechaEvento: ingresoAt.toISOString(),
+          kilometraje: 20001,
+          motivo: 'Ingreso tecnico al taller',
+          tipo: 'INGRESO_TALLER',
+        })
+        .expect(201)
+
+      const replay = await context.mecanico
+        .post(`/ordenes-trabajo/${context.order.id}/lecturas`)
+        .set('Idempotency-Key', ingresoKey)
+        .send({
+          fechaEvento: ingresoAt.toISOString(),
+          kilometraje: 20001,
+          motivo: 'Ingreso tecnico al taller',
+          tipo: 'INGRESO_TALLER',
+        })
+        .expect(201)
+
+      expect(replay.headers['idempotency-replayed']).toBe('true')
+      expect(replay.body).toEqual(ingreso.body)
+
+      const revisionAt = new Date(Date.now() - 60_000)
+      const revision = await context.mecanico
+        .post(`/ordenes-trabajo/${context.order.id}/lecturas`)
+        .send({
+          fechaEvento: revisionAt.toISOString(),
+          kilometraje: 20002,
+          tipo: 'REVISION_TECNICA',
+        })
+        .expect(201)
+
+      expect(revision.body.data.orden.lecturasTecnicas).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            fechaLectura: ingresoAt.toISOString(),
+            intervencionId: null,
+            kilometraje: 20001,
+            tipo: 'INGRESO_TALLER',
+          }),
+          expect.objectContaining({
+            fechaLectura: revisionAt.toISOString(),
+            intervencionId: expect.any(String),
+            kilometraje: 20002,
+            tipo: 'REVISION_TECNICA',
+          }),
+        ]),
+      )
+
+      const readingCount = await prisma.lecturaKilometraje.count({
+        where: { ordenTrabajoId: context.order.id },
+      })
+      expect(readingCount).toBe(2)
+
+      const bus = await prisma.bus.findUniqueOrThrow({ where: { id: context.order.busId } })
+      expect(bus.kilometrajeActual).toBe(20002)
+    },
+    rf04TestTimeout,
+  )
+
+  it(
+    'rechaza lecturas de revision sin intervencion activa y fechas futuras sin mutar datos',
+    async () => {
+      const order = await createPendingCorrectiveOrder(fixture)
+      const admin = await loginAgent(fixture.adminEmail)
+      const mecanico = await loginAgent(fixture.mecanicoEmail)
+
+      await admin
+        .post(`/ordenes-trabajo/${order.id}/asignar`)
+        .send({ tecnicoId: fixture.mecanicoId })
+        .expect(200)
+
+      await mecanico
+        .post(`/ordenes-trabajo/${order.id}/lecturas`)
+        .send({
+          fechaEvento: new Date(Date.now() - 60_000).toISOString(),
+          kilometraje: 20001,
+          tipo: 'REVISION_TECNICA',
+        })
+        .expect(400)
+
+      await mecanico
+        .post(`/ordenes-trabajo/${order.id}/lecturas`)
+        .send({
+          fechaEvento: new Date(Date.now() + 60_000).toISOString(),
+          kilometraje: 20001,
+          tipo: 'INGRESO_TALLER',
+        })
+        .expect(400)
+
+      await expect(
+        prisma.lecturaKilometraje.count({ where: { ordenTrabajoId: order.id } }),
+      ).resolves.toBe(0)
+    },
+    rf04TestTimeout,
+  )
+
+  it(
+    'conserva el historial de intervenciones al reasignar una orden en ejecucion',
+    async () => {
+      const context = await prepareExecutionOrder(fixture)
+
+      await context.mecanico
+        .patch(`/ordenes-trabajo/${context.order.id}/intervencion`)
+        .send({ diagnostico: 'Diagnostico previo a reasignacion' })
+        .expect(200)
+      await context.mecanico
+        .post(`/ordenes-trabajo/${context.order.id}/actividades`)
+        .send({ descripcion: 'Actividad del primer mecanico' })
+        .expect(201)
+
+      const reassigned = await context.admin
+        .post(`/ordenes-trabajo/${context.order.id}/reasignar`)
+        .send({ motivo: 'Relevo tecnico durante ejecucion', tecnicoId: fixture.mecanicoAltId })
+        .expect(200)
+
+      expect(reassigned.body.data.orden.tecnicoAsignado.id).toBe(fixture.mecanicoAltId)
+      expect(reassigned.body.data.orden.intervenciones).toHaveLength(2)
+      expect(reassigned.body.data.orden.intervenciones[0].fechaFin).toBeTruthy()
+      expect(reassigned.body.data.orden.intervenciones[0].diagnostico).toBe(
+        'Diagnostico previo a reasignacion',
+      )
+      expect(reassigned.body.data.orden.intervenciones[0].actividades).toEqual([
+        expect.objectContaining({ descripcion: 'Actividad del primer mecanico' }),
+      ])
+      expect(reassigned.body.data.orden.intervenciones[1].fechaFin).toBeNull()
+      expect(reassigned.body.data.orden.reasignaciones).toEqual([
+        expect.objectContaining({
+          tecnicoAnterior: expect.objectContaining({ id: fixture.mecanicoId }),
+          tecnicoNuevo: expect.objectContaining({ id: fixture.mecanicoAltId }),
+        }),
+      ])
+    },
+    rf04TestTimeout,
+  )
+
+  it(
+    'calcula disponibilidad al cierre conservando restricciones restantes',
+    async () => {
+      const bus = await createBus()
+      const novelty = await createNovelty(fixture, bus.id)
+      await prisma.novedad.update({
+        where: { id: novelty.id },
+        data: { afectaOperacion: true, bloqueaDisponibilidad: true },
+      })
+      const context = await prepareCompletableOrder(fixture)
+
+      // Reubica el escenario de la orden al bus que conserva la novedad.
+      await prisma.ordenTrabajo.update({
+        where: { id: context.order.id },
+        data: { busId: bus.id },
+      })
+      await context.mecanico
+        .post(`/ordenes-trabajo/${context.order.id}/completar`)
+        .send({})
+        .expect(200)
+
+      const closed = await context.admin
+        .post(`/ordenes-trabajo/${context.order.id}/cerrar`)
+        .send({ observacion: 'Cierre con novedad bloqueante restante' })
+      expect(closed.status, JSON.stringify(closed.body)).toBe(200)
+
+      expect(closed.body.data.orden.disponibilidadAlCierre).toBe(false)
+      expect(
+        closed.body.data.orden.historialEstados.map(
+          (history: { estadoNuevo: string }) => history.estadoNuevo,
+        ),
+      ).toContain('CERRADA')
+
+      const dispatcher = await loginAgent(fixture.despachadorEmail)
+      const projectionResponse = await dispatcher.get('/ordenes-trabajo/despacho').expect(200)
+      const closedProjection = projectionResponse.body.data.ordenes.find(
+        (item: { orden: { id: string } }) => item.orden.id === context.order.id,
+      )
+      expect(closedProjection).toEqual(
+        expect.objectContaining({
+          orden: expect.objectContaining({
+            disponibilidadAlCierre: false,
+            estado: 'CERRADA',
+            fechaCierre: expect.any(String),
+          }),
+        }),
+      )
+      expect(JSON.stringify(closedProjection)).not.toMatch(
+        /diagnostico|actividad|intervencion|consumo|costo|planAplicado/i,
+      )
+    },
+    rf04TestTimeout,
+  )
+
+  it(
+    'entrega al Despachador solo una proyeccion operativa sin datos tecnicos o administrativos',
+    async () => {
+      const context = await prepareExecutionOrder(fixture)
+      const dispatcher = await loginAgent(fixture.despachadorEmail)
+
+      const response = await dispatcher.get('/ordenes-trabajo/despacho').expect(200)
+      const projection = response.body.data.ordenes.find(
+        (item: { orden: { id: string } }) => item.orden.id === context.order.id,
+      )
+
+      expect(projection).toEqual(
+        expect.objectContaining({
+          disponibilidad: expect.objectContaining({
+            causas: expect.any(Array),
+            disponible: expect.any(Boolean),
+          }),
+          orden: expect.objectContaining({
+            bus: expect.objectContaining({ id: context.order.busId }),
+            id: context.order.id,
+          }),
+        }),
+      )
+      const serialized = JSON.stringify(projection)
+      expect(serialized).not.toMatch(
+        /diagnostico|actividad|intervencion|consumo|costo|planAplicado/i,
+      )
+      await dispatcher.get(`/ordenes-trabajo/${context.order.id}`).expect(403)
+    },
+    rf04TestTimeout,
+  )
+
+  it(
+    'serializa lecturas tecnicas concurrentes sin retroceder ni duplicar el odometro',
+    async () => {
+      const bus = await createBus()
+      const first = await createPendingCorrectiveOrder(fixture, { busId: bus.id })
+      const second = await createPendingCorrectiveOrder(fixture, { busId: bus.id })
+      const admin = await loginAgent(fixture.adminEmail)
+      const mecanico = await loginAgent(fixture.mecanicoEmail)
+
+      await admin
+        .post(`/ordenes-trabajo/${first.id}/asignar`)
+        .send({ tecnicoId: fixture.mecanicoId })
+        .expect(200)
+      await admin
+        .post(`/ordenes-trabajo/${second.id}/asignar`)
+        .send({ tecnicoId: fixture.mecanicoId })
+        .expect(200)
+      await mecanico.post(`/ordenes-trabajo/${first.id}/iniciar`).send({}).expect(200)
+      await mecanico.post(`/ordenes-trabajo/${second.id}/iniciar`).send({}).expect(200)
+
+      const eventBase = Date.now() - 120_000
+      const results = await Promise.all([
+        mecanico.post(`/ordenes-trabajo/${first.id}/lecturas`).send({
+          fechaEvento: new Date(eventBase).toISOString(),
+          kilometraje: 20001,
+          tipo: 'INGRESO_TALLER',
+        }),
+        mecanico.post(`/ordenes-trabajo/${second.id}/lecturas`).send({
+          fechaEvento: new Date(eventBase + 1_000).toISOString(),
+          kilometraje: 20002,
+          tipo: 'INGRESO_TALLER',
+        }),
+      ])
+
+      expect(results.map((result) => result.status).sort()).toEqual([201, 201])
+      const readings = await prisma.lecturaKilometraje.findMany({
+        orderBy: { fechaLectura: 'asc' },
+        where: { busId: bus.id },
+      })
+      expect(readings.map((reading) => reading.kilometrajeNuevo)).toEqual([20001, 20002])
+      expect(readings.map((reading) => reading.kilometrajeAnterior)).toEqual([20000, 20001])
+      const reloadedBus = await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } })
+      expect(reloadedBus.kilometrajeActual).toBe(20002)
     },
     rf04TestTimeout,
   )

@@ -116,6 +116,15 @@ export const createActivitySchema = z
   })
   .strict()
 
+export const createTechnicalReadingSchema = z
+  .object({
+    fechaEvento: z.coerce.date(),
+    kilometraje: z.coerce.number().int().min(0),
+    motivo: optionalTrimmedText(1000),
+    tipo: z.enum(['INGRESO_TALLER', 'REVISION_TECNICA', 'CIERRE_MANTENIMIENTO']),
+  })
+  .strict()
+
 export const createConsumptionSchema = z
   .object({
     cantidad: decimalQuantity,
@@ -135,6 +144,7 @@ export type AvailableMechanicsQuery = z.infer<typeof availableMechanicsQuerySche
 export type AvailablePartsQuery = z.infer<typeof availablePartsQuerySchema>
 export type CreateActivityInput = z.infer<typeof createActivitySchema>
 export type CreateConsumptionInput = z.infer<typeof createConsumptionSchema>
+export type CreateTechnicalReadingInput = z.infer<typeof createTechnicalReadingSchema>
 export type CreateManualWorkOrderInput = z.infer<typeof createManualWorkOrderSchema>
 export type InterventionUpdateInput = z.infer<typeof interventionUpdateSchema>
 export type ListWorkOrdersQuery = z.infer<typeof listWorkOrdersQuerySchema>

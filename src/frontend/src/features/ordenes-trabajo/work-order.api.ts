@@ -9,6 +9,8 @@ import type {
   WorkOrderStatus,
   WorkOrderSummaryDto,
   WorkOrderType,
+  TechnicalReadingType,
+  DispatchWorkOrderProjectionDto,
 } from './work-order.types'
 
 export interface ListWorkOrdersParams {
@@ -59,6 +61,13 @@ export interface CreateConsumptionInput {
   cantidad: string
   claveIdempotencia: string
   repuestoId: string
+}
+
+export interface CreateTechnicalReadingInput {
+  fechaEvento: string
+  kilometraje: number
+  motivo?: string
+  tipo: TechnicalReadingType
 }
 
 function buildWorkOrderQuery(params: ListWorkOrdersParams) {
@@ -177,6 +186,20 @@ export function createWorkOrderActivity(ordenId: string, input: CreateActivityIn
     body: JSON.stringify(input),
     method: 'POST',
   })
+}
+
+export function createTechnicalWorkOrderReading(
+  ordenId: string,
+  input: CreateTechnicalReadingInput,
+) {
+  return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/lecturas`, {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function listDispatchWorkOrders() {
+  return apiRequest<{ ordenes: DispatchWorkOrderProjectionDto[] }>('/ordenes-trabajo/despacho')
 }
 
 export function getAvailableSpareParts(ordenId: string, busqueda?: string) {

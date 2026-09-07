@@ -31,6 +31,7 @@ import {
   closeWorkOrder,
   completeWorkOrder,
   createManualWorkOrder,
+  createTechnicalWorkOrderReading,
   createWorkOrderActivity,
   createWorkOrderConsumption,
   getAvailableMechanics,
@@ -58,6 +59,7 @@ import type {
   WorkOrderSummaryDto,
   WorkOrderSummaryItemDto,
   WorkOrderType,
+  TechnicalReadingType,
 } from './work-order.types'
 
 type BadgeTone = 'amber' | 'emerald' | 'red' | 'slate' | 'teal'
@@ -685,6 +687,123 @@ function WorkOrderCard({
   )
 }
 
+function TechnicalReadingPanel({
+  isAdmin,
+  onFeedback,
+  onOrderChange,
+  order,
+}: {
+  isAdmin: boolean
+  onFeedback: (message: string) => void
+  onOrderChange: (order: WorkOrderDetailDto) => void
+  order: WorkOrderDetailDto
+}) {
+  const [fechaEvento, setFechaEvento] = useState('')
+  const [kilometraje, setKilometraje] = useState('')
+  const [motivo, setMotivo] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [tipo, setTipo] = useState<TechnicalReadingType>(
+    isAdmin ? 'CIERRE_MANTENIMIENTO' : 'INGRESO_TALLER',
+  )
+
+  const availableTypes: TechnicalReadingType[] = isAdmin
+    ? ['CIERRE_MANTENIMIENTO']
+    : ['INGRESO_TALLER', 'REVISION_TECNICA']
+  const canRegister = isAdmin
+    ? order.estado === 'COMPLETADA_TECNICO'
+    : order.acciones.puedeRegistrarTecnica || order.estado === 'ASIGNADA'
+
+  if (!canRegister) return null
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const normalizedMileage = Number(kilometraje)
+    if (!fechaEvento || !Number.isInteger(normalizedMileage) || normalizedMileage < 0) {
+      setError('Indique fecha del evento y kilometraje entero valido.')
+      return
+    }
+    setError(null)
+    setSubmitting(true)
+    try {
+      const result = await createTechnicalWorkOrderReading(order.id, {
+        fechaEvento: new Date(fechaEvento).toISOString(),
+        kilometraje: normalizedMileage,
+        ...(normalizeText(motivo) ? { motivo: normalizeText(motivo) } : {}),
+        tipo,
+      })
+      onOrderChange(result.orden)
+      onFeedback('Lectura tecnica registrada.')
+      setKilometraje('')
+      setMotivo('')
+    } catch (requestError) {
+      setError(getErrorMessage(requestError))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <h3 className="text-xs font-semibold uppercase text-slate-500">Kilometraje tecnico</h3>
+      <form className="mt-3 grid gap-3 sm:grid-cols-2" onSubmit={submit}>
+        <label className="block text-sm font-medium text-slate-700">
+          Tipo
+          <select
+            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+            onChange={(event) => setTipo(event.target.value as TechnicalReadingType)}
+            value={tipo}
+          >
+            {availableTypes.map((option) => (
+              <option key={option} value={option}>
+                {option === 'INGRESO_TALLER'
+                  ? 'Ingreso a taller'
+                  : option === 'REVISION_TECNICA'
+                    ? 'Revision tecnica'
+                    : 'Cierre de mantenimiento'}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          Fecha del evento
+          <input
+            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+            onChange={(event) => setFechaEvento(event.target.value)}
+            type="datetime-local"
+            value={fechaEvento}
+          />
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          Kilometraje
+          <input
+            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+            min="0"
+            onChange={(event) => setKilometraje(event.target.value)}
+            step="1"
+            type="number"
+            value={kilometraje}
+          />
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          Motivo (opcional)
+          <input
+            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+            onChange={(event) => setMotivo(event.target.value)}
+            value={motivo}
+          />
+        </label>
+        {error && <p className="sm:col-span-2 text-sm text-red-700">{error}</p>}
+        <div className="sm:col-span-2 flex justify-end">
+          <Button icon={<Clock size={14} />} loading={submitting} size="sm" type="submit">
+            Registrar lectura
+          </Button>
+        </div>
+      </form>
+    </section>
+  )
+}
+
 function TechnicalPanel({
   onFeedback,
   onOrderChange,
@@ -1080,7 +1199,7 @@ function WorkOrderDetail({
         </p>
       </section>
 
-      {(order.novedad || order.programacionMantenimiento) && (
+      {(order.novedad || order.programacionMantenimiento || order.jornadaOperativa) && (
         <section className="grid gap-3 sm:grid-cols-2">
           {order.novedad && (
             <FieldValue label="Novedad">
@@ -1090,6 +1209,14 @@ function WorkOrderDetail({
           {order.programacionMantenimiento && (
             <FieldValue label="Programacion">
               {order.programacionMantenimiento.tipo} - {order.programacionMantenimiento.criterio}
+            </FieldValue>
+          )}
+          {order.jornadaOperativa && (
+            <FieldValue label="Jornada de origen">
+              {order.jornadaOperativa.ruta
+                ? `${order.jornadaOperativa.ruta.codigo} - ${order.jornadaOperativa.ruta.nombre}`
+                : `Jornada ${order.jornadaOperativa.id.slice(0, 8)}`}{' '}
+              · {order.jornadaOperativa.estado.replaceAll('_', ' ')}
             </FieldValue>
           )}
           {order.fechaObjetivoPreventivo && (
@@ -1173,10 +1300,51 @@ function WorkOrderDetail({
         />
       )}
 
+      {(isAdmin || isMechanic) && (
+        <TechnicalReadingPanel
+          isAdmin={isAdmin}
+          onFeedback={onFeedback}
+          onOrderChange={onOrderChange}
+          order={order}
+        />
+      )}
+
+      <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <h3 className="text-xs font-semibold uppercase text-slate-500">Lecturas tecnicas</h3>
+        {order.lecturasTecnicas.length === 0 ? (
+          <div className="mt-3">
+            <TimelineEmpty text="No hay lecturas tecnicas registradas." />
+          </div>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {order.lecturasTecnicas.map((reading) => (
+              <li
+                className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                key={reading.id}
+              >
+                <strong>{reading.tipo.replaceAll('_', ' ')}</strong> ·{' '}
+                {formatNumber(reading.kilometraje)} km
+                <span className="mt-1 block text-xs text-slate-500">
+                  {formatDateTimeValue(reading.fechaLectura)} · {reading.registradoPor.nombre}
+                  {reading.motivo ? ` · ${reading.motivo}` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <section className="grid gap-3 sm:grid-cols-2">
         <FieldValue label="Costo basico">{formatCurrency(order.costoTotal)}</FieldValue>
         <FieldValue label="Responsable cierre">
           {order.cerradaPor?.nombre ?? 'Sin cierre administrativo'}
+        </FieldValue>
+        <FieldValue label="Disponibilidad al cierre">
+          {order.disponibilidadAlCierre === null
+            ? 'Pendiente de cierre'
+            : order.disponibilidadAlCierre
+              ? 'Disponible'
+              : 'Con restricciones activas'}
         </FieldValue>
       </section>
 

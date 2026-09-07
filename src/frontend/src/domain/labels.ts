@@ -7,6 +7,7 @@ export type AppRouteId =
   | 'novedades'
   | 'mantenimiento-preventivo'
   | 'ordenes-trabajo'
+  | 'ordenes-despacho'
   | 'repuestos'
   | 'historial'
 
@@ -55,6 +56,13 @@ export const REQUIREMENT_NAV_ITEMS: RequirementNavItem[] = [
     label: 'RF-04 — Seguimiento de órdenes de trabajo',
     path: '/ordenes-trabajo',
     roles: ['ADMINISTRADOR', 'MECANICO'],
+  },
+  {
+    description: 'Bloqueo y disponibilidad de buses con orden técnica activa.',
+    id: 'ordenes-despacho',
+    label: 'RF-04 — Disponibilidad de órdenes',
+    path: '/ordenes-trabajo/despacho',
+    roles: ['ADMINISTRADOR', 'DESPACHADOR'],
   },
   {
     description: 'Catálogo, existencias, consumos y movimientos trazables.',

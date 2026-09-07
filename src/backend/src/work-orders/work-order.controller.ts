@@ -7,6 +7,7 @@ import {
   availablePartsQuerySchema,
   createActivitySchema,
   createConsumptionSchema,
+  createTechnicalReadingSchema,
   createManualWorkOrderSchema,
   interventionUpdateSchema,
   listWorkOrdersQuerySchema,
@@ -71,6 +72,20 @@ export class WorkOrderController {
 
     response.status(201)
     sendData(response, result, 'Orden de trabajo creada')
+  }
+
+  createTechnicalReading: RequestHandler = async (request, response) => {
+    const { ordenId } = orderIdParamSchema.parse(request.params)
+    const input = createTechnicalReadingSchema.parse(request.body)
+    const result = await this.workOrderService.createTechnicalReading(ordenId, input, request.user!)
+
+    response.status(201)
+    sendData(response, result, 'Lectura tecnica registrada')
+  }
+
+  listDispatchProjections: RequestHandler = async (request, response) => {
+    const result = await this.workOrderService.listDispatchProjections(request.user!)
+    sendData(response, result, 'Disponibilidad de ordenes tecnicas')
   }
 
   getAvailableMechanics: RequestHandler = async (request, response) => {

@@ -13,6 +13,7 @@ import type {
   AssignWorkOrderInput,
   CreateActivityInput,
   CreateConsumptionInput,
+  CreateTechnicalReadingInput,
   CreateManualWorkOrderInput,
   InterventionUpdateInput,
   ListWorkOrdersQuery,
@@ -43,7 +44,9 @@ import type {
   WorkOrderBusDto,
   WorkOrderConsumptionDto,
   WorkOrderDetailDto,
+  DispatchWorkOrderProjectionDto,
   WorkOrderInterventionDto,
+  WorkOrderJourneyDto,
   WorkOrderInventoryMovementDto,
   WorkOrderListDto,
   WorkOrderNoveltyDto,
@@ -54,6 +57,7 @@ import type {
   WorkOrderSummaryDto,
   WorkOrderSummaryItemDto,
   WorkOrderTechnicalHistoryItemDto,
+  WorkOrderTechnicalReadingDto,
   WorkOrderUserDto,
 } from './work-order.types.js'
 
@@ -194,6 +198,41 @@ function mapIntervention(
   }
 }
 
+function mapJourney(journey: WorkOrderRecord['jornadaOperativa']): WorkOrderJourneyDto | null {
+  if (!journey) return null
+  return {
+    estado: journey.estado,
+    finProgramado: journey.finProgramado.toISOString(),
+    finReal: journey.finReal?.toISOString() ?? null,
+    id: journey.id,
+    inicioProgramado: journey.inicioProgramado.toISOString(),
+    inicioReal: journey.inicioReal?.toISOString() ?? null,
+    ruta: journey.ruta,
+  }
+}
+
+function isTechnicalReadingType(
+  type: WorkOrderRecord['lecturasKilometraje'][number]['tipo'],
+): type is WorkOrderTechnicalReadingDto['tipo'] {
+  return type === 'INGRESO_TALLER' || type === 'REVISION_TECNICA' || type === 'CIERRE_MANTENIMIENTO'
+}
+
+function mapTechnicalReading(
+  reading: WorkOrderRecord['lecturasKilometraje'][number],
+): WorkOrderTechnicalReadingDto | null {
+  if (!isTechnicalReadingType(reading.tipo)) return null
+  return {
+    fechaLectura: (reading.fechaLectura ?? reading.fechaRegistro).toISOString(),
+    id: reading.id,
+    intervencionId: reading.intervencionId,
+    kilometraje: reading.kilometrajeNuevo,
+    kilometrajeAnterior: reading.kilometrajeAnterior,
+    motivo: reading.motivo,
+    registradoPor: mapUser(reading.registradoPor),
+    tipo: reading.tipo,
+  }
+}
+
 function mapSparePart(part: SparePartRecord): WorkOrderSparePartDto {
   return {
     categoria: part.categoria,
@@ -317,11 +356,16 @@ function mapDetailOrder(
     historialEstados: order.estadosHistorial.map(mapStateHistory),
     historialTecnicoBus: technicalHistory,
     intervenciones: order.intervenciones.map(mapIntervention),
+    jornadaOperativa: mapJourney(order.jornadaOperativa),
+    lecturasTecnicas: order.lecturasKilometraje
+      .map(mapTechnicalReading)
+      .filter((reading): reading is WorkOrderTechnicalReadingDto => reading !== null),
     kilometrajeObjetivoPreventivo: order.kilometrajeObjetivoPreventivo,
     motivoDevolucionActual: latestReturnReason(order),
     novedad: mapNovelty(order.novedad),
     programacionMantenimiento: mapPreventiveSchedule(order.programacionMantenimiento),
     reasignaciones: order.reasignaciones.map(mapReassignment),
+    disponibilidadAlCierre: order.disponibilidadAlCierre,
   }
 }
 
@@ -514,6 +558,57 @@ export class WorkOrderService {
       }
     } catch (error) {
       translatePrismaError(error)
+    }
+  }
+
+  async createTechnicalReading(
+    orderId: string,
+    input: CreateTechnicalReadingInput,
+    actor: AuthenticatedUser,
+  ) {
+    if (actor.rol.codigo !== 'ADMINISTRADOR' && actor.rol.codigo !== 'MECANICO') {
+      throw new AppError(403, 'FORBIDDEN', 'No tiene permisos para registrar lecturas tecnicas')
+    }
+    if (input.fechaEvento.getTime() > Date.now()) {
+      throw new AppError(400, 'EVENT_DATE_IN_FUTURE', 'La fecha del evento no puede ser futura')
+    }
+    try {
+      const result = await this.workOrderRepository.createTechnicalReading(
+        orderId,
+        actor.id,
+        actor.rol.codigo,
+        {
+          fechaEvento: input.fechaEvento,
+          kilometraje: input.kilometraje,
+          motivo: input.motivo ? normalizeText(input.motivo) : null,
+          tipo: input.tipo,
+        },
+      )
+      return { orden: this.mapOperationResult(result, actor) }
+    } catch (error) {
+      translatePrismaError(error)
+    }
+  }
+
+  async listDispatchProjections(actor: AuthenticatedUser): Promise<{
+    ordenes: DispatchWorkOrderProjectionDto[]
+  }> {
+    if (actor.rol.codigo !== 'ADMINISTRADOR' && actor.rol.codigo !== 'DESPACHADOR') {
+      throw new AppError(
+        403,
+        'FORBIDDEN',
+        'No tiene permisos para consultar disponibilidad tecnica',
+      )
+    }
+    const orders = await this.workOrderRepository.listDispatchProjections()
+    return {
+      ordenes: orders.map((item) => ({
+        disponibilidad: item.disponibilidad,
+        orden: {
+          ...item.orden,
+          fechaCierre: item.orden.fechaCierre?.toISOString() ?? null,
+        },
+      })),
     }
   }
 
@@ -948,6 +1043,14 @@ export class WorkOrderService {
         400,
         'NO_ACTIVE_INTERVENTION',
         'La orden no tiene una intervencion activa para el Mecanico asignado',
+      )
+    }
+
+    if (result.status === 'FORBIDDEN_TECHNICAL_CLOSURE') {
+      throw new AppError(
+        403,
+        'FORBIDDEN',
+        'El cierre de kilometraje tecnico requiere validacion administrativa',
       )
     }
 

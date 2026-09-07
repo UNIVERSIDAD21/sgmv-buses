@@ -204,6 +204,28 @@ async function createRepuesto(stockActual = '5') {
   })
 }
 
+async function startActiveIntervention(
+  core: CoreFixture,
+  orden: { fechaAsignacion: Date | null; id: string },
+) {
+  const intervencionId = track('intervenciones')
+  const fechaInicio = new Date((orden.fechaAsignacion?.getTime() ?? Date.now()) + 1000)
+
+  await prisma.ordenTrabajo.update({
+    data: { estado: 'EN_EJECUCION', fechaInicioEjecucion: fechaInicio },
+    where: { id: orden.id },
+  })
+
+  return prisma.intervencion.create({
+    data: {
+      fechaInicio,
+      id: intervencionId,
+      ordenTrabajoId: orden.id,
+      tecnicoId: core.mecanicoId,
+    },
+  })
+}
+
 async function cleanup() {
   await prisma.$transaction(
     async (tx) => {
@@ -614,6 +636,7 @@ describe('Prisma persistence integrity', () => {
   it('links spare-part consumption through ConsumoRepuesto and derives order costs', async () => {
     const core = await createCore('inventory')
     const orden = await createAssignedCorrectiveOrder(core, 'INVENTORY')
+    const intervention = await startActiveIntervention(core, orden)
     const repuesto = await createRepuesto()
     const consumoId = track('consumos')
     const invalidMovimientoId = track('movimientos')
@@ -641,6 +664,7 @@ describe('Prisma persistence integrity', () => {
           repuestoId: repuesto.id,
           cantidad: '1',
           costoUnitario: '25000',
+          intervencionId: intervention.id,
           subtotal: '25000',
           consumidoPorId: core.mecanicoId,
         },
@@ -687,6 +711,7 @@ describe('Prisma persistence integrity', () => {
   it('rejects inconsistent spare-part movements, orphan consumptions and manual subtotals', async () => {
     const core = await createCore('inventory-negative')
     const orden = await createAssignedCorrectiveOrder(core, 'INVNEG')
+    const intervention = await startActiveIntervention(core, orden)
     const repuesto = await createRepuesto()
     const otroRepuesto = await createRepuesto()
     const standaloneConsumoId = track('consumos')
@@ -702,6 +727,7 @@ describe('Prisma persistence integrity', () => {
           repuestoId: repuesto.id,
           cantidad: '1',
           costoUnitario: '25000',
+          intervencionId: intervention.id,
           subtotal: '25000',
           consumidoPorId: core.mecanicoId,
         },
@@ -717,6 +743,7 @@ describe('Prisma persistence integrity', () => {
             repuestoId: repuesto.id,
             cantidad: '2',
             costoUnitario: '25000',
+            intervencionId: intervention.id,
             subtotal: '1',
             consumidoPorId: core.mecanicoId,
           },
@@ -733,6 +760,7 @@ describe('Prisma persistence integrity', () => {
             repuestoId: repuesto.id,
             cantidad: '1',
             costoUnitario: '25000',
+            intervencionId: intervention.id,
             subtotal: '25000',
             consumidoPorId: core.mecanicoId,
           },
@@ -755,6 +783,7 @@ describe('Prisma persistence integrity', () => {
   it('requires reasons for administrative inventory movements and keeps stock non-negative', async () => {
     const core = await createCore('stock')
     const orden = await createAssignedCorrectiveOrder(core, 'STOCK')
+    const intervention = await startActiveIntervention(core, orden)
     const repuesto = await createRepuesto('1')
     const invalidEntradaId = track('movimientos')
     const invalidAjusteId = track('movimientos')
@@ -809,6 +838,7 @@ describe('Prisma persistence integrity', () => {
             repuestoId: repuesto.id,
             cantidad: '2',
             costoUnitario: '25000',
+            intervencionId: intervention.id,
             subtotal: '50000',
             consumidoPorId: core.mecanicoId,
           },

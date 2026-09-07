@@ -52,10 +52,14 @@ const iconById: Record<RequirementRouteId, ReactNode> = {
   'mantenimiento-preventivo': <Shield size={18} />,
   novedades: <AlertTriangle size={18} />,
   'ordenes-trabajo': <ClipboardList size={18} />,
+  'ordenes-despacho': <ClipboardList size={18} />,
   repuestos: <Package size={18} />,
 }
 
 const allRoles: RoleCode[] = ['ADMINISTRADOR', 'DESPACHADOR', 'MECANICO', 'CONDUCTOR']
+const requirementsByPathLength = [...REQUIREMENT_NAV_ITEMS].sort(
+  (left, right) => right.path.length - left.path.length,
+)
 
 function initials(name: string) {
   return name
@@ -88,7 +92,7 @@ function getPageTitle(pathname: string) {
   }
 
   return (
-    REQUIREMENT_NAV_ITEMS.find((item) => pathname.startsWith(item.path))?.label ??
+    requirementsByPathLength.find((item) => pathname.startsWith(item.path))?.label ??
     'Software de Gestión de Mantenimiento Vehicular'
   )
 }
@@ -114,6 +118,7 @@ function NavigationList({
                 : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
             } ${compact ? 'justify-center' : ''}`
           }
+          end={item.path === '/ordenes-trabajo'}
           key={item.path}
           onClick={onNavigate}
           to={item.path}

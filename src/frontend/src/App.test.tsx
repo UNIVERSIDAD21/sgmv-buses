@@ -962,6 +962,16 @@ function createWorkOrderDetail(status = 'PENDIENTE_ASIGNACION') {
     historialTecnicoBus: [],
     id: 'order-rf04-1',
     intervenciones: interventions,
+    jornadaOperativa: {
+      estado: 'FINALIZADA',
+      finProgramado: '2026-08-28T11:30:00.000Z',
+      finReal: '2026-08-28T11:25:00.000Z',
+      id: 'journey-rf04-1',
+      inicioProgramado: '2026-08-28T08:00:00.000Z',
+      inicioReal: '2026-08-28T08:05:00.000Z',
+      ruta: { codigo: 'R-01', id: 'route-1', nombre: 'Centro Norte' },
+    },
+    lecturasTecnicas: [],
     kilometrajeObjetivoPreventivo: null,
     motivoDevolucionActual: status === 'DEVUELTA_CORRECCION' ? 'Corregir evidencia tecnica' : null,
     novedad: {
@@ -982,6 +992,7 @@ function createWorkOrderDetail(status = 'PENDIENTE_ASIGNACION') {
     prioridad: 'MEDIA',
     programacionMantenimiento: null,
     reasignaciones: [],
+    disponibilidadAlCierre: status === 'CERRADA' ? true : null,
     tecnicoAsignado,
     tipo: 'CORRECTIVA',
   }
@@ -1033,6 +1044,36 @@ function workOrderHandler(
 
     if (path === '/ordenes-trabajo/resumen') {
       return ok(workOrderSummary())
+    }
+
+    if (path === '/ordenes-trabajo/despacho') {
+      return ok({
+        ordenes: [
+          {
+            disponibilidad: {
+              causaPrincipal: order.estado === 'CERRADA' ? null : 'ORDEN_TRABAJO_ACTIVA',
+              causas:
+                order.estado === 'CERRADA'
+                  ? []
+                  : [{ codigo: 'ORDEN_TRABAJO_ACTIVA', mensaje: 'Orden tecnica activa' }],
+              disponible: order.estado === 'CERRADA',
+              evaluadoAt: '2026-08-28T12:51:00.000Z',
+            },
+            orden: {
+              bus: {
+                codigoInterno: order.bus.codigoInterno,
+                id: order.bus.id,
+                placa: order.bus.placa,
+              },
+              codigo: order.codigo,
+              disponibilidadAlCierre: order.disponibilidadAlCierre,
+              estado: order.estado,
+              fechaCierre: order.fechaCierre,
+              id: order.id,
+            },
+          },
+        ],
+      })
     }
 
     if (path === '/ordenes-trabajo/mecanicos-disponibles') {
@@ -1237,6 +1278,33 @@ function workOrderHandler(
       return ok({ consumo: order.consumosRepuesto[0], orden: decoratedOrder(), yaExistia: false })
     }
 
+    if (path.endsWith('/lecturas') && init?.method === 'POST') {
+      const payload = JSON.parse(String(init.body ?? '{}')) as {
+        fechaEvento: string
+        kilometraje: number
+        motivo?: string
+        tipo: 'INGRESO_TALLER' | 'REVISION_TECNICA' | 'CIERRE_MANTENIMIENTO'
+      }
+      order = {
+        ...order,
+        lecturasTecnicas: [
+          ...order.lecturasTecnicas,
+          {
+            fechaLectura: payload.fechaEvento,
+            id: `technical-reading-${order.lecturasTecnicas.length + 1}`,
+            intervencionId: payload.tipo === 'REVISION_TECNICA' ? 'intervention-1' : null,
+            kilometraje: payload.kilometraje,
+            kilometrajeAnterior: fleetBus.kilometrajeActual,
+            motivo: payload.motivo ?? null,
+            registradoPor: role === 'MECANICO' ? workOrderMechanic : workOrderAdmin,
+            tipo: payload.tipo,
+          },
+        ],
+      }
+
+      return ok({ orden: decoratedOrder() })
+    }
+
     if (path.endsWith('/completar') && init?.method === 'POST') {
       order = {
         ...order,
@@ -1269,6 +1337,7 @@ function workOrderHandler(
         ...order,
         cerradaPor: workOrderAdmin,
         estado: 'CERRADA',
+        disponibilidadAlCierre: true,
         fechaCierre: '2026-08-28T12:50:00.000Z',
       }
       appendHistory('COMPLETADA_TECNICO', 'CERRADA')
@@ -3100,6 +3169,21 @@ describe('RF-03 preventive maintenance frontend', () => {
 })
 
 describe('RF-04 work order frontend', () => {
+  it('shows dispatchers only the operational work-order projection', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo/despacho')
+    mockApi(workOrderHandler('DESPACHADOR'))
+
+    render(<App />)
+
+    expect(
+      await screen.findByRole('heading', { name: /Disponibilidad por orden tecnica/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('OT-RF04-001')).toBeInTheDocument()
+    expect(screen.getByText(/Orden tecnica activa/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Desgaste en sistema de frenos confirmado/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/120\.000/)).not.toBeInTheDocument()
+  })
+
   it('loads administrative summary, filters, manual creation, assignment and reassignment', async () => {
     window.history.pushState({}, '', '/ordenes-trabajo')
     const fetchMock = mockApi(workOrderHandler('ADMINISTRADOR'))
@@ -3193,6 +3277,16 @@ describe('RF-04 work order frontend', () => {
     expect((await screen.findAllByText('OT-RF04-001')).length).toBeGreaterThan(0)
     fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
     expect(await screen.findByText(/Ejecucion tecnica/i)).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText(/^Fecha del evento$/i), {
+      target: { value: '2026-08-28T12:06' },
+    })
+    fireEvent.change(screen.getByLabelText(/^Kilometraje$/i), {
+      target: { value: '45201' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Registrar lectura/i }))
+    expect(await screen.findByText(/Lectura tecnica registrada/i)).toBeInTheDocument()
+    expect(await screen.findByText(/45\.201 km/i)).toBeInTheDocument()
 
     fireEvent.click(await screen.findByRole('button', { name: /^Iniciar$/i }))
     expect(await screen.findByText(/Ejecucion iniciada/i)).toBeInTheDocument()

@@ -116,6 +116,46 @@ export interface WorkOrderConsumptionDto {
   subtotal: string
 }
 
+export interface WorkOrderJourneyDto {
+  estado: string
+  finProgramado: string
+  finReal: string | null
+  id: string
+  inicioProgramado: string
+  inicioReal: string | null
+  ruta: { codigo: string; id: string; nombre: string } | null
+}
+
+export type TechnicalReadingType = 'INGRESO_TALLER' | 'REVISION_TECNICA' | 'CIERRE_MANTENIMIENTO'
+
+export interface WorkOrderTechnicalReadingDto {
+  fechaLectura: string
+  id: string
+  intervencionId: string | null
+  kilometraje: number
+  kilometrajeAnterior: number
+  motivo: string | null
+  registradoPor: WorkOrderUserDto
+  tipo: TechnicalReadingType
+}
+
+export interface DispatchWorkOrderProjectionDto {
+  disponibilidad: {
+    causaPrincipal: string | null
+    causas: Array<{ codigo: string; mensaje: string }>
+    disponible: boolean
+    evaluadoAt: string
+  }
+  orden: {
+    bus: { codigoInterno: string; id: string; placa: string }
+    codigo: string
+    disponibilidadAlCierre: boolean | null
+    estado: WorkOrderStatus
+    fechaCierre: string | null
+    id: string
+  }
+}
+
 export interface WorkOrderActionFlagsDto {
   puedeAsignar: boolean
   puedeCerrar: boolean
@@ -163,11 +203,14 @@ export interface WorkOrderDetailDto extends WorkOrderSummaryItemDto {
   historialEstados: WorkOrderStateHistoryDto[]
   historialTecnicoBus: WorkOrderTechnicalHistoryItemDto[]
   intervenciones: WorkOrderInterventionDto[]
+  jornadaOperativa: WorkOrderJourneyDto | null
+  lecturasTecnicas: WorkOrderTechnicalReadingDto[]
   kilometrajeObjetivoPreventivo: number | null
   motivoDevolucionActual: string | null
   novedad: WorkOrderNoveltyDto | null
   programacionMantenimiento: WorkOrderPreventiveScheduleDto | null
   reasignaciones: WorkOrderReassignmentDto[]
+  disponibilidadAlCierre: boolean | null
 }
 
 export interface WorkOrderListResponse {

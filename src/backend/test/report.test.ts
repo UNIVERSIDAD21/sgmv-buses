@@ -147,9 +147,10 @@ async function createFixture(): Promise<ReportFixture> {
       costoTotal: '185000.00',
       creadaPorId: admin.id,
       descripcion: 'Revisión correctiva del sistema de frenos',
-      estado: 'ASIGNADA',
+      estado: 'EN_EJECUCION',
       fechaAsignacion: new Date('2026-08-10T12:00:00.000Z'),
       fechaCreacion: new Date('2026-08-10T10:00:00.000Z'),
+      fechaInicioEjecucion: new Date('2026-08-11T08:00:00.000Z'),
       novedadId: ownNovelty.id,
       origen: 'NOVEDAD',
       prioridad: 'ALTA',
@@ -177,7 +178,7 @@ async function createFixture(): Promise<ReportFixture> {
   const intervention = await prisma.intervencion.create({
     data: {
       diagnostico: 'Desgaste de pastillas delanteras',
-      fechaFin: new Date('2026-08-12T17:00:00.000Z'),
+      fechaFin: null,
       fechaInicio: new Date('2026-08-11T08:00:00.000Z'),
       observaciones: 'Prueba de frenado satisfactoria',
       ordenTrabajoId: order.id,
@@ -218,6 +219,7 @@ async function createFixture(): Promise<ReportFixture> {
         consumidoPorId: mechanic.id,
         costoUnitario: '92500.00',
         id: consumptionId,
+        intervencionId: intervention.id,
         ordenTrabajoId: order.id,
         repuestoId: part.id,
         subtotal: '185000.00',
@@ -238,6 +240,10 @@ async function createFixture(): Promise<ReportFixture> {
       data: { costoTotal: { increment: '185000.00' } },
       where: { id: order.id },
     })
+  })
+  await prisma.intervencion.update({
+    data: { fechaFin: new Date('2026-08-12T17:00:00.000Z') },
+    where: { id: intervention.id },
   })
   await prisma.ordenTrabajo.update({
     data: {
