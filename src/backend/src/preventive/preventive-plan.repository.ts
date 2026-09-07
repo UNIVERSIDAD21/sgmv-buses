@@ -1,6 +1,7 @@
 import { Prisma, type CriterioMantenimiento, type PrioridadOrden } from '@prisma/client'
 
 import { prisma } from '../prisma/client.js'
+import { reconcilePreventiveObligationForTask } from './preventive-reconciliation.js'
 
 type PlanDbClient = Prisma.TransactionClient | typeof prisma
 
@@ -34,10 +35,21 @@ export class PreventivePlanRepository {
   async createFirstVersion(data: PlanData, actorId: string) {
     return prisma.$transaction(async (tx) => {
       await this.lockIdentity(tx, data)
-      return tx.planMantenimientoPreventivo.create({
+      const plan = await tx.planMantenimientoPreventivo.create({
         data: { ...data, activo: true, creadoPorId: actorId, version: 1 },
         include: preventivePlanInclude,
       })
+      if (data.busId) {
+        await reconcilePreventiveObligationForTask(tx, {
+          actorId,
+          busId: data.busId,
+          claveTarea: data.claveTarea,
+        })
+      }
+      return (await tx.planMantenimientoPreventivo.findUnique({
+        where: { id: plan.id },
+        include: preventivePlanInclude,
+      }))!
     })
   }
 
@@ -107,11 +119,34 @@ export class PreventivePlanRepository {
     })
   }
 
-  async deactivate(id: string) {
-    return prisma.planMantenimientoPreventivo.update({
-      where: { id },
-      data: { activo: false },
-      include: preventivePlanInclude,
+  async deactivate(id: string, actorId: string) {
+    return prisma.$transaction(async (tx) => {
+      const current = await tx.planMantenimientoPreventivo.findUniqueOrThrow({
+        where: { id },
+        include: preventivePlanInclude,
+      })
+      await this.lockIdentity(tx, current)
+      const affectedSchedules = await tx.programacionMantenimiento.findMany({
+        where: { activa: true, planMantenimientoPreventivoId: id },
+        select: { busId: true },
+      })
+      await tx.planMantenimientoPreventivo.update({
+        where: { id },
+        data: { activo: false },
+      })
+      for (const busId of [
+        ...new Set(affectedSchedules.map((schedule) => schedule.busId)),
+      ].sort()) {
+        await reconcilePreventiveObligationForTask(tx, {
+          actorId,
+          busId,
+          claveTarea: current.claveTarea,
+        })
+      }
+      return tx.planMantenimientoPreventivo.findUniqueOrThrow({
+        where: { id },
+        include: preventivePlanInclude,
+      })
     })
   }
 

@@ -527,7 +527,7 @@ export class FleetService {
     }
 
     try {
-      const bus = await this.fleetRepository.updateBus(busId, data)
+      const bus = await this.fleetRepository.updateBus(busId, data, actor.id)
 
       return {
         bus: mapBusDetail(bus),

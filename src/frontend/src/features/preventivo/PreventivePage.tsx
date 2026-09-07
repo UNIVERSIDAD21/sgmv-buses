@@ -515,6 +515,16 @@ function PreventiveDetail({
         <FieldValue label="Clasificacion">
           <StatusBadge status={schedule.clasificacion.estado} />
         </FieldValue>
+        <FieldValue label="Fuente">
+          {schedule.fuente === 'PLAN' && schedule.plan
+            ? `${schedule.plan.origen === 'BUS' ? 'Plan de bus' : 'Plan de modelo'} · ${schedule.plan.claveTarea} v${schedule.plan.version}`
+            : 'Programacion independiente'}
+        </FieldValue>
+        <FieldValue label="Anticipacion efectiva">
+          {schedule.plan
+            ? `${schedule.plan.anticipacionDiasEfectiva} dias · ${formatNumber(schedule.plan.anticipacionKmEfectiva)} km`
+            : 'Umbral general'}
+        </FieldValue>
       </div>
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
@@ -591,7 +601,9 @@ export default function PreventivePage() {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [summary, setSummary] = useState<PreventiveSummaryDto | null>(null)
-  const [adminView, setAdminView] = useState<'planes' | 'programaciones'>('programaciones')
+  const [adminView, setAdminView] = useState<'planes' | 'programaciones' | 'restricciones'>(
+    'programaciones',
+  )
 
   const isAdmin = user?.rol.codigo === 'ADMINISTRADOR'
 
@@ -782,7 +794,7 @@ export default function PreventivePage() {
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h3 className="text-xs font-semibold uppercase text-slate-500">Acciones administrativas</h3>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {!schedule.ordenActiva && (
+          {!schedule.ordenActiva && schedule.fuente === 'INDEPENDIENTE' && (
             <Button
               icon={<Clock size={14} />}
               onClick={() => setEditingSchedule(schedule)}
@@ -858,11 +870,20 @@ export default function PreventivePage() {
             >
               Planes recurrentes
             </Button>
+            <Button
+              onClick={() => setAdminView('restricciones')}
+              size="sm"
+              variant={adminView === 'restricciones' ? 'secondary' : 'outline'}
+            >
+              Restricciones
+            </Button>
           </div>
         </section>
 
         {adminView === 'planes' ? (
           <PreventivePlansPanel />
+        ) : adminView === 'restricciones' ? (
+          <PreventiveRestrictionsPanel />
         ) : (
           <>
             {feedback && (
@@ -1052,6 +1073,16 @@ export default function PreventivePage() {
                         </div>
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-xs font-semibold uppercase text-slate-400">
+                            Fuente
+                          </span>
+                          <span className="text-right">
+                            {schedule.fuente === 'PLAN' && schedule.plan
+                              ? `${schedule.plan.claveTarea} v${schedule.plan.version}`
+                              : 'Independiente'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-xs font-semibold uppercase text-slate-400">
                             Orden
                           </span>
                           <span className="text-right">
@@ -1099,7 +1130,7 @@ export default function PreventivePage() {
 
                 <div className="hidden overflow-hidden rounded-lg border border-slate-200 bg-white md:block">
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[1080px] text-left text-sm">
+                    <table className="w-full min-w-[1180px] text-left text-sm">
                       <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500">
                         <tr>
                           <th className="px-4 py-3">Bus</th>
@@ -1108,6 +1139,7 @@ export default function PreventivePage() {
                           <th className="px-4 py-3">Fecha</th>
                           <th className="px-4 py-3 text-right">Kilometraje</th>
                           <th className="px-4 py-3">Estado</th>
+                          <th className="px-4 py-3">Fuente</th>
                           <th className="px-4 py-3">Orden</th>
                           <th className="px-4 py-3 text-right">Acciones</th>
                         </tr>
@@ -1135,6 +1167,11 @@ export default function PreventivePage() {
                             </td>
                             <td className="px-4 py-3">
                               <StatusBadge status={schedule.clasificacion.estado} />
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">
+                              {schedule.fuente === 'PLAN' && schedule.plan
+                                ? `${schedule.plan.claveTarea} v${schedule.plan.version}`
+                                : 'Independiente'}
                             </td>
                             <td className="px-4 py-3 text-slate-600">
                               {schedule.ordenActiva ? schedule.ordenActiva.codigo : 'Sin orden'}

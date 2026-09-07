@@ -61,6 +61,16 @@ export interface PreventiveScheduleDto {
   id: string
   kilometrajeObjetivo: number | null
   ordenActiva: PreventiveOrderSummaryDto | null
+  plan: {
+    anticipacionDiasEfectiva: number
+    anticipacionKmEfectiva: number
+    claveTarea: string
+    id: string
+    origen: 'BUS' | 'MODELO'
+    version: number
+  } | null
+  prioridad: OrderPriority | null
+  fuente: 'INDEPENDIENTE' | 'PLAN'
   tipo: string
   updatedAt: string
 }
@@ -104,6 +114,11 @@ export interface PreventivePlanDto {
   prioridad: OrderPriority
   programacionesAsociadas: number
   version: number
+}
+
+export interface PreventivePlanDetailDto {
+  plan: PreventivePlanDto
+  versiones: PreventivePlanDto[]
 }
 
 export interface PreventiveRestrictionDto {

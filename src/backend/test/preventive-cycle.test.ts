@@ -6,10 +6,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createApp } from '../src/app.js'
 import type { AuthenticatedUser } from '../src/auth/auth.types.js'
+import { FleetService } from '../src/fleet/fleet.service.js'
 import {
   classifyPreventiveCycle,
   initialPreventiveTargets,
 } from '../src/preventive/preventive-cycle.js'
+import { PreventivePlanService } from '../src/preventive/preventive-plan.service.js'
 import { PreventiveService } from '../src/preventive/preventive.service.js'
 import { WorkOrderRepository } from '../src/work-orders/work-order.repository.js'
 import { createCsrfAgent } from './http-test-client.js'
@@ -123,12 +125,16 @@ async function createPlan(
 }
 
 async function makeOrderClosable(orderId: string, mechanicId: string) {
-  const now = new Date()
+  const order = await prisma.ordenTrabajo.findUniqueOrThrow({
+    where: { id: orderId },
+    select: { createdAt: true, fechaCreacion: true },
+  })
+  const milestoneAt = new Date(Math.max(order.createdAt.getTime(), order.fechaCreacion.getTime()))
   const intervention = await prisma.intervencion.create({
     data: {
       diagnostico: 'Preventivo ejecutado conforme al plan',
-      fechaFin: now,
-      fechaInicio: now,
+      fechaFin: milestoneAt,
+      fechaInicio: milestoneAt,
       ordenTrabajoId: orderId,
       tecnicoId: mechanicId,
     },
@@ -144,9 +150,9 @@ async function makeOrderClosable(orderId: string, mechanicId: string) {
     where: { id: orderId },
     data: {
       estado: 'COMPLETADA_TECNICO',
-      fechaAsignacion: now,
-      fechaCompletadaTecnico: now,
-      fechaInicioEjecucion: now,
+      fechaAsignacion: milestoneAt,
+      fechaCompletadaTecnico: milestoneAt,
+      fechaInicioEjecucion: milestoneAt,
       tecnicoAsignadoId: mechanicId,
     },
   })
@@ -338,6 +344,173 @@ describe('P6-C ciclo preventivo recurrente', () => {
       const afterLateReading = await service.getSchedule(first.programacion.id, admin.actor)
       expect(afterLateReading.programacion.bus.kilometrajeActual).toBe(40000)
       expect(afterLateReading.programacion.kilometrajeObjetivo).toBe(46000)
+    },
+    testTimeout,
+  )
+
+  it(
+    'reconcilia de inmediato la precedencia nueva y el cambio de modelo sin orden activa',
+    async () => {
+      const firstModel = await createModel()
+      const secondModel = await createModel()
+      const bus = await createBus(firstModel.id, 20_000)
+      const key = `RECONCILIAR.${suffix()}`
+      const firstModelPlan = await createPlan(
+        admin.actor.id,
+        { modeloBusId: firstModel.id },
+        { claveTarea: key, intervaloKm: 5_000 },
+      )
+      const secondModelPlan = await createPlan(
+        admin.actor.id,
+        { modeloBusId: secondModel.id },
+        { claveTarea: key, intervaloKm: 7_000 },
+      )
+      const oldOnlyKey = `MODELO.ANTERIOR.${suffix()}`
+      const oldOnlyPlan = await createPlan(
+        admin.actor.id,
+        { modeloBusId: firstModel.id },
+        { claveTarea: oldOnlyKey, intervaloKm: 4_000 },
+      )
+      const newOnlyKey = `MODELO.NUEVO.${suffix()}`
+      const newOnlyPlan = await createPlan(
+        admin.actor.id,
+        { modeloBusId: secondModel.id },
+        { claveTarea: newOnlyKey, intervaloKm: 8_000 },
+      )
+      const preventiveService = new PreventiveService()
+      const first = await preventiveService.createSchedule(
+        { busId: bus.id, planId: firstModelPlan.id },
+        admin.actor,
+      )
+      const oldOnlySchedule = await preventiveService.createSchedule(
+        { busId: bus.id, planId: oldOnlyPlan.id },
+        admin.actor,
+      )
+
+      const busPlanResult = await new PreventivePlanService().createPlan(
+        {
+          actividad: 'Mantenimiento particular reconciliado para el bus',
+          anticipacionKm: 300,
+          bloqueaAlVencer: true,
+          busId: bus.id,
+          claveTarea: key,
+          componente: 'Componente particular',
+          criterio: 'KILOMETRAJE',
+          intervaloKm: 6_000,
+          prioridad: 'ALTA',
+        },
+        admin.actor,
+      )
+      const afterBusPlan = await prisma.programacionMantenimiento.findMany({
+        where: { busId: bus.id, planMantenimientoPreventivo: { claveTarea: key } },
+        orderBy: { createdAt: 'asc' },
+      })
+      expect(afterBusPlan).toHaveLength(2)
+      expect(afterBusPlan.find((item) => item.id === first.programacion.id)?.activa).toBe(false)
+      expect(afterBusPlan.find((item) => item.activa)).toMatchObject({
+        kilometrajeObjetivo: 26_000,
+        planMantenimientoPreventivoId: busPlanResult.plan.id,
+      })
+
+      await new PreventivePlanService().deactivatePlan(busPlanResult.plan.id, admin.actor)
+      const afterDeactivate = await prisma.programacionMantenimiento.findFirstOrThrow({
+        where: { activa: true, busId: bus.id, planMantenimientoPreventivo: { claveTarea: key } },
+      })
+      expect(afterDeactivate).toMatchObject({
+        kilometrajeObjetivo: 25_000,
+        planMantenimientoPreventivoId: firstModelPlan.id,
+      })
+
+      await new FleetService().updateBus(bus.id, { modeloBusId: secondModel.id }, admin.actor)
+      const afterModelChange = await prisma.programacionMantenimiento.findMany({
+        where: { activa: true, busId: bus.id, planMantenimientoPreventivo: { claveTarea: key } },
+      })
+      expect(afterModelChange).toHaveLength(1)
+      expect(afterModelChange[0]).toMatchObject({
+        kilometrajeObjetivo: 27_000,
+        planMantenimientoPreventivoId: secondModelPlan.id,
+      })
+      expect(
+        await prisma.programacionMantenimiento.findUniqueOrThrow({
+          where: { id: oldOnlySchedule.programacion.id },
+        }),
+      ).toMatchObject({ activa: false })
+      expect(
+        await prisma.programacionMantenimiento.findFirstOrThrow({
+          where: {
+            activa: true,
+            busId: bus.id,
+            planMantenimientoPreventivo: { claveTarea: newOnlyKey },
+          },
+        }),
+      ).toMatchObject({
+        kilometrajeObjetivo: 28_000,
+        planMantenimientoPreventivoId: newOnlyPlan.id,
+      })
+    },
+    testTimeout,
+  )
+
+  it(
+    'difiere la precedencia nueva si hay orden activa y la usa en el siguiente ciclo',
+    async () => {
+      const model = await createModel()
+      const bus = await createBus(model.id, 30_000)
+      const key = `DIFERIR.${suffix()}`
+      const modelPlan = await createPlan(
+        admin.actor.id,
+        { modeloBusId: model.id },
+        { claveTarea: key, intervaloKm: 5_000 },
+      )
+      const preventiveService = new PreventiveService()
+      const applied = await preventiveService.createSchedule(
+        { busId: bus.id, planId: modelPlan.id },
+        admin.actor,
+      )
+      await prisma.bus.update({ where: { id: bus.id }, data: { kilometrajeActual: 35_000 } })
+      const generated = await preventiveService.generateOrder(
+        applied.programacion.id,
+        { prioridad: 'MEDIA' },
+        admin.actor,
+      )
+
+      const busPlanResult = await new PreventivePlanService().createPlan(
+        {
+          actividad: 'Mantenimiento particular para el siguiente ciclo',
+          anticipacionKm: 300,
+          bloqueaAlVencer: true,
+          busId: bus.id,
+          claveTarea: key,
+          componente: 'Componente particular diferido',
+          criterio: 'KILOMETRAJE',
+          intervaloKm: 6_000,
+          prioridad: 'ALTA',
+        },
+        admin.actor,
+      )
+      expect(
+        await prisma.programacionMantenimiento.findUniqueOrThrow({
+          where: { id: applied.programacion.id },
+        }),
+      ).toMatchObject({ activa: true, planMantenimientoPreventivoId: modelPlan.id })
+
+      await makeOrderClosable(generated.orden.id, mechanic.actor.id)
+      expect(
+        (
+          await new WorkOrderRepository().closeOrder(
+            generated.orden.id,
+            admin.actor.id,
+            'Cierre con precedencia diferida',
+          )
+        ).status,
+      ).toBe('CLOSED')
+      const successor = await prisma.programacionMantenimiento.findFirstOrThrow({
+        where: { activa: true, busId: bus.id, planMantenimientoPreventivo: { claveTarea: key } },
+      })
+      expect(successor).toMatchObject({
+        kilometrajeObjetivo: 41_000,
+        planMantenimientoPreventivoId: busPlanResult.plan.id,
+      })
     },
     testTimeout,
   )

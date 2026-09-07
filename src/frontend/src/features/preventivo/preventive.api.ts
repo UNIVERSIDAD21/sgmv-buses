@@ -5,6 +5,7 @@ import type {
   PreventiveListResponse,
   PreventiveScheduleDto,
   PreventivePlanDto,
+  PreventivePlanDetailDto,
   PreventiveRestrictionDto,
   PreventiveStatus,
   PreventiveSummaryDto,
@@ -46,6 +47,11 @@ export interface PreventiveScheduleInput {
   fechaProgramada?: string
   kilometrajeObjetivo?: number
   tipo: string
+}
+
+export interface ApplyPreventivePlanInput {
+  busId?: string
+  planId: string
 }
 
 export interface GeneratePreventiveOrderInput {
@@ -101,6 +107,10 @@ export function listPreventivePlans(incluirHistoricos = false) {
   )
 }
 
+export function getPreventivePlan(planId: string) {
+  return apiRequest<PreventivePlanDetailDto>(`/mantenimiento-preventivo/planes/${planId}`)
+}
+
 export function createPreventivePlan(input: PreventivePlanInput) {
   return apiRequest<{ plan: PreventivePlanDto }>('/mantenimiento-preventivo/planes', {
     body: JSON.stringify(input),
@@ -151,6 +161,16 @@ export function getPreventiveSchedule(programacionId: string) {
 
 export function createPreventiveSchedule(input: PreventiveScheduleInput) {
   return apiRequest<{ programacion: PreventiveScheduleDto }>(
+    '/mantenimiento-preventivo/programaciones',
+    {
+      body: JSON.stringify(input),
+      method: 'POST',
+    },
+  )
+}
+
+export function applyPreventivePlan(input: ApplyPreventivePlanInput) {
+  return apiRequest<{ programacion: PreventiveScheduleDto; yaExistia: boolean }>(
     '/mantenimiento-preventivo/programaciones',
     {
       body: JSON.stringify(input),

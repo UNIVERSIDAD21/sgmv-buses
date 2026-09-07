@@ -691,6 +691,9 @@ const preventiveOne = {
   id: 'prev-1',
   kilometrajeObjetivo: 11500,
   ordenActiva: null,
+  plan: null,
+  prioridad: null,
+  fuente: 'INDEPENDIENTE',
   tipo: 'Revision preventiva',
   updatedAt: '2026-08-27T12:00:00.000Z',
 }
@@ -734,6 +737,16 @@ const preventiveVencida = {
   },
   id: 'prev-3',
   kilometrajeObjetivo: 10900,
+  plan: {
+    anticipacionDiasEfectiva: 7,
+    anticipacionKmEfectiva: 500,
+    claveTarea: 'ELECTRICO.001',
+    id: 'plan-schedule-1',
+    origen: 'MODELO',
+    version: 2,
+  },
+  prioridad: 'ALTA',
+  fuente: 'PLAN',
   tipo: 'Sistema electrico',
 }
 
@@ -2030,6 +2043,34 @@ function preventiveHandler(
     }
     if (path === '/mantenimiento-preventivo/planes' && init?.method === 'POST')
       return ok({ plan: { id: 'plan-new' } })
+    if (path === '/mantenimiento-preventivo/planes/plan-1' && !init?.method)
+      return ok({
+        plan: {
+          activa: true,
+          claveTarea: 'FRENOS.001',
+          id: 'plan-1',
+          version: 1,
+        },
+        versiones: [
+          {
+            activa: true,
+            actividad: 'Revision preventiva de frenos completa.',
+            anticipacionDias: 7,
+            anticipacionKm: null,
+            bloqueaAlVencer: true,
+            claveTarea: 'FRENOS.001',
+            componente: 'Frenos',
+            criterio: 'FECHA',
+            destino: { busId: 'bus-1', tipo: 'BUS' },
+            id: 'plan-1',
+            intervaloDias: 30,
+            intervaloKm: null,
+            prioridad: 'MEDIA',
+            programacionesAsociadas: 1,
+            version: 1,
+          },
+        ],
+      })
     if (path === '/mantenimiento-preventivo/planes/plan-1/versiones' && init?.method === 'POST')
       return ok({ plan: { id: 'plan-2' } })
     if (path === '/mantenimiento-preventivo/planes/plan-1/desactivar' && init?.method === 'POST')
@@ -2074,7 +2115,10 @@ function preventiveHandler(
     }
 
     if (path === '/mantenimiento-preventivo/programaciones' && init?.method === 'POST') {
-      return ok({ programacion: preventiveVigente })
+      const body = JSON.parse(String(init.body)) as { planId?: string }
+      return body.planId
+        ? ok({ programacion: preventiveVencida, yaExistia: false })
+        : ok({ programacion: preventiveVigente })
     }
 
     if (path === '/mantenimiento-preventivo/programaciones/prev-1' && !init?.method) {
@@ -3009,12 +3053,36 @@ describe('RF-03 preventive maintenance frontend', () => {
     expect(String(createCall?.[1]?.body)).toContain('bus-1')
     expect(String(createCall?.[1]?.body)).not.toContain('modeloBusId')
 
+    fireEvent.click(screen.getByRole('button', { name: /^Aplicar$/i }))
+    const applyDialog = await screen.findByRole('dialog', { name: /Aplicar plan preventivo/i })
+    fireEvent.click(within(applyDialog).getByRole('button', { name: /^Aplicar plan$/i }))
+    expect(await screen.findByText(/objetivos derivados correctamente/i)).toBeInTheDocument()
+    expect(
+      fetchMock.mock.calls.some(
+        ([input, init]) =>
+          String(input).endsWith('/mantenimiento-preventivo/programaciones') &&
+          init?.method === 'POST' &&
+          String(init.body).includes('"planId":"plan-1"'),
+      ),
+    ).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: /^Versiones$/i }))
+    expect(
+      await screen.findByRole('dialog', { name: /Versiones del plan preventivo/i }),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Cerrar$/i }))
+
     fireEvent.click(screen.getByRole('button', { name: /^Versionar$/i }))
     expect(await screen.findByText(/Versionar FRENOS.001/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^Crear version$/i }))
     expect(await screen.findByText(/Nueva version registrada/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^Inactivar$/i }))
     expect(await screen.findByText(/Plan FRENOS.001 inactivado/i)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Restricciones$/i }))
+    expect(
+      await screen.findByRole('heading', { name: /Restricciones preventivas/i }),
+    ).toBeInTheDocument()
   })
 
   it('shows only the operational restriction projection to dispatchers', async () => {

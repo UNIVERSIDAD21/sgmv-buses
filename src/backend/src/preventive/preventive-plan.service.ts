@@ -85,7 +85,7 @@ export class PreventivePlanService {
     const current = await this.repository.findById(planId)
     if (!current)
       throw new AppError(404, 'PREVENTIVE_PLAN_NOT_FOUND', 'Plan preventivo no encontrado')
-    const plan = current.activo ? await this.repository.deactivate(planId) : current
+    const plan = current.activo ? await this.repository.deactivate(planId, actor.id) : current
     return { plan: this.mapPlan(plan) }
   }
 

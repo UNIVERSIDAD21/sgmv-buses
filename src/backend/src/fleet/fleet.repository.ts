@@ -1,6 +1,7 @@
 import { type EstadoBus, Prisma } from '@prisma/client'
 
 import { evaluatePreventiveAlertsForBus } from '../alerts/alert.service.js'
+import { reconcilePreventiveObligationsForBus } from '../preventive/preventive-reconciliation.js'
 import { prisma } from '../prisma/client.js'
 
 const responsibleSelect = {
@@ -370,11 +371,20 @@ export class FleetRepository {
     )
   }
 
-  updateBus(id: string, data: Prisma.BusUpdateInput) {
-    return prisma.bus.update({
-      where: { id },
-      data,
-      include: busDetailInclude,
+  updateBus(id: string, data: Prisma.BusUpdateInput, actorId: string) {
+    return prisma.$transaction(async (tx) => {
+      const previous = await tx.bus.findUnique({ where: { id }, select: { modeloBusId: true } })
+      const bus = await tx.bus.update({ where: { id }, data, include: busDetailInclude })
+
+      if (previous?.modeloBusId !== bus.modeloBusId) {
+        await reconcilePreventiveObligationsForBus(tx, {
+          actorId,
+          busId: id,
+          previousModeloBusId: previous?.modeloBusId ?? null,
+        })
+      }
+
+      return tx.bus.findUniqueOrThrow({ where: { id }, include: busDetailInclude })
     })
   }
 

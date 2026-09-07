@@ -42,6 +42,8 @@ const ids = {
   busEstadoHistorial: '42000000-0000-4000-8000-000000000001',
   novedad: '50000000-0000-4000-8000-000000000001',
   programacion: '60000000-0000-4000-8000-000000000001',
+  planPreventivoRecurrente: '61000000-0000-4000-8000-000000000001',
+  programacionRecurrente: '62000000-0000-4000-8000-000000000001',
   ordenes: {
     correctiva: '70000000-0000-4000-8000-000000000001',
     preventiva: '70000000-0000-4000-8000-000000000002',
@@ -550,6 +552,55 @@ async function main() {
           kilometrajeObjetivo: 45500,
           activa: true,
           creadaPorId: ids.usuarios.admin,
+        },
+      })
+
+      await tx.planMantenimientoPreventivo.upsert({
+        where: { id: ids.planPreventivoRecurrente },
+        update: { activo: true },
+        create: {
+          id: ids.planPreventivoRecurrente,
+          activo: true,
+          actividad: 'Cambio recurrente de aceite y filtro del motor.',
+          anticipacionDias: null,
+          anticipacionKm: 500,
+          bloqueaAlVencer: true,
+          busId: ids.buses.respaldo,
+          claveTarea: 'MOTOR.ACEITE.RECURRENTE',
+          componente: 'Motor y lubricacion',
+          creadoPorId: ids.usuarios.admin,
+          criterio: 'KILOMETRAJE',
+          intervaloDias: null,
+          intervaloKm: 5000,
+          modeloBusId: null,
+          prioridad: 'ALTA',
+          version: 1,
+        },
+      })
+
+      await tx.programacionMantenimiento.upsert({
+        where: { id: ids.programacionRecurrente },
+        update: {
+          activa: true,
+          actividad: 'Cambio recurrente de aceite y filtro del motor.',
+          criterio: 'KILOMETRAJE',
+          fechaProgramada: null,
+          kilometrajeObjetivo: 63750,
+          planMantenimientoPreventivoId: ids.planPreventivoRecurrente,
+          prioridad: 'ALTA',
+          tipo: 'Motor y lubricacion',
+        },
+        create: {
+          id: ids.programacionRecurrente,
+          activa: true,
+          actividad: 'Cambio recurrente de aceite y filtro del motor.',
+          busId: ids.buses.respaldo,
+          creadaPorId: ids.usuarios.admin,
+          criterio: 'KILOMETRAJE',
+          kilometrajeObjetivo: 63750,
+          planMantenimientoPreventivoId: ids.planPreventivoRecurrente,
+          prioridad: 'ALTA',
+          tipo: 'Motor y lubricacion',
         },
       })
 

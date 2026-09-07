@@ -8,13 +8,19 @@ import { ApiError } from '../../lib/api'
 import { listBuses, listModelosBus } from '../flota/fleet.api'
 import type { BusSummaryDto, ModeloBusSummaryDto } from '../flota/fleet.types'
 import {
+  applyPreventivePlan,
   createPreventivePlan,
   createPreventivePlanVersion,
   deactivatePreventivePlan,
+  getPreventivePlan,
   listPreventivePlans,
   type PreventivePlanInput,
 } from './preventive.api'
-import type { PreventiveCriterion, PreventivePlanDto } from './preventive.types'
+import type {
+  PreventiveCriterion,
+  PreventivePlanDetailDto,
+  PreventivePlanDto,
+} from './preventive.types'
 
 const criteria: PreventiveCriterion[] = ['FECHA', 'KILOMETRAJE', 'FECHA_KILOMETRAJE']
 const fieldClass =
@@ -305,12 +311,123 @@ function PlanForm({
   )
 }
 
+function ApplyPlanDialog({
+  buses,
+  onApply,
+  onCancel,
+  plan,
+  saving,
+}: {
+  buses: BusSummaryDto[]
+  onApply: (busId: string) => Promise<void>
+  onCancel: () => void
+  plan: PreventivePlanDto
+  saving: boolean
+}) {
+  const eligibleBuses = buses.filter(
+    (bus) =>
+      bus.estadoOperativo !== 'INACTIVO' &&
+      (plan.destino.tipo === 'BUS'
+        ? bus.id === plan.destino.busId
+        : bus.modeloBus?.id === plan.destino.modeloBusId),
+  )
+  const [busId, setBusId] = useState(eligibleBuses[0]?.id ?? '')
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 p-3 sm:items-center">
+      <div
+        aria-label="Aplicar plan preventivo"
+        aria-modal="true"
+        className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl"
+        role="dialog"
+      >
+        <h3 className="text-lg font-semibold">Aplicar {plan.claveTarea}</h3>
+        <p className="mt-1 text-sm text-slate-500">
+          El sistema derivara los objetivos desde la fecha y kilometraje actuales.
+        </p>
+        <label className="mt-4 block text-sm font-medium">
+          Bus elegible
+          <select
+            aria-label="Bus para aplicar plan"
+            className={fieldClass}
+            onChange={(event) => setBusId(event.target.value)}
+            value={busId}
+          >
+            {eligibleBuses.length === 0 && <option value="">Sin buses elegibles</option>}
+            {eligibleBuses.map((bus) => (
+              <option key={bus.id} value={bus.id}>
+                {bus.codigoInterno} · {bus.placa}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button onClick={onCancel} type="button" variant="outline">
+            Cancelar
+          </Button>
+          <Button disabled={!busId || saving} onClick={() => void onApply(busId)} type="button">
+            {saving ? 'Aplicando...' : 'Aplicar plan'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PlanVersionsDialog({
+  detail,
+  onClose,
+}: {
+  detail: PreventivePlanDetailDto
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 p-3 sm:items-center">
+      <div
+        aria-label="Versiones del plan preventivo"
+        aria-modal="true"
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-5 shadow-xl"
+        role="dialog"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold">Versiones de {detail.plan.claveTarea}</h3>
+            <p className="mt-1 text-sm text-slate-500">Historial inmutable del plan.</p>
+          </div>
+          <Button onClick={onClose} size="sm" type="button" variant="outline">
+            Cerrar
+          </Button>
+        </div>
+        <div className="mt-4 space-y-3">
+          {detail.versiones.map((version) => (
+            <article className="rounded-lg border border-slate-200 p-4" key={version.id}>
+              <div className="flex items-center justify-between gap-3">
+                <b>Version {version.version}</b>
+                <Badge tone={version.activa ? 'emerald' : 'slate'}>
+                  {version.activa ? 'Activa' : 'Historica'}
+                </Badge>
+              </div>
+              <p className="mt-2 text-sm text-slate-600">{version.actividad}</p>
+              <p className="mt-2 text-xs text-slate-500">
+                {PREVENTIVE_CRITERION_LABELS[version.criterio]} · {version.componente}
+              </p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function PreventivePlansPanel() {
   const [plans, setPlans] = useState<PreventivePlanDto[] | null>(null)
   const [buses, setBuses] = useState<BusSummaryDto[]>([])
   const [models, setModels] = useState<ModeloBusSummaryDto[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [applying, setApplying] = useState<PreventivePlanDto | null>(null)
+  const [detail, setDetail] = useState<PreventivePlanDetailDto | null>(null)
   const [editing, setEditing] = useState<PreventivePlanDto | undefined>()
+  const [includeHistorical, setIncludeHistorical] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
@@ -318,7 +435,7 @@ export default function PreventivePlansPanel() {
     setError(null)
     try {
       const [planResult, busResult, modelResult] = await Promise.all([
-        listPreventivePlans(),
+        listPreventivePlans(includeHistorical),
         listBuses({ limite: 100, pagina: 1 }),
         listModelosBus(),
       ])
@@ -328,7 +445,7 @@ export default function PreventivePlansPanel() {
     } catch (loadError) {
       setError(messageFrom(loadError))
     }
-  }, [])
+  }, [includeHistorical])
   useEffect(() => {
     const request = window.setTimeout(() => void load(), 0)
     return () => window.clearTimeout(request)
@@ -361,6 +478,32 @@ export default function PreventivePlansPanel() {
       setSaving(false)
     }
   }
+  async function apply(plan: PreventivePlanDto, busId: string) {
+    setSaving(true)
+    setError(null)
+    try {
+      const result = await applyPreventivePlan({ busId, planId: plan.id })
+      setFeedback(
+        result.yaExistia
+          ? `La obligacion ${plan.claveTarea} ya estaba activa para el bus.`
+          : `Plan ${plan.claveTarea} aplicado; objetivos derivados correctamente.`,
+      )
+      setApplying(null)
+      await load()
+    } catch (operationError) {
+      setError(messageFrom(operationError))
+    } finally {
+      setSaving(false)
+    }
+  }
+  async function showVersions(plan: PreventivePlanDto) {
+    setError(null)
+    try {
+      setDetail(await getPreventivePlan(plan.id))
+    } catch (operationError) {
+      setError(messageFrom(operationError))
+    }
+  }
   if (!plans && !error)
     return (
       <StatePanel
@@ -380,19 +523,29 @@ export default function PreventivePlansPanel() {
     )
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4">
+      <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="font-semibold">Planes preventivos recurrentes</h3>
           <p className="mt-1 text-sm text-slate-500">Versiones y alcance por bus o modelo.</p>
         </div>
-        <Button
-          onClick={() => {
-            setEditing(undefined)
-            setShowForm(true)
-          }}
-        >
-          Crear plan
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <input
+              checked={includeHistorical}
+              onChange={(event) => setIncludeHistorical(event.target.checked)}
+              type="checkbox"
+            />
+            Incluir historicos
+          </label>
+          <Button
+            onClick={() => {
+              setEditing(undefined)
+              setShowForm(true)
+            }}
+          >
+            Crear plan
+          </Button>
+        </div>
       </div>
       {feedback && (
         <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{feedback}</p>
@@ -411,6 +564,7 @@ export default function PreventivePlansPanel() {
               <tr>
                 <th className="px-4 py-3">Tarea</th>
                 <th className="px-4 py-3">Criterio</th>
+                <th className="px-4 py-3">Destino</th>
                 <th className="px-4 py-3">Version</th>
                 <th className="px-4 py-3">Bloqueo</th>
                 <th className="px-4 py-3">Programaciones/orden</th>
@@ -425,6 +579,9 @@ export default function PreventivePlansPanel() {
                     <p className="text-slate-500">{plan.componente}</p>
                   </td>
                   <td className="px-4 py-3">{PREVENTIVE_CRITERION_LABELS[plan.criterio]}</td>
+                  <td className="px-4 py-3">
+                    {plan.destino.tipo === 'BUS' ? 'Bus especifico' : 'Modelo de bus'}
+                  </td>
                   <td className="px-4 py-3">v{plan.version}</td>
                   <td className="px-4 py-3">
                     {plan.bloqueaAlVencer ? <Badge tone="red">Al vencer</Badge> : 'No bloquea'}
@@ -432,6 +589,17 @@ export default function PreventivePlansPanel() {
                   <td className="px-4 py-3">{plan.programacionesAsociadas}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
+                      <Button
+                        disabled={!plan.activa || saving}
+                        onClick={() => setApplying(plan)}
+                        size="sm"
+                        variant="secondary"
+                      >
+                        Aplicar
+                      </Button>
+                      <Button onClick={() => void showVersions(plan)} size="sm" variant="outline">
+                        Versiones
+                      </Button>
                       <Button
                         disabled={!plan.activa || saving}
                         onClick={() => {
@@ -472,6 +640,16 @@ export default function PreventivePlansPanel() {
           saving={saving}
         />
       )}
+      {applying && (
+        <ApplyPlanDialog
+          buses={buses}
+          onApply={(busId) => apply(applying, busId)}
+          onCancel={() => setApplying(null)}
+          plan={applying}
+          saving={saving}
+        />
+      )}
+      {detail && <PlanVersionsDialog detail={detail} onClose={() => setDetail(null)} />}
     </section>
   )
 }
