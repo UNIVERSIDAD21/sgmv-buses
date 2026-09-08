@@ -39,7 +39,9 @@
     "prisma:seed": "npm --workspace @sgmv/backend run prisma:seed",
     "prisma:seed:local": "npm --workspace @sgmv/backend run prisma:seed:local",
     "prisma:studio:local": "npm --workspace @sgmv/backend run prisma:studio:local",
-    "prisma:validate": "npm --workspace @sgmv/backend run prisma:validate"
+    "prisma:validate": "npm --workspace @sgmv/backend run prisma:validate",
+    "p12:audit": "node scripts/p12-audit.mjs",
+    "p12:migrations": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/p12-verify-migrations.ps1"
   },
   "devDependencies": {
     "prettier": "^3.7.4"

@@ -63,14 +63,14 @@ export default function LoginPage() {
             <Bus size={24} />
           </div>
           <h1 className="text-xl font-semibold text-slate-900">SGMV</h1>
-          <p className="mt-2 max-w-xs text-sm leading-6 text-slate-500">
+          <p className="mt-2 max-w-xs text-sm leading-6 text-slate-600">
             Sistema de Gestión de Mantenimiento Vehicular
           </p>
         </div>
 
         <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-semibold text-slate-900">Iniciar sesión</h2>
-          <p className="mt-1 text-sm leading-6 text-slate-500">
+          <p className="mt-1 text-sm leading-6 text-slate-600">
             Acceso protegido por rol con sesión segura en cookie HttpOnly.
           </p>
 
@@ -134,7 +134,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-xs leading-5 text-slate-400">
+        <p className="mt-6 text-center text-xs leading-5 text-slate-600">
           Prototipo académico — Datos simulados
         </p>
       </section>

@@ -49,6 +49,34 @@ export function normalizeKnownHttpError(
   error: unknown,
   requestId: string,
 ): NormalizedHttpError | undefined {
+  if (error && typeof error === 'object' && 'type' in error) {
+    const type = (error as { type?: unknown }).type
+    if (type === 'entity.too.large') {
+      return {
+        body: {
+          error: {
+            code: 'PAYLOAD_TOO_LARGE',
+            message: 'La solicitud supera el tamaño permitido',
+            requestId,
+          },
+        },
+        statusCode: 413,
+      }
+    }
+    if (type === 'entity.parse.failed') {
+      return {
+        body: {
+          error: {
+            code: 'INVALID_JSON',
+            message: 'El cuerpo JSON no es valido',
+            requestId,
+          },
+        },
+        statusCode: 400,
+      }
+    }
+  }
+
   if (error instanceof ZodError) {
     return {
       body: {

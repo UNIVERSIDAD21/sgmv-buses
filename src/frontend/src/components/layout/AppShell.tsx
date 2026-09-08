@@ -242,7 +242,7 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
           {expanded && (
             <div className="min-w-0">
               <p className="text-sm font-semibold text-slate-900">SGMV</p>
-              <p className="text-xs text-slate-400">Mantenimiento vehicular</p>
+              <p className="text-xs text-slate-600">Mantenimiento vehicular</p>
             </div>
           )}
         </div>
@@ -268,7 +268,7 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
             {expanded && (
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-slate-800">{user.nombre}</p>
-                <p className="text-xs leading-5 text-slate-400">{ROLE_LABELS[user.rol.codigo]}</p>
+                <p className="text-xs leading-5 text-slate-600">{ROLE_LABELS[user.rol.codigo]}</p>
               </div>
             )}
           </div>
@@ -366,7 +366,7 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
             <h1 className="text-sm font-semibold leading-5 text-slate-900 md:text-base">
               {pageTitle}
             </h1>
-            <p className="hidden text-xs text-slate-400 sm:block">{formatDateTime()}</p>
+            <p className="hidden text-xs text-slate-600 sm:block">{formatDateTime()}</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -401,7 +401,7 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
           <Outlet />
         </main>
 
-        <footer className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-center text-[11px] text-slate-400">
+        <footer className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-center text-[11px] text-slate-600">
           Prototipo académico — Datos simulados
         </footer>
       </div>
