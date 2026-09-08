@@ -4,6 +4,8 @@ import { ReportRepository } from './report.repository.js'
 import type { ReportQuery } from './report.schemas.js'
 import type {
   HistoryBusDto,
+  HistoryAlertDto,
+  HistoryJourneyDto,
   HistoryNoveltyDto,
   HistoryOrderDto,
   HistorySummaryDto,
@@ -35,16 +37,25 @@ export class ReportService {
       return this.reportRepository.findMechanicBusIds(user.id)
     }
 
-    const assignment = await this.reportRepository.findActiveDriverAssignment(user.id)
-    return assignment ? [assignment.busId] : []
+    const history = await this.reportRepository.findDriverHistoryBus(user.id)
+    return history ? [history.busId] : []
+  }
+
+  private scopedQuery(query: ReportQuery, user: AuthenticatedUser): ReportQuery {
+    return user.rol.codigo === 'CONDUCTOR'
+      ? { ...query, busId: undefined, conductorId: undefined }
+      : query
   }
 
   async summarize(query: ReportQuery, user: AuthenticatedUser): Promise<HistorySummaryDto> {
+    const scopedQuery = this.scopedQuery(query, user)
     const busIds = await this.accessibleBusIds(user)
     const result = await this.reportRepository.summary(
-      query,
+      scopedQuery,
       busIds,
       user.rol.codigo === 'CONDUCTOR' ? user.id : undefined,
+      user.rol.codigo === 'ADMINISTRADOR',
+      user.rol.codigo === 'ADMINISTRADOR' ? undefined : user.id,
     )
     const alcance =
       user.rol.codigo === 'ADMINISTRADOR'
@@ -79,11 +90,12 @@ export class ReportService {
       query,
       busIds,
       user.rol.codigo === 'ADMINISTRADOR',
+      user.rol.codigo === 'ADMINISTRADOR' ? undefined : user.id,
     )
     const costsByBus = new Map(
       result.costs.map((item) => [item.busId, item._sum.costoTotal?.toFixed(2) ?? '0.00']),
     )
-    const buses: HistoryBusDto[] = result.buses.map((bus, index) => ({
+    const buses: HistoryBusDto[] = result.buses.map((bus) => ({
       anio: bus.anio,
       codigoInterno: bus.codigoInterno,
       ...(user.rol.codigo === 'ADMINISTRADOR'
@@ -97,7 +109,9 @@ export class ReportService {
       placa: bus.placa,
       totalOrdenes: bus._count.ordenesTrabajo,
       ultimoMantenimiento: iso(
-        result.lastOrders[index]?.fechaCierre ?? result.lastOrders[index]?.fechaCreacion ?? null,
+        result.lastOrders.get(bus.id)?.fechaCierre ??
+          result.lastOrders.get(bus.id)?.fechaCreacion ??
+          null,
       ),
     }))
 
@@ -130,19 +144,18 @@ export class ReportService {
   }
 
   async getMyBusHistory(query: ReportQuery, user: AuthenticatedUser) {
-    const assignment = await this.reportRepository.findActiveDriverAssignment(user.id)
+    const history = await this.reportRepository.findDriverHistoryBus(user.id)
 
-    if (!assignment) {
+    if (!history) {
       return { asignacion: null, historial: null }
     }
 
-    const historial = await this.buildBusHistory(assignment.busId, query, user)
+    const historial = await this.buildBusHistory(history.busId, this.scopedQuery(query, user), user)
 
     return {
-      asignacion: {
-        fechaInicio: assignment.fechaInicio.toISOString(),
-        id: assignment.id,
-      },
+      asignacion: history.assignment
+        ? { fechaInicio: history.assignment.fechaInicio.toISOString(), id: history.assignment.id }
+        : null,
       historial,
     }
   }
@@ -153,35 +166,73 @@ export class ReportService {
     user: AuthenticatedUser,
     mechanicId?: string,
   ) {
-    const [bus, orders, states, mileage, schedules, novelties, assignments] = await Promise.all([
+    const isAdmin = user.rol.codigo === 'ADMINISTRADOR'
+    const alertRecipientId = isAdmin ? undefined : user.id
+    const [
+      bus,
+      orders,
+      operationalOrders,
+      states,
+      mileage,
+      schedules,
+      novelties,
+      assignments,
+      journeys,
+      alerts,
+    ] = await Promise.all([
       this.reportRepository.getBus(busId),
-      this.reportRepository.listBusOrders(busId, query, mechanicId),
+      user.rol.codigo === 'CONDUCTOR' || user.rol.codigo === 'DESPACHADOR'
+        ? Promise.resolve([])
+        : this.reportRepository.listBusOrders(
+            busId,
+            query,
+            mechanicId,
+            isAdmin ? undefined : user.id,
+          ),
+      user.rol.codigo === 'CONDUCTOR' || user.rol.codigo === 'DESPACHADOR'
+        ? this.reportRepository.listBusOperationalOrders(
+            busId,
+            query,
+            user.rol.codigo === 'CONDUCTOR' ? user.id : undefined,
+            isAdmin ? undefined : user.id,
+          )
+        : Promise.resolve([]),
       user.rol.codigo === 'CONDUCTOR'
         ? Promise.resolve([])
-        : this.reportRepository.listBusStates(busId),
+        : this.reportRepository.listBusStates(busId, query),
       user.rol.codigo === 'ADMINISTRADOR' || user.rol.codigo === 'DESPACHADOR'
-        ? this.reportRepository.listBusMileage(busId)
+        ? this.reportRepository.listBusMileage(busId, query)
         : Promise.resolve([]),
-      this.reportRepository.listBusSchedules(busId),
+      user.rol.codigo === 'CONDUCTOR'
+        ? Promise.resolve([])
+        : this.reportRepository.listBusSchedules(busId, query),
       user.rol.codigo === 'MECANICO'
         ? Promise.resolve([])
         : this.reportRepository.listBusNovelties(
             busId,
+            query,
             user.rol.codigo === 'CONDUCTOR' ? user.id : undefined,
           ),
       user.rol.codigo === 'ADMINISTRADOR' || user.rol.codigo === 'DESPACHADOR'
-        ? this.reportRepository.listBusAssignments(busId)
+        ? this.reportRepository.listBusAssignments(busId, query)
         : Promise.resolve([]),
+      user.rol.codigo === 'MECANICO'
+        ? Promise.resolve([])
+        : this.reportRepository.listBusJourneys(
+            busId,
+            query,
+            user.rol.codigo === 'CONDUCTOR' ? user.id : undefined,
+          ),
+      this.reportRepository.listBusAlerts(busId, query, alertRecipientId),
     ])
 
     if (!bus) {
       throw new AppError(404, 'NOT_FOUND', 'Bus no encontrado')
     }
 
-    const isAdmin = user.rol.codigo === 'ADMINISTRADOR'
     const canViewTechnicalDetails =
       user.rol.codigo === 'ADMINISTRADOR' || user.rol.codigo === 'MECANICO'
-    const historyOrders: HistoryOrderDto[] = orders.map((order) => ({
+    const technicalHistoryOrders: HistoryOrderDto[] = orders.map((order) => ({
       codigo: order.codigo,
       ...(isAdmin ? { costoTotal: order.costoTotal.toFixed(2) } : {}),
       descripcion: order.descripcion,
@@ -189,6 +240,11 @@ export class ReportService {
         ? {
             diagnosticos: order.intervenciones.map((intervention) => ({
               actividades: intervention.actividades.map((activity) => activity.descripcion),
+              actividadesDetalladas: intervention.actividades.map((activity) => ({
+                descripcion: activity.descripcion,
+                fechaRegistro: activity.fechaRegistro.toISOString(),
+                id: activity.id,
+              })),
               diagnostico: intervention.diagnostico,
               fechaFin: iso(intervention.fechaFin),
               fechaInicio: intervention.fechaInicio.toISOString(),
@@ -201,6 +257,35 @@ export class ReportService {
       fechaCierre: iso(order.fechaCierre),
       fechaCreacion: order.fechaCreacion.toISOString(),
       id: order.id,
+      ...(canViewTechnicalDetails
+        ? {
+            historialEstados: order.estadosHistorial.map((history) => ({
+              cambiadoPor: history.cambiadoPor.nombre,
+              estadoAnterior: history.estadoAnterior,
+              estadoNuevo: history.estadoNuevo,
+              fechaCambio: history.fechaCambio.toISOString(),
+              id: history.id,
+              observacion: history.observacion,
+            })),
+            novedadOrigen: order.novedad
+              ? {
+                  fechaOcurrencia: iso(order.novedad.fechaOcurrencia),
+                  fechaReporte: order.novedad.fechaReporte.toISOString(),
+                  id: order.novedad.id,
+                  jornadaId: order.novedad.jornadaOperativaId,
+                  lecturaId: order.novedad.lecturaKilometrajeId,
+                }
+              : null,
+            reasignaciones: order.reasignaciones.map((reassignment) => ({
+              fechaReasignacion: reassignment.fechaReasignacion.toISOString(),
+              id: reassignment.id,
+              motivo: reassignment.motivo,
+              reasignadoPor: reassignment.reasignadoPor.nombre,
+              tecnicoAnterior: reassignment.tecnicoAnterior?.nombre ?? null,
+              tecnicoNuevo: reassignment.tecnicoNuevo.nombre,
+            })),
+          }
+        : {}),
       origen: order.origen,
       ...(canViewTechnicalDetails
         ? {
@@ -215,10 +300,60 @@ export class ReportService {
                 : {}),
               nombre: consumption.repuesto.nombre,
               unidadMedida: consumption.repuesto.unidadMedida,
+              fechaConsumo: consumption.fechaConsumo.toISOString(),
+              compatibilidad: {
+                evidencia: consumption.evidenciaCompatibilidad as Record<string, unknown> | null,
+                reglaId: consumption.reglaCompatibilidadId,
+                reglaVersion: consumption.reglaVersion,
+                resultado: consumption.resultadoCompatibilidad,
+              },
+              movimiento: consumption.movimientoInventario
+                ? {
+                    cantidad: consumption.movimientoInventario.cantidad.toFixed(2),
+                    fechaMovimiento: consumption.movimientoInventario.fechaMovimiento.toISOString(),
+                    id: consumption.movimientoInventario.id,
+                    tipo: consumption.movimientoInventario.tipo,
+                  }
+                : null,
+            })),
+          }
+        : {}),
+      ...(user.rol.codigo === 'ADMINISTRADOR' || user.rol.codigo === 'DESPACHADOR'
+        ? {
+            disponibilidadAlCierre: order.disponibilidadAlCierre,
+            jornada: order.jornadaOperativa
+              ? {
+                  estado: order.jornadaOperativa.estado,
+                  id: order.jornadaOperativa.id,
+                  ruta: order.jornadaOperativa.ruta,
+                }
+              : null,
+          }
+        : {}),
+      ...(canViewTechnicalDetails
+        ? {
+            lecturasTecnicas: order.lecturasKilometraje.map((reading) => ({
+              fechaLectura: (reading.fechaLectura ?? reading.fechaRegistro).toISOString(),
+              id: reading.id,
+              kilometraje: reading.kilometrajeNuevo,
+              tipo: reading.tipo,
             })),
           }
         : {}),
       tecnico: order.tecnicoAsignado?.nombre ?? null,
+      tipo: order.tipo,
+    }))
+    const operationalHistoryOrders: HistoryOrderDto[] = operationalOrders.map((order) => ({
+      codigo: order.codigo,
+      descripcion: order.tipo === 'PREVENTIVA' ? 'Orden preventiva' : 'Orden correctiva',
+      disponibilidadAlCierre: order.disponibilidadAlCierre,
+      estado: order.estado,
+      fechaCierre: iso(order.fechaCierre),
+      fechaCreacion: order.fechaCreacion.toISOString(),
+      id: order.id,
+      jornada: order.jornadaOperativa,
+      origen: order.origen,
+      tecnico: null,
       tipo: order.tipo,
     }))
     const historyNovelties: HistoryNoveltyDto[] = novelties.map((novelty) => ({
@@ -232,6 +367,40 @@ export class ReportService {
         : {}),
       tipo: novelty.tipo,
     }))
+
+    const historyJourneys: HistoryJourneyDto[] = journeys.map((journey) => ({
+      conductor: journey.conductor.nombre,
+      estado: journey.estado,
+      finReal: iso(journey.finReal),
+      finProgramado: journey.finProgramado.toISOString(),
+      id: journey.id,
+      inicioReal: iso(journey.inicioReal),
+      inicioProgramado: journey.inicioProgramado.toISOString(),
+      lecturas: journey.lecturasKilometraje.map((reading) => ({
+        fechaLectura: (reading.fechaLectura ?? reading.fechaRegistro).toISOString(),
+        id: reading.id,
+        kilometraje: reading.kilometrajeNuevo,
+        tipo: reading.tipo,
+      })),
+      ruta: journey.ruta,
+    }))
+    const historyAlerts: HistoryAlertDto[] = alerts
+      .filter((alert) => isAdmin || alert.destinatarios.length > 0)
+      .map((alert) => ({
+        ...(isAdmin ? {} : { estado: alert.destinatarios[0]?.estado }),
+        fechaGeneracion: alert.fechaGeneracion.toISOString(),
+        id: alert.id,
+        origen: {
+          busId: alert.busId,
+          jornadaId: alert.jornadaOperativaId,
+          novedadId: alert.novedadId,
+          ordenId: alert.ordenTrabajoId,
+          programacionId: alert.programacionMantenimientoId,
+        },
+        prioridad: alert.prioridad,
+        tipo: alert.tipo,
+        titulo: alert.titulo,
+      }))
 
     return {
       asignaciones: assignments.map((assignment) => ({
@@ -270,7 +439,12 @@ export class ReportService {
         tipo: schedule.tipo,
       })),
       novedades: historyNovelties,
-      ordenes: historyOrders,
+      ordenes:
+        user.rol.codigo === 'CONDUCTOR' || user.rol.codigo === 'DESPACHADOR'
+          ? operationalHistoryOrders
+          : technicalHistoryOrders,
+      jornadas: historyJourneys,
+      alertas: historyAlerts,
     }
   }
 
@@ -300,94 +474,54 @@ export class ReportService {
 
   async partsReport(query: ReportQuery, user: AuthenticatedUser) {
     this.requireAdmin(user)
-    const consumptions = await this.reportRepository.partsReport(query)
-    const groups = new Map<
-      string,
-      {
-        cantidad: number
-        categoria: string | null
-        codigo: string
-        costoTotal: number
-        nombre: string
-        ordenes: Set<string>
-        unidadMedida: string
-      }
-    >()
-
-    for (const consumption of consumptions) {
-      const current = groups.get(consumption.repuestoId) ?? {
-        cantidad: 0,
-        categoria: consumption.repuesto.categoria,
-        codigo: consumption.repuesto.codigo,
-        costoTotal: 0,
-        nombre: consumption.repuesto.nombre,
-        ordenes: new Set<string>(),
-        unidadMedida: consumption.repuesto.unidadMedida,
-      }
-      current.cantidad += consumption.cantidad.toNumber()
-      current.costoTotal += consumption.subtotal.toNumber()
-      current.ordenes.add(consumption.ordenTrabajoId)
-      groups.set(consumption.repuestoId, current)
+    const result = await this.reportRepository.partsReport(query)
+    const parts = new Map(result.parts.map((part) => [part.id, part]))
+    const orderCount = new Map<string, number>()
+    for (const pair of result.orderPairs) {
+      orderCount.set(pair.repuestoId, (orderCount.get(pair.repuestoId) ?? 0) + 1)
     }
 
-    const all = [...groups.entries()]
-      .map(([id, group]) => ({
-        cantidad: group.cantidad.toFixed(2),
-        categoria: group.categoria,
-        codigo: group.codigo,
-        costoTotal: group.costoTotal.toFixed(2),
-        id,
-        nombre: group.nombre,
-        ordenes: group.ordenes.size,
-        unidadMedida: group.unidadMedida,
-      }))
-      .sort((left, right) => Number(right.costoTotal) - Number(left.costoTotal))
-    const start = (query.pagina - 1) * query.limite
-
     return {
-      costoTotal: consumptions
-        .reduce((sum, consumption) => sum + consumption.subtotal.toNumber(), 0)
-        .toFixed(2),
-      paginacion: pagination(query, all.length),
-      registros: all.slice(start, start + query.limite),
+      costoTotal: result.totalCost.toFixed(2),
+      paginacion: pagination(query, result.total),
+      registros: result.groups.map((group) => {
+        const part = parts.get(group.repuestoId)!
+        return {
+          cantidad: (group._sum.cantidad ?? 0).toFixed(2),
+          categoria: part.categoria,
+          codigo: part.codigo,
+          costoTotal: (group._sum.subtotal ?? 0).toFixed(2),
+          id: part.id,
+          nombre: part.nombre,
+          ordenes: orderCount.get(part.id) ?? 0,
+          unidadMedida: part.unidadMedida,
+        }
+      }),
     }
   }
 
   async costReport(query: ReportQuery, user: AuthenticatedUser) {
     this.requireAdmin(user)
-    const orders = await this.reportRepository.costReport(query)
-    const groups = new Map<
-      string,
-      { bus: string; cerradas: number; costoTotal: number; ordenes: number }
-    >()
-
-    for (const order of orders) {
-      const current = groups.get(order.busId) ?? {
-        bus: `${order.bus.codigoInterno} · ${order.bus.placa}`,
-        cerradas: 0,
-        costoTotal: 0,
-        ordenes: 0,
-      }
-      current.ordenes += 1
-      current.cerradas += order.estado === 'CERRADA' ? 1 : 0
-      current.costoTotal += order.costoTotal.toNumber()
-      groups.set(order.busId, current)
-    }
-
-    const all = [...groups.entries()]
-      .map(([busId, group]) => ({
-        ...group,
-        busId,
-        costoPromedio: group.ordenes > 0 ? (group.costoTotal / group.ordenes).toFixed(2) : '0.00',
-        costoTotal: group.costoTotal.toFixed(2),
-      }))
-      .sort((left, right) => Number(right.costoTotal) - Number(left.costoTotal))
-    const start = (query.pagina - 1) * query.limite
+    const result = await this.reportRepository.costReport(query)
+    const buses = new Map(result.buses.map((bus) => [bus.id, bus]))
+    const closed = new Map(result.closedGroups.map((group) => [group.busId, group._count._all]))
 
     return {
-      costoTotal: orders.reduce((sum, order) => sum + order.costoTotal.toNumber(), 0).toFixed(2),
-      paginacion: pagination(query, all.length),
-      registros: all.slice(start, start + query.limite),
+      costoTotal: result.totalCost.toFixed(2),
+      paginacion: pagination(query, result.total),
+      registros: result.groups.map((group) => {
+        const bus = buses.get(group.busId)!
+        const total = group._sum.costoTotal?.toNumber() ?? 0
+        const orders = group._count._all
+        return {
+          bus: `${bus.codigoInterno} · ${bus.placa}`,
+          busId: group.busId,
+          cerradas: closed.get(group.busId) ?? 0,
+          costoPromedio: orders > 0 ? (total / orders).toFixed(2) : '0.00',
+          costoTotal: total.toFixed(2),
+          ordenes: orders,
+        }
+      }),
     }
   }
 

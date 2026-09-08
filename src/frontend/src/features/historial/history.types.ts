@@ -50,6 +50,11 @@ export interface HistoryOrderDto {
   descripcion: string
   diagnosticos?: Array<{
     actividades: string[]
+    actividadesDetalladas?: Array<{
+      descripcion: string
+      fechaRegistro: string
+      id: string
+    }>
     diagnostico: string | null
     fechaFin: string | null
     fechaInicio: string
@@ -60,20 +65,83 @@ export interface HistoryOrderDto {
   fechaCierre: string | null
   fechaCreacion: string
   id: string
+  historialEstados?: Array<{
+    cambiadoPor: string
+    estadoAnterior: HistoryOrderState | null
+    estadoNuevo: HistoryOrderState
+    fechaCambio: string
+    id: string
+    observacion: string | null
+  }>
+  novedadOrigen?: {
+    fechaOcurrencia: string | null
+    fechaReporte: string
+    id: string
+    jornadaId: string | null
+    lecturaId: string | null
+  } | null
   origen: HistoryOrderOrigin
   repuestos?: Array<{
     cantidad: string
     codigo: string
     costoUnitario?: string
+    fechaConsumo?: string
+    compatibilidad?: {
+      evidencia: Record<string, unknown> | null
+      reglaId: string | null
+      reglaVersion: number | null
+      resultado: 'COMPATIBLE' | 'EXCEPCION_AUTORIZADA' | 'NO_EVALUADA_LEGADO' | null
+    }
+    movimiento?: {
+      cantidad: string
+      fechaMovimiento: string
+      id: string
+      tipo: string
+    } | null
     nombre: string
     subtotal?: string
     unidadMedida: string
+  }>
+  jornada?: {
+    estado: string
+    id: string
+    ruta: { codigo: string; nombre: string } | null
+  } | null
+  lecturasTecnicas?: Array<{
+    fechaLectura: string
+    id: string
+    kilometraje: number
+    tipo: string | null
+  }>
+  disponibilidadAlCierre?: boolean | null
+  reasignaciones?: Array<{
+    fechaReasignacion: string
+    id: string
+    motivo: string | null
+    reasignadoPor: string
+    tecnicoAnterior: string | null
+    tecnicoNuevo: string
   }>
   tecnico: string | null
   tipo: HistoryOrderType
 }
 
 export interface HistoryDetailDto {
+  alertas: Array<{
+    estado?: string
+    fechaGeneracion: string
+    id: string
+    origen: {
+      busId: string | null
+      jornadaId: string | null
+      novedadId: string | null
+      ordenId: string | null
+      programacionId: string | null
+    }
+    prioridad: string
+    tipo: string
+    titulo: string
+  }>
   asignaciones: Array<{
     activa: boolean
     asignadoPor: string
@@ -99,6 +167,22 @@ export interface HistoryDetailDto {
     kilometrajeNuevo: number
     motivo: string | null
     registradoPor: string
+  }>
+  jornadas: Array<{
+    conductor: string
+    estado: string
+    finReal: string | null
+    finProgramado: string
+    id: string
+    inicioReal: string | null
+    inicioProgramado: string
+    lecturas: Array<{
+      fechaLectura: string
+      id: string
+      kilometraje: number
+      tipo: string | null
+    }>
+    ruta: { codigo: string; nombre: string } | null
   }>
   mantenimientos: Array<{
     activa: boolean

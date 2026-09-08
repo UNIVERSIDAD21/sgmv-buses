@@ -3,9 +3,11 @@ import { randomUUID } from 'node:crypto'
 import { PrismaClient, type Rol } from '@prisma/client'
 import { hash } from 'bcryptjs'
 import request from 'supertest'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { createApp } from '../src/app.js'
+import { prisma as appPrisma } from '../src/prisma/client.js'
+import { ReportRepository } from '../src/reports/report.repository.js'
 import { createCsrfAgent } from './http-test-client.js'
 
 const prisma = new PrismaClient()
@@ -13,9 +15,13 @@ const password = 'Clave-demo-segura-123'
 const suffix = randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase()
 
 const created = {
+  alertas: [] as string[],
   buses: [] as string[],
+  compatibilidades: [] as string[],
   consumos: [] as string[],
   intervenciones: [] as string[],
+  jornadas: [] as string[],
+  lecturas: [] as string[],
   novedades: [] as string[],
   ordenes: [] as string[],
   programaciones: [] as string[],
@@ -27,16 +33,22 @@ interface ReportFixture {
   adminEmail: string
   busId: string
   conductorEmail: string
+  despachadorEmail: string
   mecanicoEmail: string
   otherBusId: string
 }
 
 async function ensureRoles() {
-  const [admin, mecanico, conductor] = await Promise.all([
+  const [admin, despachador, mecanico, conductor] = await Promise.all([
     prisma.rol.upsert({
       create: { codigo: 'ADMINISTRADOR', nombre: 'Administrador' },
       update: {},
       where: { codigo: 'ADMINISTRADOR' },
+    }),
+    prisma.rol.upsert({
+      create: { codigo: 'DESPACHADOR', nombre: 'Despachador' },
+      update: { nombre: 'Despachador' },
+      where: { codigo: 'DESPACHADOR' },
     }),
     prisma.rol.upsert({
       create: { codigo: 'MECANICO', nombre: 'Mecánico' },
@@ -50,7 +62,7 @@ async function ensureRoles() {
     }),
   ])
 
-  return { admin, conductor, mecanico }
+  return { admin, conductor, despachador, mecanico }
 }
 
 async function createUser(label: string, role: Rol) {
@@ -70,8 +82,9 @@ async function createUser(label: string, role: Rol) {
 
 async function createFixture(): Promise<ReportFixture> {
   const roles = await ensureRoles()
-  const [admin, mechanic, otherMechanic, driver, otherDriver] = await Promise.all([
+  const [admin, dispatcher, mechanic, otherMechanic, driver, otherDriver] = await Promise.all([
     createUser('admin', roles.admin),
+    createUser('despachador', roles.despachador),
     createUser('mecanico', roles.mecanico),
     createUser('otro-mecanico', roles.mecanico),
     createUser('conductor', roles.conductor),
@@ -109,6 +122,30 @@ async function createFixture(): Promise<ReportFixture> {
       motivo: 'Asignación RF-06',
     },
   })
+  const journey = await prisma.jornadaOperativa.create({
+    data: {
+      busId: bus.id,
+      conductorId: driver.id,
+      estado: 'PROGRAMADA',
+      finProgramado: new Date('2026-08-12T17:00:00.000Z'),
+      inicioProgramado: new Date('2026-08-10T07:00:00.000Z'),
+      programadaPorId: dispatcher.id,
+    },
+  })
+  created.jornadas.push(journey.id)
+  const noveltyReading = await prisma.lecturaKilometraje.create({
+    data: {
+      busId: bus.id,
+      jornadaOperativaId: journey.id,
+      kilometrajeAnterior: 47000,
+      kilometrajeNuevo: 47030,
+      fechaLectura: new Date('2026-08-10T09:00:00.000Z'),
+      motivo: 'Lectura de novedad RF-06',
+      registradoPorId: driver.id,
+      tipo: 'AJUSTE_ADMINISTRATIVO',
+    },
+  })
+  created.lecturas.push(noveltyReading.id)
   const schedule = await prisma.programacionMantenimiento.create({
     data: {
       actividad: 'Cambio de aceite y revisión de filtros',
@@ -127,6 +164,7 @@ async function createFixture(): Promise<ReportFixture> {
       conductorId: driver.id,
       descripcion: 'Vibración leve al frenar',
       estado: 'CONVERTIDA_A_ORDEN',
+      fechaOcurrencia: new Date('2026-08-10T09:00:00.000Z'),
       tipo: 'Frenos',
     },
   })
@@ -156,6 +194,7 @@ async function createFixture(): Promise<ReportFixture> {
       prioridad: 'ALTA',
       tecnicoAsignadoId: mechanic.id,
       tipo: 'CORRECTIVA',
+      jornadaOperativaId: journey.id,
     },
   })
   created.ordenes.push(order.id)
@@ -206,6 +245,19 @@ async function createFixture(): Promise<ReportFixture> {
     },
   })
   created.repuestos.push(part.id)
+  const compatibility = await prisma.compatibilidadRepuesto.create({
+    data: {
+      busId: bus.id,
+      definidaPorId: admin.id,
+      especificacionesValidadas: { norma: 'RF06' },
+      fechaDefinicion: new Date('2026-08-01T00:00:00.000Z'),
+      permitido: true,
+      repuestoId: part.id,
+      version: 1,
+      vigente: true,
+    },
+  })
+  created.compatibilidades.push(compatibility.id)
   const consumptionId = randomUUID()
   created.consumos.push(consumptionId)
   await prisma.$transaction(async (tx) => {
@@ -218,10 +270,15 @@ async function createFixture(): Promise<ReportFixture> {
         cantidad: '2.00',
         consumidoPorId: mechanic.id,
         costoUnitario: '92500.00',
+        fechaConsumo: new Date('2026-08-11T10:00:00.000Z'),
         id: consumptionId,
         intervencionId: intervention.id,
         ordenTrabajoId: order.id,
         repuestoId: part.id,
+        resultadoCompatibilidad: 'COMPATIBLE',
+        reglaCompatibilidadId: compatibility.id,
+        reglaVersion: compatibility.version,
+        evidenciaCompatibilidad: { fuente: 'fixture-p10' },
         subtotal: '185000.00',
       },
     })
@@ -230,6 +287,7 @@ async function createFixture(): Promise<ReportFixture> {
         cantidad: '2.00',
         consumoRepuestoId: consumptionId,
         costoUnitario: '92500.00',
+        fechaMovimiento: new Date('2026-08-11T10:00:00.000Z'),
         motivo: `Consumo asociado a orden ${order.codigo}`,
         repuestoId: part.id,
         responsableId: mechanic.id,
@@ -255,11 +313,36 @@ async function createFixture(): Promise<ReportFixture> {
     },
     where: { id: order.id },
   })
+  const alertGeneratedAt = new Date()
+  const alert = await prisma.alertaInterna.create({
+    data: {
+      claveDeduplicacion: `RF06-alert-${suffix}`,
+      contextoEvento: { schemaVersion: 1 },
+      fechaGeneracion: alertGeneratedAt,
+      novedadId: ownNovelty.id,
+      prioridad: 'ALTA',
+      tipo: 'NOVEDAD_CRITICA',
+      titulo: 'Alerta RF-06 P10',
+      mensaje: 'Alerta propia de trazabilidad.',
+      destinatarios: {
+        create: [
+          { estado: 'NO_LEIDA', usuarioId: driver.id },
+          {
+            estado: 'LEIDA',
+            fechaLectura: new Date(alertGeneratedAt.getTime() + 1_000),
+            usuarioId: dispatcher.id,
+          },
+        ],
+      },
+    },
+  })
+  created.alertas.push(alert.id)
 
   return {
     adminEmail: admin.email,
     busId: bus.id,
     conductorEmail: driver.email,
+    despachadorEmail: dispatcher.email,
     mecanicoEmail: mechanic.email,
     otherBusId: otherBus.id,
   }
@@ -274,6 +357,10 @@ async function loginAgent(email: string) {
 async function cleanup() {
   await prisma.$transaction(
     async (tx) => {
+      await tx.alertaDestinatario.deleteMany({
+        where: { alertaInternaId: { in: created.alertas } },
+      })
+      await tx.alertaInterna.deleteMany({ where: { id: { in: created.alertas } } })
       await tx.movimientoInventario.deleteMany({
         where: { consumoRepuestoId: { in: created.consumos } },
       })
@@ -290,10 +377,15 @@ async function cleanup() {
       })
       await tx.ordenTrabajo.deleteMany({ where: { id: { in: created.ordenes } } })
       await tx.novedad.deleteMany({ where: { id: { in: created.novedades } } })
+      await tx.lecturaKilometraje.deleteMany({ where: { id: { in: created.lecturas } } })
+      await tx.jornadaOperativa.deleteMany({ where: { id: { in: created.jornadas } } })
       await tx.programacionMantenimiento.deleteMany({
         where: { id: { in: created.programaciones } },
       })
       await tx.asignacionConductor.deleteMany({ where: { busId: { in: created.buses } } })
+      await tx.compatibilidadRepuesto.deleteMany({
+        where: { id: { in: created.compatibilidades } },
+      })
       await tx.repuesto.deleteMany({ where: { id: { in: created.repuestos } } })
       await tx.bus.deleteMany({ where: { id: { in: created.buses } } })
       await tx.usuario.deleteMany({ where: { id: { in: created.usuarios } } })
@@ -364,6 +456,10 @@ describe('RF-06 History and reports API', () => {
     const detail = await admin.get(`/historial/buses/${fixture.busId}`).expect(200)
     expect(detail.body.data.ordenes[0].costoTotal).toBe('185000.00')
     expect(detail.body.data.ordenes[0].repuestos[0].subtotal).toBe('185000.00')
+    expect(detail.body.data.ordenes[0].repuestos[0].movimiento.tipo).toBe('CONSUMO')
+    expect(detail.body.data.ordenes[0].repuestos[0].compatibilidad.resultado).toBe('COMPATIBLE')
+    expect(detail.body.data.ordenes[0].jornada.id).toBeTruthy()
+    expect(detail.body.data.jornadas).toHaveLength(1)
     expect(detail.body.data.asignaciones).toHaveLength(1)
     expect(detail.body.data.novedades).toHaveLength(2)
 
@@ -387,6 +483,61 @@ describe('RF-06 History and reports API', () => {
     expect(maintenance.body.data.registros[0].codigo).toBe(`OT-RF06-${suffix}`)
     expect(parts.body.data.registros[0].codigo).toBe(`REP-RF06-${suffix}`)
     expect(costs.body.data.registros[0].costoTotal).toBe('185000.00')
+  }, 60000)
+
+  it('gives dispatchers operational traceability without diagnostics or costs', async () => {
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const detail = await dispatcher.get(`/historial/buses/${fixture.busId}`).expect(200)
+    const serialized = JSON.stringify(detail.body)
+
+    expect(detail.body.data.jornadas).toHaveLength(1)
+    expect(detail.body.data.ordenes[0].jornada.id).toBeTruthy()
+    expect(serialized).not.toContain('diagnosticos')
+    expect(serialized).not.toContain('costoTotal')
+    expect(serialized).not.toContain('subtotal')
+    expect(serialized).not.toContain('evidenciaCompatibilidad')
+    expect(serialized).not.toContain('compatibilidad')
+    expect(serialized).not.toContain('movimiento')
+    expect(serialized).not.toContain('Desgaste de pastillas delanteras')
+    expect(serialized).not.toContain('Cambio de pastillas y limpieza')
+    expect(serialized).not.toContain('92500.00')
+    await dispatcher.get('/historial/informes/costos').expect(403)
+  }, 60000)
+
+  it('uses each event date and the same novelty filters in summary, detail and reports', async () => {
+    const admin = await loginAgent(fixture.adminEmail)
+    const noveltySummary = await admin
+      .get('/historial/resumen')
+      .query({ busId: fixture.busId, novedadEstado: 'CONVERTIDA_A_ORDEN' })
+      .expect(200)
+    const noveltyDetail = await admin
+      .get(`/historial/buses/${fixture.busId}`)
+      .query({ novedadEstado: 'CONVERTIDA_A_ORDEN' })
+      .expect(200)
+
+    expect(noveltySummary.body.data.indicadores.buses).toBe(1)
+    expect(noveltySummary.body.data.indicadores.novedades).toBe(1)
+    expect(noveltyDetail.body.data.novedades).toHaveLength(1)
+
+    const orderDayDetail = await admin
+      .get(`/historial/buses/${fixture.busId}`)
+      .query({ fechaDesde: '2026-08-10', fechaHasta: '2026-08-10' })
+      .expect(200)
+    const orderDayParts = await admin
+      .get('/historial/informes/repuestos')
+      .query({ busId: fixture.busId, fechaDesde: '2026-08-10', fechaHasta: '2026-08-10' })
+      .expect(200)
+    const consumptionDayParts = await admin
+      .get('/historial/informes/repuestos')
+      .query({ busId: fixture.busId, fechaDesde: '2026-08-11', fechaHasta: '2026-08-11' })
+      .expect(200)
+
+    expect(orderDayDetail.body.data.ordenes).toHaveLength(1)
+    expect(orderDayDetail.body.data.ordenes[0].repuestos).toHaveLength(0)
+    expect(orderDayParts.body.data.registros).toHaveLength(0)
+    expect(orderDayParts.body.data.costoTotal).toBe('0.00')
+    expect(consumptionDayParts.body.data.registros[0].codigo).toBe(`REP-RF06-${suffix}`)
+    expect(consumptionDayParts.body.data.costoTotal).toBe('185000.00')
   }, 60000)
 
   it('limits mechanics to buses with their assigned or historical interventions and hides costs', async () => {
@@ -426,6 +577,9 @@ describe('RF-06 History and reports API', () => {
 
     expect(summary.body.data.indicadores.buses).toBe(1)
     expect(ownBus.body.data.historial.bus.id).toBe(fixture.busId)
+    expect(ownBus.body.data.historial.jornadas).toHaveLength(1)
+    expect(ownBus.body.data.historial.alertas).toHaveLength(1)
+    expect(ownBus.body.data.historial.mantenimientos).toHaveLength(0)
     expect(ownBus.body.data.historial.novedades).toHaveLength(1)
     expect(ownBus.body.data.historial.novedades[0].descripcion).toContain('Vibración')
     expect(serialized).not.toContain('Novedad de otro conductor')
@@ -436,6 +590,30 @@ describe('RF-06 History and reports API', () => {
     await driver.get('/historial/buses').expect(403)
     await driver.get(`/historial/buses/${fixture.busId}`).expect(403)
     await driver.get('/historial/informes/repuestos').expect(403)
+
+    const ownUnread = await driver
+      .get('/historial/resumen')
+      .query({ alertaEstado: 'NO_LEIDA' })
+      .expect(200)
+    const dispatcherRead = await driver
+      .get('/historial/resumen')
+      .query({ alertaEstado: 'LEIDA' })
+      .expect(200)
+    expect(ownUnread.body.data.indicadores.buses).toBe(1)
+    expect(dispatcherRead.body.data.indicadores.buses).toBe(0)
+  }, 60000)
+
+  it('ignores a conductor busId override and keeps the assigned bus and order scope', async () => {
+    const driver = await loginAgent(fixture.conductorEmail)
+    const response = await driver
+      .get('/historial/mi-bus')
+      .query({ busId: fixture.otherBusId })
+      .expect(200)
+
+    expect(response.body.data.historial.bus.id).toBe(fixture.busId)
+    expect(response.body.data.historial.ordenes).toHaveLength(1)
+    expect(response.body.data.historial.ordenes[0].codigo).toBe(`OT-RF06-${suffix}`)
+    expect(JSON.stringify(response.body)).not.toContain(`OT-RF06-OTHER-${suffix}`)
   }, 60000)
 
   it('validates chronological filters and supports filtered pagination aliases', async () => {
@@ -453,5 +631,78 @@ describe('RF-06 History and reports API', () => {
 
     expect(response.body.data.paginacion.limite).toBe(1)
     expect(response.body.data.registros).toHaveLength(1)
+
+    await admin
+      .get('/historial/resumen')
+      .query({ filtroNoPermitido: 'fuera-de-contrato' })
+      .expect(400)
+
+    await admin
+      .get('/historial/resumen')
+      .query({ kilometrajeDesde: 48001, kilometrajeHasta: 48000 })
+      .expect(400)
+  }, 60000)
+
+  it('keeps repeated GET requests side-effect free for order, stock and alert recipient', async () => {
+    const readState = async () => {
+      const [order, part, recipient] = await Promise.all([
+        prisma.ordenTrabajo.findUniqueOrThrow({
+          select: { costoTotal: true, estado: true, fechaCierre: true, id: true },
+          where: { id: created.ordenes[0] },
+        }),
+        prisma.repuesto.findUniqueOrThrow({
+          select: { stockActual: true, updatedAt: true },
+          where: { id: created.repuestos[0] },
+        }),
+        prisma.alertaDestinatario.findFirstOrThrow({
+          select: { estado: true, fechaAtencion: true, fechaLectura: true, id: true },
+          where: { alertaInternaId: created.alertas[0] },
+        }),
+      ])
+
+      return {
+        order: {
+          ...order,
+          costoTotal: order.costoTotal.toString(),
+          fechaCierre: order.fechaCierre?.toISOString() ?? null,
+        },
+        part: { stockActual: part.stockActual.toString(), updatedAt: part.updatedAt.toISOString() },
+        recipient: {
+          ...recipient,
+          fechaAtencion: recipient.fechaAtencion?.toISOString() ?? null,
+          fechaLectura: recipient.fechaLectura?.toISOString() ?? null,
+        },
+      }
+    }
+
+    const admin = await loginAgent(fixture.adminEmail)
+    const before = await readState()
+    await admin.get(`/historial/buses/${fixture.busId}`).expect(200)
+    await admin.get(`/historial/buses/${fixture.busId}`).expect(200)
+    await admin.get('/historial/resumen').query({ busId: fixture.busId }).expect(200)
+    await admin.get('/historial/informes/costos').query({ busId: fixture.busId }).expect(200)
+    expect(await readState()).toEqual(before)
+  }, 60000)
+
+  it('uses one grouped latest-order query for multiple buses instead of N+1', async () => {
+    const findMany = vi.spyOn(appPrisma.ordenTrabajo, 'findMany')
+
+    try {
+      const repository = new ReportRepository()
+      const result = await repository.listBuses(
+        { busqueda: suffix, limite: 100, pagina: 1 },
+        undefined,
+        true,
+      )
+
+      expect(result.buses.length).toBeGreaterThanOrEqual(2)
+      expect(findMany).toHaveBeenCalledTimes(1)
+      expect(findMany.mock.calls[0]?.[0]).toMatchObject({
+        distinct: ['busId'],
+        select: { busId: true, fechaCierre: true, fechaCreacion: true },
+      })
+    } finally {
+      findMany.mockRestore()
+    }
   }, 60000)
 })

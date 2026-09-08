@@ -3960,8 +3960,19 @@ function historySummary(role: RoleCode) {
 function historyDetail(role: RoleCode) {
   const isAdmin = role === 'ADMINISTRADOR'
   const isDriver = role === 'CONDUCTOR'
+  const canViewTechnicalDetails = isAdmin || role === 'MECANICO'
 
   return {
+    alertas: [
+      {
+        ...(isAdmin ? {} : { estado: 'NO_LEIDA' }),
+        fechaGeneracion: '2026-08-10T09:05:00.000Z',
+        id: 'history-alert-1',
+        prioridad: 'ALTA',
+        tipo: 'NOVEDAD_CRITICA',
+        titulo: 'Novedad crítica reportada',
+      },
+    ],
     asignaciones: isAdmin
       ? [
           {
@@ -4009,6 +4020,32 @@ function historyDetail(role: RoleCode) {
           },
         ]
       : [],
+    jornadas: [
+      {
+        conductor: 'Conductor Uno',
+        estado: 'FINALIZADA',
+        finReal: '2026-08-12T18:00:00.000Z',
+        finProgramado: '2026-08-12T17:00:00.000Z',
+        id: 'history-journey-1',
+        inicioReal: '2026-08-10T07:00:00.000Z',
+        inicioProgramado: '2026-08-10T07:00:00.000Z',
+        lecturas: [
+          {
+            fechaLectura: '2026-08-10T07:00:00.000Z',
+            id: 'history-journey-reading-1',
+            kilometraje: 47500,
+            tipo: 'INICIO_JORNADA',
+          },
+          {
+            fechaLectura: '2026-08-12T18:00:00.000Z',
+            id: 'history-journey-reading-2',
+            kilometraje: 48000,
+            tipo: 'FIN_JORNADA',
+          },
+        ],
+        ruta: { codigo: 'R-01', nombre: 'Centro norte' },
+      },
+    ],
     mantenimientos: [
       {
         activa: true,
@@ -4039,7 +4076,7 @@ function historyDetail(role: RoleCode) {
         codigo: 'OT-RF06-001',
         ...(isAdmin ? { costoTotal: '185000.00' } : {}),
         descripcion: 'Revisión correctiva del sistema de frenos',
-        ...(!isDriver
+        ...(canViewTechnicalDetails
           ? {
               diagnosticos: [
                 {
@@ -4055,7 +4092,20 @@ function historyDetail(role: RoleCode) {
                 {
                   cantidad: '2.00',
                   codigo: 'REP-RF06-001',
+                  compatibilidad: {
+                    evidencia: { fuente: 'fixture-frontend-p10' },
+                    reglaId: 'history-rule-1',
+                    reglaVersion: 1,
+                    resultado: 'COMPATIBLE',
+                  },
                   ...(isAdmin ? { costoUnitario: '92500.00', subtotal: '185000.00' } : {}),
+                  fechaConsumo: '2026-08-11T12:00:00.000Z',
+                  movimiento: {
+                    cantidad: '2.00',
+                    fechaMovimiento: '2026-08-11T12:00:00.000Z',
+                    id: 'history-movement-1',
+                    tipo: 'CONSUMO',
+                  },
                   nombre: 'Pastilla de freno',
                   unidadMedida: 'unidad',
                 },
@@ -4063,9 +4113,15 @@ function historyDetail(role: RoleCode) {
             }
           : {}),
         estado: 'CERRADA',
+        disponibilidadAlCierre: true,
         fechaCierre: '2026-08-12T18:00:00.000Z',
         fechaCreacion: '2026-08-10T10:00:00.000Z',
         id: 'history-order-1',
+        jornada: {
+          estado: 'FINALIZADA',
+          id: 'history-journey-1',
+          ruta: { codigo: 'R-01', nombre: 'Centro norte' },
+        },
         origen: 'NOVEDAD',
         tecnico: 'Mecánico Uno',
         tipo: 'CORRECTIVA',
@@ -4210,6 +4266,12 @@ describe('RF-06 history and reports frontend', () => {
     expect(await screen.findByText(/Línea de tiempo de mantenimiento/i)).toBeInTheDocument()
     expect(await screen.findByText(/Desgaste de pastillas delanteras/i)).toBeInTheDocument()
     expect(screen.getByText(/Asignaciones de conductor/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /Jornadas y kilometraje contextual/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Novedad crítica reportada/i)).toBeInTheDocument()
+    expect(screen.getByText(/Compatibilidad: COMPATIBLE/i)).toBeInTheDocument()
+    expect(screen.getByText(/Movimiento CONSUMO/i)).toBeInTheDocument()
   })
 
   it('shows mechanics only their technical history without administrative costs or reports', async () => {
@@ -4229,6 +4291,22 @@ describe('RF-06 history and reports frontend', () => {
     expect(await screen.findByText(/Desgaste de pastillas delanteras/i)).toBeInTheDocument()
     expect(await screen.findByText(/REP-RF06-001/i)).toBeInTheDocument()
     expect(screen.queryByText(/Asignaciones de conductor/i)).not.toBeInTheDocument()
+  })
+
+  it('shows dispatchers only operational traceability without diagnostics or costs', async () => {
+    window.history.pushState({}, '', '/historial')
+    mockApi(historyHandler('DESPACHADOR'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Trazabilidad operativa de la flota/i)).toBeInTheDocument()
+    fireEvent.click((await screen.findAllByRole('button', { name: /Ver detalle/i }))[0])
+    expect(await screen.findByText(/Centro norte/i)).toBeInTheDocument()
+    expect(screen.getByText(/bus disponible/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Desgaste de pastillas delanteras/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/REP-RF06-001/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Costo acumulado/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Informes administrativos/i)).not.toBeInTheDocument()
   })
 
   it('loads the driver bus from the dedicated endpoint and keeps private technical data hidden', async () => {

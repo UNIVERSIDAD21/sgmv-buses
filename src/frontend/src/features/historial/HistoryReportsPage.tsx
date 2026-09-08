@@ -93,77 +93,238 @@ function Filters({
   onSubmit: (event: FormEvent) => void
 }) {
   return (
-    <form
-      className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 lg:grid-cols-6"
-      onSubmit={onSubmit}
-    >
-      <label className="lg:col-span-2">
-        <span className="mb-1 block text-xs font-medium text-slate-500">Buscar bus</span>
-        <div className="relative">
-          <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+    <form className="rounded-xl border border-slate-200 bg-white p-4" onSubmit={onSubmit}>
+      <div className="grid gap-3 lg:grid-cols-6">
+        <label className="lg:col-span-2">
+          <span className="mb-1 block text-xs font-medium text-slate-500">Buscar bus</span>
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+            <input
+              aria-label="Buscar bus"
+              className="min-h-10 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-sm outline-none focus:border-emerald-600"
+              onChange={(event) => onChange({ ...draft, busqueda: event.target.value })}
+              placeholder="Código, placa, marca o modelo"
+              value={draft.busqueda ?? ''}
+            />
+          </div>
+        </label>
+        <label>
+          <span className="mb-1 block text-xs font-medium text-slate-500">Tipo</span>
+          <select
+            aria-label="Tipo de orden"
+            className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+            onChange={(event) =>
+              onChange({ ...draft, tipo: event.target.value as HistoryFilters['tipo'] })
+            }
+            value={draft.tipo ?? ''}
+          >
+            <option value="">Todos</option>
+            <option value="PREVENTIVA">Preventiva</option>
+            <option value="CORRECTIVA">Correctiva</option>
+          </select>
+        </label>
+        <label>
+          <span className="mb-1 block text-xs font-medium text-slate-500">Estado</span>
+          <select
+            aria-label="Estado de orden"
+            className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+            onChange={(event) =>
+              onChange({ ...draft, estado: event.target.value as HistoryFilters['estado'] })
+            }
+            value={draft.estado ?? ''}
+          >
+            <option value="">Todos</option>
+            {Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span className="mb-1 block text-xs font-medium text-slate-500">Desde</span>
           <input
-            aria-label="Buscar bus"
-            className="min-h-10 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-sm outline-none focus:border-emerald-600"
-            onChange={(event) => onChange({ ...draft, busqueda: event.target.value })}
-            placeholder="Código, placa, marca o modelo"
-            value={draft.busqueda ?? ''}
+            aria-label="Fecha desde"
+            className="min-h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+            onChange={(event) => onChange({ ...draft, fechaDesde: event.target.value })}
+            type="date"
+            value={draft.fechaDesde ?? ''}
           />
+        </label>
+        <label>
+          <span className="mb-1 block text-xs font-medium text-slate-500">Hasta</span>
+          <input
+            aria-label="Fecha hasta"
+            className="min-h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+            onChange={(event) => onChange({ ...draft, fechaHasta: event.target.value })}
+            type="date"
+            value={draft.fechaHasta ?? ''}
+          />
+        </label>
+      </div>
+      <details className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+        <summary className="cursor-pointer text-sm font-medium text-slate-700">
+          Filtros avanzados de trazabilidad
+        </summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label>
+            <span className="mb-1 block text-xs font-medium text-slate-500">Origen</span>
+            <select
+              aria-label="Origen de orden"
+              className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+              onChange={(event) =>
+                onChange({ ...draft, origen: event.target.value as HistoryFilters['origen'] })
+              }
+              value={draft.origen ?? ''}
+            >
+              <option value="">Todos</option>
+              <option value="NOVEDAD">Novedad</option>
+              <option value="PREVENTIVO">Preventivo</option>
+              <option value="CORRECTIVO_DIRECTO">Correctivo directo</option>
+            </select>
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-slate-500">Compatibilidad</span>
+            <select
+              aria-label="Resultado de compatibilidad"
+              className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  compatibilidad: event.target.value as HistoryFilters['compatibilidad'],
+                })
+              }
+              value={draft.compatibilidad ?? ''}
+            >
+              <option value="">Todos</option>
+              <option value="COMPATIBLE">Compatible</option>
+              <option value="EXCEPCION_AUTORIZADA">Excepción autorizada</option>
+              <option value="NO_EVALUADA_LEGADO">Legado no evaluado</option>
+            </select>
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-slate-500">
+              Criticidad de novedad
+            </span>
+            <select
+              aria-label="Criticidad de novedad"
+              className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  novedadCriticidad: event.target.value as HistoryFilters['novedadCriticidad'],
+                })
+              }
+              value={draft.novedadCriticidad ?? ''}
+            >
+              <option value="">Todas</option>
+              <option value="BAJA">Baja</option>
+              <option value="MEDIA">Media</option>
+              <option value="ALTA">Alta</option>
+              <option value="CRITICA">Crítica</option>
+            </select>
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-slate-500">
+              Prioridad de alerta
+            </span>
+            <select
+              aria-label="Prioridad de alerta"
+              className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  alertaPrioridad: event.target.value as HistoryFilters['alertaPrioridad'],
+                })
+              }
+              value={draft.alertaPrioridad ?? ''}
+            >
+              <option value="">Todas</option>
+              <option value="BAJA">Baja</option>
+              <option value="MEDIA">Media</option>
+              <option value="ALTA">Alta</option>
+              <option value="CRITICA">Crítica</option>
+            </select>
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-slate-500">Kilometraje desde</span>
+            <input
+              aria-label="Kilometraje desde"
+              className="min-h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+              min="0"
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  kilometrajeDesde: event.target.value === '' ? '' : Number(event.target.value),
+                })
+              }
+              type="number"
+              value={draft.kilometrajeDesde ?? ''}
+            />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-slate-500">Kilometraje hasta</span>
+            <input
+              aria-label="Kilometraje hasta"
+              className="min-h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+              min="0"
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  kilometrajeHasta: event.target.value === '' ? '' : Number(event.target.value),
+                })
+              }
+              type="number"
+              value={draft.kilometrajeHasta ?? ''}
+            />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-slate-500">
+              Disponibilidad al cierre
+            </span>
+            <select
+              aria-label="Disponibilidad al cierre"
+              className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  disponibilidadAlCierre:
+                    event.target.value === '' ? '' : event.target.value === 'true',
+                })
+              }
+              value={
+                draft.disponibilidadAlCierre === '' || draft.disponibilidadAlCierre === undefined
+                  ? ''
+                  : String(draft.disponibilidadAlCierre)
+              }
+            >
+              <option value="">Todas</option>
+              <option value="true">Disponible</option>
+              <option value="false">No disponible</option>
+            </select>
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium text-slate-500">Estado de alerta</span>
+            <select
+              aria-label="Estado de alerta"
+              className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  alertaEstado: event.target.value as HistoryFilters['alertaEstado'],
+                })
+              }
+              value={draft.alertaEstado ?? ''}
+            >
+              <option value="">Todos</option>
+              <option value="NO_LEIDA">No leída</option>
+              <option value="LEIDA">Leída</option>
+              <option value="ATENDIDA">Atendida</option>
+            </select>
+          </label>
         </div>
-      </label>
-      <label>
-        <span className="mb-1 block text-xs font-medium text-slate-500">Tipo</span>
-        <select
-          aria-label="Tipo de orden"
-          className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
-          onChange={(event) =>
-            onChange({ ...draft, tipo: event.target.value as HistoryFilters['tipo'] })
-          }
-          value={draft.tipo ?? ''}
-        >
-          <option value="">Todos</option>
-          <option value="PREVENTIVA">Preventiva</option>
-          <option value="CORRECTIVA">Correctiva</option>
-        </select>
-      </label>
-      <label>
-        <span className="mb-1 block text-xs font-medium text-slate-500">Estado</span>
-        <select
-          aria-label="Estado de orden"
-          className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
-          onChange={(event) =>
-            onChange({ ...draft, estado: event.target.value as HistoryFilters['estado'] })
-          }
-          value={draft.estado ?? ''}
-        >
-          <option value="">Todos</option>
-          {Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        <span className="mb-1 block text-xs font-medium text-slate-500">Desde</span>
-        <input
-          aria-label="Fecha desde"
-          className="min-h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-          onChange={(event) => onChange({ ...draft, fechaDesde: event.target.value })}
-          type="date"
-          value={draft.fechaDesde ?? ''}
-        />
-      </label>
-      <label>
-        <span className="mb-1 block text-xs font-medium text-slate-500">Hasta</span>
-        <input
-          aria-label="Fecha hasta"
-          className="min-h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-          onChange={(event) => onChange({ ...draft, fechaHasta: event.target.value })}
-          type="date"
-          value={draft.fechaHasta ?? ''}
-        />
-      </label>
-      <div className="flex gap-2 lg:col-span-6 lg:justify-end">
+      </details>
+      <div className="mt-3 flex gap-2 justify-end">
         <Button onClick={onClear} size="sm" variant="outline">
           Limpiar filtros
         </Button>
@@ -272,6 +433,13 @@ function OrderHistory({ admin, orders }: { admin: boolean; orders: HistoryOrderD
             <span>{order.tipo === 'PREVENTIVA' ? 'Preventiva' : 'Correctiva'}</span>
             <span>Creada: {formatDate(order.fechaCreacion)}</span>
             <span>Técnico: {order.tecnico ?? 'Sin asignar'}</span>
+            {order.jornada && <span>Jornada: {order.jornada.id.slice(0, 8)}</span>}
+            {order.disponibilidadAlCierre !== undefined &&
+              order.disponibilidadAlCierre !== null && (
+                <span>
+                  Cierre: {order.disponibilidadAlCierre ? 'bus disponible' : 'bus restringido'}
+                </span>
+              )}
             {admin && order.costoTotal !== undefined && (
               <strong className="text-emerald-700">{formatCurrency(order.costoTotal)}</strong>
             )}
@@ -287,12 +455,134 @@ function OrderHistory({ admin, orders }: { admin: boolean; orders: HistoryOrderD
               )}
             </div>
           ))}
-          {order.repuestos && order.repuestos.length > 0 && (
+          {order.historialEstados && order.historialEstados.length > 0 && (
+            <ol className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+              {order.historialEstados.map((state) => (
+                <li className="rounded-md border border-slate-100 px-2 py-1" key={state.id}>
+                  {state.estadoAnterior ? `${state.estadoAnterior} → ` : ''}
+                  {state.estadoNuevo} · {formatDate(state.fechaCambio)} · {state.cambiadoPor}
+                </li>
+              ))}
+            </ol>
+          )}
+          {order.reasignaciones && order.reasignaciones.length > 0 && (
+            <div className="mt-3 text-xs text-slate-500">
+              {order.reasignaciones.map((reassignment) => (
+                <p key={reassignment.id}>
+                  Reasignación: {reassignment.tecnicoAnterior ?? 'Sin técnico'} →{' '}
+                  {reassignment.tecnicoNuevo} · {formatDate(reassignment.fechaReasignacion)}
+                </p>
+              ))}
+            </div>
+          )}
+          {order.lecturasTecnicas && order.lecturasTecnicas.length > 0 && (
             <p className="mt-3 text-xs text-slate-500">
-              Repuestos:{' '}
-              {order.repuestos.map((part) => `${part.codigo} (${part.cantidad})`).join(', ')}
+              Lecturas técnicas:{' '}
+              {order.lecturasTecnicas
+                .map(
+                  (reading) =>
+                    `${reading.tipo ?? 'LECTURA'} · ${formatNumber(reading.kilometraje)} km`,
+                )
+                .join(', ')}
             </p>
           )}
+          {order.repuestos && order.repuestos.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {order.repuestos.map((part) => (
+                <div
+                  className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-600"
+                  key={`${order.id}-${part.codigo}-${part.fechaConsumo ?? ''}`}
+                >
+                  <p className="font-semibold text-slate-800">
+                    {part.codigo} · {part.nombre} · {part.cantidad} {part.unidadMedida}
+                  </p>
+                  {part.compatibilidad && (
+                    <p className="mt-1">
+                      Compatibilidad: {part.compatibilidad.resultado ?? 'Sin resultado'}
+                      {part.compatibilidad.reglaVersion
+                        ? ` · regla v${part.compatibilidad.reglaVersion}`
+                        : ''}
+                    </p>
+                  )}
+                  {part.movimiento && (
+                    <p className="mt-1">
+                      Movimiento {part.movimiento.tipo} · {part.movimiento.cantidad} ·{' '}
+                      {formatDate(part.movimiento.fechaMovimiento)}
+                    </p>
+                  )}
+                  {admin && part.subtotal !== undefined && (
+                    <p className="mt-1 font-medium text-emerald-700">
+                      Subtotal histórico: {formatCurrency(part.subtotal)}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </article>
+      ))}
+    </div>
+  )
+}
+
+function JourneyHistory({ journeys }: { journeys: HistoryDetailDto['jornadas'] }) {
+  if (journeys.length === 0) {
+    return <p className="p-4 text-sm text-slate-500">Sin jornadas visibles en el período.</p>
+  }
+
+  return (
+    <div className="divide-y divide-slate-100">
+      {journeys.map((journey) => (
+        <article className="p-4 text-sm" key={journey.id}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold text-slate-800">{journey.conductor}</p>
+              <p className="mt-1 text-xs text-slate-500">
+                {journey.ruta
+                  ? `${journey.ruta.codigo} · ${journey.ruta.nombre}`
+                  : 'Sin ruta asociada'}
+              </p>
+            </div>
+            <Badge tone={journey.estado === 'FINALIZADA' ? 'emerald' : 'teal'}>
+              {journey.estado.replaceAll('_', ' ')}
+            </Badge>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            {formatDate(journey.inicioReal ?? journey.inicioProgramado)} →{' '}
+            {formatDate(journey.finReal ?? journey.finProgramado)}
+          </p>
+          {journey.lecturas.length > 0 && (
+            <p className="mt-2 text-xs text-slate-500">
+              Kilometraje:{' '}
+              {journey.lecturas.map((item) => formatNumber(item.kilometraje)).join(' → ')} km
+            </p>
+          )}
+        </article>
+      ))}
+    </div>
+  )
+}
+
+function AlertHistory({ alerts }: { alerts: HistoryDetailDto['alertas'] }) {
+  if (alerts.length === 0) {
+    return <p className="p-4 text-sm text-slate-500">Sin alertas visibles en el período.</p>
+  }
+
+  return (
+    <div className="divide-y divide-slate-100">
+      {alerts.map((alert) => (
+        <article className="p-4 text-sm" key={alert.id}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold text-slate-800">{alert.titulo}</p>
+              <p className="mt-1 text-xs text-slate-500">{alert.tipo.replaceAll('_', ' ')}</p>
+            </div>
+            <Badge tone={alert.prioridad === 'CRITICA' ? 'red' : 'amber'}>{alert.prioridad}</Badge>
+          </div>
+          <p className="mt-2 text-xs text-slate-400">
+            {formatDate(alert.fechaGeneracion)}
+            {alert.estado ? ` · ${alert.estado.replaceAll('_', ' ')}` : ''}
+          </p>
         </article>
       ))}
     </div>
@@ -340,6 +630,15 @@ function HistoryDetail({
       <Section title="Línea de tiempo de mantenimiento">
         <OrderHistory admin={isAdmin} orders={detail.ordenes} />
       </Section>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Section title="Jornadas y kilometraje contextual">
+          <JourneyHistory journeys={detail.jornadas ?? []} />
+        </Section>
+        <Section title="Alertas relacionadas y permitidas">
+          <AlertHistory alerts={detail.alertas ?? []} />
+        </Section>
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Section title="Mantenimiento programado">

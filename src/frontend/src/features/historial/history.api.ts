@@ -13,14 +13,28 @@ import type {
 } from './history.types'
 
 export interface HistoryFilters {
+  alertaEstado?: 'NO_LEIDA' | 'LEIDA' | 'ATENDIDA' | ''
+  alertaPrioridad?: 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA' | ''
+  alertaTipo?: string
   busId?: string
   busqueda?: string
+  compatibilidad?: 'COMPATIBLE' | 'EXCEPCION_AUTORIZADA' | 'NO_EVALUADA_LEGADO' | ''
+  conductorId?: string
+  disponibilidadAlCierre?: boolean | ''
   estado?: HistoryOrderState | ''
   fechaDesde?: string
   fechaHasta?: string
+  jornadaId?: string
+  kilometrajeDesde?: number | ''
+  kilometrajeHasta?: number | ''
   limite?: number
+  novedadCriticidad?: 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA' | ''
+  novedadEstado?:
+    'PENDIENTE_REVISION' | 'RESUELTA_SIN_ORDEN' | 'DESCARTADA' | 'CONVERTIDA_A_ORDEN' | ''
+  novedadTipo?: string
   origen?: HistoryOrderOrigin | ''
   pagina?: number
+  repuestoId?: string
   tipo?: HistoryOrderType | ''
 }
 

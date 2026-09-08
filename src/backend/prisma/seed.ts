@@ -39,6 +39,7 @@ const ids = {
     novedad: '34000000-0000-4000-8000-000000000005',
   },
   lecturasTecnicas: {
+    cierre: '34000000-0000-4000-8000-000000000006',
     ingreso: '34000000-0000-4000-8000-000000000003',
     revision: '34000000-0000-4000-8000-000000000004',
   },
@@ -60,6 +61,7 @@ const ids = {
     correctivaAsignada: '82000000-0000-4000-8000-000000000002',
     correctivaEjecucion: '82000000-0000-4000-8000-000000000003',
     correctivaCompletada: '82000000-0000-4000-8000-000000000004',
+    correctivaCerrada: '82000000-0000-4000-8000-000000000006',
     preventivaCreada: '82000000-0000-4000-8000-000000000005',
   },
   repuesto: '90000000-0000-4000-8000-000000000001',
@@ -665,16 +667,20 @@ async function main() {
       const fechaCorrectivaAsignacion = new Date(fechaCorrectivaCreacion.getTime() + 1000)
       const fechaCorrectivaInicio = new Date(fechaCorrectivaCreacion.getTime() + 2000)
       const fechaCorrectivaCompletada = new Date(fechaCorrectivaCreacion.getTime() + 3000)
+      const fechaCorrectivaCierre = new Date(fechaCorrectivaCreacion.getTime() + 4000)
 
       await tx.ordenTrabajo.upsert({
         where: { codigo: 'OT-DEMO-CORR-001' },
         update: {
-          estado: 'EN_EJECUCION',
+          cerradaPorId: ids.usuarios.admin,
+          disponibilidadAlCierre: true,
+          estado: 'CERRADA',
           tecnicoAsignadoId: ids.usuarios.mecanico,
           fechaCreacion: fechaCorrectivaCreacion,
           fechaAsignacion: fechaCorrectivaAsignacion,
           fechaInicioEjecucion: fechaCorrectivaInicio,
-          fechaCompletadaTecnico: null,
+          fechaCompletadaTecnico: fechaCorrectivaCompletada,
+          fechaCierre: fechaCorrectivaCierre,
           jornadaOperativaId: ids.jornadas.finalizada,
         },
         create: {
@@ -733,7 +739,7 @@ async function main() {
         update: {
           diagnostico: 'Se identifica desgaste en componente de freno.',
           observaciones: 'Trabajo tecnico demo completado.',
-          fechaFin: null,
+          fechaFin: fechaCorrectivaCompletada,
         },
         create: {
           id: ids.intervencion,
@@ -804,6 +810,29 @@ async function main() {
           ordenTrabajoId: ids.ordenes.correctiva,
           registradoPorId: ids.usuarios.mecanico,
           tipo: 'REVISION_TECNICA',
+        },
+      })
+
+      await tx.lecturaKilometraje.upsert({
+        where: { id: ids.lecturasTecnicas.cierre },
+        update: {
+          fechaLectura: fechaCorrectivaCierre,
+          kilometrajeAnterior: 45210,
+          kilometrajeNuevo: 45210,
+          ordenTrabajoId: ids.ordenes.correctiva,
+          registradoPorId: ids.usuarios.admin,
+          tipo: 'CIERRE_MANTENIMIENTO',
+        },
+        create: {
+          id: ids.lecturasTecnicas.cierre,
+          busId: ids.buses.principal,
+          fechaLectura: fechaCorrectivaCierre,
+          kilometrajeAnterior: 45210,
+          kilometrajeNuevo: 45210,
+          motivo: 'Lectura administrativa de cierre para el historial P10.',
+          ordenTrabajoId: ids.ordenes.correctiva,
+          registradoPorId: ids.usuarios.admin,
+          tipo: 'CIERRE_MANTENIMIENTO',
         },
       })
 
@@ -1086,37 +1115,31 @@ async function main() {
         schemaVersion: 1,
       }
 
-      await tx.consumoRepuesto.upsert({
+      const existingSeedConsumption = await tx.consumoRepuesto.findUnique({
+        select: { id: true },
         where: { id: ids.consumo },
-        update: {
-          cantidad: '2',
-          claveIdempotencia: '95000000-0000-4000-8000-000000000001',
-          costoUnitario: '80000',
-          evidenciaCompatibilidad: seedCompatibilityEvidence,
-          fechaConsumo: new Date('2026-09-02T12:00:05.000Z'),
-          subtotal: '160000',
-          intervencionId: ids.intervencion,
-          resultadoCompatibilidad: 'COMPATIBLE',
-          reglaCompatibilidadId: ids.compatibilidades.busVigente,
-          reglaVersion: 2,
-        },
-        create: {
-          id: ids.consumo,
-          ordenTrabajoId: ids.ordenes.correctiva,
-          repuestoId: ids.repuesto,
-          cantidad: '2',
-          claveIdempotencia: '95000000-0000-4000-8000-000000000001',
-          costoUnitario: '80000',
-          subtotal: '160000',
-          consumidoPorId: ids.usuarios.mecanico,
-          intervencionId: ids.intervencion,
-          fechaConsumo: new Date('2026-09-02T12:00:05.000Z'),
-          resultadoCompatibilidad: 'COMPATIBLE',
-          reglaCompatibilidadId: ids.compatibilidades.busVigente,
-          reglaVersion: 2,
-          evidenciaCompatibilidad: seedCompatibilityEvidence,
-        },
       })
+
+      if (!existingSeedConsumption) {
+        await tx.consumoRepuesto.create({
+          data: {
+            id: ids.consumo,
+            ordenTrabajoId: ids.ordenes.correctiva,
+            repuestoId: ids.repuesto,
+            cantidad: '2',
+            claveIdempotencia: '95000000-0000-4000-8000-000000000001',
+            costoUnitario: '80000',
+            subtotal: '160000',
+            consumidoPorId: ids.usuarios.mecanico,
+            intervencionId: ids.intervencion,
+            fechaConsumo: new Date('2026-09-02T12:00:05.000Z'),
+            resultadoCompatibilidad: 'COMPATIBLE',
+            reglaCompatibilidadId: ids.compatibilidades.busVigente,
+            reglaVersion: 2,
+            evidenciaCompatibilidad: seedCompatibilityEvidence,
+          },
+        })
+      }
 
       await tx.autorizacionExcepcionConsumo.upsert({
         where: { id: ids.autorizacionExcepcion },
@@ -1194,6 +1217,13 @@ async function main() {
           observacion: 'Trabajo marcado como completado por tecnico demo.',
         },
         {
+          id: ids.estadosOrden.correctivaCerrada,
+          ordenTrabajoId: ids.ordenes.correctiva,
+          estadoAnterior: 'COMPLETADA_TECNICO' as const,
+          estadoNuevo: 'CERRADA' as const,
+          observacion: 'Orden validada y cerrada administrativamente para el historial P10.',
+        },
+        {
           id: ids.estadosOrden.preventivaCreada,
           ordenTrabajoId: ids.ordenes.preventiva,
           estadoAnterior: null,
@@ -1224,7 +1254,10 @@ async function main() {
       await tx.ordenTrabajo.update({
         where: { id: ids.ordenes.correctiva },
         data: {
-          estado: 'COMPLETADA_TECNICO',
+          cerradaPorId: ids.usuarios.admin,
+          disponibilidadAlCierre: true,
+          estado: 'CERRADA',
+          fechaCierre: fechaCorrectivaCierre,
           fechaCompletadaTecnico: fechaCorrectivaCompletada,
         },
       })
