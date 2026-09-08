@@ -249,7 +249,10 @@ function MovementRows({ movements }: { movements: SparePartMovementDto[] }) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-slate-100 text-sm">
+      <table
+        aria-label="Movimientos de inventario"
+        className="min-w-full divide-y divide-slate-100 text-sm"
+      >
         <thead className="bg-slate-50 text-left text-xs uppercase text-slate-400">
           <tr>
             <th className="px-4 py-3 font-medium">Fecha</th>
@@ -369,7 +372,10 @@ function PartTable({
 }) {
   return (
     <div className="hidden overflow-x-auto xl:block">
-      <table className="w-full table-fixed divide-y divide-slate-100 text-[13px]">
+      <table
+        aria-label="Catálogo de repuestos"
+        className="w-full table-fixed divide-y divide-slate-100 text-[13px]"
+      >
         <colgroup>
           <col className="w-[14%]" />
           <col className="w-[18%]" />

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
+import Modal from '../../components/ui/Modal'
 import StatePanel from '../../components/ui/StatePanel'
 import { BUS_STATUS_LABELS } from '../../domain/labels'
 import { ApiError } from '../../lib/api'
@@ -178,6 +179,10 @@ function ScheduleForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (submitting) {
+      return
+    }
+
     setError(null)
     if (!busId || !conductorId) {
       setError('Seleccione bus y conductor.')
@@ -388,136 +393,130 @@ function ActionDialog({
   }[action]
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 p-3 sm:items-center">
-      <div
-        aria-label={title}
-        aria-modal="true"
-        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl"
-        role="dialog"
-      >
-        <div className="border-b border-slate-100 p-5">
-          <h2 className="font-semibold text-slate-900">{title}</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            {journey.bus.codigoInterno} · {journey.conductor.nombre}
-          </p>
-        </div>
-        <form className="space-y-4 p-5" onSubmit={handleSubmit}>
+    <Modal
+      onClose={onClose}
+      subtitle={`${journey.bus.codigoInterno} · ${journey.conductor.nombre}`}
+      title={title}
+    >
+      <form className="space-y-4 p-5" onSubmit={handleSubmit}>
+        <label className="block text-sm font-medium text-slate-700">
+          Fecha real del evento
+          <input
+            className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+            max={toLocalInput(new Date())}
+            onChange={(event) => setFechaEvento(event.target.value)}
+            required
+            type="datetime-local"
+            value={fechaEvento}
+          />
+        </label>
+        {needsMileage && (
           <label className="block text-sm font-medium text-slate-700">
-            Fecha real del evento
+            Kilometraje {journey.estado === 'EN_CURSO' ? 'final' : ''}
             <input
               className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-              max={toLocalInput(new Date())}
-              onChange={(event) => setFechaEvento(event.target.value)}
+              min={journey.lecturaInicial?.kilometraje ?? 0}
+              onChange={(event) => setKilometraje(event.target.value)}
               required
-              type="datetime-local"
-              value={fechaEvento}
+              type="number"
+              value={kilometraje}
             />
           </label>
-          {needsMileage && (
-            <label className="block text-sm font-medium text-slate-700">
-              Kilometraje {journey.estado === 'EN_CURSO' ? 'final' : ''}
+        )}
+        {(action === 'cancel' || action === 'reassign') && (
+          <label className="block text-sm font-medium text-slate-700">
+            Motivo
+            <textarea
+              className="mt-1 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              onChange={(event) => setMotivo(event.target.value)}
+              required
+              value={motivo}
+            />
+          </label>
+        )}
+        {action === 'reassign' && options && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-sm font-medium text-slate-700">
+              Bus de la sucesora
+              <select
+                className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                onChange={(event) => setBusId(event.target.value)}
+                value={busId}
+              >
+                {options.buses.map((bus) => (
+                  <option key={bus.id} value={bus.id}>
+                    {bus.codigoInterno} · {bus.placa}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm font-medium text-slate-700">
+              Conductor de la sucesora
+              <select
+                className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                onChange={(event) => setConductorId(event.target.value)}
+                value={conductorId}
+              >
+                {options.conductores.map((driver) => (
+                  <option key={driver.id} value={driver.id}>
+                    {driver.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm font-medium text-slate-700">
+              Ruta contextual
+              <select
+                className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                onChange={(event) => setRutaId(event.target.value)}
+                value={rutaId}
+              >
+                <option value="">Sin ruta</option>
+                {options.rutas.map((route) => (
+                  <option key={route.id} value={route.id}>
+                    {route.codigo} · {route.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm font-medium text-slate-700">
+              Inicio de la sucesora
               <input
                 className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-                min={journey.lecturaInicial?.kilometraje ?? 0}
-                onChange={(event) => setKilometraje(event.target.value)}
-                required
-                type="number"
-                value={kilometraje}
+                onChange={(event) => setInicioProgramado(event.target.value)}
+                type="datetime-local"
+                value={inicioProgramado}
               />
             </label>
-          )}
-          {(action === 'cancel' || action === 'reassign') && (
-            <label className="block text-sm font-medium text-slate-700">
-              Motivo
-              <textarea
-                className="mt-1 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                onChange={(event) => setMotivo(event.target.value)}
-                required
-                value={motivo}
+            <label className="text-sm font-medium text-slate-700">
+              Fin de la sucesora
+              <input
+                className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+                onChange={(event) => setFinProgramado(event.target.value)}
+                type="datetime-local"
+                value={finProgramado}
               />
             </label>
-          )}
-          {action === 'reassign' && options && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="text-sm font-medium text-slate-700">
-                Bus de la sucesora
-                <select
-                  className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
-                  onChange={(event) => setBusId(event.target.value)}
-                  value={busId}
-                >
-                  {options.buses.map((bus) => (
-                    <option key={bus.id} value={bus.id}>
-                      {bus.codigoInterno} · {bus.placa}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm font-medium text-slate-700">
-                Conductor de la sucesora
-                <select
-                  className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
-                  onChange={(event) => setConductorId(event.target.value)}
-                  value={conductorId}
-                >
-                  {options.conductores.map((driver) => (
-                    <option key={driver.id} value={driver.id}>
-                      {driver.nombre}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm font-medium text-slate-700">
-                Ruta contextual
-                <select
-                  className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
-                  onChange={(event) => setRutaId(event.target.value)}
-                  value={rutaId}
-                >
-                  <option value="">Sin ruta</option>
-                  {options.rutas.map((route) => (
-                    <option key={route.id} value={route.id}>
-                      {route.codigo} · {route.nombre}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm font-medium text-slate-700">
-                Inicio de la sucesora
-                <input
-                  className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-                  onChange={(event) => setInicioProgramado(event.target.value)}
-                  type="datetime-local"
-                  value={inicioProgramado}
-                />
-              </label>
-              <label className="text-sm font-medium text-slate-700">
-                Fin de la sucesora
-                <input
-                  className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-                  onChange={(event) => setFinProgramado(event.target.value)}
-                  type="datetime-local"
-                  value={finProgramado}
-                />
-              </label>
-            </div>
-          )}
-          {error && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </p>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button disabled={submitting} onClick={onClose} type="button" variant="outline">
-              Volver
-            </Button>
-            <Button loading={submitting} type="submit">
-              Confirmar
-            </Button>
           </div>
-        </form>
-      </div>
-    </div>
+        )}
+        {error && (
+          <p
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+            role="alert"
+          >
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button disabled={submitting} onClick={onClose} type="button" variant="outline">
+            Volver
+          </Button>
+          <Button loading={submitting} type="submit">
+            Confirmar
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import {
@@ -11,6 +11,7 @@ import {
 import { formatDateTime } from '../../lib/format'
 import { ALERTS_UPDATED_EVENT, getUnreadAlertCount } from '../../features/alertas/alert.api'
 import Button from '../ui/Button'
+import { useDialogFocus } from '../ui/useDialogFocus'
 import {
   AlertTriangle,
   BarChart2,
@@ -23,7 +24,6 @@ import {
   LogOut,
   Menu,
   Package,
-  Search,
   Shield,
   X,
 } from '../ui/Icons'
@@ -146,8 +146,13 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const [unreadAlerts, setUnreadAlerts] = useState(0)
+  const mainRef = useRef<HTMLElement>(null)
+  const mobileMenuRef = useRef<HTMLElement>(null)
+  const mobileMenuTitleRef = useRef<HTMLParagraphElement>(null)
   const location = useLocation()
   const navigate = useNavigate()
+
+  useDialogFocus(mobileOpen, mobileMenuRef, () => setMobileOpen(false), mobileMenuTitleRef)
 
   const refreshUnreadAlerts = useCallback(async () => {
     try {
@@ -195,15 +200,34 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
   const visibleNav = navigationItems.filter((item) => item.roles.includes(user.rol.codigo))
   const pageTitle = getPageTitle(location.pathname)
 
+  useEffect(() => {
+    document.title = `${pageTitle} | SGMV`
+    const focusMain = window.requestAnimationFrame(() => mainRef.current?.focus())
+    return () => window.cancelAnimationFrame(focusMain)
+  }, [location.pathname, pageTitle])
+
   const handleLogout = async () => {
+    if (loggingOut) {
+      return
+    }
+
     setLoggingOut(true)
-    await onLogout()
-    setLoggingOut(false)
-    navigate('/login', { replace: true })
+    try {
+      await onLogout()
+      navigate('/login', { replace: true })
+    } finally {
+      setLoggingOut(false)
+    }
   }
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F7F8F6] text-slate-700">
+      <a
+        className="fixed left-3 top-3 z-[100] -translate-y-20 rounded-lg bg-slate-950 px-4 py-3 font-semibold text-white transition-transform focus:translate-y-0"
+        href="#contenido-principal"
+      >
+        Saltar al contenido principal
+      </a>
       <aside
         className={`relative hidden shrink-0 flex-col border-r border-slate-200 bg-white transition-all duration-200 md:flex ${
           expanded ? 'w-96' : 'w-16'
@@ -223,7 +247,10 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
           )}
         </div>
 
-        <nav className="scrollbar-thin flex-1 overflow-y-auto p-2">
+        <nav
+          aria-label="Navegación principal"
+          className="scrollbar-thin flex-1 overflow-y-auto p-2"
+        >
           <NavigationList
             compact={!expanded}
             items={visibleNav}
@@ -256,8 +283,9 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
             {expanded && 'Cerrar sesión'}
           </Button>
           <button
+            aria-expanded={expanded}
             aria-label={expanded ? 'Colapsar menú' : 'Expandir menú'}
-            className="mt-1 flex w-full items-center justify-center rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="mt-1 flex min-h-11 w-full items-center justify-center rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
             onClick={() => setExpanded((value) => !value)}
             type="button"
           >
@@ -273,48 +301,66 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
           onClick={() => setMobileOpen(false)}
         />
       )}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-80 max-w-[86vw] flex-col border-r border-slate-200 bg-white transition-transform md:hidden ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="flex h-16 items-center justify-between border-b border-slate-100 px-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-700 text-white">
-              <Bus size={18} />
+      {mobileOpen && (
+        <aside
+          aria-labelledby="menu-movil-titulo"
+          aria-modal="true"
+          className="fixed inset-y-0 left-0 z-50 flex w-80 max-w-[86vw] flex-col border-r border-slate-200 bg-white md:hidden"
+          id="menu-movil"
+          ref={mobileMenuRef}
+          role="dialog"
+          tabIndex={-1}
+        >
+          <div className="flex h-16 items-center justify-between border-b border-slate-100 px-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-700 text-white">
+                <Bus aria-hidden="true" size={18} />
+              </div>
+              <div>
+                <p
+                  className="text-sm font-semibold text-slate-900 focus:outline-none"
+                  id="menu-movil-titulo"
+                  ref={mobileMenuTitleRef}
+                  tabIndex={-1}
+                >
+                  Menú principal SGMV
+                </p>
+                <p className="text-xs text-slate-500">Mantenimiento vehicular</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">SGMV</p>
-              <p className="text-xs text-slate-400">Mantenimiento vehicular</p>
-            </div>
+            <button
+              aria-label="Cerrar menú"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              onClick={() => setMobileOpen(false)}
+              type="button"
+            >
+              <X aria-hidden="true" size={17} />
+            </button>
           </div>
-          <button
-            aria-label="Cerrar menú"
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-            onClick={() => setMobileOpen(false)}
-            type="button"
+          <nav
+            aria-label="Navegación principal"
+            className="scrollbar-thin flex-1 overflow-y-auto p-3"
           >
-            <X size={17} />
-          </button>
-        </div>
-        <nav className="scrollbar-thin flex-1 overflow-y-auto p-3">
-          <NavigationList
-            compact={false}
-            items={visibleNav}
-            onNavigate={() => setMobileOpen(false)}
-          />
-        </nav>
-      </aside>
+            <NavigationList
+              compact={false}
+              items={visibleNav}
+              onNavigate={() => setMobileOpen(false)}
+            />
+          </nav>
+        </aside>
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 md:px-6">
           <button
+            aria-controls="menu-movil"
+            aria-expanded={mobileOpen}
             aria-label="Abrir menú"
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 md:hidden"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 md:hidden"
             onClick={() => setMobileOpen(true)}
             type="button"
           >
-            <Menu size={18} />
+            <Menu aria-hidden="true" size={18} />
           </button>
           <div className="min-w-0 flex-1">
             <h1 className="text-sm font-semibold leading-5 text-slate-900 md:text-base">
@@ -324,23 +370,16 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
           </div>
           <div className="flex items-center gap-2">
             <button
-              aria-label="Buscar"
-              className="hidden rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 sm:inline-flex"
-              type="button"
-            >
-              <Search size={17} />
-            </button>
-            <button
               aria-label={
                 unreadAlerts > 0
                   ? `Alertas internas, ${unreadAlerts} sin leer`
                   : 'Alertas internas, ninguna sin leer'
               }
-              className="relative rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700"
               onClick={() => navigate('/alertas')}
               type="button"
             >
-              <Bell size={17} />
+              <Bell aria-hidden="true" size={17} />
               {unreadAlerts > 0 && (
                 <span
                   aria-hidden="true"
@@ -353,7 +392,12 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
           </div>
         </header>
 
-        <main className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
+        <main
+          className="scrollbar-thin min-h-0 flex-1 overflow-y-auto focus:outline-none"
+          id="contenido-principal"
+          ref={mainRef}
+          tabIndex={-1}
+        >
           <Outlet />
         </main>
 

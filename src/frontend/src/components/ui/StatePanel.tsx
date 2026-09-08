@@ -31,8 +31,16 @@ export default function StatePanel({
   title,
   tone = 'empty',
 }: StatePanelProps) {
+  const isError = tone === 'error'
+  const isLoading = tone === 'loading'
+
   return (
-    <div className="flex min-h-[260px] flex-col items-center justify-center rounded-lg border border-slate-200 bg-white px-6 py-10 text-center">
+    <div
+      aria-busy={isLoading || undefined}
+      aria-live={isError ? 'assertive' : 'polite'}
+      className="flex min-h-[260px] flex-col items-center justify-center rounded-lg border border-slate-200 bg-white px-6 py-10 text-center"
+      role={isError ? 'alert' : 'status'}
+    >
       <div
         className={`mb-4 flex h-12 w-12 items-center justify-center rounded-lg ${toneClasses[tone]}`}
       >

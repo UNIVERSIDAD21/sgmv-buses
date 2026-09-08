@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { getDefaultPathForRole } from '../../domain/labels'
@@ -14,6 +14,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [contrasena, setContrasena] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
+  const errorRef = useRef<HTMLDivElement>(null)
   const { login, status, user } = useSession()
   const navigate = useNavigate()
   const location = useLocation()
@@ -25,10 +28,21 @@ export default function LoginPage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
+    if (status === 'loading') {
+      return
+    }
+
     setFormError(null)
 
-    if (!email.trim() || !contrasena) {
+    if (!email.trim()) {
       setFormError('Ingrese correo y contraseña para continuar.')
+      window.requestAnimationFrame(() => emailRef.current?.focus())
+      return
+    }
+
+    if (!contrasena) {
+      setFormError('Ingrese correo y contraseña para continuar.')
+      window.requestAnimationFrame(() => passwordRef.current?.focus())
       return
     }
 
@@ -37,6 +51,7 @@ export default function LoginPage() {
       navigate(state?.from ?? '/inicio', { replace: true })
     } catch {
       setFormError('No fue posible iniciar sesión con esas credenciales.')
+      window.requestAnimationFrame(() => errorRef.current?.focus())
     }
   }
 
@@ -65,11 +80,15 @@ export default function LoginPage() {
                 Correo electrónico
               </label>
               <input
+                aria-describedby={formError ? 'login-error' : undefined}
+                aria-invalid={Boolean(formError)}
                 autoComplete="email"
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 transition-colors placeholder:text-slate-300 hover:border-slate-300 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
                 id="email"
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="usuario@sgmv.local"
+                ref={emailRef}
+                required
                 type="email"
                 value={email}
               />
@@ -83,18 +102,28 @@ export default function LoginPage() {
                 Contraseña
               </label>
               <input
+                aria-describedby={formError ? 'login-error' : undefined}
+                aria-invalid={Boolean(formError)}
                 autoComplete="current-password"
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 transition-colors placeholder:text-slate-300 hover:border-slate-300 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
                 id="contrasena"
                 onChange={(event) => setContrasena(event.target.value)}
                 placeholder="Ingrese su contraseña"
+                ref={passwordRef}
+                required
                 type="password"
                 value={contrasena}
               />
             </div>
 
             {formError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <div
+                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 focus:outline-none"
+                id="login-error"
+                ref={errorRef}
+                role="alert"
+                tabIndex={-1}
+              >
                 {formError}
               </div>
             )}

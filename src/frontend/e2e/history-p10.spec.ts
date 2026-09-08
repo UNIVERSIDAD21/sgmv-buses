@@ -551,7 +551,9 @@ test('P10 reconstruye historial, respeta privacidad por rol y mantiene GET sin e
   await page.getByRole('button', { name: /Aplicar filtros/i }).click()
   await expect(page.getByText(busCode, { exact: true })).toBeVisible()
   await page.getByRole('button', { name: /Ver detalle/i }).click()
-  await expect(page.getByText(orderCode, { exact: true })).toBeVisible()
+  await expect(
+    page.getByTestId('history-detail').getByText(orderCode, { exact: true }),
+  ).toBeVisible()
 
   const adminDetail = await getApi(
     page,

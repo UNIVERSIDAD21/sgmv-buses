@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Drawer from '../../components/ui/Drawer'
+import Modal from '../../components/ui/Modal'
 import {
   AlertTriangle,
   Bus,
@@ -14,7 +15,6 @@ import {
   Search,
   Shield,
   Wrench,
-  X,
 } from '../../components/ui/Icons'
 import StatePanel from '../../components/ui/StatePanel'
 import { BUS_STATUS_LABELS, NOVELTY_STATUS_LABELS, ORDER_STATUS_LABELS } from '../../domain/labels'
@@ -279,6 +279,10 @@ function AdminActionDialog({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (submitting) {
+      return
+    }
+
     setValidationError(null)
 
     if (action.type === 'classify') {
@@ -324,167 +328,148 @@ function AdminActionDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 p-3 sm:items-center">
-      <div
-        aria-label={titleByType[action.type]}
-        aria-modal="true"
-        className="w-full max-w-lg rounded-lg border border-slate-200 bg-white shadow-xl"
-        role="dialog"
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">{titleByType[action.type]}</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {action.novelty.tipo} - {action.novelty.bus.codigoInterno}
-            </p>
-          </div>
-          <button
-            aria-label="Cerrar operacion"
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-            onClick={onClose}
-            type="button"
-          >
-            <X size={16} />
-          </button>
+    <Modal
+      onClose={onClose}
+      subtitle={`${action.novelty.tipo} - ${action.novelty.bus.codigoInterno}`}
+      title={titleByType[action.type]}
+    >
+      <form className="space-y-4 p-5" onSubmit={handleSubmit}>
+        <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+          <p className="font-semibold text-slate-800">
+            {action.novelty.bus.codigoInterno} - {action.novelty.bus.placa}
+          </p>
+          <p className="mt-1">Autor: {action.novelty.conductor.nombre}</p>
+          <p className="mt-1 line-clamp-3">{action.novelty.descripcion}</p>
         </div>
 
-        <form className="space-y-4 p-5" onSubmit={handleSubmit}>
-          <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-            <p className="font-semibold text-slate-800">
-              {action.novelty.bus.codigoInterno} - {action.novelty.bus.placa}
-            </p>
-            <p className="mt-1">Autor: {action.novelty.conductor.nombre}</p>
-            <p className="mt-1 line-clamp-3">{action.novelty.descripcion}</p>
-          </div>
-
-          {(action.type === 'classify' ||
-            action.type === 'resolve' ||
-            action.type === 'discard') && (
-            <label className="block text-sm font-medium text-slate-700">
-              Clasificacion
-              <input
-                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                onChange={(event) => setClasificacion(event.target.value)}
-                placeholder="Ej. Falla electrica"
-                value={clasificacion}
-              />
-            </label>
-          )}
-
-          {action.type === 'classify' && (
-            <>
-              <label className="block text-sm font-medium text-slate-700">
-                Criticidad
-                <select
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  onChange={(event) => {
-                    const value = event.target.value as NoveltyCriticality
-                    setCriticidad(value)
-                    if (value === 'CRITICA') {
-                      setAfectaOperacion(true)
-                      setBloqueaDisponibilidad(true)
-                    }
-                  }}
-                  value={criticidad}
-                >
-                  {criticalityOptions.map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <label className="flex items-start gap-3 text-sm text-slate-700">
-                  <input
-                    checked={afectaOperacion}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-700"
-                    onChange={(event) => {
-                      const checked = event.target.checked
-                      setAfectaOperacion(checked)
-                      if (!checked) setBloqueaDisponibilidad(false)
-                    }}
-                    type="checkbox"
-                  />
-                  La novedad afecta la operacion del bus.
-                </label>
-                <label className="flex items-start gap-3 text-sm text-slate-700">
-                  <input
-                    checked={bloqueaDisponibilidad}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-700"
-                    disabled={!afectaOperacion || criticidad === 'CRITICA'}
-                    onChange={(event) => setBloqueaDisponibilidad(event.target.checked)}
-                    type="checkbox"
-                  />
-                  Bloquea la disponibilidad para nuevas jornadas.
-                </label>
-              </div>
-            </>
-          )}
-
-          {action.type === 'convert' && (
-            <>
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                Se creara una orden correctiva asociada al mismo bus. La asignacion tecnica queda
-                pendiente para RF-04.
-              </div>
-              <label className="block text-sm font-medium text-slate-700">
-                Prioridad de la orden
-                <select
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  onChange={(event) => setPrioridad(event.target.value as OrderPriority)}
-                  value={prioridad}
-                >
-                  {priorityOptions.map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-sm font-medium text-slate-700">
-                Descripcion de la orden
-                <textarea
-                  className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  onChange={(event) => setDescripcionOrden(event.target.value)}
-                  placeholder="Opcional. Si se omite, se usara la descripcion de la novedad."
-                  value={descripcionOrden}
-                />
-              </label>
-            </>
-          )}
-
+        {(action.type === 'classify' || action.type === 'resolve' || action.type === 'discard') && (
           <label className="block text-sm font-medium text-slate-700">
-            Observacion
-            <textarea
-              className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-              onChange={(event) => setObservacion(event.target.value)}
-              required={action.type === 'resolve' || action.type === 'discard'}
-              value={observacion}
+            Clasificacion
+            <input
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              onChange={(event) => setClasificacion(event.target.value)}
+              placeholder="Ej. Falla electrica"
+              value={clasificacion}
             />
           </label>
+        )}
 
-          {(validationError || error) && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {validationError ?? error}
-            </p>
-          )}
+        {action.type === 'classify' && (
+          <>
+            <label className="block text-sm font-medium text-slate-700">
+              Criticidad
+              <select
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                onChange={(event) => {
+                  const value = event.target.value as NoveltyCriticality
+                  setCriticidad(value)
+                  if (value === 'CRITICA') {
+                    setAfectaOperacion(true)
+                    setBloqueaDisponibilidad(true)
+                  }
+                }}
+                value={criticidad}
+              >
+                {criticalityOptions.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <label className="flex items-start gap-3 text-sm text-slate-700">
+                <input
+                  checked={afectaOperacion}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-700"
+                  onChange={(event) => {
+                    const checked = event.target.checked
+                    setAfectaOperacion(checked)
+                    if (!checked) setBloqueaDisponibilidad(false)
+                  }}
+                  type="checkbox"
+                />
+                La novedad afecta la operacion del bus.
+              </label>
+              <label className="flex items-start gap-3 text-sm text-slate-700">
+                <input
+                  checked={bloqueaDisponibilidad}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-700"
+                  disabled={!afectaOperacion || criticidad === 'CRITICA'}
+                  onChange={(event) => setBloqueaDisponibilidad(event.target.checked)}
+                  type="checkbox"
+                />
+                Bloquea la disponibilidad para nuevas jornadas.
+              </label>
+            </div>
+          </>
+        )}
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button disabled={submitting} onClick={onClose} type="button" variant="outline">
-              Cancelar
-            </Button>
-            <Button
-              loading={submitting}
-              type="submit"
-              variant={action.type === 'discard' ? 'danger' : 'primary'}
-            >
-              {submitByType[action.type]}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        {action.type === 'convert' && (
+          <>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              Se creara una orden correctiva asociada al mismo bus. La asignacion tecnica queda
+              pendiente para RF-04.
+            </div>
+            <label className="block text-sm font-medium text-slate-700">
+              Prioridad de la orden
+              <select
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                onChange={(event) => setPrioridad(event.target.value as OrderPriority)}
+                value={prioridad}
+              >
+                {priorityOptions.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-sm font-medium text-slate-700">
+              Descripcion de la orden
+              <textarea
+                className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                onChange={(event) => setDescripcionOrden(event.target.value)}
+                placeholder="Opcional. Si se omite, se usara la descripcion de la novedad."
+                value={descripcionOrden}
+              />
+            </label>
+          </>
+        )}
+
+        <label className="block text-sm font-medium text-slate-700">
+          Observacion
+          <textarea
+            className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            onChange={(event) => setObservacion(event.target.value)}
+            required={action.type === 'resolve' || action.type === 'discard'}
+            value={observacion}
+          />
+        </label>
+
+        {(validationError || error) && (
+          <p
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+            role="alert"
+          >
+            {validationError ?? error}
+          </p>
+        )}
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button disabled={submitting} onClick={onClose} type="button" variant="outline">
+            Cancelar
+          </Button>
+          <Button
+            loading={submitting}
+            type="submit"
+            variant={action.type === 'discard' ? 'danger' : 'primary'}
+          >
+            {submitByType[action.type]}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 
@@ -1360,7 +1345,10 @@ function AdminView() {
         {!loading && !loadError && listData && listData.novedades.length > 0 && (
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] text-left text-sm">
+              <table
+                aria-label="Novedades operativas"
+                className="w-full min-w-[980px] text-left text-sm"
+              >
                 <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500">
                   <tr>
                     <th className="px-4 py-3">Ocurrencia</th>

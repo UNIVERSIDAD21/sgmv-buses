@@ -20,8 +20,8 @@ const variantClasses: Record<Variant, string> = {
 
 const sizeClasses: Record<Size, string> = {
   lg: 'min-h-11 px-5 text-sm',
-  md: 'min-h-10 px-4 text-sm',
-  sm: 'min-h-9 px-3 text-xs',
+  md: 'min-h-11 px-4 text-sm',
+  sm: 'min-h-11 px-3 text-xs',
 }
 
 export default function Button({
@@ -37,22 +37,18 @@ export default function Button({
 }: ButtonProps) {
   return (
     <button
+      aria-busy={loading || undefined}
       className={`inline-flex items-center justify-center gap-2 rounded-lg border font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
       disabled={disabled || loading}
       type={type}
       {...props}
     >
       {loading ? (
-        <svg
-          aria-hidden="true"
-          className="animate-spin"
-          fill="none"
-          height="15"
-          viewBox="0 0 24 24"
-          width="15"
-        >
-          <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="currentColor" strokeWidth="2" />
-        </svg>
+        <span aria-hidden="true" className="motion-safe:animate-spin">
+          <svg fill="none" height="15" viewBox="0 0 24 24" width="15">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="currentColor" strokeWidth="2" />
+          </svg>
+        </span>
       ) : (
         icon && <span className="shrink-0">{icon}</span>
       )}

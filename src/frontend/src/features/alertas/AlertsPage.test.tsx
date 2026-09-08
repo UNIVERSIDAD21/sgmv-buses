@@ -264,7 +264,7 @@ describe('P9 campana, acceso y navegación por rol', () => {
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Alertas internas' }),
     ).toBeInTheDocument()
-    expect(callsFor(calls, '/alertas').length).toBeGreaterThan(0)
+    await waitFor(() => expect(callsFor(calls, '/alertas').length).toBeGreaterThan(0))
   })
 
   it.each(['ADMINISTRADOR', 'DESPACHADOR', 'MECANICO', 'CONDUCTOR'] as const)(

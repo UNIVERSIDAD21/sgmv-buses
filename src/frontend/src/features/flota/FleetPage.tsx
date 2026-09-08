@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Drawer from '../../components/ui/Drawer'
+import Modal from '../../components/ui/Modal'
 import {
   Bus,
   ChevronLeft,
@@ -12,7 +13,6 @@ import {
   PlusCircle,
   Search,
   Wrench,
-  X,
 } from '../../components/ui/Icons'
 import StatePanel from '../../components/ui/StatePanel'
 import { BUS_STATUS_LABELS } from '../../domain/labels'
@@ -199,6 +199,10 @@ function ActionDialog({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (submitting) {
+      return
+    }
+
     setValidationError(null)
 
     if (action.type === 'mileage') {
@@ -230,107 +234,90 @@ function ActionDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 p-3 sm:items-center">
-      <div
-        aria-label={titleByType[action.type]}
-        aria-modal="true"
-        className="w-full max-w-lg rounded-lg border border-slate-200 bg-white shadow-xl"
-        role="dialog"
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">{titleByType[action.type]}</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {action.bus.codigoInterno} - {action.bus.placa}
-            </p>
-          </div>
-          <button
-            aria-label="Cerrar operacion"
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-            onClick={onClose}
-            type="button"
+    <Modal
+      onClose={onClose}
+      subtitle={`${action.bus.codigoInterno} - ${action.bus.placa}`}
+      title={titleByType[action.type]}
+    >
+      <form className="space-y-4 p-5" onSubmit={handleSubmit}>
+        {action.type === 'mileage' && (
+          <>
+            <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+              Actual: {formatNumber(action.bus.kilometrajeActual)} km
+            </div>
+            <label className="block text-sm font-medium text-slate-700">
+              Nueva lectura
+              <input
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+                min={action.bus.kilometrajeActual}
+                onChange={(event) => setKilometrajeNuevo(event.target.value)}
+                type="number"
+                value={kilometrajeNuevo}
+              />
+            </label>
+            <label className="block text-sm font-medium text-slate-700">
+              Motivo
+              <textarea
+                className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                onChange={(event) => setMotivo(event.target.value)}
+                value={motivo}
+              />
+            </label>
+          </>
+        )}
+
+        {action.type === 'state' && (
+          <>
+            <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-3">
+              <StatusBadge status={action.bus.estadoOperativo} />
+              <span className="text-xs text-slate-400">a</span>
+              <StatusBadge status={estadoNuevo} />
+            </div>
+            <label className="block text-sm font-medium text-slate-700">
+              Estado nuevo
+              <select
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                onChange={(event) => setEstadoNuevo(event.target.value as BusStatus)}
+                value={estadoNuevo}
+              >
+                {statusOptions.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-sm font-medium text-slate-700">
+              Motivo
+              <textarea
+                className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                onChange={(event) => setMotivo(event.target.value)}
+                required
+                value={motivo}
+              />
+            </label>
+          </>
+        )}
+
+        {(validationError || error) && (
+          <p
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+            role="alert"
           >
-            <X size={16} />
-          </button>
+            {validationError ?? error}
+          </p>
+        )}
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button disabled={submitting} onClick={onClose} type="button" variant="outline">
+            Cancelar
+          </Button>
+          <Button loading={submitting} type="submit">
+            Confirmar
+          </Button>
         </div>
-
-        <form className="space-y-4 p-5" onSubmit={handleSubmit}>
-          {action.type === 'mileage' && (
-            <>
-              <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-                Actual: {formatNumber(action.bus.kilometrajeActual)} km
-              </div>
-              <label className="block text-sm font-medium text-slate-700">
-                Nueva lectura
-                <input
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-                  min={action.bus.kilometrajeActual}
-                  onChange={(event) => setKilometrajeNuevo(event.target.value)}
-                  type="number"
-                  value={kilometrajeNuevo}
-                />
-              </label>
-              <label className="block text-sm font-medium text-slate-700">
-                Motivo
-                <textarea
-                  className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  onChange={(event) => setMotivo(event.target.value)}
-                  value={motivo}
-                />
-              </label>
-            </>
-          )}
-
-          {action.type === 'state' && (
-            <>
-              <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-3">
-                <StatusBadge status={action.bus.estadoOperativo} />
-                <span className="text-xs text-slate-400">a</span>
-                <StatusBadge status={estadoNuevo} />
-              </div>
-              <label className="block text-sm font-medium text-slate-700">
-                Estado nuevo
-                <select
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
-                  onChange={(event) => setEstadoNuevo(event.target.value as BusStatus)}
-                  value={estadoNuevo}
-                >
-                  {statusOptions.map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-sm font-medium text-slate-700">
-                Motivo
-                <textarea
-                  className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  onChange={(event) => setMotivo(event.target.value)}
-                  required
-                  value={motivo}
-                />
-              </label>
-            </>
-          )}
-
-          {(validationError || error) && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {validationError ?? error}
-            </p>
-          )}
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button disabled={submitting} onClick={onClose} type="button" variant="outline">
-              Cancelar
-            </Button>
-            <Button loading={submitting} type="submit">
-              Confirmar
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </Modal>
   )
 }
 
@@ -590,7 +577,10 @@ export default function FleetPage() {
         {!loading && !error && listData && listData.buses.length > 0 && (
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[860px] text-left text-sm">
+              <table
+                aria-label="Buses de la flota"
+                className="w-full min-w-[860px] text-left text-sm"
+              >
                 <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500">
                   <tr>
                     <th className="px-4 py-3">Codigo</th>

@@ -72,7 +72,7 @@ export default function PreventiveRestrictionsPanel() {
         </p>
       </section>
       <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <table className="w-full text-left text-sm">
+        <table aria-label="Restricciones preventivas" className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
             <tr>
               <th className="px-4 py-3">Bus</th>

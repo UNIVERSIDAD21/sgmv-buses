@@ -1,23 +1,28 @@
+import { lazy } from 'react'
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom'
 
 import AppShell from './components/layout/AppShell'
-import AlertsPage from './features/alertas/AlertsPage'
+import { LazyRoute } from './components/routing/RouteBoundary'
 import AccessDeniedPage from './features/auth/AccessDeniedPage'
 import LoginPage from './features/auth/LoginPage'
 import ProtectedRoute from './features/auth/ProtectedRoute'
 import { useSession } from './features/auth/session.context'
 import { SessionProvider } from './features/auth/session'
-import DashboardPage from './features/dashboard/DashboardPage'
-import BusFormPage from './features/flota/BusFormPage'
-import FleetCatalogPage from './features/flota/FleetCatalogPage'
-import FleetPage from './features/flota/FleetPage'
-import HistoryReportsPage from './features/historial/HistoryReportsPage'
-import JourneyPage from './features/jornadas/JourneyPage'
-import NoveltyPage from './features/novedades/NoveltyPage'
-import DispatchWorkOrdersPage from './features/ordenes-trabajo/DispatchWorkOrdersPage'
-import WorkOrderPage from './features/ordenes-trabajo/WorkOrderPage'
-import PreventivePage from './features/preventivo/PreventivePage'
-import SparePartsPage from './features/repuestos/SparePartsPage'
+
+const AlertsPage = lazy(() => import('./features/alertas/AlertsPage'))
+const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'))
+const BusFormPage = lazy(() => import('./features/flota/BusFormPage'))
+const FleetCatalogPage = lazy(() => import('./features/flota/FleetCatalogPage'))
+const FleetPage = lazy(() => import('./features/flota/FleetPage'))
+const HistoryReportsPage = lazy(() => import('./features/historial/HistoryReportsPage'))
+const JourneyPage = lazy(() => import('./features/jornadas/JourneyPage'))
+const NoveltyPage = lazy(() => import('./features/novedades/NoveltyPage'))
+const DispatchWorkOrdersPage = lazy(
+  () => import('./features/ordenes-trabajo/DispatchWorkOrdersPage'),
+)
+const WorkOrderPage = lazy(() => import('./features/ordenes-trabajo/WorkOrderPage'))
+const PreventivePage = lazy(() => import('./features/preventivo/PreventivePage'))
+const SparePartsPage = lazy(() => import('./features/repuestos/SparePartsPage'))
 
 function ShellRoute() {
   const { logout, user } = useSession()
@@ -41,11 +46,20 @@ function AppRoutes() {
         }
       >
         <Route element={<Navigate replace to="/inicio" />} index />
-        <Route element={<DashboardPage />} path="/inicio" />
+        <Route
+          element={
+            <LazyRoute>
+              <DashboardPage />
+            </LazyRoute>
+          }
+          path="/inicio"
+        />
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR', 'MECANICO', 'CONDUCTOR']}>
-              <AlertsPage />
+              <LazyRoute>
+                <AlertsPage />
+              </LazyRoute>
             </ProtectedRoute>
           }
           path="/alertas"
@@ -53,7 +67,9 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR']}>
-              <FleetCatalogPage />
+              <LazyRoute>
+                <FleetCatalogPage />
+              </LazyRoute>
             </ProtectedRoute>
           }
           path="/flota/catalogos"
@@ -61,7 +77,9 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR']}>
-              <FleetPage />
+              <LazyRoute>
+                <FleetPage />
+              </LazyRoute>
             </ProtectedRoute>
           }
           path="/flota"
@@ -69,7 +87,9 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR']}>
-              <JourneyPage />
+              <LazyRoute>
+                <JourneyPage />
+              </LazyRoute>
             </ProtectedRoute>
           }
           path="/jornadas"
@@ -77,7 +97,9 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR']}>
-              <BusFormPage />
+              <LazyRoute>
+                <BusFormPage />
+              </LazyRoute>
             </ProtectedRoute>
           }
           path="/flota/nuevo"
@@ -85,7 +107,9 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR']}>
-              <BusFormPage />
+              <LazyRoute>
+                <BusFormPage />
+              </LazyRoute>
             </ProtectedRoute>
           }
           path="/flota/:busId/editar"
@@ -93,7 +117,9 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR']}>
-              <NoveltyPage />
+              <LazyRoute>
+                <NoveltyPage />
+              </LazyRoute>
             </ProtectedRoute>
           }
           path="/novedades"
@@ -101,7 +127,9 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR']}>
-              <PreventivePage />
+              <LazyRoute>
+                <PreventivePage />
+              </LazyRoute>
             </ProtectedRoute>
           }
           path="/mantenimiento-preventivo"
@@ -109,7 +137,9 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR', 'MECANICO']}>
-              <WorkOrderPage />
+              <LazyRoute>
+                <WorkOrderPage />
+              </LazyRoute>
             </ProtectedRoute>
           }
           path="/ordenes-trabajo"
@@ -117,7 +147,9 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR']}>
-              <DispatchWorkOrdersPage />
+              <LazyRoute>
+                <DispatchWorkOrdersPage />
+              </LazyRoute>
             </ProtectedRoute>
           }
           path="/ordenes-trabajo/despacho"
@@ -125,7 +157,9 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR']}>
-              <SparePartsPage />
+              <LazyRoute>
+                <SparePartsPage />
+              </LazyRoute>
             </ProtectedRoute>
           }
           path="/repuestos"
@@ -133,7 +167,9 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR', 'MECANICO', 'CONDUCTOR']}>
-              <HistoryReportsPage />
+              <LazyRoute>
+                <HistoryReportsPage />
+              </LazyRoute>
             </ProtectedRoute>
           }
           path="/historial"

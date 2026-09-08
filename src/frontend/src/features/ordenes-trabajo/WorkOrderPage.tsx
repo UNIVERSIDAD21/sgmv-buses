@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNo
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Drawer from '../../components/ui/Drawer'
+import Modal from '../../components/ui/Modal'
 import {
   Activity,
   AlertTriangle,
@@ -16,7 +17,6 @@ import {
   Search,
   User,
   Wrench,
-  X,
 } from '../../components/ui/Icons'
 import StatePanel from '../../components/ui/StatePanel'
 import { BUS_STATUS_LABELS } from '../../domain/labels'
@@ -257,30 +257,9 @@ function ModalFrame({
   title: string
 }) {
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 p-3 sm:items-center">
-      <div
-        aria-label={title}
-        aria-modal="true"
-        className="w-full max-w-xl rounded-lg border border-slate-200 bg-white shadow-xl"
-        role="dialog"
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-            {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
-          </div>
-          <button
-            aria-label="Cerrar dialogo"
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-            onClick={onClose}
-            type="button"
-          >
-            <X size={16} />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
+    <Modal onClose={onClose} subtitle={subtitle} title={title}>
+      {children}
+    </Modal>
   )
 }
 
@@ -2186,7 +2165,10 @@ export default function WorkOrderPage() {
 
             <div className="hidden overflow-hidden rounded-lg border border-slate-200 bg-white md:block">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1120px] text-left text-sm">
+                <table
+                  aria-label="Órdenes de trabajo"
+                  className="w-full min-w-[1120px] text-left text-sm"
+                >
                   <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500">
                     <tr>
                       <th className="px-4 py-3">Orden</th>

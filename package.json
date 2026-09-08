@@ -16,6 +16,8 @@
     "dev:backend": "npm --workspace @sgmv/backend run dev",
     "dev:backend:local": "npm --workspace @sgmv/backend run dev:local",
     "build": "npm --workspaces run build",
+    "build:frontend": "npm --workspace @sgmv/frontend run build",
+    "check:bundle": "npm --workspace @sgmv/frontend run check:bundle",
     "lint": "npm --workspaces run lint",
     "test": "npm --workspaces run test",
     "test:backend:local": "npm --workspace @sgmv/backend run test:local",

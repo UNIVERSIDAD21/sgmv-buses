@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
+import Modal from '../../components/ui/Modal'
 import StatePanel from '../../components/ui/StatePanel'
 import { PREVENTIVE_CRITERION_LABELS } from '../../domain/labels'
 import { ApiError } from '../../lib/api'
@@ -74,6 +75,10 @@ function PlanForm({
 
   async function submit(event: FormEvent) {
     event.preventDefault()
+    if (saving) {
+      return
+    }
+
     setError(null)
     const days = optionalPositive(form.intervaloDias)
     const km = optionalPositive(form.intervaloKm)
@@ -118,196 +123,194 @@ function PlanForm({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 p-3 sm:items-center">
-      <div
-        aria-modal="true"
-        className="max-h-[95vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-5 shadow-xl"
-        role="dialog"
-      >
-        <h3 className="text-lg font-semibold">
-          {initial ? `Versionar ${initial.claveTarea}` : 'Crear plan preventivo'}
-        </h3>
-        <form className="mt-4 space-y-3" onSubmit={(event) => void submit(event)}>
-          <div className="grid gap-3 sm:grid-cols-2">
+    <Modal
+      onClose={onCancel}
+      title={initial ? `Versionar ${initial.claveTarea}` : 'Crear plan preventivo'}
+    >
+      <form className="space-y-3 p-5" onSubmit={(event) => void submit(event)}>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label>
+            Clave de tarea
+            <input
+              aria-label="Clave de tarea"
+              className={fieldClass}
+              disabled={Boolean(initial)}
+              onChange={(e) => set('claveTarea', e.target.value)}
+              value={form.claveTarea}
+            />
+          </label>
+          <label>
+            Componente
+            <input
+              aria-label="Componente"
+              className={fieldClass}
+              onChange={(e) => set('componente', e.target.value)}
+              value={form.componente}
+            />
+          </label>
+          <label className="sm:col-span-2">
+            Actividad
+            <textarea
+              aria-label="Actividad"
+              className={`${fieldClass} h-auto min-h-20 py-2`}
+              onChange={(e) => set('actividad', e.target.value)}
+              value={form.actividad}
+            />
+          </label>
+          <label>
+            Criterio
+            <select
+              aria-label="Criterio de plan"
+              className={fieldClass}
+              onChange={(e) => setCriterion(e.target.value as PreventiveCriterion)}
+              value={criterion}
+            >
+              {criteria.map((value) => (
+                <option key={value} value={value}>
+                  {PREVENTIVE_CRITERION_LABELS[value]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Prioridad
+            <select
+              aria-label="Prioridad"
+              className={fieldClass}
+              onChange={(e) => set('prioridad', e.target.value)}
+              value={form.prioridad}
+            >
+              <option>BAJA</option>
+              <option>MEDIA</option>
+              <option>ALTA</option>
+            </select>
+          </label>
+          {needsDays && (
             <label>
-              Clave de tarea
+              Intervalo dias
               <input
-                aria-label="Clave de tarea"
+                aria-label="Intervalo dias"
                 className={fieldClass}
-                disabled={Boolean(initial)}
-                onChange={(e) => set('claveTarea', e.target.value)}
-                value={form.claveTarea}
+                min="1"
+                onChange={(e) => set('intervaloDias', e.target.value)}
+                type="number"
+                value={form.intervaloDias}
               />
             </label>
+          )}
+          {needsKm && (
             <label>
-              Componente
+              Intervalo km
               <input
-                aria-label="Componente"
+                aria-label="Intervalo kilometraje"
                 className={fieldClass}
-                onChange={(e) => set('componente', e.target.value)}
-                value={form.componente}
+                min="1"
+                onChange={(e) => set('intervaloKm', e.target.value)}
+                type="number"
+                value={form.intervaloKm}
               />
             </label>
-            <label className="sm:col-span-2">
-              Actividad
-              <textarea
-                aria-label="Actividad"
-                className={`${fieldClass} h-auto min-h-20 py-2`}
-                onChange={(e) => set('actividad', e.target.value)}
-                value={form.actividad}
-              />
-            </label>
-            <label>
-              Criterio
+          )}
+          <label>
+            Anticipacion dias
+            <input
+              aria-label="Anticipacion dias"
+              className={fieldClass}
+              min="0"
+              onChange={(e) => set('anticipacionDias', e.target.value)}
+              type="number"
+              value={form.anticipacionDias}
+            />
+          </label>
+          <label>
+            Anticipacion km
+            <input
+              aria-label="Anticipacion kilometraje"
+              className={fieldClass}
+              min="0"
+              onChange={(e) => set('anticipacionKm', e.target.value)}
+              type="number"
+              value={form.anticipacionKm}
+            />
+          </label>
+        </div>
+        {!initial && (
+          <fieldset>
+            <legend className="text-sm font-medium">Alcance (exactamente uno)</legend>
+            <div className="mt-2 flex gap-4">
+              <label>
+                <input
+                  checked={destination === 'BUS'}
+                  name="destino"
+                  onChange={() => setDestination('BUS')}
+                  type="radio"
+                />{' '}
+                Bus
+              </label>
+              <label>
+                <input
+                  checked={destination === 'MODELO'}
+                  name="destino"
+                  onChange={() => setDestination('MODELO')}
+                  type="radio"
+                />{' '}
+                Modelo
+              </label>
+            </div>
+            {destination === 'BUS' ? (
               <select
-                aria-label="Criterio de plan"
-                className={fieldClass}
-                onChange={(e) => setCriterion(e.target.value as PreventiveCriterion)}
-                value={criterion}
+                aria-label="Bus destino"
+                className={`${fieldClass} mt-2`}
+                onChange={(e) => set('busId', e.target.value)}
+                value={form.busId}
               >
-                {criteria.map((value) => (
-                  <option key={value} value={value}>
-                    {PREVENTIVE_CRITERION_LABELS[value]}
+                <option value="">Seleccione bus</option>
+                {buses.map((bus) => (
+                  <option key={bus.id} value={bus.id}>
+                    {bus.codigoInterno} · {bus.placa}
                   </option>
                 ))}
               </select>
-            </label>
-            <label>
-              Prioridad
+            ) : (
               <select
-                aria-label="Prioridad"
-                className={fieldClass}
-                onChange={(e) => set('prioridad', e.target.value)}
-                value={form.prioridad}
+                aria-label="Modelo destino"
+                className={`${fieldClass} mt-2`}
+                onChange={(e) => set('modeloBusId', e.target.value)}
+                value={form.modeloBusId}
               >
-                <option>BAJA</option>
-                <option>MEDIA</option>
-                <option>ALTA</option>
+                <option value="">Seleccione modelo</option>
+                {modelos.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.marca} {model.nombreModelo}
+                  </option>
+                ))}
               </select>
-            </label>
-            {needsDays && (
-              <label>
-                Intervalo dias
-                <input
-                  aria-label="Intervalo dias"
-                  className={fieldClass}
-                  min="1"
-                  onChange={(e) => set('intervaloDias', e.target.value)}
-                  type="number"
-                  value={form.intervaloDias}
-                />
-              </label>
             )}
-            {needsKm && (
-              <label>
-                Intervalo km
-                <input
-                  aria-label="Intervalo kilometraje"
-                  className={fieldClass}
-                  min="1"
-                  onChange={(e) => set('intervaloKm', e.target.value)}
-                  type="number"
-                  value={form.intervaloKm}
-                />
-              </label>
-            )}
-            <label>
-              Anticipacion dias
-              <input
-                aria-label="Anticipacion dias"
-                className={fieldClass}
-                min="0"
-                onChange={(e) => set('anticipacionDias', e.target.value)}
-                type="number"
-                value={form.anticipacionDias}
-              />
-            </label>
-            <label>
-              Anticipacion km
-              <input
-                aria-label="Anticipacion kilometraje"
-                className={fieldClass}
-                min="0"
-                onChange={(e) => set('anticipacionKm', e.target.value)}
-                type="number"
-                value={form.anticipacionKm}
-              />
-            </label>
-          </div>
-          {!initial && (
-            <fieldset>
-              <legend className="text-sm font-medium">Alcance (exactamente uno)</legend>
-              <div className="mt-2 flex gap-4">
-                <label>
-                  <input
-                    checked={destination === 'BUS'}
-                    name="destino"
-                    onChange={() => setDestination('BUS')}
-                    type="radio"
-                  />{' '}
-                  Bus
-                </label>
-                <label>
-                  <input
-                    checked={destination === 'MODELO'}
-                    name="destino"
-                    onChange={() => setDestination('MODELO')}
-                    type="radio"
-                  />{' '}
-                  Modelo
-                </label>
-              </div>
-              {destination === 'BUS' ? (
-                <select
-                  aria-label="Bus destino"
-                  className={`${fieldClass} mt-2`}
-                  onChange={(e) => set('busId', e.target.value)}
-                  value={form.busId}
-                >
-                  <option value="">Seleccione bus</option>
-                  {buses.map((bus) => (
-                    <option key={bus.id} value={bus.id}>
-                      {bus.codigoInterno} · {bus.placa}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <select
-                  aria-label="Modelo destino"
-                  className={`${fieldClass} mt-2`}
-                  onChange={(e) => set('modeloBusId', e.target.value)}
-                  value={form.modeloBusId}
-                >
-                  <option value="">Seleccione modelo</option>
-                  {modelos.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.marca} {model.nombreModelo}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </fieldset>
-          )}
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              checked={form.bloqueaAlVencer}
-              onChange={(e) => set('bloqueaAlVencer', e.target.checked)}
-              type="checkbox"
-            />{' '}
-            Bloquear operacion al vencer
-          </label>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex justify-end gap-2">
-            <Button onClick={onCancel} type="button" variant="outline">
-              Cancelar
-            </Button>
-            <Button disabled={saving} type="submit">
-              {saving ? 'Guardando...' : initial ? 'Crear version' : 'Crear plan'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+          </fieldset>
+        )}
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            checked={form.bloqueaAlVencer}
+            onChange={(e) => set('bloqueaAlVencer', e.target.checked)}
+            type="checkbox"
+          />{' '}
+          Bloquear operacion al vencer
+        </label>
+        {error && (
+          <p className="text-sm text-red-600" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button onClick={onCancel} type="button" variant="outline">
+            Cancelar
+          </Button>
+          <Button loading={saving} type="submit">
+            {initial ? 'Crear version' : 'Crear plan'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 
@@ -334,15 +337,9 @@ function ApplyPlanDialog({
   const [busId, setBusId] = useState(eligibleBuses[0]?.id ?? '')
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 p-3 sm:items-center">
-      <div
-        aria-label="Aplicar plan preventivo"
-        aria-modal="true"
-        className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl"
-        role="dialog"
-      >
-        <h3 className="text-lg font-semibold">Aplicar {plan.claveTarea}</h3>
-        <p className="mt-1 text-sm text-slate-500">
+    <Modal onClose={onCancel} subtitle={plan.claveTarea} title="Aplicar plan preventivo">
+      <div className="p-5">
+        <p className="text-sm text-slate-500">
           El sistema derivara los objetivos desde la fecha y kilometraje actuales.
         </p>
         <label className="mt-4 block text-sm font-medium">
@@ -365,12 +362,17 @@ function ApplyPlanDialog({
           <Button onClick={onCancel} type="button" variant="outline">
             Cancelar
           </Button>
-          <Button disabled={!busId || saving} onClick={() => void onApply(busId)} type="button">
-            {saving ? 'Aplicando...' : 'Aplicar plan'}
+          <Button
+            disabled={!busId}
+            loading={saving}
+            onClick={() => void onApply(busId)}
+            type="button"
+          >
+            Aplicar plan
           </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -382,22 +384,12 @@ function PlanVersionsDialog({
   onClose: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 p-3 sm:items-center">
-      <div
-        aria-label="Versiones del plan preventivo"
-        aria-modal="true"
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-5 shadow-xl"
-        role="dialog"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-semibold">Versiones de {detail.plan.claveTarea}</h3>
-            <p className="mt-1 text-sm text-slate-500">Historial inmutable del plan.</p>
-          </div>
-          <Button onClick={onClose} size="sm" type="button" variant="outline">
-            Cerrar
-          </Button>
-        </div>
+    <Modal
+      onClose={onClose}
+      subtitle={`${detail.plan.claveTarea} · Historial inmutable del plan.`}
+      title="Versiones del plan preventivo"
+    >
+      <div className="p-5">
         <div className="mt-4 space-y-3">
           {detail.versiones.map((version) => (
             <article className="rounded-lg border border-slate-200 p-4" key={version.id}>
@@ -415,7 +407,7 @@ function PlanVersionsDialog({
           ))}
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -559,7 +551,7 @@ export default function PreventivePlansPanel() {
         />
       ) : (
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="w-full min-w-[850px] text-left text-sm">
+          <table aria-label="Planes preventivos" className="w-full min-w-[850px] text-left text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500">
               <tr>
                 <th className="px-4 py-3">Tarea</th>

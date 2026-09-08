@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNo
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Drawer from '../../components/ui/Drawer'
+import Modal from '../../components/ui/Modal'
 import {
   ChevronLeft,
   ChevronRight,
@@ -10,7 +11,6 @@ import {
   Clock,
   PlusCircle,
   Search,
-  X,
 } from '../../components/ui/Icons'
 import StatePanel from '../../components/ui/StatePanel'
 import {
@@ -178,6 +178,10 @@ function ScheduleFormDialog({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (submitting) {
+      return
+    }
+
     setValidationError(null)
 
     const normalizedTipo = normalizeText(tipo)
@@ -221,157 +225,138 @@ function ScheduleFormDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 p-3 sm:items-center">
-      <div
-        aria-label={title}
-        aria-modal="true"
-        className="w-full max-w-2xl rounded-lg border border-slate-200 bg-white shadow-xl"
-        role="dialog"
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-            {selectedBus && (
-              <p className="mt-1 text-sm text-slate-500">
-                {selectedBus.codigoInterno} - {selectedBus.placa}
-              </p>
-            )}
-          </div>
-          <button
-            aria-label="Cerrar formulario"
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-            onClick={onClose}
-            type="button"
-          >
-            <X size={16} />
-          </button>
+    <Modal
+      onClose={onClose}
+      subtitle={selectedBus ? `${selectedBus.codigoInterno} - ${selectedBus.placa}` : undefined}
+      title={title}
+    >
+      <form className="space-y-4 p-5" onSubmit={handleSubmit}>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block text-sm font-medium text-slate-700">
+            Bus
+            <select
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              disabled={Boolean(initial)}
+              onChange={(event) => setBusId(event.target.value)}
+              value={busId}
+            >
+              <option value="">Seleccione bus</option>
+              {buses.map((bus) => (
+                <option key={bus.id} value={bus.id}>
+                  {bus.codigoInterno} - {bus.placa}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-medium text-slate-700">
+            Criterio
+            <select
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              onChange={(event) => setCriterio(event.target.value as PreventiveCriterion)}
+              value={criterio}
+            >
+              {criterionOptions.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
-        <form className="space-y-4 p-5" onSubmit={handleSubmit}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm font-medium text-slate-700">
-              Bus
-              <select
-                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                disabled={Boolean(initial)}
-                onChange={(event) => setBusId(event.target.value)}
-                value={busId}
-              >
-                <option value="">Seleccione bus</option>
-                {buses.map((bus) => (
-                  <option key={bus.id} value={bus.id}>
-                    {bus.codigoInterno} - {bus.placa}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm font-medium text-slate-700">
-              Criterio
-              <select
-                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                onChange={(event) => setCriterio(event.target.value as PreventiveCriterion)}
-                value={criterio}
-              >
-                {criterionOptions.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
+        {selectedBus && (
+          <div className="grid gap-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600 sm:grid-cols-3">
+            <span>
+              <strong className="text-slate-800">Estado:</strong>{' '}
+              {BUS_STATUS_LABELS[selectedBus.estadoOperativo]}
+            </span>
+            <span>
+              <strong className="text-slate-800">Kilometraje:</strong>{' '}
+              {formatNumber(selectedBus.kilometrajeActual)} km
+            </span>
+            <span>
+              <strong className="text-slate-800">Vehiculo:</strong> {selectedBus.marca}{' '}
+              {selectedBus.modelo}
+            </span>
           </div>
+        )}
 
-          {selectedBus && (
-            <div className="grid gap-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600 sm:grid-cols-3">
-              <span>
-                <strong className="text-slate-800">Estado:</strong>{' '}
-                {BUS_STATUS_LABELS[selectedBus.estadoOperativo]}
-              </span>
-              <span>
-                <strong className="text-slate-800">Kilometraje:</strong>{' '}
-                {formatNumber(selectedBus.kilometrajeActual)} km
-              </span>
-              <span>
-                <strong className="text-slate-800">Vehiculo:</strong> {selectedBus.marca}{' '}
-                {selectedBus.modelo}
-              </span>
-            </div>
-          )}
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm font-medium text-slate-700">
-              Tipo
-              <input
-                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                onChange={(event) => setTipo(event.target.value)}
-                placeholder="Ej. Cambio de aceite"
-                value={tipo}
-              />
-            </label>
-            {requiresDate && (
-              <label className="block text-sm font-medium text-slate-700">
-                Fecha programada
-                <input
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  onChange={(event) => setFechaProgramada(event.target.value)}
-                  type="date"
-                  value={fechaProgramada}
-                />
-              </label>
-            )}
-            {requiresMileage && (
-              <label className="block text-sm font-medium text-slate-700">
-                Kilometraje objetivo
-                <input
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  min="1"
-                  onChange={(event) => setKilometrajeObjetivo(event.target.value)}
-                  type="number"
-                  value={kilometrajeObjetivo}
-                />
-              </label>
-            )}
-          </div>
-
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-sm font-medium text-slate-700">
-            Actividad
-            <textarea
-              className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-              onChange={(event) => setActividad(event.target.value)}
-              placeholder="Detalle de la actividad preventiva."
-              value={actividad}
+            Tipo
+            <input
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              onChange={(event) => setTipo(event.target.value)}
+              placeholder="Ej. Cambio de aceite"
+              value={tipo}
             />
           </label>
-
-          {initial && (
-            <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+          {requiresDate && (
+            <label className="block text-sm font-medium text-slate-700">
+              Fecha programada
               <input
-                checked={activa}
-                className="h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-100"
-                onChange={(event) => setActiva(event.target.checked)}
-                type="checkbox"
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                onChange={(event) => setFechaProgramada(event.target.value)}
+                type="date"
+                value={fechaProgramada}
               />
-              Programacion activa
             </label>
           )}
-
-          {(validationError || error) && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {validationError ?? error}
-            </p>
+          {requiresMileage && (
+            <label className="block text-sm font-medium text-slate-700">
+              Kilometraje objetivo
+              <input
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                min="1"
+                onChange={(event) => setKilometrajeObjetivo(event.target.value)}
+                type="number"
+                value={kilometrajeObjetivo}
+              />
+            </label>
           )}
+        </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button disabled={submitting} onClick={onClose} type="button" variant="outline">
-              Cancelar
-            </Button>
-            <Button icon={<PlusCircle size={15} />} loading={submitting} type="submit">
-              {initial ? 'Guardar cambios' : 'Registrar programacion'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <label className="block text-sm font-medium text-slate-700">
+          Actividad
+          <textarea
+            className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            onChange={(event) => setActividad(event.target.value)}
+            placeholder="Detalle de la actividad preventiva."
+            value={actividad}
+          />
+        </label>
+
+        {initial && (
+          <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input
+              checked={activa}
+              className="h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-100"
+              onChange={(event) => setActiva(event.target.checked)}
+              type="checkbox"
+            />
+            Programacion activa
+          </label>
+        )}
+
+        {(validationError || error) && (
+          <p
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+            role="alert"
+          >
+            {validationError ?? error}
+          </p>
+        )}
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button disabled={submitting} onClick={onClose} type="button" variant="outline">
+            Cancelar
+          </Button>
+          <Button icon={<PlusCircle size={15} />} loading={submitting} type="submit">
+            {initial ? 'Guardar cambios' : 'Registrar programacion'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 
@@ -394,6 +379,9 @@ function GenerateOrderDialog({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (submitting) {
+      return
+    }
 
     onSubmit({
       descripcionOrden: normalizeText(descripcionOrden) || undefined,
@@ -403,83 +391,66 @@ function GenerateOrderDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 p-3 sm:items-center">
-      <div
-        aria-label="Generar orden preventiva"
-        aria-modal="true"
-        className="w-full max-w-lg rounded-lg border border-slate-200 bg-white shadow-xl"
-        role="dialog"
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">Generar orden preventiva</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {schedule.bus.codigoInterno} - {schedule.tipo}
-            </p>
-          </div>
-          <button
-            aria-label="Cerrar confirmacion"
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-            onClick={onClose}
-            type="button"
-          >
-            <X size={16} />
-          </button>
+    <Modal
+      onClose={onClose}
+      subtitle={`${schedule.bus.codigoInterno} - ${schedule.tipo}`}
+      title="Generar orden preventiva"
+    >
+      <form className="space-y-4 p-5" onSubmit={handleSubmit}>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          La orden queda pendiente de asignacion. La asignacion y ejecucion tecnica pertenecen a
+          RF-04.
         </div>
+        <label className="block text-sm font-medium text-slate-700">
+          Prioridad
+          <select
+            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            onChange={(event) => setPrioridad(event.target.value as OrderPriority)}
+            value={prioridad}
+          >
+            {priorityOptions.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          Descripcion de la orden
+          <textarea
+            className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            onChange={(event) => setDescripcionOrden(event.target.value)}
+            value={descripcionOrden}
+          />
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          Observacion
+          <textarea
+            className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            onChange={(event) => setObservacion(event.target.value)}
+            value={observacion}
+          />
+        </label>
 
-        <form className="space-y-4 p-5" onSubmit={handleSubmit}>
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            La orden queda pendiente de asignacion. La asignacion y ejecucion tecnica pertenecen a
-            RF-04.
-          </div>
-          <label className="block text-sm font-medium text-slate-700">
-            Prioridad
-            <select
-              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-              onChange={(event) => setPrioridad(event.target.value as OrderPriority)}
-              value={prioridad}
-            >
-              {priorityOptions.map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm font-medium text-slate-700">
-            Descripcion de la orden
-            <textarea
-              className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-              onChange={(event) => setDescripcionOrden(event.target.value)}
-              value={descripcionOrden}
-            />
-          </label>
-          <label className="block text-sm font-medium text-slate-700">
-            Observacion
-            <textarea
-              className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-              onChange={(event) => setObservacion(event.target.value)}
-              value={observacion}
-            />
-          </label>
+        {error && (
+          <p
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+            role="alert"
+          >
+            {error}
+          </p>
+        )}
 
-          {error && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </p>
-          )}
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button disabled={submitting} onClick={onClose} type="button" variant="outline">
-              Cancelar
-            </Button>
-            <Button icon={<ClipboardList size={15} />} loading={submitting} type="submit">
-              Crear orden
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button disabled={submitting} onClick={onClose} type="button" variant="outline">
+            Cancelar
+          </Button>
+          <Button icon={<ClipboardList size={15} />} loading={submitting} type="submit">
+            Crear orden
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 
@@ -1130,7 +1101,10 @@ export default function PreventivePage() {
 
                 <div className="hidden overflow-hidden rounded-lg border border-slate-200 bg-white md:block">
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[1180px] text-left text-sm">
+                    <table
+                      aria-label="Programaciones preventivas"
+                      className="w-full min-w-[1180px] text-left text-sm"
+                    >
                       <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500">
                         <tr>
                           <th className="px-4 py-3">Bus</th>
