@@ -1,5 +1,6 @@
 import { Prisma, type EstadoJornada } from '@prisma/client'
 
+import { createJourneyChangeAlert } from '../alerts/alert.service.js'
 import { buildAvailability } from '../availability/availability.policy.js'
 import type { AuthenticatedUser } from '../auth/auth.types.js'
 import { AppError } from '../shared/http.js'
@@ -297,6 +298,15 @@ export class JourneyService {
         }
 
         const updated = await this.repository.findById(id, tx)
+        await createJourneyChangeAlert(
+          {
+            affectedDriverIds: [journey.conductorId],
+            eventAt: eventDate,
+            journeyId: journey.id,
+            occurrence: 'CANCELACION',
+          },
+          tx,
+        )
         return { jornada: await this.toDto(updated!, actor, eventDate, tx) }
       })
     } catch (error) {
@@ -322,6 +332,16 @@ export class JourneyService {
             inicioProgramado,
             programadaPorId: actor.id,
             rutaId: input.rutaId ?? null,
+          },
+          tx,
+        )
+
+        await createJourneyChangeAlert(
+          {
+            affectedDriverIds: [journey.conductorId],
+            eventAt: journey.createdAt,
+            journeyId: journey.id,
+            occurrence: 'ALTA',
           },
           tx,
         )
@@ -601,6 +621,16 @@ export class JourneyService {
           tx,
         )
         const previous = await this.repository.findById(id, tx)
+
+        await createJourneyChangeAlert(
+          {
+            affectedDriverIds: [journey.conductorId, successor.conductorId],
+            eventAt: eventDate,
+            journeyId: successor.id,
+            occurrence: 'REASIGNACION',
+          },
+          tx,
+        )
 
         return {
           jornadaAnterior: await this.toDto(previous!, actor, eventDate, tx),

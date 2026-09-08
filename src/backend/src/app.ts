@@ -4,6 +4,7 @@ import express, { type Express } from 'express'
 import helmet from 'helmet'
 
 import { auditMutations } from './audit/audit.middleware.js'
+import { alertRoutes } from './alerts/alert.routes.js'
 import { verifyCsrf } from './auth/auth.middleware.js'
 import { authRoutes } from './auth/auth.routes.js'
 import { env } from './config/env.js'
@@ -47,6 +48,7 @@ export function createApp(configureRoutes?: (app: Express) => void) {
   app.get('/ready', createReadinessHandler())
 
   app.use('/auth', authRoutes)
+  app.use('/alertas', alertRoutes)
   app.use('/flota', fleetRoutes)
   app.use('/jornadas', journeyRoutes)
   app.use('/novedades', noveltyRoutes)

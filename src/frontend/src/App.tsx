@@ -1,6 +1,7 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom'
 
 import AppShell from './components/layout/AppShell'
+import AlertsPage from './features/alertas/AlertsPage'
 import AccessDeniedPage from './features/auth/AccessDeniedPage'
 import LoginPage from './features/auth/LoginPage'
 import ProtectedRoute from './features/auth/ProtectedRoute'
@@ -41,6 +42,14 @@ function AppRoutes() {
       >
         <Route element={<Navigate replace to="/inicio" />} index />
         <Route element={<DashboardPage />} path="/inicio" />
+        <Route
+          element={
+            <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR', 'MECANICO', 'CONDUCTOR']}>
+              <AlertsPage />
+            </ProtectedRoute>
+          }
+          path="/alertas"
+        />
         <Route
           element={
             <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR']}>

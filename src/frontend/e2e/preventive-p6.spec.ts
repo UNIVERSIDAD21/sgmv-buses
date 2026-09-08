@@ -8,7 +8,7 @@ import { prisma } from '../../backend/src/prisma/client.js'
 const demoPassword = process.env.SEED_USER_PASSWORD
 const marker = `E2E.P6.${randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase()}`
 const busId = randomUUID()
-const busCode = `P6E2E-${marker.slice(-8)}`
+const busCode = `000-P6E2E-${marker.slice(-8)}`
 let planId: string | null = null
 let scheduleId: string | null = null
 let orderId: string | null = null
@@ -65,7 +65,12 @@ test.afterAll(async () => {
     select: { id: true },
   })
   const alerts = await prisma.alertaInterna.findMany({
-    where: { programacionMantenimientoId: { in: schedules.map((schedule) => schedule.id) } },
+    where: {
+      OR: [
+        { ordenTrabajoId: { in: orders.map((order) => order.id) } },
+        { programacionMantenimientoId: { in: schedules.map((schedule) => schedule.id) } },
+      ],
+    },
     select: { id: true },
   })
   const resourceIds = [

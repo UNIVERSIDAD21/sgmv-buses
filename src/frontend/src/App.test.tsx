@@ -62,6 +62,14 @@ function mockApi(handler: (path: string, init?: RequestInit) => Promise<Response
       return Promise.resolve(ok({ csrfToken: testCsrfToken }))
     }
 
+    if (path === '/alertas/no-leidas/count') {
+      return Promise.resolve(ok({ count: 0 }))
+    }
+
+    if (path === '/alertas') {
+      return Promise.resolve(ok({ items: [], page: 1, pageSize: 10, total: 0, totalPages: 0 }))
+    }
+
     return handler(path, init)
   })
 

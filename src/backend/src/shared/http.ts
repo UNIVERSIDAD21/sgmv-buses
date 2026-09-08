@@ -91,8 +91,9 @@ export function normalizeKnownHttpError(
 
 export const errorHandler: ErrorRequestHandler = (error, request, response, next) => {
   void next
+  const requestId = (request as typeof request & { id: string }).id
 
-  const normalized = normalizeKnownHttpError(error, request.id)
+  const normalized = normalizeKnownHttpError(error, requestId)
 
   if (normalized) {
     if (normalized.retryAfterSeconds !== undefined) {
@@ -102,13 +103,13 @@ export const errorHandler: ErrorRequestHandler = (error, request, response, next
     return response.status(normalized.statusCode).json(normalized.body)
   }
 
-  logger.error({ err: error, requestId: request.id }, 'Error HTTP no controlado')
+  logger.error({ err: error, requestId }, 'Error HTTP no controlado')
 
   return response.status(500).json({
     error: {
       code: 'INTERNAL_ERROR',
       message: 'Error interno del servidor',
-      requestId: request.id,
+      requestId,
     },
   })
 }

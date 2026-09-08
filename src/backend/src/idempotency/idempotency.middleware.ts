@@ -1,5 +1,6 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express'
 
+import { persistJourneyConflictAlert } from '../alerts/alert.service.js'
 import { runInPrismaTransaction } from '../prisma/client.js'
 import { normalizeKnownHttpError } from '../shared/http.js'
 import { IdempotencyService } from './idempotency.service.js'
@@ -72,6 +73,21 @@ export function idempotent(handler: RequestHandler): RequestHandler {
         if (!normalized) {
           next(error)
           return
+        }
+
+        if (normalized.body.error.code === 'JOURNEY_CONFLICT' && request.baseUrl === '/jornadas') {
+          const body =
+            request.body && typeof request.body === 'object' && !Array.isArray(request.body)
+              ? (request.body as Record<string, unknown>)
+              : {}
+          const busId = typeof body.busId === 'string' ? body.busId : undefined
+          const journeyId =
+            typeof request.params.jornadaId === 'string' ? request.params.jornadaId : undefined
+          const idempotencyKey = request.get('idempotency-key')
+
+          if (idempotencyKey) {
+            await persistJourneyConflictAlert({ busId, idempotencyKey, journeyId })
+          }
         }
 
         const safeResponse = idempotencyService.serializeResponse(normalized.body, request)

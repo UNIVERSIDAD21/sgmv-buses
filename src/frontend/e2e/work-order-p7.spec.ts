@@ -54,7 +54,7 @@ test.beforeAll(async () => {
   await prisma.bus.create({
     data: {
       anio: 2026,
-      codigoInterno: `P7E2E-${suffix}`,
+      codigoInterno: `000-P7E2E-${suffix}`,
       estadoOperativo: 'OPERATIVO',
       id: busId,
       kilometrajeActual: 30_000,
@@ -134,7 +134,7 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
 
   await login(page, 'mecanico.demo@sgmv.local')
   await openOrder(page, marker)
-  const baseTime = Date.now() - 30_000
+  const baseTime = Date.now() - 3 * 60_000
   await registerReading(page, {
     date: new Date(baseTime),
     mileage: '30000',
@@ -152,7 +152,7 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
   await expect(page.getByText('Actividad registrada.')).toBeVisible()
 
   await registerReading(page, {
-    date: new Date(baseTime + 10_000),
+    date: new Date(baseTime + 60_000),
     mileage: '30001',
     type: 'REVISION_TECNICA',
   })
@@ -187,7 +187,7 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
     include: {
       estadosHistorial: true,
       intervenciones: { include: { actividades: true } },
-      lecturasKilometraje: true,
+      lecturasKilometraje: { orderBy: [{ fechaLectura: 'asc' }, { id: 'asc' }] },
     },
   })
   expect(persisted.estado).toBe('CERRADA')

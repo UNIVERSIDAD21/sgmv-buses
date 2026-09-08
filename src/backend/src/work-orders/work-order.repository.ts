@@ -10,6 +10,11 @@ import {
 
 import {
   createConsumptionIncompatibilityAlert,
+  createLowInventoryAlert,
+  createWorkOrderAssignedAlert,
+  createWorkOrderCompletedAlert,
+  createWorkOrderPendingAlert,
+  createWorkOrderReturnedAlert,
   evaluatePreventiveAlertsForBus,
 } from '../alerts/alert.service.js'
 import { buildAvailability } from '../availability/availability.policy.js'
@@ -516,6 +521,16 @@ export class WorkOrderRepository {
           },
         })
 
+        await createWorkOrderPendingAlert(
+          {
+            busCodigo: bus.codigoInterno,
+            eventAt: order.createdAt,
+            orderCode: order.codigo,
+            orderId: order.id,
+          },
+          tx,
+        )
+
         return {
           orden: await this.findOrderByIdForTransaction(order.id, tx),
           status: 'CREATED' as const,
@@ -574,7 +589,7 @@ export class WorkOrderRepository {
           }
         }
 
-        await tx.ordenEstadoHistorial.create({
+        const history = await tx.ordenEstadoHistorial.create({
           data: {
             cambiadoPorId: actorId,
             estadoAnterior: 'PENDIENTE_ASIGNACION',
@@ -583,6 +598,18 @@ export class WorkOrderRepository {
             ordenTrabajoId: orderId,
           },
         })
+
+        await createWorkOrderAssignedAlert(
+          {
+            busCodigo: order.bus.codigoInterno,
+            eventAt: now,
+            mechanicId: data.tecnicoId,
+            occurrenceId: history.id,
+            orderCode: order.codigo,
+            orderId,
+          },
+          tx,
+        )
 
         return {
           orden: await this.findOrderByIdForTransaction(orderId, tx),
@@ -672,7 +699,7 @@ export class WorkOrderRepository {
           })
         }
 
-        await tx.ordenReasignacion.create({
+        const reassignment = await tx.ordenReasignacion.create({
           data: {
             fechaReasignacion: now,
             motivo: data.motivo,
@@ -682,6 +709,18 @@ export class WorkOrderRepository {
             tecnicoNuevoId: data.tecnicoId,
           },
         })
+
+        await createWorkOrderAssignedAlert(
+          {
+            busCodigo: order.bus.codigoInterno,
+            eventAt: now,
+            mechanicId: data.tecnicoId,
+            occurrenceId: reassignment.id,
+            orderCode: order.codigo,
+            orderId,
+          },
+          tx,
+        )
 
         return {
           orden: await this.findOrderByIdForTransaction(orderId, tx),
@@ -1215,6 +1254,7 @@ export class WorkOrderRepository {
               ordenId: orderId,
               repuestoCodigo: part.codigo,
               repuestoId: data.repuestoId,
+              tecnicoAsignadoId: order.tecnicoAsignadoId,
             },
             tx,
           )
@@ -1296,6 +1336,27 @@ export class WorkOrderRepository {
             tipo: 'CONSUMO',
           },
         })
+
+        const remainingStock = part.stockActual.sub(data.cantidad)
+        if (
+          part.stockActual.greaterThan(part.stockMinimo) &&
+          remainingStock.lessThanOrEqualTo(part.stockMinimo)
+        ) {
+          const movement = await tx.movimientoInventario.findUniqueOrThrow({
+            select: { id: true, fechaMovimiento: true },
+            where: { consumoRepuestoId: consumption.id },
+          })
+          await createLowInventoryAlert(
+            {
+              eventAt: movement.fechaMovimiento,
+              movementId: movement.id,
+              partCode: part.codigo,
+              partId: part.id,
+              stockActual: remainingStock.toNumber(),
+            },
+            tx,
+          )
+        }
 
         await tx.ordenTrabajo.update({
           where: { id: orderId },
@@ -1423,7 +1484,7 @@ export class WorkOrderRepository {
           },
         })
 
-        await tx.ordenEstadoHistorial.create({
+        const history = await tx.ordenEstadoHistorial.create({
           data: {
             cambiadoPorId: actorId,
             estadoAnterior: 'EN_EJECUCION',
@@ -1432,6 +1493,17 @@ export class WorkOrderRepository {
             ordenTrabajoId: orderId,
           },
         })
+
+        await createWorkOrderCompletedAlert(
+          {
+            busCodigo: order.bus.codigoInterno,
+            eventAt: now,
+            occurrenceId: history.id,
+            orderCode: order.codigo,
+            orderId,
+          },
+          tx,
+        )
 
         return {
           orden: await this.findOrderByIdForTransaction(orderId, tx),
@@ -1489,7 +1561,7 @@ export class WorkOrderRepository {
           }
         }
 
-        await tx.ordenEstadoHistorial.create({
+        const history = await tx.ordenEstadoHistorial.create({
           data: {
             cambiadoPorId: actorId,
             estadoAnterior: 'COMPLETADA_TECNICO',
@@ -1498,6 +1570,18 @@ export class WorkOrderRepository {
             ordenTrabajoId: orderId,
           },
         })
+
+        await createWorkOrderReturnedAlert(
+          {
+            busCodigo: order.bus.codigoInterno,
+            eventAt: history.fechaCambio,
+            mechanicId: order.tecnicoAsignadoId,
+            occurrenceId: history.id,
+            orderCode: order.codigo,
+            orderId,
+          },
+          tx,
+        )
 
         return {
           orden: await this.findOrderByIdForTransaction(orderId, tx),
@@ -1832,6 +1916,7 @@ export class WorkOrderRepository {
         id: true,
         nombre: true,
         stockActual: true,
+        stockMinimo: true,
         unidadMedida: true,
       },
     })

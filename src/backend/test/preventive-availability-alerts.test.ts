@@ -127,13 +127,36 @@ async function availabilityFor(busId: string, when = new Date('2026-09-06T15:00:
 }
 
 async function cleanup() {
+  const orderIds = (
+    await prisma.ordenTrabajo.findMany({
+      select: { id: true },
+      where: {
+        OR: [
+          { busId: { in: created.buses } },
+          { programacionMantenimientoId: { in: created.schedules } },
+        ],
+      },
+    })
+  ).map((order) => order.id)
   const alerts = await prisma.alertaInterna.findMany({
-    where: { programacionMantenimientoId: { in: created.schedules } },
+    where: {
+      OR: [
+        { busId: { in: created.buses } },
+        { novedad: { busId: { in: created.buses } } },
+        { ordenTrabajoId: { in: orderIds } },
+        { programacionMantenimientoId: { in: created.schedules } },
+      ],
+    },
     select: { id: true },
   })
   await prisma.$transaction(async (tx) => {
     await tx.alertaDestinatario.deleteMany({
-      where: { alertaInternaId: { in: alerts.map((item) => item.id) } },
+      where: {
+        OR: [
+          { alertaInternaId: { in: alerts.map((item) => item.id) } },
+          { usuarioId: { in: created.users } },
+        ],
+      },
     })
     await tx.alertaInterna.deleteMany({ where: { id: { in: alerts.map((item) => item.id) } } })
     await tx.ordenTrabajo.deleteMany({

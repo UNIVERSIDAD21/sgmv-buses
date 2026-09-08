@@ -7,7 +7,11 @@ import {
   type PrioridadOrden,
 } from '@prisma/client'
 
-import { createNoveltyAlerts } from '../alerts/alert.service.js'
+import {
+  createNoveltyAlerts,
+  createNoveltyStateChangeAlert,
+  createWorkOrderPendingAlert,
+} from '../alerts/alert.service.js'
 import { registerContextualMileageReading } from '../mileage/mileage.repository.js'
 import { prisma } from '../prisma/client.js'
 
@@ -295,6 +299,18 @@ export class NoveltyRepository {
           )
         }
 
+        if (updated.estado !== 'PENDIENTE_REVISION') {
+          await createNoveltyStateChangeAlert(
+            {
+              conductorId: updated.conductorId,
+              eventAt: updated.fechaRevision ?? new Date(),
+              noveltyId: updated.id,
+              state: updated.estado,
+            },
+            tx,
+          )
+        }
+
         return {
           novedad: updated,
           status: 'UPDATED' as const,
@@ -362,6 +378,16 @@ export class NoveltyRepository {
           },
         })
 
+        await createWorkOrderPendingAlert(
+          {
+            busCodigo: novelty.bus.codigoInterno,
+            eventAt: order.createdAt,
+            orderCode: order.codigo,
+            orderId: order.id,
+          },
+          tx,
+        )
+
         const updatedNovelty = await tx.novedad.update({
           where: { id: novedadId },
           data: {
@@ -372,6 +398,16 @@ export class NoveltyRepository {
           },
           include: noveltyInclude,
         })
+
+        await createNoveltyStateChangeAlert(
+          {
+            conductorId: updatedNovelty.conductorId,
+            eventAt: updatedNovelty.fechaRevision ?? new Date(),
+            noveltyId: updatedNovelty.id,
+            state: updatedNovelty.estado,
+          },
+          tx,
+        )
 
         return {
           novedad: updatedNovelty,

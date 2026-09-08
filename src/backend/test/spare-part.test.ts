@@ -290,10 +290,20 @@ async function cleanup() {
       })
       const alertas = await tx.alertaInterna.findMany({
         select: { id: true },
-        where: { ordenTrabajoId: { in: created.ordenes } },
+        where: {
+          OR: [
+            { ordenTrabajoId: { in: created.ordenes } },
+            { repuestoId: { in: created.repuestos } },
+          ],
+        },
       })
       await tx.alertaDestinatario.deleteMany({
-        where: { alertaInternaId: { in: alertas.map((alerta) => alerta.id) } },
+        where: {
+          OR: [
+            { alertaInternaId: { in: alertas.map((alerta) => alerta.id) } },
+            { usuarioId: { in: created.usuarios } },
+          ],
+        },
       })
       await tx.alertaInterna.deleteMany({
         where: { id: { in: alertas.map((alerta) => alerta.id) } },
@@ -486,11 +496,11 @@ describe('RF-05 spare parts inventory API', () => {
       expect(alert.destinatarios.length).toBeGreaterThan(0)
       expect(
         alert.destinatarios.every(({ usuario }) =>
-          ['ADMINISTRADOR', 'DESPACHADOR'].includes(usuario.rol.codigo),
+          ['ADMINISTRADOR', 'MECANICO'].includes(usuario.rol.codigo),
         ),
       ).toBe(true)
       expect(alert.destinatarios.some(({ usuario }) => usuario.id === fixture.mecanicoId)).toBe(
-        false,
+        true,
       )
       expect(await prisma.consumoRepuesto.count({ where: { ordenTrabajoId: order.id } })).toBe(0)
 

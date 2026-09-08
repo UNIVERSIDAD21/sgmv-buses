@@ -153,8 +153,24 @@ async function programJourney(
 
 async function cleanup() {
   await prisma.$transaction(async (tx) => {
-    await tx.alertaDestinatario.deleteMany({ where: { usuarioId: { in: created.usuarios } } })
-    await tx.alertaInterna.deleteMany({ where: { jornadaOperativaId: { in: created.jornadas } } })
+    const alerts = await tx.alertaInterna.findMany({
+      select: { id: true },
+      where: {
+        OR: [
+          { busId: { in: created.buses } },
+          { jornadaOperativaId: { in: created.jornadas } },
+          { novedad: { jornadaOperativaId: { in: created.jornadas } } },
+          { ordenTrabajo: { jornadaOperativaId: { in: created.jornadas } } },
+        ],
+      },
+    })
+    const alertIds = alerts.map((alert) => alert.id)
+    await tx.alertaDestinatario.deleteMany({
+      where: {
+        OR: [{ usuarioId: { in: created.usuarios } }, { alertaInternaId: { in: alertIds } }],
+      },
+    })
+    await tx.alertaInterna.deleteMany({ where: { id: { in: alertIds } } })
     await tx.novedad.deleteMany({ where: { jornadaOperativaId: { in: created.jornadas } } })
     await tx.ordenTrabajo.deleteMany({ where: { jornadaOperativaId: { in: created.jornadas } } })
     await tx.lecturaKilometraje.deleteMany({

@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto'
 
 import { Prisma, type CriterioMantenimiento, type PrioridadOrden } from '@prisma/client'
 
-import { evaluatePreventiveAlertsForBus } from '../alerts/alert.service.js'
+import {
+  createWorkOrderPendingAlert,
+  evaluatePreventiveAlertsForBus,
+} from '../alerts/alert.service.js'
 import { prisma } from '../prisma/client.js'
 import {
   buildPreventivePlanSnapshot,
@@ -344,6 +347,16 @@ export class PreventiveRepository {
             ordenTrabajoId: order.id,
           },
         })
+
+        await createWorkOrderPendingAlert(
+          {
+            busCodigo: lockedSchedule.bus.codigoInterno,
+            eventAt: order.createdAt,
+            orderCode: order.codigo,
+            orderId: order.id,
+          },
+          tx,
+        )
 
         const refreshedOrder = await tx.ordenTrabajo.findUniqueOrThrow({
           where: { id: order.id },

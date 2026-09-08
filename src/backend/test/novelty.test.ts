@@ -307,6 +307,7 @@ async function cleanup() {
         OR: [
           { jornadaOperativaId: { in: created.jornadas } },
           { novedadId: { in: created.novedades } },
+          { ordenTrabajoId: { in: uniqueOrderIds } },
         ],
       },
     })
@@ -314,7 +315,11 @@ async function cleanup() {
 
   await prisma.$transaction(
     async (tx) => {
-      await tx.alertaDestinatario.deleteMany({ where: { alertaInternaId: { in: alertIds } } })
+      await tx.alertaDestinatario.deleteMany({
+        where: {
+          OR: [{ alertaInternaId: { in: alertIds } }, { usuarioId: { in: created.usuarios } }],
+        },
+      })
       await tx.alertaInterna.deleteMany({ where: { id: { in: alertIds } } })
       await tx.ordenEstadoHistorial.deleteMany({
         where: {

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import {
@@ -9,6 +9,7 @@ import {
   type RoleCode,
 } from '../../domain/labels'
 import { formatDateTime } from '../../lib/format'
+import { ALERTS_UPDATED_EVENT, getUnreadAlertCount } from '../../features/alertas/alert.api'
 import Button from '../ui/Button'
 import {
   AlertTriangle,
@@ -87,6 +88,10 @@ function getPageTitle(pathname: string) {
     return 'Jornadas operativas'
   }
 
+  if (pathname.startsWith('/alertas')) {
+    return 'Alertas internas'
+  }
+
   if (pathname.includes('/editar')) {
     return 'Edición de bus'
   }
@@ -140,8 +145,27 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
   const [expanded, setExpanded] = useState(true)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [unreadAlerts, setUnreadAlerts] = useState(0)
   const location = useLocation()
   const navigate = useNavigate()
+
+  const refreshUnreadAlerts = useCallback(async () => {
+    try {
+      const response = await getUnreadAlertCount()
+      setUnreadAlerts(response.count)
+    } catch {
+      setUnreadAlerts(0)
+    }
+  }, [])
+
+  useEffect(() => {
+    const initialRefresh = window.setTimeout(() => void refreshUnreadAlerts(), 0)
+    window.addEventListener(ALERTS_UPDATED_EVENT, refreshUnreadAlerts)
+    return () => {
+      window.clearTimeout(initialRefresh)
+      window.removeEventListener(ALERTS_UPDATED_EVENT, refreshUnreadAlerts)
+    }
+  }, [location.pathname, refreshUnreadAlerts])
 
   const navigationItems = useMemo<NavigationItem[]>(() => {
     const requirements = REQUIREMENT_NAV_ITEMS.map((item) => ({
@@ -307,11 +331,24 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
               <Search size={17} />
             </button>
             <button
-              aria-label="Notificaciones"
-              className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              aria-label={
+                unreadAlerts > 0
+                  ? `Alertas internas, ${unreadAlerts} sin leer`
+                  : 'Alertas internas, ninguna sin leer'
+              }
+              className="relative rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              onClick={() => navigate('/alertas')}
               type="button"
             >
               <Bell size={17} />
+              {unreadAlerts > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-1 -top-1 min-w-5 rounded-full bg-red-600 px-1 text-center text-[10px] font-semibold leading-5 text-white"
+                >
+                  {unreadAlerts > 99 ? '99+' : unreadAlerts}
+                </span>
+              )}
             </button>
           </div>
         </header>

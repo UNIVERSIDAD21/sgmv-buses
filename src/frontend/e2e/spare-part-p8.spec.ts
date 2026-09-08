@@ -43,7 +43,7 @@ test.beforeAll(async () => {
     await tx.bus.create({
       data: {
         anio: 2026,
-        codigoInterno: `P8-BUS-${suffix}`,
+        codigoInterno: `000-P8-BUS-${suffix}`,
         estadoOperativo: 'OPERATIVO',
         id: testBusId,
         kilometrajeActual: 30_000,

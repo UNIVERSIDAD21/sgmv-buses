@@ -370,6 +370,24 @@ async function cleanup() {
 
   await prisma.$transaction(
     async (tx) => {
+      const alerts = await tx.alertaInterna.findMany({
+        select: { id: true },
+        where: {
+          OR: [
+            { novedadId: { in: created.novedades } },
+            { ordenTrabajoId: { in: orderIds } },
+            { programacionMantenimientoId: { in: created.programaciones } },
+            { repuestoId: { in: created.repuestos } },
+          ],
+        },
+      })
+      const alertIds = alerts.map((alert) => alert.id)
+      await tx.alertaDestinatario.deleteMany({
+        where: {
+          OR: [{ alertaInternaId: { in: alertIds } }, { usuarioId: { in: created.usuarios } }],
+        },
+      })
+      await tx.alertaInterna.deleteMany({ where: { id: { in: alertIds } } })
       await tx.movimientoInventario.deleteMany({
         where: {
           OR: [

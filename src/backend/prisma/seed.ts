@@ -71,6 +71,15 @@ const ids = {
     negativaModelo: '93000000-0000-4000-8000-000000000005',
   },
   autorizacionExcepcion: '94000000-0000-4000-8000-000000000001',
+  alertas: {
+    novedadCritica: '96000000-0000-4000-8000-000000000001',
+    ordenCompletada: '96000000-0000-4000-8000-000000000002',
+  },
+  alertasDestinatarios: {
+    novedadAdmin: '97000000-0000-4000-8000-000000000001',
+    novedadDespacho: '97000000-0000-4000-8000-000000000002',
+    ordenAdmin: '97000000-0000-4000-8000-000000000003',
+  },
   repuestosRf05: {
     agotado: '90000000-0000-4000-8000-000000000003',
     bajo: '90000000-0000-4000-8000-000000000002',
@@ -1219,6 +1228,88 @@ async function main() {
           fechaCompletadaTecnico: fechaCorrectivaCompletada,
         },
       })
+
+      const alertasP9 = [
+        {
+          claveDeduplicacion: 'seed-p9:novedad-critica:50000000-0000-4000-8000-000000000001',
+          contextoEvento: {
+            busCodigo: 'BUS-001',
+            criticidad: 'CRITICA',
+            fechaEvento: '2026-09-02T09:30:00.000Z',
+            origen: { novedadId: ids.novedad },
+            schemaVersion: 1,
+          },
+          fechaGeneracion: new Date('2026-09-02T09:30:00.000Z'),
+          id: ids.alertas.novedadCritica,
+          mensaje: 'La novedad crítica del bus BUS-001 requiere revisión prioritaria.',
+          novedadId: ids.novedad,
+          prioridad: 'CRITICA' as const,
+          tipo: 'NOVEDAD_CRITICA' as const,
+          titulo: 'Novedad crítica reportada',
+        },
+        {
+          claveDeduplicacion: 'seed-p9:orden-completada:70000000-0000-4000-8000-000000000001',
+          contextoEvento: {
+            busCodigo: 'BUS-001',
+            estado: 'COMPLETADA_TECNICO',
+            fechaEvento: '2026-09-02T12:00:00.000Z',
+            origen: { ordenTrabajoId: ids.ordenes.correctiva },
+            schemaVersion: 1,
+          },
+          fechaGeneracion: new Date('2026-09-02T12:00:00.000Z'),
+          id: ids.alertas.ordenCompletada,
+          mensaje: 'La orden OT-COR-001 fue completada y requiere validación administrativa.',
+          ordenTrabajoId: ids.ordenes.correctiva,
+          prioridad: 'MEDIA' as const,
+          tipo: 'ORDEN_COMPLETADA_TECNICO' as const,
+          titulo: 'Orden completada por técnico',
+        },
+      ]
+
+      for (const alerta of alertasP9) {
+        await tx.alertaInterna.upsert({
+          where: { claveDeduplicacion: alerta.claveDeduplicacion },
+          update: {
+            contextoEvento: alerta.contextoEvento,
+            fechaGeneracion: alerta.fechaGeneracion,
+            mensaje: alerta.mensaje,
+            prioridad: alerta.prioridad,
+            titulo: alerta.titulo,
+          },
+          create: alerta,
+        })
+      }
+
+      const destinatariosP9 = [
+        {
+          alertaInternaId: ids.alertas.novedadCritica,
+          id: ids.alertasDestinatarios.novedadAdmin,
+          usuarioId: ids.usuarios.admin,
+        },
+        {
+          alertaInternaId: ids.alertas.novedadCritica,
+          id: ids.alertasDestinatarios.novedadDespacho,
+          usuarioId: ids.usuarios.despachador,
+        },
+        {
+          alertaInternaId: ids.alertas.ordenCompletada,
+          id: ids.alertasDestinatarios.ordenAdmin,
+          usuarioId: ids.usuarios.admin,
+        },
+      ]
+
+      for (const destinatario of destinatariosP9) {
+        await tx.alertaDestinatario.upsert({
+          where: {
+            alertaInternaId_usuarioId: {
+              alertaInternaId: destinatario.alertaInternaId,
+              usuarioId: destinatario.usuarioId,
+            },
+          },
+          update: {},
+          create: { ...destinatario, estado: 'NO_LEIDA' },
+        })
+      }
     },
     {
       maxWait: 15000,

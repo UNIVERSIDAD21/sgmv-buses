@@ -1,5 +1,6 @@
 import { Prisma, type TipoMovimientoInventario } from '@prisma/client'
 
+import { createLowInventoryAlert } from '../alerts/alert.service.js'
 import { prisma } from '../prisma/client.js'
 import type {
   CreateSparePartInput,
@@ -721,6 +722,27 @@ export class SparePartRepository {
             tipo,
           },
         })
+
+        const stockResultante =
+          tipo === 'AJUSTE_SALIDA'
+            ? stockAnterior.sub(input.cantidad)
+            : stockAnterior.add(input.cantidad)
+        if (
+          tipo === 'AJUSTE_SALIDA' &&
+          stockAnterior.greaterThan(current.stockMinimo) &&
+          stockResultante.lessThanOrEqualTo(current.stockMinimo)
+        ) {
+          await createLowInventoryAlert(
+            {
+              eventAt: movimientoCreated.fechaMovimiento,
+              movementId: movimientoCreated.id,
+              partCode: current.codigo,
+              partId: current.id,
+              stockActual: stockResultante.toNumber(),
+            },
+            tx,
+          )
+        }
 
         const [repuesto, movimiento] = await Promise.all([
           this.findSparePartById(repuestoId, tx),
