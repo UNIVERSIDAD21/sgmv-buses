@@ -23,7 +23,15 @@ const render = readFileSync(resolve(repositoryRoot, 'render.yaml'), 'utf8')
 
 requireCondition(rootPackage.scripts['build:render'], 'Missing root build:render script')
 requireCondition(rootPackage.scripts['build:vercel'], 'Missing root build:vercel script')
+requireCondition(
+  rootPackage.scripts['test:e2e:production'],
+  'Missing root production smoke test script',
+)
 requireCondition(frontendPackage.scripts['build:vercel'], 'Missing frontend build:vercel script')
+requireCondition(
+  frontendPackage.scripts['test:e2e:production'],
+  'Missing frontend production smoke test script',
+)
 requireCondition(backendPackage.scripts['prisma:generate:ci'], 'Missing CI Prisma generation')
 requireCondition(
   backendPackage.scripts['prisma:migrate:deploy:ci'],
