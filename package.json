@@ -16,6 +16,8 @@
     "dev:backend": "npm --workspace @sgmv/backend run dev",
     "dev:backend:local": "npm --workspace @sgmv/backend run dev:local",
     "build": "npm --workspaces run build",
+    "build:render": "npm --workspace @sgmv/backend run prisma:generate:ci && npm --workspace @sgmv/backend run prisma:migrate:deploy:ci && npm --workspace @sgmv/backend run build",
+    "build:vercel": "npm --workspace @sgmv/frontend run build:vercel",
     "build:frontend": "npm --workspace @sgmv/frontend run build",
     "check:bundle": "npm --workspace @sgmv/frontend run check:bundle",
     "lint": "npm --workspaces run lint",
@@ -41,7 +43,8 @@
     "prisma:studio:local": "npm --workspace @sgmv/backend run prisma:studio:local",
     "prisma:validate": "npm --workspace @sgmv/backend run prisma:validate",
     "p12:audit": "node scripts/p12-audit.mjs",
-    "p12:migrations": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/p12-verify-migrations.ps1"
+    "p12:migrations": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/p12-verify-migrations.ps1",
+    "p13:config": "node scripts/p13-verify-deployment-config.mjs"
   },
   "devDependencies": {
     "prettier": "^3.7.4"

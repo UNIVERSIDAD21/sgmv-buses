@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: sgmv-backend
+    runtime: node
+    plan: free
+    region: virginia
+    repo: https://github.com/UNIVERSIDAD21/sgmv-buses
+    branch: realineacion/trazabilidad-operativa-tecnica
+    autoDeployTrigger: commit
+    buildCommand: npm ci --include=dev && npm run build:render
+    startCommand: npm --workspace @sgmv/backend run start
+    healthCheckPath: /ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGIN
+        value: https://v0-bus-fleet-management-neon.vercel.app
+      - key: COOKIE_SECURE
+        value: 'true'
+      - key: COOKIE_SAMESITE
+        value: lax
+      - key: TRUST_PROXY_HOPS
+        value: '1'
+      - key: LOG_LEVEL
+        value: info
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CSRF_SECRET
+        sync: false
+      - key: RATE_LIMIT_SECRET
+        sync: false
