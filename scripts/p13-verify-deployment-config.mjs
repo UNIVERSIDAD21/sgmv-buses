@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -42,6 +42,10 @@ requireCondition(vercel.framework === 'vite', 'Vercel framework must be Vite')
 requireCondition(vercel.outputDirectory === 'dist', 'Vercel output directory must be dist')
 requireCondition(vercel.rewrites?.[0]?.source === '/api/:path*', 'API rewrite must run first')
 requireCondition(vercel.rewrites?.[1]?.destination === '/index.html', 'SPA fallback must run last')
+requireCondition(
+  !existsSync(resolve(repositoryRoot, 'src/frontend/api/[...path].ts')),
+  'The obsolete Vercel API proxy must not coexist with the external rewrite',
+)
 
 for (const fragment of [
   'name: sgmv-backend',
