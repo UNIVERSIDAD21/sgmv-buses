@@ -240,13 +240,11 @@ describe('Auth API', () => {
       .options('/auth/login')
       .set('Origin', 'https://origen-no-autorizado.test')
       .set('Access-Control-Request-Method', 'POST')
-      .expect(204)
+      .expect(200)
 
     expect(allowed.headers['access-control-allow-origin']).toBe(env.CORS_ORIGIN)
     expect(allowed.headers['access-control-allow-credentials']).toBe('true')
-    expect(denied.headers['access-control-allow-origin']).not.toBe(
-      'https://origen-no-autorizado.test',
-    )
+    expect(denied.headers['access-control-allow-origin']).toBeUndefined()
   })
 
   it('starts a valid session with an HttpOnly cookie and sanitized user data', async () => {
