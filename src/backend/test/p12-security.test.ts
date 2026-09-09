@@ -95,6 +95,20 @@ describe('P12 security and RBAC matrix', () => {
   it('rejects unauthenticated, cross-origin and malformed requests safely', async () => {
     const app = createApp()
 
+    const allowedPreflight = await request(app)
+      .options('/auth/login')
+      .set('Origin', env.CORS_ORIGIN)
+      .set('Access-Control-Request-Method', 'POST')
+      .expect(204)
+    expect(allowedPreflight.headers['access-control-allow-origin']).toBe(env.CORS_ORIGIN)
+
+    const rejectedPreflight = await request(app)
+      .options('/auth/login')
+      .set('Origin', 'https://evil.example')
+      .set('Access-Control-Request-Method', 'POST')
+      .expect(200)
+    expect(rejectedPreflight.headers['access-control-allow-origin']).toBeUndefined()
+
     const unauthenticated = await request(app).get('/historial/resumen').expect(401)
     expectSafeError(unauthenticated.body)
 

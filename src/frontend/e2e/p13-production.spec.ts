@@ -41,7 +41,7 @@ async function login(page: Page, email: string) {
     (response) =>
       response.url().endsWith('/api/auth/login') && response.request().method() === 'POST',
   )
-  await page.getByRole('button', { name: /Iniciar sesión/ }).click()
+  await page.getByRole('button', { name: /Ingresar/ }).click()
   const loginResponse = await loginResponsePromise
 
   expect(loginResponse.status()).toBe(200)
@@ -63,6 +63,9 @@ test.describe('P13 production session and role smoke tests', () => {
       const sessionResponse = await page.request.get('/api/auth/me')
       expect(sessionResponse.status()).toBe(200)
 
+      const missingCsrfResponse = await page.request.post('/api/auth/logout')
+      expect(missingCsrfResponse.status()).toBe(403)
+
       const cookies = await page.context().cookies()
       const sessionCookie = cookies.find((cookie) => cookie.name === 'sgmv_session')
       const csrfCookie = cookies.find((cookie) => cookie.name === 'sgmv_csrf')
@@ -75,7 +78,7 @@ test.describe('P13 production session and role smoke tests', () => {
 
       if ('deniedPath' in account) {
         await page.goto(account.deniedPath)
-        await expect(page).toHaveURL(/\/inicio$/)
+        await expect(page).toHaveURL(/\/acceso-denegado$/)
       }
 
       const logoutResponsePromise = page.waitForResponse(

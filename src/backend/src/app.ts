@@ -29,7 +29,9 @@ export function createApp(configureRoutes?: (app: Express) => void) {
   app.use(helmet())
   app.use(
     cors({
-      origin: env.CORS_ORIGIN,
+      origin(origin, callback) {
+        callback(null, !origin || origin === env.CORS_ORIGIN)
+      },
       credentials: true,
     }),
   )
