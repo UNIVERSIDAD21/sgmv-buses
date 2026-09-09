@@ -46,7 +46,7 @@ function code(prefix: string) {
 }
 
 function orderedDates() {
-  const fechaAsignacion = new Date()
+  const fechaAsignacion = new Date(Date.now() + 1000)
   const fechaInicioEjecucion = new Date(fechaAsignacion.getTime() + 1000)
   const fechaCompletadaTecnico = new Date(fechaAsignacion.getTime() + 2000)
   const fechaCierre = new Date(fechaAsignacion.getTime() + 3000)
