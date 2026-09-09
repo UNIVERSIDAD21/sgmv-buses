@@ -235,11 +235,18 @@ function mapTechnicalReading(
   }
 }
 
-function mapSparePart(part: SparePartRecord): WorkOrderSparePartDto {
+function canViewEconomicFields(actor: AuthenticatedUser) {
+  return actor.rol.codigo === 'ADMINISTRADOR'
+}
+
+function mapSparePart(
+  part: SparePartRecord,
+  includeEconomicFields: boolean,
+): WorkOrderSparePartDto {
   return {
     categoria: part.categoria,
     codigo: part.codigo,
-    costoUnitario: decimalToString(part.costoUnitario),
+    ...(includeEconomicFields ? { costoUnitario: decimalToString(part.costoUnitario) } : {}),
     estado: part.estado,
     id: part.id,
     nombre: part.nombre,
@@ -251,8 +258,9 @@ function mapSparePart(part: SparePartRecord): WorkOrderSparePartDto {
 
 function mapAvailableSparePart(
   part: SparePartRecord & { evaluacion: Awaited<ReturnType<typeof resolveCompatibility>> | null },
+  includeEconomicFields: boolean,
 ): AvailableSparePartDto {
-  const base = mapSparePart(part)
+  const base = mapSparePart(part, includeEconomicFields)
   return {
     ...base,
     compatibilidad: {
@@ -267,6 +275,7 @@ function mapAvailableSparePart(
 
 function mapMovement(
   movement: ConsumptionRecord['movimientoInventario'],
+  includeEconomicFields: boolean,
 ): WorkOrderInventoryMovementDto | null {
   if (!movement) {
     return null
@@ -274,7 +283,11 @@ function mapMovement(
 
   return {
     cantidad: decimalToString(movement.cantidad),
-    costoUnitario: movement.costoUnitario ? decimalToString(movement.costoUnitario) : null,
+    ...(includeEconomicFields
+      ? {
+          costoUnitario: movement.costoUnitario ? decimalToString(movement.costoUnitario) : null,
+        }
+      : {}),
     fechaMovimiento: movement.fechaMovimiento.toISOString(),
     id: movement.id,
     motivo: movement.motivo,
@@ -282,22 +295,29 @@ function mapMovement(
   }
 }
 
-function mapConsumption(consumption: ConsumptionRecord): WorkOrderConsumptionDto {
+function mapConsumption(
+  consumption: ConsumptionRecord,
+  includeEconomicFields: boolean,
+): WorkOrderConsumptionDto {
   return {
     autorizadoPorId: consumption.autorizadoPorId,
     autorizacionExcepcionId: consumption.autorizacionExcepcionId,
     cantidad: decimalToString(consumption.cantidad),
-    costoUnitario: decimalToString(consumption.costoUnitario),
+    ...(includeEconomicFields
+      ? {
+          costoUnitario: decimalToString(consumption.costoUnitario),
+          subtotal: decimalToString(consumption.subtotal),
+        }
+      : {}),
     fechaConsumo: consumption.fechaConsumo.toISOString(),
     id: consumption.id,
-    movimientoInventario: mapMovement(consumption.movimientoInventario),
-    repuesto: mapSparePart(consumption.repuesto),
+    movimientoInventario: mapMovement(consumption.movimientoInventario, includeEconomicFields),
+    repuesto: mapSparePart(consumption.repuesto, includeEconomicFields),
     resultadoCompatibilidad: consumption.resultadoCompatibilidad,
     reglaCompatibilidadId: consumption.reglaCompatibilidadId,
     reglaVersion: consumption.reglaVersion,
     evidenciaCompatibilidad: consumption.evidenciaCompatibilidad as Record<string, unknown> | null,
     motivoExcepcion: consumption.motivoExcepcion,
-    subtotal: decimalToString(consumption.subtotal),
   }
 }
 
@@ -346,11 +366,14 @@ function buildActions(order: WorkOrderRecord, actor: AuthenticatedUser): WorkOrd
   }
 }
 
-function mapSummaryOrder(order: WorkOrderRecord): WorkOrderSummaryItemDto {
+function mapSummaryOrder(
+  order: WorkOrderRecord,
+  includeEconomicFields: boolean,
+): WorkOrderSummaryItemDto {
   return {
     bus: mapBus(order.bus),
     codigo: order.codigo,
-    costoTotal: decimalToString(order.costoTotal),
+    ...(includeEconomicFields ? { costoTotal: decimalToString(order.costoTotal) } : {}),
     descripcion: order.descripcion,
     estado: order.estado,
     fechaAsignacion: order.fechaAsignacion?.toISOString() ?? null,
@@ -371,8 +394,10 @@ function mapDetailOrder(
   actor: AuthenticatedUser,
   technicalHistory: WorkOrderTechnicalHistoryItemDto[],
 ): WorkOrderDetailDto {
+  const includeEconomicFields = canViewEconomicFields(actor)
+
   return {
-    ...mapSummaryOrder(order),
+    ...mapSummaryOrder(order, includeEconomicFields),
     acciones: buildActions(order, actor),
     autorizacionesExcepcion: order.autorizacionesExcepcion.map((authorization) => ({
       autorizadoPor: {
@@ -386,10 +411,12 @@ function mapDetailOrder(
       id: authorization.id,
       intervencionId: authorization.intervencionId,
       motivo: authorization.motivo,
-      repuesto: mapSparePart(authorization.repuesto),
+      repuesto: mapSparePart(authorization.repuesto, includeEconomicFields),
     })),
     cerradaPor: mapNullableUser(order.cerradaPor),
-    consumosRepuesto: order.consumosRepuesto.map(mapConsumption),
+    consumosRepuesto: order.consumosRepuesto.map((consumption) =>
+      mapConsumption(consumption, includeEconomicFields),
+    ),
     creadaPor: mapUser(order.creadaPor),
     fechaObjetivoPreventivo: dateColumnToIsoDate(order.fechaObjetivoPreventivo),
     historialEstados: order.estadosHistorial.map(mapStateHistory),
@@ -461,7 +488,7 @@ export class WorkOrderService {
       })
 
       return {
-        orden: this.mapOperationResult(result),
+        orden: this.mapOperationResult(result, actor),
       }
     } catch (error) {
       translatePrismaError(error)
@@ -479,7 +506,7 @@ export class WorkOrderService {
       )
 
       return {
-        orden: this.mapOperationResult(result),
+        orden: this.mapOperationResult(result, actor),
       }
     } catch (error) {
       translatePrismaError(error)
@@ -563,7 +590,7 @@ export class WorkOrderService {
       }
 
       return {
-        consumo: mapConsumption(result.consumo),
+        consumo: mapConsumption(result.consumo, canViewEconomicFields(actor)),
         orden,
         yaExistia: result.status === 'ALREADY_CREATED',
       }
@@ -583,7 +610,7 @@ export class WorkOrderService {
           this.ensureCanReadOrder(order, actor)
 
           return {
-            consumo: mapConsumption(existing),
+            consumo: mapConsumption(existing, canViewEconomicFields(actor)),
             orden: mapDetailOrder(order, actor, []),
             yaExistia: true,
           }
@@ -698,7 +725,7 @@ export class WorkOrderService {
       })
 
       return {
-        orden: this.mapOperationResult(result),
+        orden: this.mapOperationResult(result, actor),
       }
     } catch (error) {
       translatePrismaError(error)
@@ -791,7 +818,7 @@ export class WorkOrderService {
     )
 
     return {
-      repuestos: repuestos.map((part) => mapAvailableSparePart(part)),
+      repuestos: repuestos.map((part) => mapAvailableSparePart(part, canViewEconomicFields(actor))),
     }
   }
 
@@ -826,7 +853,7 @@ export class WorkOrderService {
   ): Promise<WorkOrderListDto> {
     ensureAdmin(actor)
 
-    return this.listOrders(query)
+    return this.listOrders(query, actor)
   }
 
   async listMyOrders(
@@ -835,7 +862,11 @@ export class WorkOrderService {
   ): Promise<WorkOrderListDto> {
     ensureMechanic(actor)
 
-    return this.listOrders(query, actor.id)
+    if (query.ordenarPor === 'costoTotal') {
+      throw new AppError(403, 'FORBIDDEN', 'No tiene permisos para ordenar por costo')
+    }
+
+    return this.listOrders(query, actor, actor.id)
   }
 
   async reassign(orderId: string, input: ReassignWorkOrderInput, actor: AuthenticatedUser) {
@@ -848,7 +879,7 @@ export class WorkOrderService {
       })
 
       return {
-        orden: this.mapOperationResult(result),
+        orden: this.mapOperationResult(result, actor),
       }
     } catch (error) {
       translatePrismaError(error)
@@ -888,7 +919,7 @@ export class WorkOrderService {
       )
 
       return {
-        orden: this.mapOperationResult(result),
+        orden: this.mapOperationResult(result, actor),
       }
     } catch (error) {
       translatePrismaError(error)
@@ -1121,7 +1152,11 @@ export class WorkOrderService {
     )
   }
 
-  private async listOrders(query: ListWorkOrdersQuery, tecnicoId?: string) {
+  private async listOrders(
+    query: ListWorkOrdersQuery,
+    actor: AuthenticatedUser,
+    tecnicoId?: string,
+  ) {
     const where = this.createWhere(query, tecnicoId)
     const skip = (query.pagina - 1) * query.limite
     const [total, orders] = await Promise.all([
@@ -1130,7 +1165,7 @@ export class WorkOrderService {
     ])
 
     return {
-      ordenes: orders.map(mapSummaryOrder),
+      ordenes: orders.map((order) => mapSummaryOrder(order, canViewEconomicFields(actor))),
       paginacion: {
         limite: query.limite,
         pagina: query.pagina,
@@ -1145,7 +1180,7 @@ export class WorkOrderService {
       orden: WorkOrderRecord | null
       status: string
     },
-    actor?: AuthenticatedUser,
+    actor: AuthenticatedUser,
   ) {
     if (result.status === 'BUS_NOT_FOUND') {
       throw new AppError(404, 'BUS_NOT_FOUND', 'Bus no encontrado')
@@ -1271,17 +1306,6 @@ export class WorkOrderService {
       )
     }
 
-    const viewer = actor ?? {
-      email: '',
-      estado: 'ACTIVO' as const,
-      id: '',
-      nombre: '',
-      rol: {
-        codigo: 'ADMINISTRADOR' as const,
-        nombre: 'Administrador',
-      },
-    }
-
-    return mapDetailOrder(result.orden, viewer, [])
+    return mapDetailOrder(result.orden, actor, [])
   }
 }

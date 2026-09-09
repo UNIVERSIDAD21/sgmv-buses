@@ -27,6 +27,10 @@ const created = {
   usuarios: [] as string[],
 }
 
+function expectNoEconomicFields(value: unknown) {
+  expect(JSON.stringify(value)).not.toMatch(/"(?:costoTotal|costoUnitario|subtotal)"\s*:/)
+}
+
 interface WorkOrderFixture {
   adminEmail: string
   adminId: string
@@ -792,6 +796,7 @@ describe('RF-04 Work order tracking API', () => {
       const ownList = await mecanico.get('/ordenes-trabajo/mis-ordenes').expect(200)
       const ownIds = ownList.body.data.ordenes.map((item: { id: string }) => item.id)
       const summary = await mecanico.get('/ordenes-trabajo/resumen').expect(200)
+      const ownDetail = await mecanico.get(`/ordenes-trabajo/${ownOrder.id}`).expect(200)
 
       expect(adminList.body.data.ordenes).toHaveLength(1)
       expect(adminList.body.data.ordenes[0].id).toBe(ownOrder.id)
@@ -799,8 +804,15 @@ describe('RF-04 Work order tracking API', () => {
       expect(ownIds).not.toContain(foreignOrder.id)
       expect(summary.body.data.total).toBeGreaterThanOrEqual(1)
       expect(JSON.stringify(adminList.body)).not.toContain('contrasena')
+      expect(adminList.body.data.ordenes[0]).toHaveProperty('costoTotal')
+      expectNoEconomicFields(ownList.body.data.ordenes)
+      expectNoEconomicFields(ownDetail.body.data.orden)
 
       await mecanico.get(`/ordenes-trabajo/${foreignOrder.id}`).expect(403)
+      await mecanico
+        .get('/ordenes-trabajo/mis-ordenes')
+        .query({ ordenarPor: 'costoTotal' })
+        .expect(403)
     },
     rf04TestTimeout,
   )
@@ -894,6 +906,7 @@ describe('RF-04 Work order tracking API', () => {
       expect(updated.body.data.orden.intervenciones[0].diagnostico).toBe(
         'Diagnostico tecnico registrado en RF-04',
       )
+      expectNoEconomicFields(updated.body.data.orden)
 
       await mecanico
         .post(`/ordenes-trabajo/${order.id}/actividades`)
@@ -909,6 +922,7 @@ describe('RF-04 Work order tracking API', () => {
       expect(activity.body.data.orden.intervenciones[0].actividades[0].registradaPor.id).toBe(
         fixture.mecanicoId,
       )
+      expectNoEconomicFields(activity.body.data.orden)
     },
     rf04TestTimeout,
   )
@@ -921,6 +935,11 @@ describe('RF-04 Work order tracking API', () => {
       await allowPartForBus(repuesto.id, order.busId, fixture.adminId)
       const inactivePart = await createRepuesto({ estado: 'INACTIVO', stockActual: '5' })
       const claveIdempotencia = randomUUID()
+      const availableParts = await mecanico
+        .get(`/ordenes-trabajo/${order.id}/repuestos-disponibles`)
+        .expect(200)
+
+      expectNoEconomicFields(availableParts.body.data.repuestos)
 
       await mecanico
         .post(`/ordenes-trabajo/${order.id}/consumos`)
@@ -941,10 +960,15 @@ describe('RF-04 Work order tracking API', () => {
         })
         .expect(201)
 
-      expect(first.body.data.consumo.costoUnitario).toBe('123.45')
-      expect(first.body.data.consumo.subtotal).toBe('185.18')
       expect(first.body.data.consumo.movimientoInventario.tipo).toBe('CONSUMO')
-      expect(first.body.data.orden.costoTotal).toBe('185.18')
+      expectNoEconomicFields(first.body.data.consumo)
+      expectNoEconomicFields(first.body.data.orden)
+
+      const admin = await loginAgent(fixture.adminEmail)
+      const adminDetail = await admin.get(`/ordenes-trabajo/${order.id}`).expect(200)
+      expect(adminDetail.body.data.orden.costoTotal).toBe('185.18')
+      expect(adminDetail.body.data.orden.consumosRepuesto[0].costoUnitario).toBe('123.45')
+      expect(adminDetail.body.data.orden.consumosRepuesto[0].subtotal).toBe('185.18')
 
       const repeated = await mecanico
         .post(`/ordenes-trabajo/${order.id}/consumos`)
@@ -958,6 +982,7 @@ describe('RF-04 Work order tracking API', () => {
       expect(repeated.headers['idempotency-replayed']).toBe('true')
       expect(repeated.body).toEqual(first.body)
       expect(repeated.body.data.consumo.id).toBe(first.body.data.consumo.id)
+      expectNoEconomicFields(repeated.body.data)
 
       await mecanico
         .post(`/ordenes-trabajo/${order.id}/consumos`)

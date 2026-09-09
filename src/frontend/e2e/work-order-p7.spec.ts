@@ -125,6 +125,8 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
   expect(createdOrder.programacionMantenimientoId).toBeNull()
   const detailDialog = page.getByRole('dialog', { name: 'Detalle de orden' })
   await expect(detailDialog.getByText('Correctiva directa', { exact: true })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: 'Costo' })).toBeVisible()
+  await expect(detailDialog.getByText('Costo basico')).toBeVisible()
 
   await detailDialog.getByRole('button', { name: 'Asignar' }).click()
   const assignDialog = page.getByRole('dialog', { name: 'Asignar mecanico' })
@@ -134,6 +136,26 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
 
   await login(page, 'mecanico.demo@sgmv.local')
   await openOrder(page, marker)
+  const mechanicDialog = page.getByRole('dialog', { name: 'Detalle de orden' })
+  await expect(page.getByRole('columnheader', { name: 'Costo' })).toHaveCount(0)
+  await expect(page.getByRole('option', { name: 'Costo' })).toHaveCount(0)
+  await expect(mechanicDialog.getByText('Costo basico')).toHaveCount(0)
+  await expect(mechanicDialog.getByText('Consumos y costo')).toHaveCount(0)
+
+  const mechanicResponses = await page.evaluate(async (id) => {
+    const [listResponse, detailResponse] = await Promise.all([
+      fetch('http://localhost:4000/ordenes-trabajo/mis-ordenes?limite=8&pagina=1', {
+        credentials: 'include',
+      }),
+      fetch(`http://localhost:4000/ordenes-trabajo/${id}`, { credentials: 'include' }),
+    ])
+
+    return Promise.all([listResponse.json(), detailResponse.json()])
+  }, orderId)
+  expect(JSON.stringify(mechanicResponses)).not.toMatch(
+    /"(?:costoTotal|costoUnitario|subtotal)"\s*:/,
+  )
+
   const baseTime = Date.now() - 3 * 60_000
   await registerReading(page, {
     date: new Date(baseTime),

@@ -93,7 +93,7 @@ export interface WorkOrderInterventionDto {
 
 export interface WorkOrderInventoryMovementDto {
   cantidad: string
-  costoUnitario: string | null
+  costoUnitario?: string | null
   fechaMovimiento: string
   id: string
   motivo: string | null
@@ -103,7 +103,7 @@ export interface WorkOrderInventoryMovementDto {
 export interface WorkOrderSparePartDto {
   categoria: string | null
   codigo: string
-  costoUnitario: string
+  costoUnitario?: string
   estado: EstadoRepuesto
   id: string
   nombre: string
@@ -116,7 +116,7 @@ export interface WorkOrderConsumptionDto {
   autorizadoPorId: string | null
   autorizacionExcepcionId: string | null
   cantidad: string
-  costoUnitario: string
+  costoUnitario?: string
   fechaConsumo: string
   id: string
   movimientoInventario: WorkOrderInventoryMovementDto | null
@@ -126,7 +126,7 @@ export interface WorkOrderConsumptionDto {
   reglaVersion: number | null
   evidenciaCompatibilidad: Record<string, unknown> | null
   motivoExcepcion: string | null
-  subtotal: string
+  subtotal?: string
 }
 
 export interface WorkOrderConsumptionAuthorizationDto {
@@ -188,7 +188,7 @@ export interface WorkOrderActionFlagsDto {
 export interface WorkOrderSummaryItemDto {
   bus: WorkOrderBusDto
   codigo: string
-  costoTotal: string
+  costoTotal?: string
   descripcion: string
   estado: EstadoOrdenTrabajo
   fechaAsignacion: string | null

@@ -590,7 +590,8 @@ function CloseDialog({
     <ModalFrame onClose={onClose} subtitle={order.codigo} title="Cerrar orden">
       <form className="space-y-4 p-5" onSubmit={handleSubmit}>
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-          Costo basico validado: {formatCurrency(order.costoTotal)}. El estado cerrado es terminal.
+          Costo basico validado: {formatCurrency(order.costoTotal ?? 0)}. El estado cerrado es
+          terminal.
         </div>
         <label className="block text-sm font-medium text-slate-700">
           Observacion de cierre
@@ -1536,7 +1537,9 @@ function WorkOrderDetail({
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2">
-        <FieldValue label="Costo basico">{formatCurrency(order.costoTotal)}</FieldValue>
+        {isAdmin && (
+          <FieldValue label="Costo basico">{formatCurrency(order.costoTotal ?? 0)}</FieldValue>
+        )}
         <FieldValue label="Responsable cierre">
           {order.cerradaPor?.nombre ?? 'Sin cierre administrativo'}
         </FieldValue>
@@ -1597,7 +1600,9 @@ function WorkOrderDetail({
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <h3 className="text-xs font-semibold uppercase text-slate-500">Consumos y costo</h3>
+        <h3 className="text-xs font-semibold uppercase text-slate-500">
+          {isAdmin ? 'Consumos y costo' : 'Consumos'}
+        </h3>
         {order.consumosRepuesto.length === 0 ? (
           <div className="mt-3">
             <TimelineEmpty text="No se han registrado consumos de repuestos." />
@@ -1606,14 +1611,18 @@ function WorkOrderDetail({
           <div className="mt-3 space-y-2">
             {order.consumosRepuesto.map((consumption) => (
               <div
-                className="grid gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 sm:grid-cols-[1fr_90px_110px]"
+                className={`grid gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 ${
+                  isAdmin ? 'sm:grid-cols-[1fr_90px_110px]' : 'sm:grid-cols-[1fr_90px]'
+                }`}
                 key={consumption.id}
               >
                 <span>
                   {consumption.repuesto.codigo} - {consumption.repuesto.nombre}
                 </span>
                 <span>{consumption.cantidad}</span>
-                <span className="font-semibold">{formatCurrency(consumption.subtotal)}</span>
+                {isAdmin && (
+                  <span className="font-semibold">{formatCurrency(consumption.subtotal ?? 0)}</span>
+                )}
               </div>
             ))}
           </div>
@@ -1754,6 +1763,9 @@ export default function WorkOrderPage() {
 
   const isAdmin = user?.rol.codigo === 'ADMINISTRADOR'
   const isMechanic = user?.rol.codigo === 'MECANICO'
+  const availableSortOptions = isAdmin
+    ? sortOptions
+    : sortOptions.filter(([value]) => value !== 'costoTotal')
 
   const listParams = useMemo(
     () => ({
@@ -2031,7 +2043,7 @@ export default function WorkOrderPage() {
                 onChange={(event) => setOrdenarPor(event.target.value as SortField)}
                 value={ordenarPor}
               >
-                {sortOptions.map(([value, label]) => (
+                {availableSortOptions.map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
@@ -2177,7 +2189,7 @@ export default function WorkOrderPage() {
                       <th className="px-4 py-3">Origen</th>
                       <th className="px-4 py-3">Estado</th>
                       <th className="px-4 py-3">Mecanico</th>
-                      <th className="px-4 py-3 text-right">Costo</th>
+                      {isAdmin && <th className="px-4 py-3 text-right">Costo</th>}
                       <th className="px-4 py-3 text-right">Acciones</th>
                     </tr>
                   </thead>
@@ -2208,9 +2220,11 @@ export default function WorkOrderPage() {
                         <td className="px-4 py-3 text-slate-600">
                           {order.tecnicoAsignado?.nombre ?? 'Sin asignar'}
                         </td>
-                        <td className="px-4 py-3 text-right font-semibold text-slate-700">
-                          {formatCurrency(order.costoTotal)}
-                        </td>
+                        {isAdmin && (
+                          <td className="px-4 py-3 text-right font-semibold text-slate-700">
+                            {formatCurrency(order.costoTotal ?? 0)}
+                          </td>
+                        )}
                         <td className="px-4 py-3">
                           <div className="flex justify-end">
                             <Button

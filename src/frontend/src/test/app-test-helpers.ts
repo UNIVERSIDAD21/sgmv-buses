@@ -794,6 +794,18 @@ export function workOrderList(order: ReturnType<typeof createWorkOrderDetail>) {
   }
 }
 
+const restrictedEconomicFields = new Set(['costoTotal', 'costoUnitario', 'subtotal'])
+
+function projectWorkOrderForRole<T>(value: T, role: RoleCode): T {
+  if (role === 'ADMINISTRADOR') return value
+
+  return JSON.parse(
+    JSON.stringify(value, (key, nestedValue) =>
+      restrictedEconomicFields.has(key) ? undefined : nestedValue,
+    ),
+  ) as T
+}
+
 export function workOrderHandler(
   role: RoleCode = 'ADMINISTRADOR',
   options: Partial<{ empty: boolean; failList: boolean; initialStatus: string }> = {},
@@ -801,10 +813,13 @@ export function workOrderHandler(
   let order = createWorkOrderDetail(options.initialStatus ?? 'PENDIENTE_ASIGNACION')
 
   function decoratedOrder() {
-    return {
-      ...order,
-      acciones: workOrderActions(order, role),
-    }
+    return projectWorkOrderForRole(
+      {
+        ...order,
+        acciones: workOrderActions(order, role),
+      },
+      role,
+    )
   }
 
   function appendHistory(estadoAnterior: string, estadoNuevo: string) {
@@ -1031,7 +1046,7 @@ export function workOrderHandler(
     }
 
     if (path.endsWith('/repuestos-disponibles')) {
-      return ok({ repuestos: [workOrderAvailablePart] })
+      return ok({ repuestos: [projectWorkOrderForRole(workOrderAvailablePart, role)] })
     }
 
     if (path.endsWith('/excepciones-consumo') && init?.method === 'POST') {
@@ -1096,7 +1111,11 @@ export function workOrderHandler(
         costoTotal: '120000.00',
       }
 
-      return ok({ consumo: order.consumosRepuesto[0], orden: decoratedOrder(), yaExistia: false })
+      return ok({
+        consumo: projectWorkOrderForRole(order.consumosRepuesto[0], role),
+        orden: decoratedOrder(),
+        yaExistia: false,
+      })
     }
 
     if (path.endsWith('/lecturas') && init?.method === 'POST') {

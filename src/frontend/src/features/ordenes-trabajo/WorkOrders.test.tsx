@@ -40,6 +40,8 @@ describe('RF-04 work order frontend', () => {
     ).toBeInTheDocument()
     expect((await screen.findAllByText('OT-RF04-001')).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Pendiente de asignacion/i).length).toBeGreaterThan(0)
+    expect(screen.getByRole('columnheader', { name: /^Costo$/i })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /^Costo$/i })).toBeInTheDocument()
 
     fireEvent.change(screen.getByPlaceholderText(/Buscar por codigo/i), {
       target: { value: 'frenos' },
@@ -157,8 +159,12 @@ describe('RF-04 work order frontend', () => {
     render(<App />)
 
     expect((await screen.findAllByText('OT-RF04-001')).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('columnheader', { name: /^Costo$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /^Costo$/i })).not.toBeInTheDocument()
     fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
     expect(await screen.findByText(/Ejecucion tecnica/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Costo basico/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Consumos y costo/i)).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText(/^Fecha del evento$/i), {
       target: { value: '2026-08-28T12:06' },
