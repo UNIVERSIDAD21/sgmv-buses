@@ -3,10 +3,12 @@ import { createHmac, randomUUID } from 'node:crypto'
 import { Prisma, PrismaClient, type Rol } from '@prisma/client'
 import { hash } from 'bcryptjs'
 import request from 'supertest'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { createApp } from '../src/app.js'
 import { env } from '../src/config/env.js'
+import { prisma as appPrisma } from '../src/prisma/client.js'
+import { listDispatchProjections } from '../src/work-orders/dispatch-projection.js'
 import { createCsrfAgent } from './http-test-client.js'
 
 const prisma = new PrismaClient()
@@ -562,6 +564,42 @@ async function cleanup() {
 
 describe('RF-04 Work order tracking API', () => {
   let fixture: WorkOrderFixture
+
+  it('mantiene un snapshot real aunque otro cliente bloquee el bus entre lecturas', async () => {
+    const bus = await createBus()
+    const order = await createPendingCorrectiveOrder(fixture, { busId: bus.id })
+    const transaction = vi.spyOn(appPrisma, '$transaction').mockImplementation((async (
+      callback: (tx: Prisma.TransactionClient) => Promise<unknown>,
+      options: { isolationLevel?: Prisma.TransactionIsolationLevel },
+    ) =>
+      prisma.$transaction(async (tx) => {
+        const readOrders = tx.ordenTrabajo.findMany.bind(tx.ordenTrabajo)
+        const read = vi.spyOn(tx.ordenTrabajo, 'findMany').mockImplementationOnce(async (args) => {
+          const rows = await readOrders(args)
+          // Independent connection commits after the projection's snapshot was acquired.
+          await prisma.bus.update({
+            where: { id: bus.id },
+            data: { estadoOperativo: 'FUERA_DE_SERVICIO' },
+          })
+          return rows
+        })
+        try {
+          return await callback(tx)
+        } finally {
+          read.mockRestore()
+        }
+      }, options)) as never)
+    try {
+      const rows = await listDispatchProjections()
+      expect(rows.find((row) => row.orden.id === order.id)?.disponibilidad.disponible).toBe(true)
+    } finally {
+      transaction.mockRestore()
+    }
+    const fresh = await listDispatchProjections()
+    expect(fresh.find((row) => row.orden.id === order.id)?.disponibilidad.causaPrincipal).toBe(
+      'BUS_FUERA_DE_SERVICIO',
+    )
+  })
 
   beforeAll(async () => {
     fixture = await createFixture()

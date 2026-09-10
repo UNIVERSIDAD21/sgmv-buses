@@ -29,6 +29,7 @@ import {
 } from '../preventive/preventive-cycle.js'
 import { reassignableWorkOrderStates } from './work-order.state.js'
 import { resolveCompatibility } from '../spare-parts/compatibility.resolver.js'
+import { listDispatchProjections } from './dispatch-projection.js'
 
 type WorkOrderDbClient = Prisma.TransactionClient | typeof prisma
 
@@ -268,57 +269,7 @@ export interface DispatchOrderProjectionRecord {
 
 export class WorkOrderRepository {
   listDispatchProjections(): Promise<DispatchOrderProjectionRecord[]> {
-    return this.buildDispatchProjections()
-  }
-
-  private async buildDispatchProjections(): Promise<DispatchOrderProjectionRecord[]> {
-    const orders = await prisma.ordenTrabajo.findMany({
-      orderBy: { fechaCreacion: 'desc' },
-      select: {
-        bus: { select: { codigoInterno: true, id: true, placa: true } },
-        busId: true,
-        codigo: true,
-        disponibilidadAlCierre: true,
-        estado: true,
-        fechaCierre: true,
-        id: true,
-        jornadaOperativaId: true,
-      },
-      take: 100,
-    })
-    const evaluatedAt = new Date()
-    const availabilityByScope = new Map<string, ReturnType<typeof getAvailabilityRecords>>()
-
-    return Promise.all(
-      orders.map(async (order) => {
-        const scopeKey = `${order.busId}:${order.jornadaOperativaId ?? ''}`
-        let availability = availabilityByScope.get(scopeKey)
-
-        if (!availability) {
-          availability = getAvailabilityRecords(
-            {
-              busId: order.busId,
-              eventDate: evaluatedAt,
-              journeyId: order.jornadaOperativaId,
-            },
-            prisma,
-          )
-          availabilityByScope.set(scopeKey, availability)
-        }
-
-        return {
-          disponibilidad: buildAvailability(await availability),
-          orden: {
-            bus: order.bus,
-            codigo: order.codigo,
-            disponibilidadAlCierre: order.disponibilidadAlCierre,
-            estado: order.estado,
-            fechaCierre: order.fechaCierre,
-            id: order.id,
-          },
-        }
-      }),
-    )
+    return listDispatchProjections()
   }
 
   countOrders(where: Prisma.OrdenTrabajoWhereInput = {}) {
