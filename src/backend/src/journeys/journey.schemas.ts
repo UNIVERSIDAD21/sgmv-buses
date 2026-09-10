@@ -38,10 +38,13 @@ export const listJourneysQuerySchema = z
     pagina: z.coerce.number().int().min(1).default(1),
     rutaId: uuid.optional(),
   })
-  .refine((value) => !value.desde || !value.hasta || value.desde <= value.hasta, {
-    message: 'El intervalo de consulta no es valido',
-    path: ['hasta'],
-  })
+  .refine(
+    (value) => !value.desde || !value.hasta || Date.parse(value.desde) <= Date.parse(value.hasta),
+    {
+      message: 'El intervalo de consulta no es valido',
+      path: ['hasta'],
+    },
+  )
 
 export const createJourneySchema = z
   .object({
@@ -52,7 +55,7 @@ export const createJourneySchema = z
     rutaId: uuid.optional(),
   })
   .strict()
-  .refine((value) => value.inicioProgramado < value.finProgramado, {
+  .refine((value) => Date.parse(value.inicioProgramado) < Date.parse(value.finProgramado), {
     message: 'El inicio programado debe ser anterior al fin programado',
     path: ['finProgramado'],
   })
