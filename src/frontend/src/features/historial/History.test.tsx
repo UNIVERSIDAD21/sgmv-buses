@@ -1,8 +1,15 @@
 // History and reports module regression
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { mockApi, historyHandler } from '../../test/app-test-helpers'
+import {
+  mockApi,
+  historyHandler,
+  jsonResponse,
+  historyBus,
+  historyDetail,
+  ok,
+} from '../../test/app-test-helpers'
 import App from '../../App'
 
 beforeEach(() => {
@@ -14,6 +21,81 @@ afterEach(() => {
 })
 
 describe('RF-06 history and reports frontend', () => {
+  it('no reemplaza el detalle vigente por una selección anterior lenta', async () => {
+    window.history.pushState({}, '', '/historial')
+    const handler = historyHandler('DESPACHADOR')
+    let releaseOld!: () => void
+    const delayed = new Promise<void>((resolve) => {
+      releaseOld = resolve
+    })
+    let oldStarted = false
+    mockApi(async (path) => {
+      if (path === '/historial/buses')
+        return ok({
+          buses: [historyBus, { ...historyBus, id: 'bus-second', codigoInterno: 'BUS-SEGUNDO' }],
+          paginacion: { limite: 10, pagina: 1, total: 2, totalPaginas: 1 },
+        })
+      if (path === `/historial/buses/${historyBus.id}`) {
+        oldStarted = true
+        await delayed
+        return ok(historyDetail('DESPACHADOR'))
+      }
+      if (path === '/historial/buses/bus-second') {
+        const detail = historyDetail('DESPACHADOR')
+        return ok({
+          ...detail,
+          bus: { ...detail.bus, id: 'bus-second', codigoInterno: 'BUS-SEGUNDO' },
+        })
+      }
+      return handler(path)
+    })
+    render(<App />)
+    const buttons = await screen.findAllByRole('button', { name: /Ver detalle/i })
+    fireEvent.click(buttons[0])
+    await waitFor(() => expect(oldStarted).toBe(true))
+    fireEvent.click(buttons[1])
+    const detail = await screen.findByTestId('history-detail')
+    expect(within(detail).getByText(/BUS-SEGUNDO/)).toBeInTheDocument()
+    await act(async () => {
+      releaseOld()
+      await delayed
+    })
+    expect(within(detail).getByText(/BUS-SEGUNDO/)).toBeInTheDocument()
+  })
+
+  it('conserva el filtro más reciente cuando una respuesta anterior llega tarde', async () => {
+    window.history.pushState({}, '', '/historial')
+    const handler = historyHandler('DESPACHADOR')
+    let busReads = 0
+    let releaseOld!: () => void
+    const delayed = new Promise<void>((resolve) => {
+      releaseOld = resolve
+    })
+    mockApi(async (path) => {
+      const response = await handler(path)
+      if (path !== '/historial/buses') return response
+      const read = ++busReads
+      const body = await response.json()
+      body.data.buses[0].codigoInterno = read === 2 ? 'BUS-ANTERIOR' : 'BUS-VIGENTE'
+      if (read === 2) await delayed
+      return jsonResponse(body)
+    })
+    render(<App />)
+    await screen.findByText('BUS-VIGENTE')
+    fireEvent.change(screen.getByLabelText('Buscar bus'), { target: { value: 'anterior' } })
+    fireEvent.click(screen.getByRole('button', { name: /Aplicar filtros/i }))
+    await waitFor(() => expect(busReads).toBe(2))
+    fireEvent.change(screen.getByLabelText('Buscar bus'), { target: { value: 'vigente' } })
+    fireEvent.click(screen.getByRole('button', { name: /Aplicar filtros/i }))
+    await waitFor(() => expect(busReads).toBe(3))
+    await act(async () => {
+      releaseOld()
+      await delayed
+    })
+    expect(screen.queryByText('BUS-ANTERIOR')).not.toBeInTheDocument()
+    expect(screen.getByText('BUS-VIGENTE')).toBeInTheDocument()
+  })
+
   it('loads the administrative history, filters, detail and three derived reports', async () => {
     window.history.pushState({}, '', '/historial')
     const fetchMock = mockApi(historyHandler('ADMINISTRADOR'))

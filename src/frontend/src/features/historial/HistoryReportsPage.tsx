@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -812,6 +812,8 @@ export default function HistoryReportsPage() {
   const [loading, setLoading] = useState(true)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const loadVersion = useRef(0)
+  const detailVersion = useRef(0)
   const role = user?.rol.codigo
   const isAdmin = role === 'ADMINISTRADOR'
   const isDispatcher = role === 'DESPACHADOR'
@@ -821,6 +823,7 @@ export default function HistoryReportsPage() {
       return
     }
 
+    const version = ++loadVersion.current
     setLoading(true)
     setError(null)
 
@@ -830,6 +833,7 @@ export default function HistoryReportsPage() {
           getHistorySummary(filters),
           getMyBusHistory(filters),
         ])
+        if (version !== loadVersion.current) return
         setSummary(summaryResult)
         setDetail(myBus.historial)
         setBuses([])
@@ -838,6 +842,7 @@ export default function HistoryReportsPage() {
           getHistorySummary(filters),
           listHistoryBuses(filters),
         ])
+        if (version !== loadVersion.current) return
         setSummary(summaryResult)
         setBuses(busResult.buses)
 
@@ -847,15 +852,16 @@ export default function HistoryReportsPage() {
             getPartsReport(filters),
             getCostReport(filters),
           ])
+          if (version !== loadVersion.current) return
           setMaintenance(maintenanceResult)
           setParts(partsResult)
           setCosts(costsResult)
         }
       }
     } catch (requestError) {
-      setError(errorMessage(requestError))
+      if (version === loadVersion.current) setError(errorMessage(requestError))
     } finally {
-      setLoading(false)
+      if (version === loadVersion.current) setLoading(false)
     }
   }, [filters, role])
 
@@ -874,19 +880,23 @@ export default function HistoryReportsPage() {
 
     return () => {
       active = false
+      loadVersion.current += 1
+      detailVersion.current += 1
     }
   }, [load])
 
   const openDetail = async (busId: string) => {
+    const version = ++detailVersion.current
     setLoadingId(busId)
     setError(null)
 
     try {
-      setDetail(await getBusHistory(busId, filters))
+      const result = await getBusHistory(busId, filters)
+      if (version === detailVersion.current) setDetail(result)
     } catch (requestError) {
-      setError(errorMessage(requestError))
+      if (version === detailVersion.current) setError(errorMessage(requestError))
     } finally {
-      setLoadingId(null)
+      if (version === detailVersion.current) setLoadingId(null)
     }
   }
 
@@ -898,13 +908,19 @@ export default function HistoryReportsPage() {
       return
     }
 
+    loadVersion.current += 1
+    detailVersion.current += 1
+    setLoadingId(null)
     setDetail(role === 'CONDUCTOR' ? detail : null)
     setFilters({ ...draft, pagina: 1 })
   }
 
   const clearFilters = () => {
+    loadVersion.current += 1
+    detailVersion.current += 1
+    setLoadingId(null)
     setDraft(initialFilters)
-    setFilters(initialFilters)
+    setFilters({ ...initialFilters })
     setDetail(role === 'CONDUCTOR' ? detail : null)
     setError(null)
   }
