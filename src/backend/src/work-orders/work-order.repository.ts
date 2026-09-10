@@ -268,46 +268,56 @@ export interface DispatchOrderProjectionRecord {
 
 export class WorkOrderRepository {
   listDispatchProjections(): Promise<DispatchOrderProjectionRecord[]> {
-    return prisma.$transaction(
-      async (tx) => {
-        const orders = await tx.ordenTrabajo.findMany({
-          orderBy: { fechaCreacion: 'desc' },
-          select: {
-            bus: { select: { codigoInterno: true, id: true, placa: true } },
-            busId: true,
-            codigo: true,
-            disponibilidadAlCierre: true,
-            estado: true,
-            fechaCierre: true,
-            id: true,
-            jornadaOperativaId: true,
-          },
-          take: 100,
-        })
-        return Promise.all(
-          orders.map(async (order) => ({
-            disponibilidad: buildAvailability(
-              await getAvailabilityRecords(
-                {
-                  busId: order.busId,
-                  eventDate: new Date(),
-                  journeyId: order.jornadaOperativaId,
-                },
-                tx,
-              ),
-            ),
-            orden: {
-              bus: order.bus,
-              codigo: order.codigo,
-              disponibilidadAlCierre: order.disponibilidadAlCierre,
-              estado: order.estado,
-              fechaCierre: order.fechaCierre,
-              id: order.id,
-            },
-          })),
-        )
+    return this.buildDispatchProjections()
+  }
+
+  private async buildDispatchProjections(): Promise<DispatchOrderProjectionRecord[]> {
+    const orders = await prisma.ordenTrabajo.findMany({
+      orderBy: { fechaCreacion: 'desc' },
+      select: {
+        bus: { select: { codigoInterno: true, id: true, placa: true } },
+        busId: true,
+        codigo: true,
+        disponibilidadAlCierre: true,
+        estado: true,
+        fechaCierre: true,
+        id: true,
+        jornadaOperativaId: true,
       },
-      { maxWait: 15000, timeout: 60000 },
+      take: 100,
+    })
+    const evaluatedAt = new Date()
+    const availabilityByScope = new Map<string, ReturnType<typeof getAvailabilityRecords>>()
+
+    return Promise.all(
+      orders.map(async (order) => {
+        const scopeKey = `${order.busId}:${order.jornadaOperativaId ?? ''}`
+        let availability = availabilityByScope.get(scopeKey)
+
+        if (!availability) {
+          availability = getAvailabilityRecords(
+            {
+              busId: order.busId,
+              eventDate: evaluatedAt,
+              journeyId: order.jornadaOperativaId,
+            },
+            prisma,
+          )
+          availabilityByScope.set(scopeKey, availability)
+        }
+
+        return {
+          disponibilidad: buildAvailability(await availability),
+          orden: {
+            bus: order.bus,
+            codigo: order.codigo,
+            disponibilidadAlCierre: order.disponibilidadAlCierre,
+            estado: order.estado,
+            fechaCierre: order.fechaCierre,
+            id: order.id,
+          },
+        }
+      }),
     )
   }
 

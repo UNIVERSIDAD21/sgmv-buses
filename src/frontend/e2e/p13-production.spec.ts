@@ -52,6 +52,28 @@ async function login(page: Page, email: string) {
   }>
 }
 
+function expectNoEconomicFields(value: unknown) {
+  expect(JSON.stringify(value)).not.toMatch(/"(?:costoTotal|costoUnitario|subtotal)"\s*:/)
+}
+
+async function getWithRetry(page: Page, path: string) {
+  let lastError: unknown
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await page.request.get(path)
+      if (response.status() < 500 || attempt === 3) return response
+    } catch (error) {
+      lastError = error
+      if (attempt === 3) throw error
+    }
+
+    await page.waitForTimeout(attempt * 1000)
+  }
+
+  throw lastError
+}
+
 test.describe('P13 production session and role smoke tests', () => {
   test.describe.configure({ mode: 'serial' })
 
@@ -75,6 +97,41 @@ test.describe('P13 production session and role smoke tests', () => {
 
       await page.goto(account.allowedPath)
       await expect(page).toHaveURL(new RegExp(`${account.allowedPath.replace('/', '\\/')}$`))
+
+      if (account.role === 'ADMINISTRADOR') {
+        const response = await getWithRetry(page, '/api/ordenes-trabajo?limite=10&pagina=1')
+        expect(response.status()).toBe(200)
+        expect(JSON.stringify(await response.json())).toMatch(/"costoTotal"\s*:/)
+      }
+
+      if (account.role === 'MECANICO') {
+        await expect(page.getByRole('columnheader', { name: /^Costo$/i })).toHaveCount(0)
+        await expect(page.getByRole('option', { name: /^Costo$/i })).toHaveCount(0)
+        const listResponse = await getWithRetry(
+          page,
+          '/api/ordenes-trabajo/mis-ordenes?limite=10&pagina=1',
+        )
+        expect(listResponse.status()).toBe(200)
+        const listBody = await listResponse.json()
+        expectNoEconomicFields(listBody)
+        const firstOrderId = listBody.data?.ordenes?.[0]?.id as string | undefined
+        if (firstOrderId) {
+          const detailResponse = await getWithRetry(page, `/api/ordenes-trabajo/${firstOrderId}`)
+          expect(detailResponse.status()).toBe(200)
+          expectNoEconomicFields(await detailResponse.json())
+        }
+      }
+
+      if (account.role === 'DESPACHADOR') {
+        const response = await getWithRetry(page, '/api/ordenes-trabajo/despacho')
+        expect(response.status()).toBe(200)
+        expectNoEconomicFields(await response.json())
+      }
+
+      if (account.role === 'CONDUCTOR') {
+        expect((await page.request.get('/api/ordenes-trabajo')).status()).toBe(403)
+        expect((await page.request.get('/api/ordenes-trabajo/resumen')).status()).toBe(403)
+      }
 
       if ('deniedPath' in account) {
         await page.goto(account.deniedPath)

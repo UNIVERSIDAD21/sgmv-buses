@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client'
+import type { Prisma, PrismaClient } from '@prisma/client'
 
 import type { AvailabilityRecords } from './availability.types.js'
 
@@ -11,7 +11,7 @@ export interface AvailabilityQuery {
 
 export async function getAvailabilityRecords(
   input: AvailabilityQuery,
-  tx: Prisma.TransactionClient,
+  tx: Prisma.TransactionClient | PrismaClient,
 ): Promise<AvailabilityRecords> {
   const bus = await tx.bus.findUnique({
     where: { id: input.busId },
