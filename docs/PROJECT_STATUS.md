@@ -1,391 +1,361 @@
 # Project Status
 
-**Última consolidación documental:** 2026-08-31
+## P14 en cierre técnico 2026-09-09
 
-## Fase académica
+P14 auditó el estado desplegado, regeneró 16 evidencias con SHA-256 sobre la aplicación
+`3a4b0134e8960c499c3d77317ba138acb5ba3137`, construyó la matriz criterio por criterio
+y preparó demo e inventario reproducibles. RF-01 a RF-06 y RNF-02 a RNF-05 quedaron
+aceptados. RNF-01 conserva un bloqueo operacional: las API keys de Vercel y Render deben
+rotarse manualmente mediante entrada protegida antes del Gate final.
 
-- Fase 1 — análisis/requerimientos: consolidada como insumo.
-- Fase 2 — diseño: responsabilidad del proyecto/propietario, no de OpenClaw.
-- Fase 3 — desarrollo: responsabilidad de OpenClaw cuando sea autorizada.
+Durante P14 se corrigió la exposición económica de RF-04 al Mecánico en backend y
+frontend y se añadieron pruebas de ausencia de campos. También se corrigió el timeout
+de la proyección de Despachador eliminando lecturas seriales dentro de una transacción
+larga. El smoke productivo posterior aprobó los cuatro roles.
 
----
+Fuente final: `docs/p14/CIERRE_TECNICO.md`. GATE-DOC permanece cerrado.
 
-## Línea base vigente para desarrollo
+**Ultima consolidacion local para Borlty:** 2026-09-09
 
-### Roles: 3
+## P13 cerrado y desplegado 2026-09-09
 
-- Administrador.
-- Mecánico.
-- Conductor.
+P13 deja la topologia productiva Browser -> Vercel -> rewrite `/api/*` -> Render ->
+Neon en un unico SHA trazable. Vercel usa Vite, `npm run build:vercel`, `dist`, la
+rama de realineacion y cero variables de entorno; el proxy serverless obsoleto fue
+retirado. Render usa la misma rama, health check `/ready`, una instancia Free y el
+build versionado `npm run build:render`. Prisma usa `DIRECT_URL` directa durante el
+build y `DATABASE_URL` pooled en runtime; Neon conserva 23 migraciones sin pendientes.
 
-### RF: 6
+La validacion productiva cubre health/readiness directos y por Vercel, CORS exacto,
+CSRF rechazado sin token, cookies HttpOnly/Secure/SameSite=Lax, sesion, logout y RBAC
+para Administrador, Despachador, Mecanico y Conductor. El gate final aprobo 175
+pruebas backend, 74 frontend, 12 Playwright locales y 4 smoke productivos. Logs
+finales de Vercel y Render no mostraron errores, warnings ni indicadores de secretos.
+El runbook local documenta observabilidad, limitaciones Free, rollback de frontend y
+backend, y roll-forward aditivo de base de datos.
 
-- RF-01 — Gestión de la flota vehicular.
-- RF-02 — Control de novedades operativas.
-- RF-03 — Administración del mantenimiento preventivo.
-- RF-04 — Seguimiento de órdenes de trabajo.
-- RF-05 — Central de Repuestos.
-- RF-06 — Consulta de historial y generación de informes.
+**Siguiente fase autorizable:** P14 — evidencias, aceptacion y cierre final. P14 no fue
+iniciada.
 
-### RNF: 4
+## P12 cerrado localmente 2026-09-08
 
-- Seguridad.
-- Usabilidad.
-- Desempeño.
-- Mantenibilidad.
+P12 cierra la QA integral y seguridad mediante una matriz RF/RNF verificable, pruebas de RBAC y proyecciones seguras, payloads invalidos, inyeccion, concurrencia de idempotencia, rendimiento local p95, auditoria de dependencias/secretos y verificacion de migraciones desde cero y desde la linea P11. La auditoria Sol HIGH encontro brechas reales en la evidencia de migraciones, axe, payloads, licencias/secretos y privacidad; todas fueron corregidas y revalidadas antes del cierre.
 
-### Stack
+Gate 1 requirio dos ejecuciones fisicas: la primera fallo por un import no usado y una colision de builds; la segunda paso. Gate 2 fue la ejecucion fisica final despues de la auditoria. Resultado final: PostgreSQL activo; Prisma valido y generado; 23 migraciones aplicadas y cero pendientes; fingerprints de esquema y datos coincidentes en base cero/anterior/base; seed idempotente; backend 175/175; frontend 76/76; Playwright 12/12; typecheck, lint, formato, build, bundle y `npm audit` correctos; cero vulnerabilidades altas/criticas y cero archivos de secretos detectados.
 
-- React.
-- Vite.
-- Tailwind.
-- Node.js.
-- Express.
-- PostgreSQL/Neon.
-- API REST.
+**Siguiente fase autorizable:** P13 — despliegue y operacion. P13 no fue iniciada.
 
----
+## P11 cerrado localmente 2026-09-08
 
-## Estado de handoff
+P11 completa la fase de UX, accesibilidad y rendimiento frontend. Las doce paginas funcionales se cargan con `React.lazy` despues de validar su guard de ruta, usan un limite compartido de carga/error recuperable y quedan protegidas por un presupuesto reproducible de bundle. El JavaScript inicial baja de 203,3 KiB gzip a 138,8 KiB gzip; CSS inicial queda en 5,3 KiB gzip y la mayor ruta diferida en 12,3 KiB gzip.
 
-**FASE 3 AUTORIZADA. BOOTSTRAP TÉCNICO, PERSISTENCIA, AUDITORÍA DE BASE DE DATOS, INTERFAZ OFICIAL, AUTENTICACIÓN TRANSVERSAL, NORMALIZACIÓN TRANSVERSAL DE ROLES Y RF-01 A RF-06 COMPLETADOS.**
+Los dialogos y drawers comparten manejo de foco inicial, trampa de foco, cierre con Escape y restauracion al disparador. Se agregan salto al contenido, titulos por ruta, navegacion semantica, anuncios accesibles de carga/error, soporte de movimiento reducido y guardas de doble envio. La suite monolitica de `App.test.tsx` se reduce a shell/autenticacion y la cobertura se distribuye por modulo.
 
-Las decisiones técnicas aprobadas con ajustes finales quedaron registradas en `DECISIONS.md` y consolidadas en la documentación de soporte.
+La verificacion real cubre Chrome y Edge actuales en 390x844, 1024x768 y 1440x900, con teclado, foco, autorizacion por rol, carga diferida y doble envio. Gate final: PostgreSQL disponible; Prisma valido y generado; 23 migraciones aplicadas y cero pendientes; seed idempotente; backend 169/169; frontend 76/76; Playwright 10/10; typecheck, lint, formato, build y presupuesto de bundle correctos; `npm audit` con cero vulnerabilidades. La auditoria Sol HIGH aprobo P11-01 a P11-07.
 
-Resumen:
+**Siguiente fase autorizable:** P12 — QA integral y seguridad de cierre. Despues permanecen P13 y P14.
 
-- Estados de novedades aprobados.
-- Estados y transiciones de órdenes aprobados; `CERRADA` es terminal.
-- Umbral preventivo aprobado: 7 días y 500 km.
-- Asignación conductor-bus: máximo una asignación activa por conductor y por bus.
-- Bootstrap monorepo con `src/frontend`, `src/backend`, npm workspaces, React/Vite/Tailwind, Node/Express, Prisma/Zod, ESLint/Prettier y pruebas mínimas.
-- Prisma ORM, Zod, bcrypt, JWT en cookie `HttpOnly`, Vitest/Supertest/React Testing Library/Playwright, ESLint/Prettier.
-- Despliegue definitivo: frontend en Vercel, API en Render y PostgreSQL en Neon.
-- Alineación documental oficial con diagramas de Fase 2 recibidos el 2026-08-26.
-- Diagramas oficiales guardados sin alterar en `docs/diagrams/`.
-- `DATA_MODEL.md` y `PERSISTENCE_MODEL_PROPOSAL.md` alineados con la interpretación oficial de clases, actores, relaciones, RF y tablas técnicas permitidas.
-- `schema.prisma`, migración inicial PostgreSQL/Neon, migraciones correctivas de auditoría/search_path, seed mínimo seguro y pruebas de integridad implementados.
-- Entregables académicos de base de datos creados: `DATABASE_STRUCTURE.md`, `DATA_DICTIONARY.md`, diagrama relacional físico editable `.drawio` y PNG.
-- Autenticación real implementada con email/contraseña, bcrypt, JWT en cookie `HttpOnly`, rutas `/auth/login`, `/auth/me` y `/auth/logout`.
-- Interfaz visual seleccionada integrada como estructura oficial: login, menú lateral colapsable, encabezado contextual, paneles por rol, vista base de flota, formulario visual de buses y estados pendientes.
-- Roles canónicos normalizados transversalmente a `ADMINISTRADOR`, `CONDUCTOR` y `MECANICO`; las etiquetas visibles son Administrador, Conductor y Mecánico.
-- RF-04 implementado con endpoints reales en `/ordenes-trabajo`, maquina de estados centralizada, asignacion/reasignacion, intervenciones, actividades, consumos transaccionales, completado tecnico, devolucion y cierre administrativo.
-- RF-05 implementado con endpoints reales en `/repuestos` y `/inventario/movimientos`, central administrativa para Administrador, catalogo, disponibilidad, entradas, ajustes, movimientos, idempotencia, concurrencia segura e integracion visible con consumos RF-04.
-- RF-06 implementado con endpoints reales en `/historial`, historial derivado sin tabla `Informe`, filtros, detalle por bus, vista técnica del Mecánico, vista limitada del Conductor e informes administrativos de mantenimiento, repuestos y costos.
-
-### Estado de inicio
-
-OpenClaw recibió la orden explícita `INICIAR FASE 3`.
-
-El primer bloque permitido ya fue ejecutado: bootstrap técnico del repositorio.
-
-La revisión documental de Persistencia fue autorizada, actualizada, implementada y auditada tras aprobación explícita del propietario. La interfaz oficial y la autenticación transversal también fueron autorizadas e implementadas. El propietario autorizo RF-01 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-02 el 2026-08-27 y quedo implementado end-to-end. La normalización transversal de roles canónicos quedo completada después de RF-02 y antes de RF-03. El propietario autorizo RF-03 el 2026-08-27 y quedo implementado end-to-end. El propietario autorizo RF-04 el 2026-08-28 y quedo implementado end-to-end. El propietario autorizo RF-05 el 2026-08-29 y quedo implementado end-to-end. El propietario autorizó RF-06 el 2026-08-31 y quedó implementado end-to-end sobre la Persistencia existente, sin migración ni tabla `Informe`.
-
----
-
-## Aspectos técnicos aprobados para Fase 3
+## P10 cerrado localmente 2026-09-08
 
-Ya quedaron aprobados:
+P10 completa RF-06 mediante consultas derivadas que correlacionan jornada, lecturas, novedad, orden, intervenciones, actividades, consumos, movimientos, compatibilidad, alertas y disponibilidad al cierre. Los filtros se aplican con semantica temporal de la entidad real y conservan alcance de seguridad por rol antes de cargar o proyectar datos.
 
-- librería SQL/ORM: Prisma;
-- validación: Zod;
-- auth: email/contraseña, bcrypt y JWT en cookie `HttpOnly`;
-- testing: Vitest, Supertest, React Testing Library y Playwright;
-- lint/format: ESLint y Prettier;
-- proveedor final: Vercel para frontend, Render para API y Neon para PostgreSQL.
-
-Las decisiones adoptadas están registradas en `DECISIONS.md`.
+Administrador recibe cadena completa, costos y tres informes derivados desde snapshots historicos. Despachador recibe contexto operativo sin diagnosticos ni costos; Mecanico solo antecedentes tecnicos de su ambito; Conductor obtiene su jornada, bus, novedades, estados minimos y alertas propias desde la sesion, sin aceptar `busId` ajeno. Las consultas GET no mutan dominio ni crean una tabla `Informe`.
 
----
-
-## Aspectos que requieren especial cuidado
+La paginacion y los agregados se ejecutan en base de datos. La ultima orden por bus se resuelve en una consulta agrupada, sin N+1. El seed incorpora una cadena P10 idempotente e inmutable, y el E2E P10 valida los cuatro perfiles y ausencia de efectos laterales.
 
-- Implementar exactamente la máquina de estados aprobada para órdenes.
-- Aplicar el umbral aprobado de "mantenimiento próximo": 7 días y 500 km.
-- Aplicar restricciones aprobadas de asignación conductor-bus.
-- Aplicar la interpretación oficial de ProgramacionMantenimiento: muchas órdenes preventivas históricas con máximo una activa.
-- Calcular `VIGENTE`, `PROXIMO` y `VENCIDO` sin persistirlos como estado durable que pueda quedar desactualizado.
-- Mantener `Informe` como servicio/consulta/DTO/vista inicial, no como tabla.
-- Mantener la relación de repuestos como `OrdenTrabajo -> ConsumoRepuesto -> Repuesto`.
-- Mantener RF-05 sobre `repuestos`, `movimientos_inventario` y `consumos_repuesto`, sin inventario paralelo ni compras.
-- Aplicar idempotencia RF-05 con `movimientos_inventario.clave_idempotencia` para stock inicial, entradas y ajustes.
-- Mantener al Mecánico fuera de la central administrativa de RF-05; su consumo sigue exclusivamente dentro de RF-04.
-- Configurar correctamente despliegue Vercel/Render/Neon, CORS, cookies y CSRF.
-- Mantener la autenticación como capacidad transversal; no crear RF-07 ni gestión de usuarios como módulo principal.
-- No mostrar datos simulados como si provinieran de Neon. RF-06 debe mostrar estado vacío o "Módulo pendiente de implementación" mientras no existan endpoints reales.
-
-Si aparece una contradicción con un artefacto posterior, detener, documentar impacto y consultar al propietario antes de implementar.
-
----
-
-## Validación del cierre de Persistencia
-
-El cierre auditado de Persistencia quedó validado el 2026-08-26 con:
-
-- `prisma validate`.
-- `prisma generate`.
-- `prisma migrate status`.
-- `prisma migrate deploy` sin migraciones pendientes.
-- Seed de desarrollo con `SEED_USER_PASSWORD` temporal de proceso.
-- Pruebas automatizadas: frontend 1/1, backend 9/9.
-- `lint`.
-- `format:check`.
-- `build`.
-- `npm audit --audit-level=moderate` sin vulnerabilidades.
-- Validación desde cero en schema temporal de Neon, eliminado al finalizar.
-- Auditoría SQL con cero inconsistencias en bus-orden, consumo-movimiento, subtotales, costos, motivos, fechas y normalización.
-
----
-
-## Validación de interfaz oficial y autenticación
-
-El bloque de interfaz oficial y autenticación transversal queda cubierto por:
-
-- `POST /auth/login`.
-- `GET /auth/me`.
-- `POST /auth/logout`.
-- Middleware `authenticate`.
-- Middleware `authorizeRoles`.
-- Validación Zod de credenciales.
-- Verificación `bcrypt`.
-- Bloqueo temporal por intentos fallidos.
-- Rechazo de usuario inactivo.
-- Cookie `HttpOnly` con expiración JWT.
-- CORS con credenciales restringido a `CORS_ORIGIN`.
-- Frontend con React Router, estado de sesión centralizado, rutas protegidas, acceso denegado y menús por rol.
-- Documentación en `AUTHENTICATION.md` y `VISUAL_DESIGN.md`.
-
-Validación ejecutada el 2026-08-26:
+Gate final: PostgreSQL disponible; Prisma valido y generado; 23 migraciones aplicadas y cero pendientes; seed idempotente; backend 169/169; frontend 72/72; Playwright 6/6; typecheck, lint, formato y build correctos; `npm audit` con cero vulnerabilidades. La auditoria Sol HIGH aprobo P10-01 a P10-08 y las correcciones adversariales de periodo de consumo, filtros de novedad, estado de alerta por destinatario y privacidad del Conductor.
 
-- `prisma validate`.
-- `prisma generate`.
-- `prisma migrate status` sin migraciones pendientes.
-- Seed de desarrollo con `SEED_USER_PASSWORD` temporal de proceso.
-- `typecheck`.
-- `lint`.
-- `format:check`.
-- Pruebas frontend: 1 archivo, 10 pruebas.
-- Pruebas backend: 3 archivos, 20 pruebas.
-- `build`.
-- `npm audit --audit-level=moderate` sin vulnerabilidades.
-- `git diff --check`.
-- Revisión de secretos temporales sin hallazgos versionables.
-- Capturas en `docs/screenshots/`.
+**Siguiente fase autorizable:** P11 — UX, accesibilidad y rendimiento frontend. Despues permanecen P12, P13 y P14.
 
-Auditoria final adicional:
+## P9 cerrado localmente 2026-09-07
 
-- Documentada en `docs/AUTH_UI_FINAL_AUDIT.md`.
-- Verifico login, credenciales invalidas, usuario inactivo, recuperacion/cierre/expiracion de sesion, acceso sin sesion, acceso por rol incorrecto, rutas inexistentes, menus por rol, drawer movil y ausencia de contrasenas/hashes en respuestas.
-- Viewports auditados: `1440 x 900`, `1024 x 768` y `390 x 844`.
-- Defectos corregidos: nombre accesible del boton de logout en menu colapsado, pruebas de sesion expirada/rutas inexistentes/carga inicial, estado literal de "Modulo pendiente de implementacion" y captura movil regenerada fuera de transicion.
-
----
+P9 completa RNF-05 con un catálogo exhaustivo de quince eventos canónicos y un `AlertService` transaccional. Cada productor deriva destinatarios desde rol, propiedad y contexto persistido; la clave de deduplicación representa una ocurrencia o ciclo y se protege con candado advisory e índices únicos. El contexto se sanea por lista permitida, conserva exactamente un origen normalizado y no persiste credenciales, PII, diagnósticos ni costos.
 
-## Validacion de RF-01
+La API `/alertas` expone únicamente la bandeja del usuario autenticado, con paginación, filtros acumulativos, conteo no leído y transiciones idempotentes `NO_LEIDA -> LEIDA -> ATENDIDA`. La lectura y atención son independientes por destinatario; el cambio posterior de rol no reasigna filas históricas. La UI incorpora campana accesible, contador, filtros por estado/prioridad/tipo/fechas, estados de carga/error/vacío y navegación interna calculada por el rol vigente.
 
-RF-01 queda cubierto por:
+Los productores cubren preventivo próximo/vencido, novedad crítica, bus bloqueado, conflicto de jornada rechazado, kilometrajes inicial/final faltantes, orden pendiente/asignada/completada/devuelta, bajo inventario, consumo incompatible, cambio de jornada y cambio de estado de novedad. El evaluador temporal de jornadas se ejecuta al iniciar y cada quince minutos con deduplicación concurrente.
 
-- Backend `src/backend/src/fleet/*`: schemas Zod, DTOs, repositorio, servicio, controlador y rutas.
-- Frontend `src/frontend/src/features/flota/*`: cliente API, tipos, listado, formulario, detalle y operaciones sensibles.
-- Panel administrador con indicadores reales desde `/flota/resumen`.
-- Panel conductor con `/flota/mi-bus`.
-- Documentacion dedicada en `docs/RF01_FLEET.md`.
-- Evidencias visuales `docs/screenshots/rf01-*.png`.
+Gate final: PostgreSQL disponible; Prisma válido y generado; 23 migraciones aplicadas y cero pendientes; seed idempotente; backend 164/164; frontend 71/71; Playwright 5/5; typecheck, lint, formato y build correctos; `npm audit` con cero vulnerabilidades. La auditoría Sol HIGH confirmó cero orígenes inválidos, estados/fechas incoherentes, contextos sensibles o destinatarios duplicados.
 
-Validacion ejecutada durante el bloque RF-01:
-
-- Backend RF-01: permisos, duplicados, normalizacion, kilometraje, estado, asignaciones, bus asignado y rollback transaccional.
-- Frontend RF-01: listado, busqueda, filtro, paginacion, formulario, validaciones, duplicados, detalle, kilometraje, estado, asignacion, conductor con/sin bus y mecanico denegado.
-- Playwright visual en `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina y con foco alcanzable por teclado.
-
-RF-02 fue implementado en el bloque siguiente. RF-03, RF-04, RF-05 y RF-06 no fueron iniciados durante RF-01.
+**Siguiente fase autorizable:** P10 — Historial e informes. Después permanecen P11, P12, P13 y P14.
 
----
+## P6 cerrado localmente 2026-09-06
 
-## Validacion de RF-02
+P6-F cerro el ciclo preventivo recurrente de extremo a extremo. La reconciliacion transaccional aplica precedencia `bus > modelo` por `claveTarea` cuando aparece un plan particular, se inactiva una fuente o cambia el modelo del bus. Sin orden activa reemplaza o retira la obligacion inmediatamente; con orden activa conserva la evidencia historica y difiere la nueva fuente hasta el siguiente ciclo. El cambio de modelo considera las claves de los modelos anterior y nuevo, incluidas tareas nuevas o retiradas.
 
-RF-02 queda cubierto por:
+La UI administrativa permite crear, aplicar, versionar, consultar historial e inactivar planes, muestra fuente/version/anticipaciones efectivas de cada obligacion y expone la vista autorizada de restricciones. El seed incorpora un escenario recurrente idempotente. El E2E P6 reproduce creacion/aplicacion, objetivo derivado, vencimiento, restriccion, orden exactamente una vez, retry y proyeccion segura para Despachador.
 
-- Backend `src/backend/src/novelties/*`: schemas Zod, DTOs, repositorio, servicio, controlador y rutas.
-- Frontend `src/frontend/src/features/novedades/*`: cliente API, tipos, formulario/listado conductor, detalle, panel administrativo, filtros, revision y conversion.
-- Panel administrador con indicador real desde `/novedades/resumen`.
-- Panel conductor con novedades propias desde `/novedades/mis-novedades` y acceso a registro.
-- Documentacion dedicada en `docs/RF02_NOVEDADES.md`.
-- Evidencias visuales `docs/screenshots/rf02-*.png`.
+Gate final: PostgreSQL disponible; Prisma valido y generado; 16 migraciones aplicadas y cero pendientes; backend 143/143; frontend 56/56; Playwright 2/2; typecheck, lint, formato y build correctos; `npm audit` con cero vulnerabilidades. La auditoria Sol HIGH aprobo P6-01 a P6-08 y los escenarios adversariales. No se agrego migracion en P6-F.
 
-Validacion ejecutada durante el bloque RF-02:
+## P6-D cerrado localmente 2026-09-06
 
-- Backend RF-02: permisos, conductor con/sin asignacion, autor/bus derivados, suplantacion rechazada, consultas propias/admin, validaciones, transiciones, estados terminales, conversion a orden, historial inicial, duplicados/concurrencia y rollback transaccional.
-- Frontend RF-02: formulario conductor, validaciones, doble envio, conductor sin bus, listado propio, detalle autorizado, listado administrativo, busqueda/filtros, revision, conversion a orden, estados vacio/error y mecanico denegado.
-- Playwright visual en `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina y con foco alcanzable por teclado.
+P6-D extiende la politica de disponibilidad existente sin reemplazar sus causas: usa la clasificacion central del ciclo, por lo que `PROXIMO` no bloquea y `VENCIDO` bloquea unicamente cuando el plan aplicado conserva `bloqueaAlVencer=true`. La causa preventiva se acumula de forma determinista con bus, orden, novedad y jornada; al cerrar/desactivar una obligacion se reevaluan las causas restantes y no se libera un bus que siga restringido.
 
-RF-03 fue implementado en el bloque siguiente. RF-04, RF-05 y RF-06 no fueron iniciados.
+Se agrego `GET /mantenimiento-preventivo/restricciones`, con RBAC de backend: Administrador recibe la proyeccion permitida del plan y la disponibilidad operacional; Despachador recibe solo bus, estado, objetivos/restantes minimos y restriccion operativa. Mecanico y Conductor reciben `403`; el endpoint no materializa alertas ni expone actividad tecnica, snapshots, diagnosticos, consumos o costos.
 
----
-
-## Validacion de RF-03
+El `AlertService` ahora emite `MANTENIMIENTO_PROXIMO` y `MANTENIMIENTO_VENCIDO` desde transacciones de negocio, lecturas de kilometraje, cierre y un evaluador interno periodico. Las alertas se deduplican por ciclo/version/objetivo con candado advisory y clave unica; llegan a Administradores activos y solo llegan a Despachadores cuando un vencimiento bloquea despacho. El contexto contiene solo datos operativos sanitizados. P6-D no implementa la bandeja/acciones de alertas de P9 ni UI de P6-E.
 
-RF-03 queda cubierto por:
+Validacion P6-D: pruebas focalizadas de disponibilidad, causas acumuladas, liberacion, no-bloqueo, destinatarios, privacidad, GET sin efectos y carreras de evaluacion; ademas de P6-C, typecheck, lint y formato. No requiere migracion: reutiliza `AlertaInterna`, `AlertaDestinatario`, restricciones y claves existentes.
 
-- Backend `src/backend/src/preventive/*`: schemas Zod, DTOs, repositorio, servicio, controlador y rutas.
-- Frontend `src/frontend/src/features/preventivo/*`: cliente API, tipos, resumen, listado, filtros, formulario, detalle, reprogramacion y generacion de orden preventiva.
-- Panel administrador con indicador real desde `/mantenimiento-preventivo/resumen`.
-- Documentacion dedicada en `docs/RF03_MANTENIMIENTO_PREVENTIVO.md`.
-- Evidencias visuales `docs/screenshots/rf03-*.png`.
+## P6-C cerrado 2026-09-05
 
-Alcance implementado:
+Se implemento el ciclo preventivo recurrente sobre los planes versionados de P6-B. La aplicacion de un plan materializa una sola `ProgramacionMantenimiento` activa por `bus + claveTarea`, resuelve dentro de la transaccion la precedencia bus sobre modelo y calcula los objetivos iniciales desde la fecha operacional y el kilometraje materializado del bus. La clasificacion admite fecha, kilometraje o ambos, usa anticipaciones particulares y recurre a 7 dias/500 km solo cuando el plan no las configura.
 
-- Programaciones por fecha, kilometraje o ambos.
-- Clasificacion calculada en servidor como `VIGENTE`, `PROXIMO` o `VENCIDO`.
-- Umbrales centralizados: `PREVENTIVE_SOON_DAYS=7` y `PREVENTIVE_SOON_KM=500`.
-- Generacion explicita de orden preventiva solo para programaciones `PROXIMO` o `VENCIDO`.
-- Orden preventiva creada con origen `PREVENTIVO`, tipo `PREVENTIVA`, estado `PENDIENTE_ASIGNACION`, mismo bus, sin mecanico asignado e historial inicial.
-- Proteccion contra duplicados mediante transaccion Prisma e indice unico parcial de orden preventiva activa por programacion.
-- Administrador como unico actor autorizado para RF-03; Conductor y Mecanico reciben acceso denegado.
+La orden preventiva vuelve a validar elegibilidad bajo candado, deriva prioridad del plan y conserva en `planAplicado` la version, identidad, destino, intervalos, anticipaciones efectivas y objetivos. El cierre administrativo exige un snapshot valido, desactiva la obligacion completada y crea el siguiente objetivo exactamente una vez desde el objetivo anterior; retries y cierres concurrentes no saltan ciclos. Las programaciones independientes se desactivan al cerrar y no generan sucesora.
 
-Limites conservados:
+Validacion P6-C: 31 pruebas focalizadas de preventivo/ordenes y 137/137 en la regresion backend completa, incluidas precedencia integrada, lectura tardia, permisos, materializacion/orden concurrentes, snapshot, retry HTTP y cierre concurrente 50.000 -> 60.000 sin crear 70.000; Prisma, typecheck, lint y formato correctos. No fue necesaria una migracion nueva: se reutilizan el trigger de obligacion y el indice unico parcial de orden activa ya aplicados. Publicado en `287ac7c Implementa ciclo preventivo recurrente idempotente`. P6-D queda limitado a disponibilidad preventiva, proyeccion segura para Despachador y alertas por ciclo.
 
-- RF-03 no asigna mecanico, no inicia ejecucion, no registra diagnostico, no consume repuestos y no cierra ordenes.
-- RF-04 cierra ordenes preventivas, pero no recalcula el siguiente objetivo porque el modelo fisico no contiene intervalos preventivos aprobados.
+## P6-B cerrado 2026-09-05
 
-Validacion ejecutada durante el bloque RF-03:
+Se implementó el catálogo administrativo de planes preventivos recurrentes, sin materializar todavía obligaciones ni modificar órdenes, disponibilidad, alertas o interfaz. La migración aditiva `20260905200000_p6b_planes_versionado` protege versión histórica y una sola versión activa por destino (`Bus` o `ModeloBus`) y `claveTarea` canónica. Se añadieron endpoints de listado, detalle, primera versión, sucesora e inactivación, todos restringidos al Administrador; el backend valida XOR, forma de intervalos/anticipaciones, destino existente y normaliza `claveTarea`.
 
-- Backend RF-03: permisos, rechazo de alias heredados, creacion por fecha/kilometraje/combinada, filtros, paginacion, resumen, detalle, actualizacion controlada, recalculo por kilometraje oficial de RF-01, generacion de orden, idempotencia, concurrencia con solicitudes simultaneas, historial inicial y rollback transaccional.
-- Frontend RF-03: ruta protegida, administrador autorizado, Conductor y Mecanico denegados, resumen real, listado, busqueda/filtros/paginacion, formularios por fecha/kilometraje/combinado, validaciones, doble envio, detalle, badges, reprogramacion, generacion de orden, estados vacio/error y controles por rol.
-- Playwright visual en `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina, con dialogos accesibles y foco alcanzable por teclado.
+La selección interna determinista ya resuelve plan específico de bus sobre plan de modelo únicamente para la misma clave, y permite fallback al modelo si el específico está inactivo. Las pruebas P6-B cubrieron XOR, permisos, duplicado, inmutabilidad/historial, versionado, inactivación, precedencia y carrera de primera versión. P6-C debe materializar y reconciliar `ProgramacionMantenimiento`; no debe reinterpretar ni reemplazar los planes/versiones ya persistidos.
 
-RF-04 fue implementado en el bloque siguiente. RF-05 y RF-06 no fueron iniciados.
+## Diseño P6-A cerrado 2026-09-05
 
----
+Se analizó el estado real posterior a P5 y se cerró el diseño técnico de preventivo recurrente en `docs/P6A_DISENO_TECNICO_PREVENTIVO_RECURRENTE.md`. No se implementaron cambios funcionales. Quedaron definidos versionado, precedencia bus/modelo, obligación activa, anticipaciones, snapshot, generación idempotente, siguiente objetivo transaccional, disponibilidad, alertas, UI, pruebas y los cortes P6-B a P6-F. El siguiente corte autorizado es P6-B.
 
-## Validacion de RF-04
+## Preflight de linea base 2026-09-04
 
-RF-04 queda cubierto por:
+- PostgreSQL local iniciado correctamente en `localhost:55432`.
+- Prisma detecto quince migraciones y confirmo que `sgmv_local` no tiene migraciones pendientes.
+- `schema.prisma`, typecheck y lint validados antes de iniciar el primer modulo funcional de realineacion.
+- Documentacion local alineada para distinguir estructura persistente ya implementada de servicios/API/UI aun pendientes.
+- La linea base publicable quedo protegida en Git en la rama `realineacion/trazabilidad-operativa-tecnica`, commit `667b92b`.
 
-- Backend `src/backend/src/work-orders/*`: schemas Zod, DTOs, maquina de estados, repositorio, servicio, controlador y rutas.
-- Frontend `src/frontend/src/features/ordenes-trabajo/*`: cliente API, tipos, resumen, listados por rol, detalle, formularios de ejecucion y dialogos administrativos.
-- Panel administrador con indicadores reales desde `/ordenes-trabajo/resumen`.
-- Panel mecanico con indicadores reales desde `/ordenes-trabajo/resumen`.
-- Documentacion dedicada en `docs/RF04_ORDENES_TRABAJO.md`.
-- Evidencias visuales `docs/screenshots/rf04-*.png`.
+## Estado general
 
-Alcance implementado:
+El SGMV mantiene seis RF principales, pero su linea vigente ya no es un registro simple de mantenimiento. La linea academica actualizada exige trazabilidad operativa y tecnica con cuatro roles:
 
-- Resumen, listado administrativo, mis ordenes de Mecanico, detalle, historial y reasignaciones.
-- Creacion manual de orden correctiva directa con origen `CORRECTIVO_DIRECTO`.
-- Recepcion de ordenes correctivas desde RF-02 y preventivas desde RF-03.
-- Asignacion inicial y reasignacion con motivo, trazabilidad y perdida inmediata de permisos del Mecanico anterior.
-- Inicio, reanudacion, diagnostico, observaciones, actividades y completado tecnico.
-- Consulta minima de repuestos activos y consumo transaccional con movimiento `CONSUMO`, descuento de stock, costo del servidor e idempotencia.
-- Devolucion para correccion y cierre administrativo.
-- Orden `CERRADA` terminal.
+- `ADMINISTRADOR`
+- `DESPACHADOR`
+- `MECANICO`
+- `CONDUCTOR`
 
-Limites conservados:
+El codigo local ya incorporo el primer soporte de `DESPACHADOR`. Desde el corte de base de datos del 2026-09-02, Prisma y PostgreSQL local incluyen la estructura persistente del modelo revisado. P3 completo los catalogos `ModeloBus` y `Ruta`; P4 completo `JornadaOperativa` y kilometraje contextual; P5 completo novedades operativas, disponibilidad y emision de alertas por destinatario; P6 completo el preventivo recurrente. Crear tablas y restricciones no equivale a implementar los flujos futuros.
 
-- RF-04 no administra catalogo, compras, proveedores, entradas ni ajustes de inventario.
-- RF-04 no genera informes consolidados ni exportaciones.
-- La preventiva manual no se implementa por ausencia de origen fisico `MANUAL` e intervalos preventivos independientes.
-- El cierre preventivo conserva objetivos copiados y no recalcula proxima fecha o kilometraje porque no existen campos fisicos de intervalo aprobados.
+## Fuente vigente de modelo
 
-Validacion ejecutada durante el bloque RF-04:
+Diagramas visuales vigentes del repositorio local:
 
-- Backend RF-04 aislado: 11 pruebas aprobadas.
-- Frontend RF-04 aislado: 5 pruebas aprobadas.
-- Backend completo: 69 pruebas aprobadas.
-- Frontend completo: 34 pruebas aprobadas.
-- Typecheck y lint de frontend/backend correctos.
-- Pruebas de concurrencia cubren asignacion incompatible, consumo con stock limitado, completado/cierre simultaneo y doble cierre.
-- Neon temporal `rf04_final_20260828_1710`: migraciones desde cero, seed dos veces, RF-04 backend `11/11` y schema eliminado. Un primer intento tuvo `P1002` de advisory lock de Prisma y se repitio con lock deshabilitado sin migraciones simultaneas.
+- `docs/diagrams/SGMV - CASOS DE USO.png`.
+- `docs/diagrams/SGMV - Diagrama de Entidad Relacion.png`.
+- `docs/diagrams/SGMV - Diagrama de clases unificado.png`.
+- `docs/diagrams/SGMV - Modelo Relacional.drawio.png`.
 
-RF-05 fue implementado en el bloque siguiente. RF-06 no fue iniciado.
+Estos diagramas son insumos estructurales vigentes: el codigo debe conservar su maquina de estados, relaciones, cardinalidades y limites de los seis RF.
 
----
+Especificacion textual vigente:
 
-## Validacion de RF-05
+`C:\Users\ING-ERIK\Downloads\SGMV_DIAGRAMA_CLASES_ACTUALIZADO.md`
 
-RF-05 queda cubierto por:
+Documentos locales alineados:
 
-- Backend `src/backend/src/spare-parts/*`: schemas Zod, DTOs, disponibilidad centralizada, repositorio Prisma, servicio, controlador y rutas.
-- Frontend `src/frontend/src/features/repuestos/*`: cliente API, tipos, central administrativa, resumen, catalogo, formularios, detalle, entradas, ajustes, activacion/desactivacion y movimientos.
-- Panel administrador con indicador real desde `/repuestos/resumen`.
-- Integracion RF-04: el consumo del Mecanico genera un unico `ConsumoRepuesto`, un unico movimiento `CONSUMO`, descuenta stock y aparece en RF-05 con referencia a orden y consumo.
-- Documentacion dedicada en `docs/RF05_CENTRAL_REPUESTOS.md`.
-- Evidencias visuales `docs/screenshots/rf05-*.png`.
+- `docs/DATA_MODEL.md`.
+- `docs/DATABASE_STRUCTURE.md`.
+- `docs/TASKS.md`.
+- `docs/PROJECT_STATUS.md`.
+- `docs/DECISIONS.md`.
 
-Alcance implementado:
+## Avance de implementacion 2026-09-01
 
-- Catalogo paginado, busqueda, filtros, ordenamiento seguro y detalle.
-- Alta con stock cero o stock inicial trazable.
-- Disponibilidad calculada como `INACTIVO`, `AGOTADO`, `BAJO` o `DISPONIBLE`.
-- Edicion controlada de datos maestros sin permitir modificar stock directamente.
-- Activacion/desactivacion logica conservando historia.
-- Entradas y ajustes administrativos con motivo, responsable, fecha del servidor e idempotencia.
-- Historial de movimientos general y por repuesto, inmutable desde la interfaz.
-- Costo unitario actual y valor basico del inventario con Decimal seguro.
-- Concurrencia protegida mediante transacciones Prisma, candado advisory por repuesto, actualizaciones atomicas condicionadas y clave idempotente.
+Se habilito un flujo de desarrollo con PostgreSQL local para no depender de Neon:
 
-Limites conservados:
+- script `scripts/db-local.ps1`;
+- `.env.local` ignorado por Git;
+- comandos `db:local:*`, `prisma:*:local`, `test:backend:local` y `dev:backend:local`;
+- base local `sgmv_local` en `localhost:55432`.
 
-- RF-05 no implementa proveedores, cotizaciones, compras, facturas, pagos, bodegas multiples, lotes, series, codigos de barras, importaciones, informes consolidados ni exportaciones.
-- RF-06 no fue iniciado.
+Tambien se implemento el primer corte del rol `DESPACHADOR`:
 
-Validacion ejecutada durante el bloque RF-05:
+- enum Prisma actualizado;
+- migraciones nuevas para agregar el valor e insertar el rol;
+- seed con usuario `despachador.demo@sgmv.local`;
+- clave demo definida localmente como `SEED_USER_PASSWORD` en `.env.local`;
+- token de sesion acepta el rol canonico;
+- permisos backend iniciales para flota, novedades e historial operativo;
+- frontend reconoce el rol, menu, rutas y dashboard operativo;
+- historial operativo para Despachador no expone costos ni diagnosticos internos.
 
-- Backend RF-05 aislado: 11 pruebas aprobadas.
-- Backend completo por suites: 80 pruebas aprobadas.
-- Frontend completo: 42 pruebas aprobadas.
-- Pruebas de concurrencia cubren doble entrada, ajuste negativo sobre stock limitado, consumo RF-04 contra ajuste RF-05 y codigo duplicado concurrente.
-- Seed RF-05 idempotente ejecutado dos veces con `SEED_USER_PASSWORD` temporal de proceso.
-- Neon temporal `rf05_final_20260829_1627` validado desde cero con 7 migraciones, seed repetido, RF-05 backend `11/11`, auditoria de integridad en cero inconsistencias y schema eliminado al finalizar. Se uso `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1` solo para migraciones secuenciales por el `P1002` conocido del pooler Neon.
-- Playwright visual en `1440x900`, `1024x768` y `390x844` sin overflow horizontal de pagina ni errores relevantes de consola.
+Validacion ejecutada en ese corte:
 
-RF-06 no fue iniciado durante el bloque RF-05.
+- backend local: 9 archivos, 86 pruebas pasadas;
+- frontend: 1 archivo, 46 pruebas pasadas;
+- typecheck backend/frontend pasado.
 
----
+## Corte de persistencia y diagramas 2026-09-02
 
-## Validacion de RF-06
+Se agrego la migracion aditiva `20260902180000_trazabilidad_operativa_tecnica` y se aplico primero a la copia aislada `sgmv_modelo_validacion_20260902`; despues de validar, se aplico a `sgmv_local` en `localhost:55432`. No se utilizo Neon en este corte.
 
-RF-06 queda cubierto por:
+Estado fisico comprobado contra PostgreSQL local y el catalogo que alimenta los diagramas y el diccionario:
 
-- Backend `src/backend/src/reports/*`: schemas Zod, tipos, repositorio Prisma, servicio con alcance por rol, controlador y rutas de solo lectura.
-- Frontend `src/frontend/src/features/historial/*`: cliente API, tipos, resumen, filtros, buses, detalle cronológico y tres informes administrativos.
-- Administrador con toda la flota, costos básicos trazables e informes de mantenimiento, repuestos y costos por bus.
-- Mecánico limitado a buses donde es o fue técnico asignado/interviniente, con diagnósticos, actividades y repuestos técnicos sin costos.
-- Conductor limitado al bus de su asignación activa derivada en backend, novedades propias y mantenimiento básico, sin aceptar `busId` del cliente.
-- Documentación dedicada en `docs/RF06_HISTORIAL_INFORMES.md`.
-- Evidencias visuales `docs/screenshots/rf06-*.png`.
+- 23 tablas de dominio y 276 columnas.
+- 18 tipos enumerados.
+- 72 claves foraneas fisicas, incluidas las tres FK compuestas anteriores que refuerzan la coherencia de bus/repuesto.
+- 48 restricciones `CHECK` y cuatro restricciones de exclusion de intervalos.
+- Quince migraciones aplicadas, sin fallos pendientes.
+- 35 filas existentes conservadas en las 16 tablas anteriores, verificadas mediante conteos y huellas de todas sus columnas previas, no solo por numero de filas.
 
-Alcance implementado:
+La ampliacion conserva nombres y contratos anteriores. Los campos de contexto agregados a tablas existentes son opcionales durante la transicion: no se inventaron modelos, jornadas, fechas de evento ni evaluaciones de compatibilidad para los registros existentes. Las nuevas tablas tienen sus propias restricciones; donde existe contexto nuevo, se valida su coherencia. No se creo tabla `Informe`.
 
-- Resumen por rol, listado filtrable de buses para Administrador/Mecánico y detalle histórico.
-- Filtros por bus, período, tipo, estado y origen, con validación cronológica y paginación.
-- Informes administrativos derivados de `ordenes_trabajo`, `consumos_repuesto`, `repuestos` y `buses`.
-- Historial de órdenes, intervenciones, actividades, consumos, programaciones, novedades y trazas RF-01 permitidas según rol.
-- Solo consultas `GET`; RF-06 no modifica datos operativos.
+Validacion posterior a la migracion en la copia aislada:
 
-Limites conservados:
+- 58 pruebas nuevas de integridad: aprobadas.
+- Backend: nueve archivos, 86 pruebas aprobadas.
+- Frontend: un archivo, 46 pruebas aprobadas.
+- Prisma validate/generate/migrate, typecheck, lint, build y formato: aprobados.
+- Build frontend con advertencia de tamano del bundle principal, no un error de compilacion.
 
-- No se creó tabla `Informe`, migración ni modelo persistente adicional.
-- No se implementó analítica predictiva, exportación, contabilidad avanzada ni un RF nuevo.
-- RF-01 a RF-05 conservan sus rutas, reglas y permisos.
+Estas pruebas verifican los casos ejercitados y la regresion de las funciones existentes; no acreditan por si solas todos los futuros flujos ni una prueba exhaustiva de concurrencia de los nuevos servicios.
 
-Validación ejecutada durante el bloque RF-06:
+Entregables locales de base de datos:
 
-- Backend RF-06: 5 pruebas de integración aprobadas contra PostgreSQL/Neon configurado.
-- Frontend RF-06: 4 pruebas aprobadas por rol, filtros, detalle, informes y estado sin asignación.
-- Backend completo: 85 pruebas aprobadas en 9 archivos.
-- Frontend completo: 46 pruebas aprobadas.
-- Prisma validate, typecheck, lint de frontend/backend, format check y build correctos.
-- Verificación visual en `1440x900`, `1024x768` y `390x844`, sin desbordamiento horizontal ni errores relevantes de consola y con separación efectiva de datos por rol.
+- `C:\Users\ING-ERIK\Downloads\SGMV - Base de datos actualizada\SGMV - Diagrama Entidad Relacion.png`.
+- `C:\Users\ING-ERIK\Downloads\SGMV - Base de datos actualizada\SGMV - Modelo Relacional.png`.
+- `C:\Users\ING-ERIK\Downloads\SGMV - Base de datos actualizada\SGMV - Diccionario de datos.docx`.
 
----
+Las evidencias de validacion y conservacion estan en `C:\Users\ING-ERIK\Downloads\SGMV - Base de datos actualizada\verificacion`. El entidad-relacion sigue la notacion del PDF academico indicado por Jefe. Los documentos anteriores se conservan como antecedentes; para la estructura fisica de este corte deben consultarse estos entregables y la migracion aplicada.
 
-## Regla de versiones históricas
+## Codigo implementado antes de la realineacion completa
 
-No volver a usar como línea de desarrollo:
+Implementado:
 
-- listas antiguas de 24 RF;
-- matriz granular de 52 RF;
-- la consolidación anterior donde "Gestión de usuarios" ocupaba RF-01.
+- monorepo `src/frontend` y `src/backend`;
+- React, Vite, Tailwind CSS;
+- Node.js, Express, API REST;
+- Prisma, Zod y PostgreSQL/Neon;
+- autenticacion con bcrypt y JWT en cookie HttpOnly;
+- autorizacion por roles;
+- RF-01 flota;
+- RF-02 novedades;
+- RF-03 mantenimiento preventivo;
+- RF-04 ordenes de trabajo;
+- RF-05 central de repuestos;
+- RF-06 historial e informes;
+- pruebas backend/frontend por RF;
+- evidencias visuales;
+- rol `DESPACHADOR` con acceso operativo inicial limitado.
 
-La línea vigente es la de seis RF descrita en `REQUIREMENTS.md`.
+## Modelo objetivo revisado
+
+La trazabilidad objetivo es:
+
+```text
+bus + conductor + despachador + jornada + kilometraje
+  -> novedad
+  -> orden
+  -> intervencion
+  -> consumo de repuesto compatible
+  -> movimiento de inventario
+  -> alerta interna por destinatario
+  -> historial/informe
+```
+
+El diagrama revisado organiza el modelo en nueve vistas:
+
+1. Identidad y flota.
+2. Jornadas y novedades.
+3. Kilometraje contextual.
+4. Planificacion preventiva.
+5. Ordenes y ejecucion tecnica.
+6. Repuestos e inventario.
+7. Trazabilidad del consumo.
+8. Alertas internas por destinatario.
+9. Auditoria e historial/informes.
+
+## Estructura persistente incorporada
+
+- Nuevas tablas/modelos: `ModeloBus`, `Ruta`, `JornadaOperativa`, `PlanMantenimientoPreventivo`, `CompatibilidadRepuesto`, `AlertaInterna` y `AlertaDestinatario`.
+- Relaciones de bus/modelo y de jornada con responsables, segmento anterior, ruta y lecturas.
+- Campos de tipo y fecha de evento en `LecturaKilometraje`, y vinculos con novedad, orden e intervencion.
+- Contexto operacional, criticidad y banderas en `Novedad`.
+- Plan opcional y prioridad en `ProgramacionMantenimiento`.
+- Jornada y campos para snapshots de plan/disponibilidad en `OrdenTrabajo`.
+- Fabricante, numero de parte y especificaciones/dimensiones en `Repuesto`.
+- Intervencion, regla/version, resultado/evidencia y autorizacion excepcional en `ConsumoRepuesto`.
+- Origen tipado, deduplicacion, destinatarios y estados individuales de alerta.
+
+## Flujos funcionales que aun faltan
+
+- Registro tecnico que exija contexto completo en los nuevos endpoints, sin depender del contrato transitorio anterior.
+- Ampliacion de la politica de disponibilidad con preventivo y cierres tecnicos que se implementan en P6-P9.
+- Integracion de preventivo vencido con disponibilidad, restricciones seguras del Despachador y alertas preventivas por ciclo (P6-D).
+- Gestion de compatibilidad en interfaz y servicios, seleccion de regla aplicable, bloqueo de consumo incompatible y excepciones autorizadas desde una sesion real.
+- Completar en P9 la bandeja y las acciones de lectura/atencion; P5 ya genera alertas de novedad critica y bus bloqueado con destinatarios por rol.
+- Ampliacion de `ServicioHistorialInformes` para reconstruir y filtrar toda la trazabilidad nueva sin exponer datos fuera del alcance de cada rol.
+- Pruebas integradas de los nuevos endpoints y pantallas, incluyendo permisos y concurrencia al implementar cada flujo.
+
+## RF vigentes
+
+Se conservan los nombres:
+
+1. RF-01 - Gestion de la flota vehicular.
+2. RF-02 - Control de novedades operativas.
+3. RF-03 - Administracion del mantenimiento preventivo.
+4. RF-04 - Seguimiento de ordenes de trabajo.
+5. RF-05 - Central de Repuestos.
+6. RF-06 - Consulta de historial y generacion de informes.
+
+## RNF vigentes
+
+1. Seguridad de la informacion.
+2. Usabilidad de la aplicacion.
+3. Desempeno del sistema.
+4. Mantenibilidad del software.
+5. Alertas internas del sistema.
+
+RNF-05 es interno. No implica SMS, WhatsApp, correo automatico, push externo ni integraciones.
+
+## Cierre funcional P4 2026-09-05
+
+- `JornadaOperativa` es la agenda operativa vigente; `AsignacionConductor` conserva consulta historica y ya no expone escritura HTTP.
+- Administrador y Despachador programan, inician, finalizan, cancelan y reasignan; el Conductor consulta y opera solo su jornada.
+- Inicio/fin y lectura contextual se confirman atomicamente, con actores derivados de sesion.
+- El odometro valida vecinas por fecha real del evento y `Bus.kilometrajeActual` conserva el maximo sin retroceder ante capturas tardias.
+- La reasignacion termina el tramo anterior y crea una jornada sucesora; no reescribe el historial.
+- Las exclusiones SQL y los bloqueos de servicio cubren concurrencia por bus y conductor.
+
+Validacion P4: 125 pruebas backend, 54 frontend, seed doble idempotente, Prisma sin migraciones pendientes, typecheck, lint, formato, build y auditoria con cero vulnerabilidades. El bundle frontend conserva una advertencia no bloqueante de 783,72 kB.
+
+## Cierre funcional P5 2026-09-05
+
+- El Conductor reporta una novedad propia por fecha de ocurrencia; jornada, bus y conductor se derivan de sesion y contexto temporal.
+- La lectura de kilometraje queda enlazada a jornada y novedad, valida sus vecinas cronologicas y no reduce el odometro actual ante reportes tardios.
+- Administracion clasifica criticidad, impacto y bloqueo; la disponibilidad centralizada refleja inmediatamente una novedad bloqueante.
+- Las alertas de novedad critica y bus bloqueado se crean dentro de la misma transaccion y solo para destinatarios activos autorizados.
+- El Despachador recibe datos operativos minimos y puede coordinar la jornada sin acceder al diagnostico ni ejecutar cierre tecnico.
+- La conversion correctiva conserva la relacion jornada-novedad-orden y cierra la brecha de disponibilidad durante la conversion.
+
+Validacion P5: 128 pruebas backend, 54 frontend y un escenario E2E Playwright Conductor → Administrador → Despachador. Tambien pasaron Prisma, typecheck, lint, formato, build, IDOR, reporte tardio, idempotencia y concurrencia de conversion.
+
+## Cierre funcional P7 2026-09-07
+
+- Las ordenes exigen origen coherente y conservan jornada cuando nacen de una novedad operacional.
+- Las lecturas tecnicas de ingreso, revision y cierre comparten la politica cronologica y el candado del odometro operativo.
+- Diagnostico, actividades y consumos nuevos exigen una intervencion activa de la orden y del mecanico vigente.
+- El cierre administrativo conserva snapshots de plan y disponibilidad, recalcula las restricciones restantes y mantiene `CERRADA` como estado terminal.
+- La proyeccion del Despachador limita el contrato a estado, bus, disponibilidad y causas operativas; no expone diagnosticos, actividades, consumos ni costos.
+- Reasignacion y devolucion conservan responsables, intervenciones y actividades previas.
+
+Validacion P7: 149 pruebas backend, 57 frontend y tres escenarios E2E Playwright acumulados, incluido Administrador → Mecanico → Administrador → Despachador para P7. Tambien pasaron seed idempotente, 18 migraciones sin pendientes, typecheck, lint, formato, build y auditoria con cero vulnerabilidades.
+
+## Cierre funcional P8 2026-09-07
+
+- Los repuestos exponen fabricante, numero de parte, especificaciones y dimensiones, y el Administrador gestiona reglas versionadas por bus o modelo.
+- La resolucion efectiva aplica precedencia `bus > modelo`; una regla negativa especifica no cae a una positiva general y la ausencia de evidencia positiva rechaza el consumo.
+- Todo consumo nuevo exige una intervencion activa de la misma orden, conserva snapshot de regla/version/evidencia y confirma stock, consumo, movimiento y costo historico atomicamente.
+- El rechazo incompatible conserva stock y no crea consumo ni movimiento, pero materializa una alerta interna deduplicada con contexto saneado.
+- La excepcion es puntual, previa, revocable, de un solo uso y separa al Administrador autorizador del Mecanico consumidor; PostgreSQL protege tambien escrituras directas.
+- La UI cubre datos tecnicos, reglas, historial/versionado, inactivacion y autorizaciones excepcionales, sin ampliar permisos del Despachador.
+
+Validacion P8: 158 pruebas backend, 59 frontend y cuatro escenarios E2E Playwright acumulados, incluido Administrador → Mecanico para rechazo incompatible, regla versionada y consumo autorizado. Tambien pasaron seed idempotente, 22 migraciones sin pendientes, typecheck, lint, formato, build y auditoria con cero vulnerabilidades.
+
+## Advertencia para proximas tareas
+
+No afirmar cumplimiento total de la nueva linea. P3-P8 estan completos localmente; P9-P13 siguen pendientes. Las restricciones SQL no sustituyen autorizacion de sesion, reglas de servicio ni pantallas.
+
+La siguiente implementacion, solo con orden de Jefe, debe ser P9. No iniciarla ni recrear tablas ya migradas sin una orden nueva.
+
+## Git
+
+Jefe pidio que la documentacion Markdown para Borlty quede local y no se suba al repo. No hacer commit/push de estos `.md` sin autorizacion explicita.

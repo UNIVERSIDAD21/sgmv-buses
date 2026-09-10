@@ -1,0 +1,185 @@
+{
+  "branch": "realineacion/trazabilidad-operativa-tecnica",
+  "capturedAt": "2026-09-10T03:10:15.444Z",
+  "evidenceCount": 16,
+  "productionUrl": "https://v0-bus-fleet-management-neon.vercel.app",
+  "sha": "3a4b0134e8960c499c3d77317ba138acb5ba3137",
+  "evidences": [
+    {
+      "file": "P14_RNF02_LOGIN_390.png",
+      "path": "docs/p14/evidencias/P14_RNF02_LOGIN_390.png",
+      "requirement": "RNF-02",
+      "role": "PUBLICO",
+      "scenario": "Acceso adaptable en movil",
+      "viewport": "390x844",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "33798db52e19af742d00851ba2a905b89f1f2148d8f2732ad193552982c63e33"
+    },
+    {
+      "file": "P14_RNF02_LOGIN_1024.png",
+      "path": "docs/p14/evidencias/P14_RNF02_LOGIN_1024.png",
+      "requirement": "RNF-02",
+      "role": "PUBLICO",
+      "scenario": "Acceso adaptable en portatil",
+      "viewport": "1024x768",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "29c9c5e2e7d84e48e46a2c4a11654cd57460ec63c00ed2c7e4a7329704096ac8"
+    },
+    {
+      "file": "P14_RNF02_LOGIN_1440.png",
+      "path": "docs/p14/evidencias/P14_RNF02_LOGIN_1440.png",
+      "requirement": "RNF-02",
+      "role": "PUBLICO",
+      "scenario": "Acceso adaptable en escritorio",
+      "viewport": "1440x900",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "177da86beddb16b8d166bd8e4fa481ccc8463e2c688eb0d2dd3f724426c680a8"
+    },
+    {
+      "file": "P14_RF01_ADMIN_FLOTA_1440.png",
+      "path": "docs/p14/evidencias/P14_RF01_ADMIN_FLOTA_1440.png",
+      "requirement": "RF-01",
+      "role": "ADMINISTRADOR",
+      "scenario": "Consulta administrativa de flota",
+      "viewport": "1440x900",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "6be5a3aa80b975115b4448bf91df10e29ecc6617e03946f8987250d419afbe43"
+    },
+    {
+      "file": "P14_RF03_ADMIN_PREVENTIVO_1024.png",
+      "path": "docs/p14/evidencias/P14_RF03_ADMIN_PREVENTIVO_1024.png",
+      "requirement": "RF-03",
+      "role": "ADMINISTRADOR",
+      "scenario": "Gestion de mantenimiento preventivo",
+      "viewport": "1024x768",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "8d7b11d492996033c275e9801b0fd0b4588dc2362f2c0ec5a3fa5db2518e754c"
+    },
+    {
+      "file": "P14_RF05_ADMIN_REPUESTOS_390.png",
+      "path": "docs/p14/evidencias/P14_RF05_ADMIN_REPUESTOS_390.png",
+      "requirement": "RF-05",
+      "role": "ADMINISTRADOR",
+      "scenario": "Central de repuestos en movil",
+      "viewport": "390x844",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "ed3606d617d68664b95ce992262b836d694b26a898ea50f8fa19dc6a45d8ebc5"
+    },
+    {
+      "file": "P14_RF01_DESPACHADOR_JORNADAS_1440.png",
+      "path": "docs/p14/evidencias/P14_RF01_DESPACHADOR_JORNADAS_1440.png",
+      "requirement": "RF-01",
+      "role": "DESPACHADOR",
+      "scenario": "Coordinacion de jornadas operativas",
+      "viewport": "1440x900",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "cf7c7b977d8df60d273a34fbeba2f6d707a76fb41f91c9e849f04910f77eff3c"
+    },
+    {
+      "file": "P14_RF02_DESPACHADOR_NOVEDADES_1024.png",
+      "path": "docs/p14/evidencias/P14_RF02_DESPACHADOR_NOVEDADES_1024.png",
+      "requirement": "RF-02",
+      "role": "DESPACHADOR",
+      "scenario": "Seguimiento operativo de novedades",
+      "viewport": "1024x768",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "1945c2d4d2fab99551239ff52dbfc83a8f35949a2e45a376f1b77458e2975845"
+    },
+    {
+      "file": "P14_RF04_DESPACHADOR_ORDENES_390.png",
+      "path": "docs/p14/evidencias/P14_RF04_DESPACHADOR_ORDENES_390.png",
+      "requirement": "RF-04",
+      "role": "DESPACHADOR",
+      "scenario": "Proyeccion operativa sin detalle tecnico",
+      "viewport": "390x844",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "65478ddf29486c161d9c49e7d7f07863ab5ca6a12a0337838458307f93815e73"
+    },
+    {
+      "file": "P14_RF04_MECANICO_ORDENES_1440.png",
+      "path": "docs/p14/evidencias/P14_RF04_MECANICO_ORDENES_1440.png",
+      "requirement": "RF-04",
+      "role": "MECANICO",
+      "scenario": "Consulta de ordenes tecnicas asignadas",
+      "viewport": "1440x900",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "a4f616676c046572ce08c26f604337a67431584f31d714d32a956d0efba30ea5"
+    },
+    {
+      "file": "P14_RF06_MECANICO_HISTORIAL_1024.png",
+      "path": "docs/p14/evidencias/P14_RF06_MECANICO_HISTORIAL_1024.png",
+      "requirement": "RF-06",
+      "role": "MECANICO",
+      "scenario": "Antecedentes tecnicos autorizados",
+      "viewport": "1024x768",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "60764e7ea30c1b51e6e7a166bd2a767391abc1d4beeead9e98e1bd4c1e63f390"
+    },
+    {
+      "file": "P14_RNF05_MECANICO_ALERTAS_390.png",
+      "path": "docs/p14/evidencias/P14_RNF05_MECANICO_ALERTAS_390.png",
+      "requirement": "RNF-05",
+      "role": "MECANICO",
+      "scenario": "Bandeja individual de alertas",
+      "viewport": "390x844",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "e45881d80ebd5b4e28f76ea1ca608e2ac705cfa5d6601bfc439c035a23fc0735"
+    },
+    {
+      "file": "P14_RF02_CONDUCTOR_NOVEDADES_1440.png",
+      "path": "docs/p14/evidencias/P14_RF02_CONDUCTOR_NOVEDADES_1440.png",
+      "requirement": "RF-02",
+      "role": "CONDUCTOR",
+      "scenario": "Reporte y seguimiento de novedades propias",
+      "viewport": "1440x900",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "dd1683f8f3aacd275006a6b3b7d16e854ddfb99ac7032234b75019a8f78f2084"
+    },
+    {
+      "file": "P14_RF01_CONDUCTOR_JORNADA_1024.png",
+      "path": "docs/p14/evidencias/P14_RF01_CONDUCTOR_JORNADA_1024.png",
+      "requirement": "RF-01",
+      "role": "CONDUCTOR",
+      "scenario": "Consulta de jornada propia",
+      "viewport": "1024x768",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "48923e2cdd908c7bd1b3c569e4a847558ce2d7b0c188b7be0762f1c4e0f3af82"
+    },
+    {
+      "file": "P14_RF06_CONDUCTOR_HISTORIAL_390.png",
+      "path": "docs/p14/evidencias/P14_RF06_CONDUCTOR_HISTORIAL_390.png",
+      "requirement": "RF-06",
+      "role": "CONDUCTOR",
+      "scenario": "Historial autorizado de su bus",
+      "viewport": "390x844",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "45024d4fc4880e0fa215bb579e8f849b2f6091a5eb1cc843ab936ec6fa2c743a"
+    },
+    {
+      "file": "P14_RNF01_DESPACHADOR_ACCESO_DENEGADO_1440.png",
+      "path": "docs/p14/evidencias/P14_RNF01_DESPACHADOR_ACCESO_DENEGADO_1440.png",
+      "requirement": "RNF-01",
+      "role": "DESPACHADOR",
+      "scenario": "Proteccion visible de ruta administrativa",
+      "viewport": "1440x900",
+      "capturedAt": "2026-09-10T03:10:15.444Z",
+      "result": "PASS",
+      "sha256": "f38b1f4e48915e13c85ede5a24fb255e78d47e957317249008a195f565ea1dd8"
+    }
+  ]
+}

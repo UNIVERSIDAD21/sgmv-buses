@@ -1,301 +1,135 @@
-# Arquitectura técnica
+# Arquitectura
 
-## 1. Arquitectura aprobada
+## Estado final P14
 
-Modelo cliente-servidor con tres responsabilidades principales:
+La topología es `Browser → Vercel → /api rewrite → Render → Neon`. Vercel sirve el
+frontend Vite y Render la API Express. Prisma usa conexión pooled en runtime y conexión
+directa durante migraciones. La aplicación auditada corresponde a
+`3a4b0134e8960c499c3d77317ba138acb5ba3137`.
+
+La autorización se aplica en backend por rol, propiedad y privacidad de campo. El
+Administrador conserva economía autorizada; el Mecánico recibe información técnica sin
+costos; el Despachador recibe solo proyección operativa. P14 no agregó migraciones.
+Operación y recuperación: `docs/p14/INVENTARIO_FINAL.md`.
+
+## Stack
+
+- Frontend: React, Vite y Tailwind CSS.
+- Backend: Node.js, Express y API REST.
+- Base de datos: PostgreSQL en Neon.
+- ORM: Prisma.
+- Validacion: Zod.
+- Autenticacion: bcrypt y JWT en cookie HttpOnly.
+
+## Vista general
 
 ```text
-React + Vite + Tailwind
-          │
-          │ HTTP / JSON
-          ▼
-    Node.js + Express
-          │
-          │ SQL / capa de datos
-          ▼
-   PostgreSQL en Neon
+Actores
+  -> Aplicacion web React
+  -> API REST Express
+  -> Servicios de negocio
+  -> Repositorios Prisma
+  -> PostgreSQL/Neon
 ```
 
-Decisiones tecnicas aprobadas:
+## Actores objetivo
 
-- Persistencia con Prisma ORM sobre PostgreSQL/Neon.
-- Validacion con Zod.
-- Autenticacion con email/contrasena, bcrypt y JWT en cookie `HttpOnly`.
-- Pruebas con Vitest, Supertest, React Testing Library y Playwright.
-- Lint/formato con ESLint y Prettier.
-- Despliegue: frontend en Vercel, API en Render y datos en Neon.
+- Administrador.
+- Despachador.
+- Mecanico.
+- Conductor.
 
----
+El Sistema aparece solo para calculos, clasificaciones y alertas; no es cuenta de usuario.
 
-## 2. Frontend
+## Modulos funcionales
 
-Responsabilidades:
+- Autenticacion y autorizacion transversal.
+- Flota.
+- Jornadas/turnos y despacho basico.
+- Rutas basicas como contexto.
+- Kilometraje contextual.
+- Novedades.
+- Mantenimiento preventivo.
+- Ordenes de trabajo.
+- Intervenciones.
+- Repuestos e inventario.
+- Compatibilidad tecnica.
+- Alertas internas.
+- Historial e informes.
 
-- presentación;
-- navegación;
-- formularios;
-- feedback de validación;
-- consumo de API;
-- adaptación visual por rol;
-- protección de rutas como capa de UX.
+## Estado del codigo actual
 
-El frontend **no es la autoridad final de seguridad**.
-
-Organizar por módulos/feature cuando sea posible:
+El backend y frontend existentes ya implementan:
 
 - auth;
 - flota;
 - novedades;
-- preventivo;
+- preventivos;
 - ordenes;
 - repuestos;
-- historial;
-- informes.
+- historial/informes.
 
----
+La persistencia ya incluye las tablas y relaciones de jornadas, rutas, alertas, compatibilidad y kilometraje contextual. El backend y frontend reconocen `DESPACHADOR`, pero aun no implementan completamente los servicios, endpoints, autorizacion y pantallas de:
 
-## 3. Backend
+- modulo completo de despacho y jornadas/turnos;
+- rutas basicas;
+- bandeja y generacion funcional de alertas internas;
+- compatibilidad de repuestos;
+- kilometraje contextual completo.
 
-Responsabilidades:
+## Principios de arquitectura
 
-- autenticación;
-- autorización;
-- validación definitiva;
-- reglas de negocio;
-- transacciones;
-- acceso a datos;
-- manejo de errores;
-- API REST;
-- auditoría básica.
+- Separar presentacion, logica de negocio y persistencia.
+- Validar reglas criticas en backend.
+- No confiar en IDs del cliente para ampliar alcance.
+- Mantener DTOs por rol.
+- No exponer costos o diagnosticos a roles no autorizados.
+- Usar transacciones para operaciones que cambian disponibilidad, stock o historial.
+- Mantener historial derivado desde eventos reales.
+- No crear microservicios ni integraciones externas para este prototipo.
 
-Sugerencia de capas, adaptable sin cambiar el principio:
-
-```text
-route -> controller -> service/use-case -> repository/data -> PostgreSQL
-```
-
-No colocar reglas críticas solo en controllers o componentes React.
-
----
-
-## 4. Base de datos
-
-PostgreSQL/Neon es la fuente persistente de verdad operacional.
-
-Aplicar integridad también en base de datos cuando corresponda.
-
----
-
-## 5. API REST
-
-Usar recursos coherentes.
-
-Ejemplos conceptuales, no contrato congelado:
+## Flujo operativo objetivo
 
 ```text
-/api/auth
-/api/usuarios
-/api/buses
-/api/asignaciones
-/api/novedades
-/api/mantenimiento-preventivo
-/api/ordenes
-/api/intervenciones
-/api/repuestos
-/api/movimientos-inventario
-/api/historial
-/api/informes
+Despachador crea jornada
+  -> Sistema valida disponibilidad/superposicion
+  -> Conductor inicia jornada y confirma kilometraje
+  -> Conductor reporta novedad con kilometraje
+  -> Sistema alerta a Despachador/Administrador
+  -> Administrador genera orden si aplica
+  -> Mecanico ejecuta intervencion y consume repuestos compatibles
+  -> Administrador cierra
+  -> Sistema actualiza historial, disponibilidad e informes
 ```
 
-El agente puede ajustar pluralización/rutas antes de implementación siempre que documente el contrato y mantenga consistencia.
+## Alertas
 
-Contrato RF-03 implementado:
+Las alertas internas se implementan como capacidad transversal:
 
-```text
-GET    /mantenimiento-preventivo/resumen
-GET    /mantenimiento-preventivo/programaciones
-POST   /mantenimiento-preventivo/programaciones
-GET    /mantenimiento-preventivo/programaciones/:programacionId
-PATCH  /mantenimiento-preventivo/programaciones/:programacionId
-POST   /mantenimiento-preventivo/programaciones/:programacionId/generar-orden
-```
+- generadas por reglas de negocio;
+- visibles en bandeja interna;
+- filtradas por usuario/rol;
+- relacionadas con el registro origen;
+- sin SMS, WhatsApp, correo automatico ni push externo.
 
-La capa backend queda organizada como `route -> controller -> service -> repository -> Prisma`. La clasificacion preventiva vive en un modulo reutilizable y no en componentes React. El frontend consume la API desde `src/frontend/src/features/preventivo/preventive.api.ts`.
+## Rutas
 
-Contrato RF-04 implementado:
+Ruta es dato de apoyo de jornada. No representa modulo de transporte completo.
 
-```text
-GET    /ordenes-trabajo/resumen
-GET    /ordenes-trabajo
-POST   /ordenes-trabajo
-GET    /ordenes-trabajo/mis-ordenes
-GET    /ordenes-trabajo/mecanicos-disponibles
-GET    /ordenes-trabajo/:ordenId
-GET    /ordenes-trabajo/:ordenId/historial
-GET    /ordenes-trabajo/:ordenId/reasignaciones
-POST   /ordenes-trabajo/:ordenId/asignar
-POST   /ordenes-trabajo/:ordenId/reasignar
-POST   /ordenes-trabajo/:ordenId/iniciar
-POST   /ordenes-trabajo/:ordenId/reanudar
-PATCH  /ordenes-trabajo/:ordenId/intervencion
-POST   /ordenes-trabajo/:ordenId/actividades
-GET    /ordenes-trabajo/:ordenId/repuestos-disponibles
-POST   /ordenes-trabajo/:ordenId/consumos
-POST   /ordenes-trabajo/:ordenId/completar
-POST   /ordenes-trabajo/:ordenId/devolver
-POST   /ordenes-trabajo/:ordenId/cerrar
-```
+Permitido:
 
-RF-04 mantiene la misma separacion `route -> controller -> service -> repository -> Prisma`. La maquina de estados vive en `work-order.state.ts`, las transiciones y autorizaciones en servicio, y las operaciones criticas en transacciones Prisma. El frontend consume la API desde `src/frontend/src/features/ordenes-trabajo/work-order.api.ts`.
+- codigo;
+- nombre;
+- origen;
+- destino;
+- estado.
 
-Contrato RF-05 implementado:
+Excluido:
 
-```text
-GET    /repuestos/resumen
-GET    /repuestos
-POST   /repuestos
-GET    /repuestos/:repuestoId
-PATCH  /repuestos/:repuestoId
-POST   /repuestos/:repuestoId/activar
-POST   /repuestos/:repuestoId/desactivar
-POST   /repuestos/:repuestoId/entradas
-POST   /repuestos/:repuestoId/ajustes
-GET    /repuestos/:repuestoId/movimientos
-GET    /inventario/movimientos
-```
-
-RF-05 mantiene la separacion `route -> controller -> service -> repository -> Prisma` en `src/backend/src/spare-parts/*`. La disponibilidad vive en `spare-part.availability.ts`; las entradas y ajustes usan transacciones Prisma, candado advisory por repuesto, actualizacion atomica condicionada y `movimientos_inventario.clave_idempotencia`. El frontend consume la API desde `src/frontend/src/features/repuestos/spare-part.api.ts`.
-
----
-
-## 6. Respuestas y errores
-
-Usar formato consistente.
-
-Ejemplo:
-
-```json
-{
-  "data": {},
-  "message": "Operación realizada"
-}
-```
-
-Error controlado:
-
-```json
-{
-  "error": {
-    "code": "FORBIDDEN",
-    "message": "No tiene permisos para realizar esta operación"
-  }
-}
-```
-
-No devolver stack trace, SQL interno, tokens o secretos.
-
----
-
-## 7. Autenticación
-
-Debe existir:
-
-- login;
-- logout en términos del mecanismo escogido;
-- rechazo de cuenta inactiva;
-- protección de rutas;
-- autorización de backend.
-
-La decision aprobada es JWT en cookie `HttpOnly`.
-
-Reglas obligatorias:
-
-- `Secure=true` en produccion.
-- `SameSite` segun entorno.
-- CORS restringido al dominio autorizado del frontend.
-- Proteccion CSRF o validacion equivalente en operaciones de escritura.
-- Limite de intentos de inicio de sesion.
-- Expiracion definida del JWT.
-- No registrar contrasenas, hashes ni tokens en logs.
-
----
-
-## 8. Autorización
-
-No confiar en el rol enviado por el frontend.
-
-El backend obtiene identidad/rol desde el mecanismo autenticado.
-
-Especialmente:
-
-- Conductor: filtrar por identidad/asignación.
-- Mecánico: filtrar órdenes asignadas/autorizadas.
-- Administrador: permisos administrativos.
-
----
-
-## 9. Validación
-
-Validar en:
-
-- frontend: UX;
-- backend: seguridad e integridad;
-- base de datos: restricciones estructurales.
-
----
-
-## 10. Configuración
-
-Todo secreto/configuración sensible va en variables de entorno.
-
-Usar `.env.example` sin secretos.
-
----
-
-## 11. Dependencias técnicas aprobadas
-
-OpenClaw debe usar las decisiones aprobadas salvo autorizacion posterior del propietario:
-
-- Prisma para acceso PostgreSQL/ORM y migraciones.
-- Zod para validacion.
-- bcrypt para hashing.
-- JWT en cookie `HttpOnly` para autenticacion.
-- Vitest, Supertest, React Testing Library y Playwright para pruebas.
-- ESLint y Prettier para lint/formato.
-
-Estas decisiones:
-
-- son compatibles con Node/Express/React/Vite;
-- no cambian el stack principal;
-- no introducen servicios externos fuera del alcance funcional;
-- quedan documentadas en `DECISIONS.md`.
-
----
-
-## 12. Despliegue
-
-Decision aprobada:
-
-- Frontend React/Vite publicado en Vercel.
-- API Node.js/Express publicada en Render.
-- PostgreSQL en Neon.
-- HTTPS en Vercel y Render.
-- Variables de entorno separadas por proveedor.
-
-CORS debe restringirse al dominio autorizado del frontend en Vercel. Cookies, `Secure`, `SameSite` y CSRF deben configurarse segun la relacion real entre dominios Vercel/Render.
-
----
-
-## 13. Regla de simplicidad
-
-Este es un prototipo funcional académico.
-
-Preferir una arquitectura limpia y suficiente sobre:
-
-- microservicios;
-- event sourcing;
-- Kubernetes;
-- colas distribuidas;
-- infraestructura empresarial innecesaria.
-
-No sacrificar seguridad/integridad, pero evitar sobrearquitectura.
+- GPS;
+- mapa en tiempo real;
+- paradas;
+- frecuencia;
+- tarifa;
+- recaudo;
+- optimizacion.

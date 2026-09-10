@@ -1,86 +1,93 @@
 # Software de Gestión de Mantenimiento Vehicular
 
-Prototipo web académico para centralizar y estandarizar la gestión del mantenimiento preventivo y correctivo de una flota de buses.
+Prototipo web académico con datos simulados para integrar la trazabilidad operativa y técnica de una flota de buses:
 
-## Estado
+`bus + conductor + jornada + kilometraje → novedad → orden → intervención → consumo compatible → inventario → alerta → historial`
 
-La documentación de transferencia a desarrollo está preparada. La **Fase 3: desarrollo, integración y validación** cuenta con bootstrap técnico, Persistencia, autenticación transversal, normalización canónica de roles y RF-01 a RF-06 implementados y documentados.
+No es una integración operacional real con una empresa de transporte.
 
-Ver `docs/PROJECT_STATUS.md` antes de iniciar cualquier implementación.
+## Estado técnico
 
-## RF-01 implementado
+- RF-01 a RF-06 implementados y aceptados técnicamente.
+- RNF-02 a RNF-05 aceptados.
+- RNF-01 funciona en el producto y tiene pendiente la rotación manual de las API keys de Vercel y Render antes del Gate final P14.
+- SHA de aplicación auditada: `3a4b0134e8960c499c3d77317ba138acb5ba3137`.
+- Rama: `realineacion/trazabilidad-operativa-tecnica`.
+- 23 migraciones Prisma aplicadas, sin pendientes.
+- GATE-DOC cerrado: la documentación académica principal no fue modificada.
 
-La Gestion de la flota vehicular esta implementada de extremo a extremo. Ver `docs/RF01_FLEET.md` para endpoints, reglas, pruebas y evidencias visuales.
+Fuente final: [`docs/p14/CIERRE_TECNICO.md`](docs/p14/CIERRE_TECNICO.md).
 
-## RF-02 implementado
+## Producción
 
-El Control de novedades operativas esta implementado de extremo a extremo. Ver `docs/RF02_NOVEDADES.md` para endpoints, reglas, pruebas y evidencias visuales.
+- Frontend: <https://v0-bus-fleet-management-neon.vercel.app>
+- Backend: <https://sgmv-backend-qvq1.onrender.com>
+- Health: <https://sgmv-backend-qvq1.onrender.com/health>
+- Readiness: <https://sgmv-backend-qvq1.onrender.com/ready>
+- Base: PostgreSQL 17 en Neon.
 
-## RF-03 implementado
+Topología: `Browser → Vercel → /api rewrite → Render → Neon`.
 
-La Administracion del mantenimiento preventivo esta implementada de extremo a extremo para Administrador. Ver `docs/RF03_MANTENIMIENTO_PREVENTIVO.md` para endpoints, reglas de clasificacion, generacion de orden preventiva, pruebas y evidencias visuales.
+## Stack y roles
 
-## RF-04 implementado
+- React, Vite y Tailwind CSS.
+- Node.js, Express, Zod, Prisma y PostgreSQL.
+- Vitest, Supertest, React Testing Library y Playwright.
+- Administrador: gestión completa y costos autorizados.
+- Despachador: operación sin diagnósticos ni costos.
+- Mecánico: ejecución técnica sin economía administrativa.
+- Conductor: jornada, bus, kilometraje y novedades propias.
 
-El Seguimiento de ordenes de trabajo esta implementado de extremo a extremo para Administrador y Mecanico, con Conductor denegado. Ver `docs/RF04_ORDENES_TRABAJO.md` para endpoints, maquina de estados, transacciones, consumos, pruebas y evidencias visuales.
+## Ejecución local
 
-## RF-05 implementado
+Requisitos: Node 24.x, npm 11.x y PostgreSQL local.
 
-La Central de repuestos esta implementada de extremo a extremo para Administrador, con integracion real al consumo RF-04 del Mecanico y Conductor denegado. Ver `docs/RF05_CENTRAL_REPUESTOS.md` para endpoints, disponibilidad, entradas, ajustes, movimientos, concurrencia, pruebas y evidencias visuales.
+```powershell
+npm ci
+npm run db:local:init
+npm run prisma:generate:local
+npm run prisma:migrate:local
+npm run prisma:seed:local
+npm run dev:backend:local
+npm run dev:frontend
+```
 
-## RF-06 implementado
+Las contraseñas demo provienen de `SEED_USER_PASSWORD` en `.env.local`; no se documentan valores.
 
-La Consulta de historial y generación de informes está implementada de extremo a extremo con historial derivado y de solo lectura: Administrador sobre toda la flota con informes y costos básicos, Mecánico limitado a antecedentes técnicos propios y Conductor limitado a su bus asignado y novedades propias. Ver `docs/RF06_HISTORIAL_INFORMES.md`.
+## Gate técnico
 
-## Stack
+```powershell
+npm run prisma:validate
+npm run typecheck
+npm run lint
+npm run format:check
+npm run test:backend:local
+npm --workspace @sgmv/frontend test
+npm run test:e2e:local
+npm run build
+npm run check:bundle
+npm audit
+npm run p12:audit
+npm run p13:config
+```
 
-- Frontend: React + Vite + Tailwind CSS
-- Backend: Node.js + Express
-- API: REST
-- Base de datos: PostgreSQL en Neon
+Producción requiere `SGMV_PROD_TEST_PASSWORD` desde el almacén protegido:
 
-## Roles
+```powershell
+npm run test:e2e:production
+npm run p14:evidence
+```
 
-- Administrador
-- Mecánico
-- Conductor
+## Documentación principal
 
-## Requerimientos funcionales principales
+- [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md): RF/RNF vigentes.
+- [`docs/USE_CASES.md`](docs/USE_CASES.md): casos de uso.
+- [`docs/BUSINESS_RULES.md`](docs/BUSINESS_RULES.md): invariantes.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): arquitectura.
+- [`docs/TESTING.md`](docs/TESTING.md): pruebas.
+- [`docs/p14/CIERRE_TECNICO.md`](docs/p14/CIERRE_TECNICO.md): aceptación.
+- [`docs/p14/MATRIZ_MAESTRA.csv`](docs/p14/MATRIZ_MAESTRA.csv): trazabilidad criterio por criterio.
+- [`docs/p14/DEMO_REPRODUCIBLE.md`](docs/p14/DEMO_REPRODUCIBLE.md): sustentación.
+- [`docs/p14/INVENTARIO_FINAL.md`](docs/p14/INVENTARIO_FINAL.md): verificación y operación.
 
-1. RF-01 — Gestión de la flota vehicular.
-2. RF-02 — Control de novedades operativas.
-3. RF-03 — Administración del mantenimiento preventivo.
-4. RF-04 — Seguimiento de órdenes de trabajo.
-5. RF-05 — Central de Repuestos.
-6. RF-06 — Consulta de historial y generación de informes.
-
-## Documentación para el agente
-
-Leer primero `AGENTS.md`.
-
-Documentos principales:
-
-- `docs/PROJECT_BRIEF.md` — contexto y alcance.
-- `docs/REQUIREMENTS.md` — RF/RNF finales.
-- `docs/USE_CASES.md` — seis casos de uso principales.
-- `docs/BUSINESS_RULES.md` — reglas que el código debe respetar.
-- `docs/DATA_MODEL.md` — modelo conceptual derivado del diseño aprobado.
-- `docs/DATABASE_STRUCTURE.md` — estructura fisica PostgreSQL/Prisma implementada.
-- `docs/RF01_FLEET.md` - endpoints, reglas y evidencias de RF-01.
-- `docs/RF02_NOVEDADES.md` - endpoints, reglas y evidencias de RF-02.
-- `docs/RF03_MANTENIMIENTO_PREVENTIVO.md` - endpoints, reglas y evidencias de RF-03.
-- `docs/RF04_ORDENES_TRABAJO.md` - endpoints, reglas y evidencias de RF-04.
-- `docs/RF05_CENTRAL_REPUESTOS.md` - endpoints, reglas y evidencias de RF-05.
-- `docs/RF06_HISTORIAL_INFORMES.md` - historial derivado, informes, permisos y evidencias de RF-06.
-- `docs/DATA_DICTIONARY.md` — diccionario de datos de las 16 tablas.
-- `docs/ARCHITECTURE.md` — arquitectura y límites técnicos.
-- `docs/TASKS.md` — plan vivo de Fase 3.
-- `docs/DECISIONS.md` — decisiones y versiones reemplazadas.
-- `docs/SETUP.md` — instalación y configuración.
-- `docs/TESTING.md` — estrategia y criterios de validación.
-- `docs/PROMPTS.md` — prompts reutilizables.
-- `docs/PROJECT_STATUS.md` — estado actual y bloqueos.
-
-## Regla esencial
-
-Los documentos históricos del Proyecto de Grado pueden contener versiones anteriores. Para programar, la fuente de verdad es la documentación versionada de este repositorio siguiendo la jerarquía indicada en `AGENTS.md`.
+Los `.env`, tokens, cookies y cadenas de conexión permanecen fuera del repositorio.

@@ -45,7 +45,8 @@
     "prisma:validate": "npm --workspace @sgmv/backend run prisma:validate",
     "p12:audit": "node scripts/p12-audit.mjs",
     "p12:migrations": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/p12-verify-migrations.ps1",
-    "p13:config": "node scripts/p13-verify-deployment-config.mjs"
+    "p13:config": "node scripts/p13-verify-deployment-config.mjs",
+    "p14:evidence": "npm --workspace @sgmv/frontend run test:evidence:p14"
   },
   "devDependencies": {
     "prettier": "^3.7.4"
