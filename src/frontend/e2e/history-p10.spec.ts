@@ -550,7 +550,12 @@ test('P10 reconstruye historial, respeta privacidad por rol y mantiene GET sin e
   await page.getByLabel('Buscar bus').fill(marker)
   await page.getByRole('button', { name: /Aplicar filtros/i }).click()
   await expect(page.getByText(busCode, { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: /Ver detalle/i }).click()
+  await expect(page.getByRole('button', { name: /Ver detalle/i })).toHaveCount(1)
+  await page
+    .getByRole('article')
+    .filter({ hasText: busCode })
+    .getByRole('button', { name: /Ver detalle/i })
+    .click()
   await expect(
     page.getByTestId('history-detail').getByText(orderCode, { exact: true }),
   ).toBeVisible()
@@ -606,7 +611,12 @@ test('P10 reconstruye historial, respeta privacidad por rol y mantiene GET sin e
   await page.getByLabel('Buscar bus').fill(marker)
   await page.getByRole('button', { name: /Aplicar filtros/i }).click()
   await expect(page.getByText(busCode, { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: /Ver detalle/i }).click()
+  await expect(page.getByRole('button', { name: /Ver detalle/i })).toHaveCount(1)
+  await page
+    .getByRole('article')
+    .filter({ hasText: busCode })
+    .getByRole('button', { name: /Ver detalle/i })
+    .click()
   const dispatcherDetail = await getApi(page, `/historial/buses/${ids.bus}`)
   expect(dispatcherDetail.status).toBe(200)
   const dispatcherSerialized = JSON.stringify(dispatcherDetail.body)
@@ -625,7 +635,12 @@ test('P10 reconstruye historial, respeta privacidad por rol y mantiene GET sin e
   await page.getByLabel('Buscar bus').fill(marker)
   await page.getByRole('button', { name: /Aplicar filtros/i }).click()
   await expect(page.getByText(busCode, { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: /Ver detalle/i }).click()
+  await expect(page.getByRole('button', { name: /Ver detalle/i })).toHaveCount(1)
+  await page
+    .getByRole('article')
+    .filter({ hasText: busCode })
+    .getByRole('button', { name: /Ver detalle/i })
+    .click()
   const mechanicDetail = await getApi(page, `/historial/buses/${ids.bus}`)
   expect(mechanicDetail.status).toBe(200)
   const mechanicSerialized = JSON.stringify(mechanicDetail.body)
