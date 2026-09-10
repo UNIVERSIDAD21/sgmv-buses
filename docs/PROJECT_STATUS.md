@@ -1,21 +1,23 @@
 # Project Status
 
-## P14 en cierre técnico 2026-09-09
+## P14 cerrado técnicamente 2026-09-10
 
 P14 auditó el estado desplegado, regeneró 16 evidencias con SHA-256 sobre la aplicación
 `3a4b0134e8960c499c3d77317ba138acb5ba3137`, construyó la matriz criterio por criterio
-y preparó demo e inventario reproducibles. RF-01 a RF-06 y RNF-02 a RNF-05 quedaron
-aceptados. RNF-01 conserva un bloqueo operacional: las API keys de Vercel y Render deben
-rotarse manualmente mediante entrada protegida antes del Gate final.
+y preparó demo e inventario reproducibles. RF-01 a RF-06 y RNF-01 a RNF-05 quedaron
+aceptados. Las credenciales afectadas de Vercel, Render, Neon, conexión de base de datos
+y cuentas demo fueron rotadas, almacenadas mediante entrada protegida y verificadas.
 
 Durante P14 se corrigió la exposición económica de RF-04 al Mecánico en backend y
 frontend y se añadieron pruebas de ausencia de campos. También se corrigió el timeout
 de la proyección de Despachador eliminando lecturas seriales dentro de una transacción
-larga. El smoke productivo posterior aprobó los cuatro roles.
+larga. El Gate final aprobó backend 175/175, frontend 74/74, typecheck, lint, formato,
+build, bundle, auditoría de dependencias y secretos. El smoke productivo posterior a las
+rotaciones aprobó los cuatro roles y la privacidad económica por rol.
 
 Fuente final: `docs/p14/CIERRE_TECNICO.md`. GATE-DOC permanece cerrado.
 
-**Ultima consolidacion local para Borlty:** 2026-09-09
+**Última consolidación local para Borlty:** 2026-09-10
 
 ## P13 cerrado y desplegado 2026-09-09
 
