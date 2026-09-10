@@ -119,11 +119,12 @@ npm --workspace @sgmv/backend exec -- prisma migrate status --schema prisma/sche
 - Credencial demo: rotada y acceso verificado.
 - Vercel API key: pendiente de rotación manual segura.
 - Render API key: pendiente de rotación manual segura.
+- Credencial de conexión de base de datos: pendiente de rotación manual segura tras exposición por una vista insegura del gestor de secretos.
 - No rotar `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `CSRF_SECRET` ni `RATE_LIMIT_SECRET` sin evidencia de exposición.
 
 ## Riesgos y limitaciones
 
-- Bloqueo Gate: rotación y revocación de Vercel/Render.
+- Bloqueo Gate: rotación y revocación de Vercel, Render y credencial de conexión de base de datos.
 - Cold start en Render Free.
 - Datos simulados; no GPS, telemetría, recaudo, app nativa, mensajería externa, ERP ni integraciones gubernamentales.
 - GATE-DOC cerrado: documentos académicos institucionales no forman parte de estos cambios.

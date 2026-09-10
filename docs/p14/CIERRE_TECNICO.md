@@ -1,6 +1,6 @@
 # P14 — Evidencias, aceptación y cierre técnico
 
-**Estado del documento:** cierre técnico preparado, Gate final pendiente exclusivamente de la rotación manual segura de las credenciales API de Vercel y Render.
+**Estado del documento:** cierre técnico preparado, Gate final pendiente de la rotación manual segura de las credenciales API de Vercel y Render y de la credencial de conexión de base de datos expuesta por una vista insegura del gestor de secretos.
 
 **Naturaleza del sistema:** prototipo web académico con datos simulados. No representa una integración operacional real con una empresa de transporte.
 
@@ -8,7 +8,7 @@
 
 P14 auditó la aplicación desplegada, la trazabilidad RF/RNF, la seguridad por rol, la usabilidad, el desempeño, la mantenibilidad y las alertas. Durante la auditoría se detectaron dos fallos reales de producto: exposición de campos económicos de RF-04 al Mecánico y timeout de la proyección operativa de órdenes para el Despachador. Ambos se corrigieron en backend, frontend y pruebas, se publicaron y se validaron en producción.
 
-El producto cumple RF-01 a RF-06 y RNF-02 a RNF-05. RNF-01 conserva un bloqueo externo de operación: las API keys de Vercel y Render que aparecieron en una salida interna deben rotarse manualmente en sus portales porque la credencial Vercel actual no puede administrar tokens y Render no expone rotación de API keys en su API pública. Neon y la credencial demo ya fueron rotadas y verificadas sin exponer valores.
+El producto cumple RF-01 a RF-06 y RNF-02 a RNF-05. RNF-01 conserva un bloqueo externo de operación: las API keys de Vercel y Render y una credencial de conexión de base de datos aparecieron en una vista interna insegura. Deben rotarse mediante los portales y flujos protegidos correspondientes. Neon API y la credencial demo ya fueron rotadas y verificadas sin exponer valores.
 
 ## B. Congelación P14-A
 
@@ -117,7 +117,7 @@ El working tree contiene únicamente el capturador y los artefactos técnicos P1
 - **Pruebas:** `auth.test.ts`, `p12-security.test.ts`, suites de dominio, Playwright P12 y smoke productivo 4/4.
 - **Evidencias:** acceso denegado visual y pruebas productivas de cookies, CSRF, sesión, logout y privacidad económica.
 - **Resultado de producto:** aprobado.
-- **Bloqueo operacional:** rotación manual pendiente de Vercel y Render. Neon y credencial demo: rotadas/verificadas.
+- **Bloqueo operacional:** rotación manual pendiente de Vercel, Render y credencial de conexión de base de datos. Neon API y credencial demo: rotadas/verificadas.
 
 **RNF-01: NO ACEPTADO** hasta completar y verificar ambas rotaciones externas.
 
@@ -207,6 +207,7 @@ Los comandos exactos se encuentran en `docs/p14/INVENTARIO_FINAL.md`.
 - Demo credential: ROTATED / ACCESS VERIFIED.
 - Vercel credential: PENDING MANUAL ROTATION.
 - Render credential: PENDING MANUAL ROTATION.
+- Database runtime credential: PENDING MANUAL ROTATION.
 - No se muestran valores, prefijos, sufijos ni fragmentos de secretos.
 
 ## J. Producción
@@ -219,7 +220,7 @@ Los comandos exactos se encuentran en `docs/p14/INVENTARIO_FINAL.md`.
 
 ## K. Riesgos y pendientes
 
-1. **BLOQUEANTE:** rotar y revocar manualmente las API keys de Vercel y Render y guardar las nuevas mediante entrada protegida.
+1. **BLOQUEANTE:** rotar y revocar manualmente las API keys de Vercel y Render y la credencial de conexión de base de datos; guardar los reemplazos mediante entrada protegida.
 2. **Riesgo residual aceptable:** cold start de Render Free.
 3. **Riesgo residual aceptable:** datos simulados y ausencia de integraciones externas, acorde con el alcance académico.
 4. **Pendiente académico externo:** GATE-DOC permanece cerrado. No se modificaron Word, capítulos, conclusiones, metodología, figuras ni diagramas académicos.
@@ -238,6 +239,7 @@ La aplicación auditada y desplegada corresponde a `3a4b0134e8960c499c3d77317ba1
 | --- | --- | --- | --- | --- | --- |
 | P14-A, interpretación y aceptación | GPT-5.6 Sol | High | Criterios, seguridad y Gate | Checkpoint previo observado: 191k entrada / 25k salida, ventana 5 h 75 %, semanal 21 % | Preflight completado |
 | Evidencias, corrección RF-04, desempeño y artefactos | GPT-5.6 Sol | High | Luna no estaba disponible y los hallazgos eran sensibles | Checkpoint tras compactación: 331 entrada / 55 salida visibles, cache 180k, 5 h 69 %, semanal 5 %, una compactación | Trabajo completado hasta bloqueo externo |
+| Reanudación y gate local final | GPT-5.6 Terra | High | Cambio impuesto por disponibilidad del runtime; Sol no estaba disponible con el perfil previo | Observable al retomar: 30 días 63 % restante; no hay contador exacto atribuible al bloque | Backend 175/175, frontend 74/74 y verificaciones estáticas verdes |
 
 No hubo cambio silencioso de modelo ni delegación. Luna no se usó. El consumo exacto por bloque no es observable y no se reconstruye. Las métricas tras compactación no son acumulables con el checkpoint previo.
 
@@ -249,5 +251,6 @@ Bloqueos exactos:
 
 - Vercel API key no rotada/revocada/verificada todavía.
 - Render API key no rotada/revocada/verificada todavía.
+- Credencial de conexión de base de datos expuesta no rotada/revocada/verificada todavía.
 
 Una vez resueltos mediante flujo humano protegido, se repetirá la lectura segura de acceso, se actualizará RNF-01 y se ejecutará el Gate final sin reabrir GATE-DOC.
