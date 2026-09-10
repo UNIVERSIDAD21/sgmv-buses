@@ -90,7 +90,7 @@ npm --workspace @sgmv/backend exec -- prisma migrate status --schema prisma/sche
 3. Si Render Free estaba dormido, esperar readiness sin redeploy.
 4. Ejecutar smoke 4/4 con credencial demo protegida.
 5. Confirmar Administrador con costos y Mecánico/Despachador/Conductor sin campos económicos no autorizados.
-6. Revisar despliegues por SHA y logs por request ID, sin copiar secretos ni cuerpos sensibles.
+6. Confirmar Vercel mediante OAuth/estado READY cuando esté disponible. Render se valida por frontend, `/health`, `/ready`, proxy y smoke; su API administrativa queda `NOT CONFIGURED / NOT REQUIRED`.
 
 ## Rollback y roll-forward
 
@@ -104,6 +104,7 @@ npm --workspace @sgmv/backend exec -- prisma migrate status --schema prisma/sche
 - Rollback: redeploy del commit anterior compatible con el esquema vigente.
 - Roll-forward preferido: commit correctivo focalizado y redeploy.
 - Nunca usar rollback de código si espera una columna no existente o elimina compatibilidad con datos actuales.
+- Borlty no conserva una API key de Render. Si una corrección futura exige modificar o redesplegar el servicio, solicitar intervención humana antes de actuar.
 
 ### Neon/Prisma
 
@@ -118,7 +119,7 @@ npm --workspace @sgmv/backend exec -- prisma migrate status --schema prisma/sche
 - Neon API key: rotada y acceso verificado.
 - Credencial demo: rotada y acceso verificado.
 - Vercel API key: rotada, credencial anterior revocada y acceso verificado.
-- Render API key: rotada, credencial anterior revocada y acceso verificado.
+- Render API administrativa: `NOT CONFIGURED / NOT REQUIRED`; la credencial expuesta fue revocada y Borlty no conserva una credencial administrativa. La disponibilidad del SGMV se verifica por frontend, `/health`, `/ready`, proxy y smoke productivo.
 - Credenciales de conexión `DATABASE_URL` y `DIRECT_URL`: rotadas coordinadamente, almacenadas mediante entrada protegida y verificadas con health/readiness.
 - Los secretos no afectados (`JWT_SECRET`, `CSRF_SECRET` y `RATE_LIMIT_SECRET`) no se modificaron.
 

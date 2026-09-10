@@ -8,7 +8,7 @@
 
 P14 auditó la aplicación desplegada, la trazabilidad RF/RNF, la seguridad por rol, la usabilidad, el desempeño, la mantenibilidad y las alertas. Durante la auditoría se detectaron dos fallos reales de producto: exposición de campos económicos de RF-04 al Mecánico y timeout de la proyección operativa de órdenes para el Despachador. Ambos se corrigieron en backend, frontend y pruebas, se publicaron y se validaron en producción.
 
-El producto cumple RF-01 a RF-06 y RNF-01 a RNF-05. Las credenciales de Vercel, Render, Neon, conexión de base de datos y cuentas demo afectadas por la exposición interna fueron rotadas, revocadas cuando correspondía, almacenadas mediante entrada protegida y verificadas sin registrar valores. El Gate local y el smoke productivo 4/4 quedaron verdes después de la remediación.
+El producto cumple RF-01 a RF-06 y RNF-01 a RNF-05. Las credenciales de Vercel, Neon, conexión de base de datos y cuentas demo afectadas por la exposición interna fueron rotadas, revocadas cuando correspondía, almacenadas mediante entrada protegida y verificadas sin registrar valores. La credencial administrativa de Render previamente expuesta fue revocada y retirada de OpenClaw; su reemplazo no se conserva porque la API administrativa de Render no es requisito de runtime ni criterio de P14. El Gate local y el smoke productivo 4/4 quedaron verdes después de la remediación.
 
 ## B. Congelación P14-A
 
@@ -117,7 +117,7 @@ El working tree quedó limpio después de publicar los artefactos técnicos P14.
 - **Pruebas:** `auth.test.ts`, `p12-security.test.ts`, suites de dominio, Playwright P12 y smoke productivo 4/4.
 - **Evidencias:** acceso denegado visual y pruebas productivas de cookies, CSRF, sesión, logout y privacidad económica.
 - **Resultado de producto:** aprobado.
-- **Remediación operacional:** Vercel, Render, Neon, conexión de base de datos y credencial demo rotadas y verificadas mediante flujos protegidos; los valores no se imprimieron ni se versionaron.
+- **Remediación operacional:** Vercel, Neon, conexión de base de datos y credencial demo rotadas y verificadas mediante flujos protegidos; la credencial expuesta de Render fue revocada y Borlty ya no conserva acceso administrativo de Render. La API administrativa queda `NOT CONFIGURED / NOT REQUIRED`; el servicio se valida por sus endpoints públicos. Los valores no se imprimieron ni se versionaron.
 
 **RNF-01: ACEPTADO**
 
@@ -134,7 +134,7 @@ El working tree quedó limpio después de publicar los artefactos técnicos P14.
 ### RNF-03 — Desempeño del sistema
 
 - **Medición reproducible local:** 20 muestras, tres consultas derivadas concurrentes por muestra. p50 `16.64 ms`, p95 `40.85 ms`, p99/máximo `166.24 ms`; presupuesto p95 `<= 3000 ms`.
-- **Producción:** health/readiness 200. Smoke completo posterior a las rotaciones: 4/4 en `55.1 s`, incluyendo login, navegación, API, cookies, permisos, privacidad económica y logout por los cuatro roles.
+- **Producción:** health/readiness 200. Smoke completo final: 4/4 en `35.6 s`, incluyendo login, navegación, API, cookies, permisos, privacidad económica y logout por los cuatro roles.
 - **Hallazgo resuelto:** `/api/ordenes-trabajo/despacho` serializaba cientos de lecturas dentro de una transacción y alcanzaba el timeout de 60 s. Ahora evalúa con el pool y reutiliza disponibilidad por `bus:jornada`.
 - **Riesgo residual:** cold start de Render Free puede superar tres segundos tras inactividad; está documentado y no representa el p95 local académico.
 
@@ -206,7 +206,7 @@ Los comandos exactos se encuentran en `docs/p14/INVENTARIO_FINAL.md`.
 - Neon credential: ROTATED / ACCESS VERIFIED.
 - Demo credential: ROTATED / ACCESS VERIFIED.
 - Vercel credential: ROTATED / ACCESS VERIFIED.
-- Render credential: ROTATED / ACCESS VERIFIED.
+- Render administrative API: NOT CONFIGURED / NOT REQUIRED; credencial expuesta revocada y retirada de OpenClaw.
 - Database runtime credential: ROTATED / ACCESS VERIFIED.
 - No se muestran valores, prefijos, sufijos ni fragmentos de secretos.
 
@@ -240,6 +240,7 @@ La aplicación funcional auditada corresponde a `3a4b0134e8960c499c3d77317ba138a
 | Evidencias, corrección RF-04, desempeño y artefactos | GPT-5.6 Sol | High | Luna no estaba disponible y los hallazgos eran sensibles | Checkpoint tras compactación: 331 entrada / 55 salida visibles, cache 180k, 5 h 69 %, semanal 5 %, una compactación | Trabajo completado hasta bloqueo externo |
 | Reanudación y gate local final | GPT-5.6 Terra | High | Cambio impuesto por disponibilidad del runtime; Sol no estaba disponible con el perfil previo | Observable al retomar: 30 días 63 % restante; no hay contador exacto atribuible al bloque | Backend 175/175, frontend 74/74 y verificaciones estáticas verdes |
 | Rotaciones, verificación productiva y Gate final | GPT-5.6 Sol | High | Seguridad, proveedores, aceptación RNF-01 y veredicto | Observable al retomar: 127k entrada / 6.4k salida y 27 % mensual restante; no atribuible exclusivamente al bloque | Rotaciones verificadas, smoke 4/4 y Gate P14 aprobado |
+| Cierre definitivo y política Render | GPT-5.6 Sol | High | Aplicar `NOT CONFIGURED / NOT REQUIRED`, retirar acceso administrativo y repetir el Gate público | Observable al retomar: 7.2k entrada / 789 salida, 0 % mensual visible; contador reiniciado por compactación y no atribuible solo a este bloque | Render sin credencial conservada, Vercel READY, cinco endpoints 200, smoke 4/4 y Gate aprobado |
 
 No hubo cambio silencioso de modelo ni delegación. Luna no se usó. El consumo exacto por bloque no es observable y no se reconstruye. Las métricas tras compactación no son acumulables con el checkpoint previo.
 

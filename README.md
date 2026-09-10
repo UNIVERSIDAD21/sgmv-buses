@@ -10,7 +10,7 @@ No es una integración operacional real con una empresa de transporte.
 
 - RF-01 a RF-06 implementados y aceptados técnicamente.
 - RNF-02 a RNF-05 aceptados.
-- RNF-01 funciona en el producto y tiene pendiente la rotación manual de las API keys de Vercel y Render antes del Gate final P14.
+- RNF-01 aceptado: las credenciales expuestas fueron remediadas; la API administrativa de Render queda `NOT CONFIGURED / NOT REQUIRED` y Borlty no conserva una credencial de Render.
 - SHA de aplicación auditada: `3a4b0134e8960c499c3d77317ba138acb5ba3137`.
 - Rama: `realineacion/trazabilidad-operativa-tecnica`.
 - 23 migraciones Prisma aplicadas, sin pendientes.
