@@ -119,7 +119,7 @@ El working tree contiene únicamente el capturador y los artefactos técnicos P1
 - **Resultado de producto:** aprobado.
 - **Bloqueo operacional:** rotación manual pendiente de Vercel, Render y credencial de conexión de base de datos. Neon API y credencial demo: rotadas/verificadas.
 
-**RNF-01: NO ACEPTADO** hasta completar y verificar ambas rotaciones externas.
+**RNF-01: NO ACEPTADO** hasta completar y verificar las tres rotaciones externas.
 
 ### RNF-02 — Usabilidad de la aplicación
 

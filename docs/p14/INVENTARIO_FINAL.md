@@ -120,7 +120,7 @@ npm --workspace @sgmv/backend exec -- prisma migrate status --schema prisma/sche
 - Vercel API key: pendiente de rotación manual segura.
 - Render API key: pendiente de rotación manual segura.
 - Credencial de conexión de base de datos: pendiente de rotación manual segura tras exposición por una vista insegura del gestor de secretos.
-- No rotar `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `CSRF_SECRET` ni `RATE_LIMIT_SECRET` sin evidencia de exposición.
+- La credencial de conexión expuesta debe rotarse mediante flujo protegido; no rotar `DIRECT_URL`, `JWT_SECRET`, `CSRF_SECRET` ni `RATE_LIMIT_SECRET` sin evidencia de exposición.
 
 ## Riesgos y limitaciones
 
