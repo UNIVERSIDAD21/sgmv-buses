@@ -35,7 +35,7 @@ export interface HistoryBusDto {
   codigoInterno: string
   costoAcumulado?: string
   estadoOperativo: 'EN_MANTENIMIENTO' | 'FUERA_DE_SERVICIO' | 'INACTIVO' | 'OPERATIVO'
-  id: string
+  id: number
   kilometrajeActual: number
   marca: string
   modelo: string
@@ -53,7 +53,7 @@ export interface HistoryOrderDto {
     actividadesDetalladas?: Array<{
       descripcion: string
       fechaRegistro: string
-      id: string
+      id: number
     }>
     diagnostico: string | null
     fechaFin: string | null
@@ -64,21 +64,21 @@ export interface HistoryOrderDto {
   estado: HistoryOrderState
   fechaCierre: string | null
   fechaCreacion: string
-  id: string
+  id: number
   historialEstados?: Array<{
     cambiadoPor: string
     estadoAnterior: HistoryOrderState | null
     estadoNuevo: HistoryOrderState
     fechaCambio: string
-    id: string
+    id: number
     observacion: string | null
   }>
   novedadOrigen?: {
     fechaOcurrencia: string | null
     fechaReporte: string
-    id: string
-    jornadaId: string | null
-    lecturaId: string | null
+    id: number
+    jornadaId: number | null
+    lecturaId: number | null
   } | null
   origen: HistoryOrderOrigin
   repuestos?: Array<{
@@ -88,14 +88,14 @@ export interface HistoryOrderDto {
     fechaConsumo?: string
     compatibilidad?: {
       evidencia: Record<string, unknown> | null
-      reglaId: string | null
+      reglaId: number | null
       reglaVersion: number | null
       resultado: 'COMPATIBLE' | 'EXCEPCION_AUTORIZADA' | 'NO_EVALUADA_LEGADO' | null
     }
     movimiento?: {
       cantidad: string
       fechaMovimiento: string
-      id: string
+      id: number
       tipo: string
     } | null
     nombre: string
@@ -104,19 +104,19 @@ export interface HistoryOrderDto {
   }>
   jornada?: {
     estado: string
-    id: string
+    id: number
     ruta: { codigo: string; nombre: string } | null
   } | null
   lecturasTecnicas?: Array<{
     fechaLectura: string
-    id: string
+    id: number
     kilometraje: number
     tipo: string | null
   }>
   disponibilidadAlCierre?: boolean | null
   reasignaciones?: Array<{
     fechaReasignacion: string
-    id: string
+    id: number
     motivo: string | null
     reasignadoPor: string
     tecnicoAnterior: string | null
@@ -130,13 +130,13 @@ export interface HistoryDetailDto {
   alertas: Array<{
     estado?: string
     fechaGeneracion: string
-    id: string
+    id: number
     origen: {
-      busId: string | null
-      jornadaId: string | null
-      novedadId: string | null
-      ordenId: string | null
-      programacionId: string | null
+      busId: number | null
+      jornadaId: number | null
+      novedadId: number | null
+      ordenId: number | null
+      programacionId: number | null
     }
     prioridad: string
     tipo: string
@@ -148,7 +148,7 @@ export interface HistoryDetailDto {
     conductor: string
     fechaFin: string | null
     fechaInicio: string
-    id: string
+    id: number
     motivo: string | null
   }>
   bus: Omit<HistoryBusDto, 'costoAcumulado' | 'totalOrdenes' | 'ultimoMantenimiento'>
@@ -157,12 +157,12 @@ export interface HistoryDetailDto {
     estadoAnterior: HistoryBusDto['estadoOperativo'] | null
     estadoNuevo: HistoryBusDto['estadoOperativo']
     fechaCambio: string
-    id: string
+    id: number
     motivo: string | null
   }>
   kilometrajes: Array<{
     fechaRegistro: string
-    id: string
+    id: number
     kilometrajeAnterior: number
     kilometrajeNuevo: number
     motivo: string | null
@@ -173,12 +173,12 @@ export interface HistoryDetailDto {
     estado: string
     finReal: string | null
     finProgramado: string
-    id: string
+    id: number
     inicioReal: string | null
     inicioProgramado: string
     lecturas: Array<{
       fechaLectura: string
-      id: string
+      id: number
       kilometraje: number
       tipo: string | null
     }>
@@ -189,7 +189,7 @@ export interface HistoryDetailDto {
     actividad: string
     criterio: 'FECHA' | 'FECHA_KILOMETRAJE' | 'KILOMETRAJE'
     fechaProgramada: string | null
-    id: string
+    id: number
     kilometrajeObjetivo: number | null
     tipo: string
   }>
@@ -198,7 +198,7 @@ export interface HistoryDetailDto {
     descripcion: string
     estado: string
     fechaReporte: string
-    id: string
+    id: number
     reportadaPor?: string
     tipo: string
   }>
@@ -215,7 +215,7 @@ export interface MaintenanceReportDto {
     estado: HistoryOrderState
     fechaCierre: string | null
     fechaCreacion: string
-    id: string
+    id: number
     intervenciones: number
     origen: HistoryOrderOrigin
     repuestosConsumidos: number
@@ -232,7 +232,7 @@ export interface PartsReportDto {
     categoria: string | null
     codigo: string
     costoTotal: string
-    id: string
+    id: number
     nombre: string
     ordenes: number
     unidadMedida: string
@@ -244,7 +244,7 @@ export interface CostReportDto {
   paginacion: PaginationDto
   registros: Array<{
     bus: string
-    busId: string
+    busId: number
     cerradas: number
     costoPromedio: string
     costoTotal: string

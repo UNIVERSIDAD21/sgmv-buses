@@ -2,7 +2,7 @@ export type BusStatus = 'EN_MANTENIMIENTO' | 'FUERA_DE_SERVICIO' | 'INACTIVO' | 
 
 export interface ResponsibleDto {
   email: string
-  id: string
+  id: number
   nombre: string
   telefono: string | null
 }
@@ -12,19 +12,19 @@ export interface ActiveAssignmentDto {
   asignadoPor: ResponsibleDto
   bus?: {
     codigoInterno: string
-    id: string
+    id: number
     placa: string
   }
   conductor: ResponsibleDto
   fechaFin: string | null
   fechaInicio: string
-  id: string
+  id: number
   motivo: string | null
 }
 
 export interface MileageReadingDto {
   fechaRegistro: string
-  id: string
+  id: number
   kilometrajeAnterior: number
   kilometrajeNuevo: number
   motivo: string | null
@@ -36,13 +36,13 @@ export interface StateHistoryDto {
   estadoAnterior: BusStatus | null
   estadoNuevo: BusStatus
   fechaCambio: string
-  id: string
+  id: number
   motivo: string | null
 }
 
 export interface BusModelReferenceDto {
   activo: boolean
-  id: string
+  id: number
   marca: string
   nombreModelo: string
   versionTecnica: string | null
@@ -63,7 +63,7 @@ export interface RutaDto {
   codigo: string
   createdAt: string
   destino: string
-  id: string
+  id: number
   jornadasAsociadas: number
   nombre: string
   origen: string
@@ -75,7 +75,7 @@ export interface BusSummaryDto {
   codigoInterno: string
   conductorAsignado: ResponsibleDto | null
   estadoOperativo: BusStatus
-  id: string
+  id: number
   kilometrajeActual: number
   marca: string
   modelo: string
@@ -94,10 +94,10 @@ export interface DriverOptionDto extends ResponsibleDto {
   asignacionActiva: {
     bus: {
       codigoInterno: string
-      id: string
+      id: number
       placa: string
     }
-    id: string
+    id: number
   } | null
 }
 

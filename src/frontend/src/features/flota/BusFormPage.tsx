@@ -68,7 +68,7 @@ function formFromBus(bus: BusDetailDto): FormState {
     kilometrajeActual: String(bus.kilometrajeActual),
     marca: bus.marca,
     modelo: bus.modelo,
-    modeloBusId: bus.modeloBus?.id ?? '',
+    modeloBusId: String(bus.modeloBus?.id ?? ''),
     motivoEstado: '',
     placa: bus.placa,
   }
@@ -118,7 +118,7 @@ export default function BusFormPage() {
       setLoadError(null)
 
       try {
-        const data = await getBus(busId)
+        const data = await getBus(Number(busId))
 
         if (active) {
           setForm(formFromBus(data.bus))
@@ -217,7 +217,7 @@ export default function BusFormPage() {
       marca: normalized.marca,
       modelo: normalized.modelo,
       ...(form.modeloBusId
-        ? { modeloBusId: form.modeloBusId }
+        ? { modeloBusId: Number(form.modeloBusId) }
         : isEditing
           ? { modeloBusId: null }
           : {}),
@@ -228,7 +228,7 @@ export default function BusFormPage() {
 
     try {
       const result = isEditing
-        ? await updateBus(busId!, baseInput)
+        ? await updateBus(Number(busId), baseInput)
         : await createBus({
             ...baseInput,
             estadoOperativo: form.estadoOperativo,

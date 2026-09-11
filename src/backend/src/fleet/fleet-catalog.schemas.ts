@@ -1,3 +1,4 @@
+import { entityIdSchema } from '../shared/entity-id.js'
 import { z } from 'zod'
 
 const trimmedText = (max: number) => z.string().trim().min(1).max(max)
@@ -22,11 +23,11 @@ const optionalSearch = z.preprocess(
 const specificationsSchema = z.record(z.string(), z.json())
 
 export const modeloBusIdParamSchema = z.object({
-  modeloBusId: z.uuid(),
+  modeloBusId: entityIdSchema,
 })
 
 export const rutaIdParamSchema = z.object({
-  rutaId: z.uuid(),
+  rutaId: entityIdSchema,
 })
 
 export const catalogListQuerySchema = z.object({

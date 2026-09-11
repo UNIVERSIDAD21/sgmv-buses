@@ -33,7 +33,7 @@ const classificationDefaults: Record<PreventiveClassification, number> = {
 
 interface PreparedScheduleData {
   actividad: string
-  busId: string
+  busId: number
   criterio: CriterioMantenimiento
   fechaProgramada: Date | null
   kilometrajeObjetivo: number | null
@@ -237,7 +237,7 @@ export class PreventiveService {
   }
 
   async generateOrder(
-    programacionId: string,
+    programacionId: number,
     input: GeneratePreventiveOrderInput,
     actor: AuthenticatedUser,
   ): Promise<GeneratePreventiveOrderDto> {
@@ -325,7 +325,7 @@ export class PreventiveService {
     }
   }
 
-  async getSchedule(programacionId: string, actor: AuthenticatedUser) {
+  async getSchedule(programacionId: number, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
     const schedule = await this.preventiveRepository.findScheduleById(programacionId)
@@ -409,7 +409,7 @@ export class PreventiveService {
   }
 
   async updateSchedule(
-    programacionId: string,
+    programacionId: number,
     input: UpdatePreventiveScheduleInput,
     actor: AuthenticatedUser,
   ) {

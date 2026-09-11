@@ -80,11 +80,11 @@ export function listOwnNovelties(params: Omit<ListNoveltyParams, 'prioridad'>) {
   return apiRequest<NoveltyListResponse>(`/novedades/mis-novedades?${buildNoveltyQuery(params)}`)
 }
 
-export function getAdminNovelty(novedadId: string) {
+export function getAdminNovelty(novedadId: number) {
   return apiRequest<{ novedad: NoveltyDto }>(`/novedades/${novedadId}`)
 }
 
-export function getOwnNovelty(novedadId: string) {
+export function getOwnNovelty(novedadId: number) {
   return apiRequest<{ novedad: NoveltyDto }>(`/novedades/mis-novedades/${novedadId}`)
 }
 
@@ -95,14 +95,14 @@ export function createNovelty(input: CreateNoveltyInput) {
   })
 }
 
-export function reviewNovelty(novedadId: string, input: ReviewNoveltyInput) {
+export function reviewNovelty(novedadId: number, input: ReviewNoveltyInput) {
   return apiRequest<{ novedad: NoveltyDto }>(`/novedades/${novedadId}/revision`, {
     body: JSON.stringify(input),
     method: 'POST',
   })
 }
 
-export function convertNoveltyToOrder(novedadId: string, input: ConvertNoveltyInput) {
+export function convertNoveltyToOrder(novedadId: number, input: ConvertNoveltyInput) {
   return apiRequest<{ novedad: NoveltyDto; orden: NoveltyDto['ordenTrabajo']; yaExistia: boolean }>(
     `/novedades/${novedadId}/convertir-orden`,
     {

@@ -1,3 +1,4 @@
+import { testEntityId } from '../../backend/test/entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { expect, test, type Locator, type Page } from '@playwright/test'
@@ -7,8 +8,8 @@ import { prisma } from '../../backend/src/prisma/client.js'
 const demoPassword = process.env.SEED_USER_PASSWORD
 const suffix = randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase()
 const marker = `E2E P7 ${suffix}`
-const busId = randomUUID()
-let orderId: string | null = null
+const busId = testEntityId()
+let orderId: number | null = null
 let orderCode: string | null = null
 
 function toLocalInput(date: Date) {
@@ -91,8 +92,10 @@ test.afterAll(async () => {
     await tx.ordenReasignacion.deleteMany({ where: { ordenTrabajoId: { in: orderIds } } })
     await tx.ordenEstadoHistorial.deleteMany({ where: { ordenTrabajoId: { in: orderIds } } })
     await tx.ordenTrabajo.deleteMany({ where: { id: { in: orderIds } } })
-    await tx.eventoAuditoria.deleteMany({ where: { recursoId: { in: resourceIds } } })
-    await tx.solicitudIdempotente.deleteMany({ where: { recursoId: { in: resourceIds } } })
+    await tx.eventoAuditoria.deleteMany({ where: { recursoId: { in: resourceIds.map(String) } } })
+    await tx.solicitudIdempotente.deleteMany({
+      where: { recursoId: { in: resourceIds.map(String) } },
+    })
     await tx.bus.deleteMany({ where: { id: busId } })
   })
   await prisma.$disconnect()
@@ -111,7 +114,7 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
   await page.goto('/ordenes-trabajo')
   await page.getByRole('button', { name: 'Crear orden' }).click()
   const createDialog = page.getByRole('dialog', { name: 'Crear orden manual' })
-  await createDialog.getByLabel('Bus').selectOption(busId)
+  await createDialog.getByLabel('Bus').selectOption(String(busId))
   await createDialog.getByLabel('Prioridad').selectOption('ALTA')
   await createDialog.getByLabel('Descripcion').fill(`${marker} orden correctiva directa.`)
   await createDialog.getByRole('button', { name: 'Crear orden' }).click()
@@ -130,7 +133,7 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
 
   await detailDialog.getByRole('button', { name: 'Asignar' }).click()
   const assignDialog = page.getByRole('dialog', { name: 'Asignar mecanico' })
-  await assignDialog.getByLabel('Mecanico').selectOption('20000000-0000-4000-8000-000000000002')
+  await assignDialog.getByLabel('Mecanico').selectOption(String(1007))
   await assignDialog.getByRole('button', { name: 'Asignar' }).click()
   await expect(page.getByText('Orden asignada.')).toBeVisible()
 

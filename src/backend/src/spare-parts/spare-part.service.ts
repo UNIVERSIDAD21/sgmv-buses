@@ -188,7 +188,7 @@ export class SparePartService {
     }
   }
 
-  async getById(repuestoId: string, actor: AuthenticatedUser) {
+  async getById(repuestoId: number, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
     const repuesto = await this.sparePartRepository.findSparePartById(repuestoId)
@@ -268,7 +268,7 @@ export class SparePartService {
     }
   }
 
-  async update(repuestoId: string, input: UpdateSparePartInput, actor: AuthenticatedUser) {
+  async update(repuestoId: number, input: UpdateSparePartInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
     const normalized: UpdateSparePartInput = {
@@ -310,19 +310,19 @@ export class SparePartService {
     }
   }
 
-  async activate(repuestoId: string, actor: AuthenticatedUser) {
+  async activate(repuestoId: number, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
     return this.setStatus(repuestoId, 'ACTIVO')
   }
 
-  async deactivate(repuestoId: string, actor: AuthenticatedUser) {
+  async deactivate(repuestoId: number, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
     return this.setStatus(repuestoId, 'INACTIVO')
   }
 
-  async registerEntry(repuestoId: string, input: StockEntryInput, actor: AuthenticatedUser) {
+  async registerEntry(repuestoId: number, input: StockEntryInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
     return this.mapStockOperation(
@@ -341,7 +341,7 @@ export class SparePartService {
   }
 
   async registerAdjustment(
-    repuestoId: string,
+    repuestoId: number,
     input: StockAdjustmentInput,
     actor: AuthenticatedUser,
   ) {
@@ -367,7 +367,7 @@ export class SparePartService {
   async listMovements(
     query: ListInventoryMovementsQuery,
     actor: AuthenticatedUser,
-    repuestoId?: string,
+    repuestoId?: number,
   ): Promise<SparePartMovementListDto> {
     ensureAdmin(actor)
 
@@ -396,7 +396,7 @@ export class SparePartService {
     }
   }
 
-  private async setStatus(repuestoId: string, estado: 'ACTIVO' | 'INACTIVO') {
+  private async setStatus(repuestoId: number, estado: 'ACTIVO' | 'INACTIVO') {
     const result = await this.sparePartRepository.setSparePartStatus(repuestoId, estado)
 
     if (result.status === 'SPARE_PART_NOT_FOUND') {
@@ -417,8 +417,8 @@ export class SparePartService {
       stockAnterior: Prisma.Decimal | null
     }>,
     claveIdempotencia: string,
-    actorId: string,
-    repuestoId: string,
+    actorId: number,
+    repuestoId: number,
     tipo: Exclude<TipoMovimientoInventario, 'CONSUMO'>,
   ) {
     try {

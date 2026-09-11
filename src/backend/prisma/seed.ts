@@ -5,95 +5,95 @@ const prisma = new PrismaClient()
 
 const ids = {
   roles: {
-    admin: '10000000-0000-4000-8000-000000000001',
-    despachador: '10000000-0000-4000-8000-000000000004',
-    mecanico: '10000000-0000-4000-8000-000000000002',
-    conductor: '10000000-0000-4000-8000-000000000003',
+    admin: 1001,
+    despachador: 1002,
+    mecanico: 1003,
+    conductor: 1004,
   },
   usuarios: {
-    admin: '20000000-0000-4000-8000-000000000001',
-    despachador: '20000000-0000-4000-8000-000000000005',
-    mecanico: '20000000-0000-4000-8000-000000000002',
-    mecanicoApoyo: '20000000-0000-4000-8000-000000000004',
-    conductor: '20000000-0000-4000-8000-000000000003',
+    admin: 1005,
+    despachador: 1006,
+    mecanico: 1007,
+    mecanicoApoyo: 1008,
+    conductor: 1009,
   },
   buses: {
-    principal: '30000000-0000-4000-8000-000000000001',
-    respaldo: '30000000-0000-4000-8000-000000000002',
+    principal: 1010,
+    respaldo: 1011,
   },
   modelosBus: {
-    principal: '31000000-0000-4000-8000-000000000001',
-    respaldo: '31000000-0000-4000-8000-000000000002',
+    principal: 1012,
+    respaldo: 1013,
   },
   rutas: {
-    centroNorte: '32000000-0000-4000-8000-000000000001',
-    alternaInactiva: '32000000-0000-4000-8000-000000000002',
+    centroNorte: 1014,
+    alternaInactiva: 1015,
   },
   jornadas: {
-    finalizada: '33000000-0000-4000-8000-000000000001',
-    programada: '33000000-0000-4000-8000-000000000002',
+    finalizada: 1016,
+    programada: 1017,
   },
   lecturasJornada: {
-    inicio: '34000000-0000-4000-8000-000000000001',
-    fin: '34000000-0000-4000-8000-000000000002',
-    novedad: '34000000-0000-4000-8000-000000000005',
+    inicio: 1018,
+    fin: 1019,
+    novedad: 1020,
   },
   lecturasTecnicas: {
-    cierre: '34000000-0000-4000-8000-000000000006',
-    ingreso: '34000000-0000-4000-8000-000000000003',
-    revision: '34000000-0000-4000-8000-000000000004',
+    cierre: 1021,
+    ingreso: 1022,
+    revision: 1023,
   },
-  asignacion: '40000000-0000-4000-8000-000000000001',
-  lecturaKilometraje: '41000000-0000-4000-8000-000000000001',
-  busEstadoHistorial: '42000000-0000-4000-8000-000000000001',
-  novedad: '50000000-0000-4000-8000-000000000001',
-  programacion: '60000000-0000-4000-8000-000000000001',
-  planPreventivoRecurrente: '61000000-0000-4000-8000-000000000001',
-  programacionRecurrente: '62000000-0000-4000-8000-000000000001',
+  asignacion: 1024,
+  lecturaKilometraje: 1025,
+  busEstadoHistorial: 1026,
+  novedad: 1027,
+  programacion: 1028,
+  planPreventivoRecurrente: 1029,
+  programacionRecurrente: 1030,
   ordenes: {
-    correctiva: '70000000-0000-4000-8000-000000000001',
-    preventiva: '70000000-0000-4000-8000-000000000002',
+    correctiva: 1031,
+    preventiva: 1032,
   },
-  intervencion: '80000000-0000-4000-8000-000000000001',
-  actividad: '81000000-0000-4000-8000-000000000001',
+  intervencion: 1033,
+  actividad: 1034,
   estadosOrden: {
-    correctivaCreada: '82000000-0000-4000-8000-000000000001',
-    correctivaAsignada: '82000000-0000-4000-8000-000000000002',
-    correctivaEjecucion: '82000000-0000-4000-8000-000000000003',
-    correctivaCompletada: '82000000-0000-4000-8000-000000000004',
-    correctivaCerrada: '82000000-0000-4000-8000-000000000006',
-    preventivaCreada: '82000000-0000-4000-8000-000000000005',
+    correctivaCreada: 1035,
+    correctivaAsignada: 1036,
+    correctivaEjecucion: 1037,
+    correctivaCompletada: 1038,
+    correctivaCerrada: 1039,
+    preventivaCreada: 1040,
   },
-  repuesto: '90000000-0000-4000-8000-000000000001',
+  repuesto: 1041,
   compatibilidades: {
-    modeloAnterior: '93000000-0000-4000-8000-000000000001',
-    modeloVigente: '93000000-0000-4000-8000-000000000002',
-    busAnterior: '93000000-0000-4000-8000-000000000003',
-    busVigente: '93000000-0000-4000-8000-000000000004',
-    negativaModelo: '93000000-0000-4000-8000-000000000005',
+    modeloAnterior: 1042,
+    modeloVigente: 1043,
+    busAnterior: 1044,
+    busVigente: 1045,
+    negativaModelo: 1046,
   },
-  autorizacionExcepcion: '94000000-0000-4000-8000-000000000001',
+  autorizacionExcepcion: 1047,
   alertas: {
-    novedadCritica: '96000000-0000-4000-8000-000000000001',
-    ordenCompletada: '96000000-0000-4000-8000-000000000002',
+    novedadCritica: 1048,
+    ordenCompletada: 1049,
   },
   alertasDestinatarios: {
-    novedadAdmin: '97000000-0000-4000-8000-000000000001',
-    novedadDespacho: '97000000-0000-4000-8000-000000000002',
-    ordenAdmin: '97000000-0000-4000-8000-000000000003',
+    novedadAdmin: 1050,
+    novedadDespacho: 1051,
+    ordenAdmin: 1052,
   },
   repuestosRf05: {
-    agotado: '90000000-0000-4000-8000-000000000003',
-    bajo: '90000000-0000-4000-8000-000000000002',
-    inactivo: '90000000-0000-4000-8000-000000000004',
+    agotado: 1053,
+    bajo: 1054,
+    inactivo: 1055,
   },
-  consumo: '91000000-0000-4000-8000-000000000001',
+  consumo: 1056,
   movimientos: {
-    entrada: '92000000-0000-4000-8000-000000000001',
-    consumo: '92000000-0000-4000-8000-000000000002',
-    entradaBajo: '92000000-0000-4000-8000-000000000003',
-    ajusteBajo: '92000000-0000-4000-8000-000000000004',
-    entradaInactivo: '92000000-0000-4000-8000-000000000005',
+    entrada: 1057,
+    consumo: 1058,
+    entradaBajo: 1059,
+    ajusteBajo: 1060,
+    entradaInactivo: 1061,
   },
 }
 
@@ -169,6 +169,16 @@ async function main() {
           descripcion: 'Consulta su jornada y registra novedades operativas.',
         },
       })
+
+      for (const [key, codigo] of Object.entries({
+        admin: 'ADMINISTRADOR',
+        despachador: 'DESPACHADOR',
+        mecanico: 'MECANICO',
+        conductor: 'CONDUCTOR',
+      } as const)) {
+        const role = await tx.rol.findUniqueOrThrow({ where: { codigo } })
+        ids.roles[key as keyof typeof ids.roles] = role.id
+      }
 
       await tx.usuario.upsert({
         where: { email: 'administrador.demo@sgmv.local' },
@@ -1264,7 +1274,7 @@ async function main() {
 
       const alertasP9 = [
         {
-          claveDeduplicacion: 'seed-p9:novedad-critica:50000000-0000-4000-8000-000000000001',
+          claveDeduplicacion: `seed-p9:novedad-critica:${ids.novedad}`,
           contextoEvento: {
             busCodigo: 'BUS-001',
             criticidad: 'CRITICA',
@@ -1281,7 +1291,7 @@ async function main() {
           titulo: 'Novedad crítica reportada',
         },
         {
-          claveDeduplicacion: 'seed-p9:orden-completada:70000000-0000-4000-8000-000000000001',
+          claveDeduplicacion: `seed-p9:orden-completada:${ids.ordenes.correctiva}`,
           contextoEvento: {
             busCodigo: 'BUS-001',
             estado: 'COMPLETADA_TECNICO',
@@ -1343,6 +1353,17 @@ async function main() {
           create: { ...destinatario, estado: 'NO_LEIDA' },
         })
       }
+      // Explicit deterministic demo IDs must not leave their sequences behind.
+      await tx.$executeRawUnsafe(`DO $$ DECLARE item record; max_id bigint; BEGIN
+        FOR item IN SELECT table_name, pg_get_serial_sequence(format('public.%I',table_name),'id') AS seq
+          FROM information_schema.columns WHERE table_schema='public' AND column_name='id' AND data_type='integer'
+        LOOP
+          IF item.seq IS NOT NULL THEN
+            EXECUTE format('SELECT max(id) FROM public.%I',item.table_name) INTO max_id;
+            IF max_id IS NOT NULL THEN PERFORM setval(item.seq,max_id,true); END IF;
+          END IF;
+        END LOOP;
+      END $$`)
     },
     {
       maxWait: 15000,

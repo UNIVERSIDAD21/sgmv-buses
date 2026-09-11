@@ -32,12 +32,12 @@ function mapRule(rule: CompatibilityRecord): CompatibilityRuleDto {
 export class CompatibilityService {
   constructor(private readonly repository = new CompatibilityRepository()) {}
 
-  async list(repuestoId: string, actor: AuthenticatedUser) {
+  async list(repuestoId: number, actor: AuthenticatedUser) {
     ensureAdmin(actor)
     return { compatibilidades: (await this.repository.list(repuestoId)).map(mapRule) }
   }
 
-  async create(repuestoId: string, input: CreateCompatibilityInput, actor: AuthenticatedUser) {
+  async create(repuestoId: number, input: CreateCompatibilityInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
     try {
       const rule = await this.repository.createVersion(repuestoId, actor.id, input)
@@ -50,7 +50,7 @@ export class CompatibilityService {
     }
   }
 
-  async deactivate(repuestoId: string, compatibilidadId: string, actor: AuthenticatedUser) {
+  async deactivate(repuestoId: number, compatibilidadId: number, actor: AuthenticatedUser) {
     ensureAdmin(actor)
     const rule = await this.repository.find(repuestoId, compatibilidadId)
     if (!rule) throw new AppError(404, 'COMPATIBILITY_NOT_FOUND', 'Regla no encontrada')

@@ -30,7 +30,7 @@ const noveltyStatusDefaults: Record<EstadoNovedad, number> = {
 
 interface UserRecord {
   email: string
-  id: string
+  id: number
   nombre: string
 }
 
@@ -164,7 +164,7 @@ export class NoveltyService {
   constructor(private readonly noveltyRepository = new NoveltyRepository()) {}
 
   async convertToCorrectiveOrder(
-    noveltyId: string,
+    noveltyId: number,
     input: ConvertNoveltyInput,
     actor: AuthenticatedUser,
   ) {
@@ -253,7 +253,7 @@ export class NoveltyService {
     }
   }
 
-  async getAdminNovelty(noveltyId: string, actor: AuthenticatedUser) {
+  async getAdminNovelty(noveltyId: number, actor: AuthenticatedUser) {
     ensureAdminOrDispatcher(actor)
 
     const novelty = await this.noveltyRepository.findNoveltyById(noveltyId)
@@ -267,7 +267,7 @@ export class NoveltyService {
     }
   }
 
-  async getOwnNovelty(noveltyId: string, actor: AuthenticatedUser) {
+  async getOwnNovelty(noveltyId: number, actor: AuthenticatedUser) {
     ensureDriver(actor)
 
     const novelty = await this.noveltyRepository.findNoveltyById(noveltyId)
@@ -303,7 +303,7 @@ export class NoveltyService {
     return this.listNovelties(query, actor, actor.id)
   }
 
-  async reviewNovelty(noveltyId: string, input: ReviewNoveltyInput, actor: AuthenticatedUser) {
+  async reviewNovelty(noveltyId: number, input: ReviewNoveltyInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
     const stateByAction: Record<ReviewNoveltyInput['accion'], EstadoNovedad | undefined> = {
@@ -373,7 +373,7 @@ export class NoveltyService {
     }
   }
 
-  private createWhere(query: ListNoveltiesQuery, conductorId?: string): Prisma.NovedadWhereInput {
+  private createWhere(query: ListNoveltiesQuery, conductorId?: number): Prisma.NovedadWhereInput {
     const filters: Prisma.NovedadWhereInput[] = []
 
     if (conductorId) {
@@ -473,7 +473,7 @@ export class NoveltyService {
   private async listNovelties(
     query: ListNoveltiesQuery,
     actor: AuthenticatedUser,
-    conductorId?: string,
+    conductorId?: number,
   ) {
     const where = this.createWhere(query, conductorId)
     const skip = (query.pagina - 1) * query.limite

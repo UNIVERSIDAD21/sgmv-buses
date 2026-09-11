@@ -14,13 +14,13 @@ export type WorkOrderOrigin = 'CORRECTIVO_DIRECTO' | 'NOVEDAD' | 'PREVENTIVO'
 
 export interface WorkOrderUserDto {
   email: string
-  id: string
+  id: number
   nombre: string
   telefono: string | null
 }
 
 export interface WorkOrderActorReferenceDto {
-  id: string
+  id: number
   nombre: string
 }
 
@@ -28,7 +28,7 @@ export interface WorkOrderBusDto {
   anio: number
   codigoInterno: string
   estadoOperativo: BusStatus
-  id: string
+  id: number
   kilometrajeActual: number
   marca: string
   modelo: string
@@ -41,7 +41,7 @@ export interface WorkOrderNoveltyDto {
   descripcion: string
   estado: string
   fechaReporte: string
-  id: string
+  id: number
   tipo: string
 }
 
@@ -50,7 +50,7 @@ export interface WorkOrderPreventiveScheduleDto {
   actividad: string
   criterio: string
   fechaProgramada: string | null
-  id: string
+  id: number
   kilometrajeObjetivo: number | null
   tipo: string
 }
@@ -60,13 +60,13 @@ export interface WorkOrderStateHistoryDto {
   estadoAnterior: WorkOrderStatus | null
   estadoNuevo: WorkOrderStatus
   fechaCambio: string
-  id: string
+  id: number
   observacion: string | null
 }
 
 export interface WorkOrderReassignmentDto {
   fechaReasignacion: string
-  id: string
+  id: number
   motivo: string | null
   reasignadoPor: WorkOrderUserDto
   tecnicoAnterior: WorkOrderUserDto | null
@@ -76,7 +76,7 @@ export interface WorkOrderReassignmentDto {
 export interface WorkOrderActivityDto {
   descripcion: string
   fechaRegistro: string
-  id: string
+  id: number
   registradaPor: WorkOrderUserDto
 }
 
@@ -85,7 +85,7 @@ export interface WorkOrderInterventionDto {
   diagnostico: string | null
   fechaFin: string | null
   fechaInicio: string
-  id: string
+  id: number
   observaciones: string | null
   tecnico: WorkOrderUserDto
 }
@@ -95,7 +95,7 @@ export interface WorkOrderSparePartDto {
   codigo: string
   costoUnitario?: string
   estado: 'ACTIVO' | 'INACTIVO'
-  id: string
+  id: number
   nombre: string
   stockActual: string
   stockMinimo: string
@@ -106,23 +106,23 @@ export interface WorkOrderInventoryMovementDto {
   cantidad: string
   costoUnitario?: string | null
   fechaMovimiento: string
-  id: string
+  id: number
   motivo: string | null
   tipo: string
 }
 
 export interface WorkOrderConsumptionDto {
-  autorizadoPorId: string | null
-  autorizacionExcepcionId: string | null
+  autorizadoPorId: number | null
+  autorizacionExcepcionId: number | null
   cantidad: string
   costoUnitario?: string
   fechaConsumo: string
-  id: string
+  id: number
   movimientoInventario: WorkOrderInventoryMovementDto | null
   repuesto: WorkOrderSparePartDto
   subtotal?: string
   resultadoCompatibilidad: 'COMPATIBLE' | 'EXCEPCION_AUTORIZADA' | 'NO_EVALUADA_LEGADO' | null
-  reglaCompatibilidadId: string | null
+  reglaCompatibilidadId: number | null
   reglaVersion: number | null
   evidenciaCompatibilidad: Record<string, unknown> | null
   motivoExcepcion: string | null
@@ -134,8 +134,8 @@ export interface WorkOrderConsumptionAuthorizationDto {
   estado: 'REVOCADA' | 'USADA' | 'VIGENTE'
   fechaAutorizacion: string
   fechaExpiracion: string | null
-  id: string
-  intervencionId: string
+  id: number
+  intervencionId: number
   motivo: string
   repuesto: WorkOrderSparePartDto
 }
@@ -144,18 +144,18 @@ export interface WorkOrderJourneyDto {
   estado: string
   finProgramado: string
   finReal: string | null
-  id: string
+  id: number
   inicioProgramado: string
   inicioReal: string | null
-  ruta: { codigo: string; id: string; nombre: string } | null
+  ruta: { codigo: string; id: number; nombre: string } | null
 }
 
 export type TechnicalReadingType = 'INGRESO_TALLER' | 'REVISION_TECNICA' | 'CIERRE_MANTENIMIENTO'
 
 export interface WorkOrderTechnicalReadingDto {
   fechaLectura: string
-  id: string
-  intervencionId: string | null
+  id: number
+  intervencionId: number | null
   kilometraje: number
   kilometrajeAnterior: number
   motivo: string | null
@@ -171,12 +171,12 @@ export interface DispatchWorkOrderProjectionDto {
     evaluadoAt: string
   }
   orden: {
-    bus: { codigoInterno: string; id: string; placa: string }
+    bus: { codigoInterno: string; id: number; placa: string }
     codigo: string
     disponibilidadAlCierre: boolean | null
     estado: WorkOrderStatus
     fechaCierre: string | null
-    id: string
+    id: number
   }
 }
 
@@ -202,7 +202,7 @@ export interface WorkOrderSummaryItemDto {
   fechaCompletadaTecnico: string | null
   fechaCreacion: string
   fechaInicioEjecucion: string | null
-  id: string
+  id: number
   origen: WorkOrderOrigin
   prioridad: OrderPriority
   tecnicoAsignado: WorkOrderUserDto | null
@@ -214,7 +214,7 @@ export interface WorkOrderTechnicalHistoryItemDto {
   diagnostico: string | null
   estado: WorkOrderStatus
   fechaCierre: string | null
-  id: string
+  id: number
   tipo: WorkOrderType
 }
 
@@ -264,7 +264,7 @@ export interface AvailableSparePartDto extends WorkOrderSparePartDto {
     condicionUso: string | null
     evidencia: Record<string, unknown>
     resultado: 'COMPATIBLE' | 'INCOMPATIBLE' | 'SIN_EVIDENCIA'
-    reglaId: string | null
+    reglaId: number | null
     version: number | null
   }
 }

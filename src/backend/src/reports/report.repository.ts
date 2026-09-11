@@ -72,8 +72,8 @@ function withoutDateRange(query: ReportQuery): ReportQuery {
 
 function noveltyWhereFromQuery(
   query: ReportQuery,
-  busIds?: string[],
-  conductorId?: string,
+  busIds?: number[],
+  conductorId?: number,
 ): Prisma.NovedadWhereInput {
   return {
     ...(busIds ? { busId: { in: busIds } } : {}),
@@ -103,7 +103,7 @@ function consumptionWhereFromQuery(query: ReportQuery): Prisma.ConsumoRepuestoWh
 
 function alertWhereFromQuery(
   query: ReportQuery,
-  recipientId?: string,
+  recipientId?: number,
 ): Prisma.AlertaInternaWhereInput | undefined {
   return query.alertaTipo || query.alertaPrioridad || query.alertaEstado
     ? {
@@ -126,7 +126,7 @@ function alertWhereFromQuery(
 
 function baseBusWhereFromQuery(
   query: ReportQuery,
-  accessibleBusIds?: string[],
+  accessibleBusIds?: number[],
 ): Prisma.BusWhereInput {
   const base: Prisma.BusWhereInput = {
     ...(query.busId ? { id: query.busId } : {}),
@@ -138,7 +138,7 @@ function baseBusWhereFromQuery(
 export function orderWhereFromQuery(
   query: ReportQuery,
   extra: Prisma.OrdenTrabajoWhereInput = {},
-  alertRecipientId?: string,
+  alertRecipientId?: number,
 ): Prisma.OrdenTrabajoWhereInput {
   const filters: Prisma.OrdenTrabajoWhereInput = {
     ...(query.busId ? { busId: query.busId } : {}),
@@ -200,8 +200,8 @@ export function orderWhereFromQuery(
 
 function busWhereFromQuery(
   query: ReportQuery,
-  accessibleBusIds?: string[],
-  alertRecipientId?: string,
+  accessibleBusIds?: number[],
+  alertRecipientId?: number,
 ): Prisma.BusWhereInput {
   const hasOrderFilters = Boolean(
     query.estado ||
@@ -243,7 +243,7 @@ function busWhereFromQuery(
 }
 
 export class ReportRepository {
-  findActiveDriverAssignment(userId: string) {
+  findActiveDriverAssignment(userId: number) {
     return prisma.asignacionConductor.findFirst({
       include: {
         bus: {
@@ -258,7 +258,7 @@ export class ReportRepository {
     })
   }
 
-  async findDriverHistoryBus(userId: string) {
+  async findDriverHistoryBus(userId: number) {
     const activeAssignment = await this.findActiveDriverAssignment(userId)
     if (activeAssignment) return { assignment: activeAssignment, busId: activeAssignment.busId }
 
@@ -281,7 +281,7 @@ export class ReportRepository {
         : null
   }
 
-  async findMechanicBusIds(userId: string) {
+  async findMechanicBusIds(userId: number) {
     const orders = await prisma.ordenTrabajo.findMany({
       distinct: ['busId'],
       select: { busId: true },
@@ -295,9 +295,9 @@ export class ReportRepository {
 
   async listBuses(
     query: ReportQuery,
-    accessibleBusIds?: string[],
+    accessibleBusIds?: number[],
     includeCosts = false,
-    alertRecipientId?: string,
+    alertRecipientId?: number,
   ) {
     const orderFilters = orderWhereFromQuery(query, {}, alertRecipientId)
     const where = busWhereFromQuery(query, accessibleBusIds, alertRecipientId)
@@ -347,11 +347,11 @@ export class ReportRepository {
     return { buses, costs, lastOrders, total }
   }
 
-  getBus(busId: string) {
+  getBus(busId: number) {
     return prisma.bus.findUnique({ select: busSelect, where: { id: busId } })
   }
 
-  listBusOrders(busId: string, query: ReportQuery, mechanicId?: string, alertRecipientId?: string) {
+  listBusOrders(busId: number, query: ReportQuery, mechanicId?: number, alertRecipientId?: number) {
     return prisma.ordenTrabajo.findMany({
       include: {
         consumosRepuesto: {
@@ -456,10 +456,10 @@ export class ReportRepository {
   }
 
   listBusOperationalOrders(
-    busId: string,
+    busId: number,
     query: ReportQuery,
-    conductorId?: string,
-    alertRecipientId?: string,
+    conductorId?: number,
+    alertRecipientId?: number,
   ) {
     return prisma.ordenTrabajo.findMany({
       orderBy: [{ fechaCreacion: 'desc' }, { id: 'desc' }],
@@ -495,7 +495,7 @@ export class ReportRepository {
     })
   }
 
-  listBusStates(busId: string, query: ReportQuery) {
+  listBusStates(busId: number, query: ReportQuery) {
     return prisma.busEstadoHistorial.findMany({
       include: { cambiadoPor: { select: userSelect } },
       orderBy: [{ fechaCambio: 'desc' }, { id: 'desc' }],
@@ -506,7 +506,7 @@ export class ReportRepository {
     })
   }
 
-  listBusMileage(busId: string, query: ReportQuery) {
+  listBusMileage(busId: number, query: ReportQuery) {
     return prisma.lecturaKilometraje.findMany({
       include: { registradoPor: { select: userSelect } },
       orderBy: [{ fechaRegistro: 'desc' }, { id: 'desc' }],
@@ -514,7 +514,7 @@ export class ReportRepository {
     })
   }
 
-  listBusSchedules(busId: string, query: ReportQuery) {
+  listBusSchedules(busId: number, query: ReportQuery) {
     return prisma.programacionMantenimiento.findMany({
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       where: {
@@ -524,7 +524,7 @@ export class ReportRepository {
     })
   }
 
-  listBusNovelties(busId: string, query: ReportQuery, conductorId?: string) {
+  listBusNovelties(busId: number, query: ReportQuery, conductorId?: number) {
     return prisma.novedad.findMany({
       include: { conductor: { select: userSelect } },
       orderBy: [{ fechaReporte: 'desc' }, { id: 'desc' }],
@@ -532,7 +532,7 @@ export class ReportRepository {
     })
   }
 
-  listBusAssignments(busId: string, query: ReportQuery) {
+  listBusAssignments(busId: number, query: ReportQuery) {
     return prisma.asignacionConductor.findMany({
       include: {
         asignadoPor: { select: userSelect },
@@ -547,7 +547,7 @@ export class ReportRepository {
     })
   }
 
-  listBusJourneys(busId: string, query: ReportQuery, conductorId?: string) {
+  listBusJourneys(busId: number, query: ReportQuery, conductorId?: number) {
     return prisma.jornadaOperativa.findMany({
       include: {
         conductor: { select: userSelect },
@@ -575,7 +575,7 @@ export class ReportRepository {
     })
   }
 
-  listBusAlerts(busId: string, query: ReportQuery, recipientId?: string) {
+  listBusAlerts(busId: number, query: ReportQuery, recipientId?: number) {
     return prisma.alertaInterna.findMany({
       include: {
         destinatarios: {
@@ -611,10 +611,10 @@ export class ReportRepository {
 
   async summary(
     query: ReportQuery,
-    accessibleBusIds?: string[],
-    conductorId?: string,
+    accessibleBusIds?: number[],
+    conductorId?: number,
     includeCosts = false,
-    alertRecipientId?: string,
+    alertRecipientId?: number,
   ) {
     const filteredBuses = await prisma.bus.findMany({
       select: { id: true },

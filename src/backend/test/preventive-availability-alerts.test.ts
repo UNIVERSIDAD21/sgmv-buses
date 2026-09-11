@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { PrismaClient, type RolCodigo } from '@prisma/client'
@@ -52,7 +53,7 @@ async function createUser(roleCode: RolCodigo) {
 }
 
 async function createBus(kilometrajeActual = 10_000) {
-  const id = randomUUID()
+  const id = testEntityId()
   const code = suffix()
   created.buses.push(id)
   return prisma.bus.create({
@@ -69,7 +70,7 @@ async function createBus(kilometrajeActual = 10_000) {
 }
 
 async function createCycle(
-  adminId: string,
+  adminId: number,
   overrides: Partial<{
     bloqueaAlVencer: boolean
     fechaProgramada: Date | null
@@ -120,7 +121,7 @@ async function login(email: string) {
   return agent
 }
 
-async function availabilityFor(busId: string, when = new Date('2026-09-06T15:00:00.000Z')) {
+async function availabilityFor(busId: number, when = new Date('2026-09-06T15:00:00.000Z')) {
   return prisma.$transaction(async (tx) =>
     buildAvailability(await getAvailabilityRecords({ busId, eventDate: when }, tx), when),
   )
@@ -336,7 +337,7 @@ describe('P6-D disponibilidad preventiva y alertas por ciclo', () => {
         expect.arrayContaining([expect.objectContaining({ programacionId: cycle.schedule.id })]),
       )
       const operational = dispatch.body.data.restricciones.find(
-        (item: { programacionId: string }) => item.programacionId === cycle.schedule.id,
+        (item: { programacionId: number }) => item.programacionId === cycle.schedule.id,
       )
       expect(operational).toMatchObject({ bloqueaDespacho: true, estado: 'VENCIDO' })
       expect(JSON.stringify(operational)).not.toContain('Detalle tecnico')

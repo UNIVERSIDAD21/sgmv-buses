@@ -6,7 +6,7 @@ export type PreventiveCriterion = 'FECHA' | 'FECHA_KILOMETRAJE' | 'KILOMETRAJE'
 
 export interface PreventiveUserDto {
   email: string
-  id: string
+  id: number
   nombre: string
 }
 
@@ -14,7 +14,7 @@ export interface PreventiveBusDto {
   anio: number
   codigoInterno: string
   estadoOperativo: BusStatus
-  id: string
+  id: number
   kilometrajeActual: number
   marca: string
   modelo: string
@@ -42,7 +42,7 @@ export interface PreventiveOrderSummaryDto {
   estado: string
   fechaCreacion: string
   fechaObjetivoPreventivo: string | null
-  id: string
+  id: number
   kilometrajeObjetivoPreventivo: number | null
   origen: 'PREVENTIVO'
   prioridad: OrderPriority
@@ -58,14 +58,14 @@ export interface PreventiveScheduleDto {
   createdAt: string
   criterio: PreventiveCriterion
   fechaProgramada: string | null
-  id: string
+  id: number
   kilometrajeObjetivo: number | null
   ordenActiva: PreventiveOrderSummaryDto | null
   plan: {
     anticipacionDiasEfectiva: number
     anticipacionKmEfectiva: number
     claveTarea: string
-    id: string
+    id: number
     origen: 'BUS' | 'MODELO'
     version: number
   } | null
@@ -107,8 +107,8 @@ export interface PreventivePlanDto {
   claveTarea: string
   componente: string
   criterio: PreventiveCriterion
-  destino: { busId: string; tipo: 'BUS' } | { modeloBusId: string; tipo: 'MODELO' }
-  id: string
+  destino: { busId: number; tipo: 'BUS' } | { modeloBusId: number; tipo: 'MODELO' }
+  id: number
   intervaloDias: number | null
   intervaloKm: number | null
   prioridad: OrderPriority
@@ -123,10 +123,10 @@ export interface PreventivePlanDetailDto {
 
 export interface PreventiveRestrictionDto {
   bloqueaDespacho: boolean
-  bus: { codigoInterno: string; id: string }
+  bus: { codigoInterno: string; id: number }
   estado: Exclude<PreventiveStatus, 'VIGENTE'>
   objetivos: { fecha: string | null; kilometraje: number | null }
-  programacionId: string
+  programacionId: number
   restantes: { dias: number | null; kilometros: number | null }
   restriccion: 'PREVENTIVO_VENCIDO_BLOQUEANTE' | null
 }

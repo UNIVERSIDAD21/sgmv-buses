@@ -24,7 +24,7 @@ export interface BusFormInput {
   kilometrajeActual?: number
   marca: string
   modelo: string
-  modeloBusId?: string | null
+  modeloBusId?: number | null
   motivoEstado?: string
   placa: string
 }
@@ -68,7 +68,7 @@ export function listBuses(params: ListBusesParams) {
   return apiRequest<ListBusesResponse>(`/flota/buses?${searchParams.toString()}`)
 }
 
-export function getBus(busId: string) {
+export function getBus(busId: number) {
   return apiRequest<{ bus: BusDetailDto }>(`/flota/buses/${busId}`)
 }
 
@@ -80,7 +80,7 @@ export function createBus(input: BusFormInput) {
 }
 
 export function updateBus(
-  busId: string,
+  busId: number,
   input: Omit<BusFormInput, 'estadoOperativo' | 'kilometrajeActual' | 'motivoEstado'>,
 ) {
   return apiRequest<{ bus: BusDetailDto }>(`/flota/buses/${busId}`, {
@@ -105,7 +105,7 @@ export function listModelosBus(incluirInactivos = false, busqueda?: string) {
   )
 }
 
-export function getModeloBus(modeloBusId: string) {
+export function getModeloBus(modeloBusId: number) {
   return apiRequest<{ modeloBus: ModeloBusDetailDto }>(`/flota/modelos-bus/${modeloBusId}`)
 }
 
@@ -116,14 +116,14 @@ export function createModeloBus(input: ModeloBusFormInput) {
   })
 }
 
-export function updateModeloBus(modeloBusId: string, input: Partial<ModeloBusFormInput>) {
+export function updateModeloBus(modeloBusId: number, input: Partial<ModeloBusFormInput>) {
   return apiRequest<{ modeloBus: ModeloBusDetailDto }>(`/flota/modelos-bus/${modeloBusId}`, {
     body: JSON.stringify(input),
     method: 'PATCH',
   })
 }
 
-export function setModeloBusActive(modeloBusId: string, activo: boolean) {
+export function setModeloBusActive(modeloBusId: number, activo: boolean) {
   return apiRequest<{ modeloBus: ModeloBusDetailDto }>(
     `/flota/modelos-bus/${modeloBusId}/${activo ? 'activar' : 'desactivar'}`,
     { body: JSON.stringify({}), method: 'POST' },
@@ -141,28 +141,28 @@ export function createRuta(input: RutaFormInput) {
   })
 }
 
-export function updateRuta(rutaId: string, input: Partial<RutaFormInput>) {
+export function updateRuta(rutaId: number, input: Partial<RutaFormInput>) {
   return apiRequest<{ ruta: RutaDto }>(`/flota/rutas/${rutaId}`, {
     body: JSON.stringify(input),
     method: 'PATCH',
   })
 }
 
-export function setRutaActive(rutaId: string, activa: boolean) {
+export function setRutaActive(rutaId: number, activa: boolean) {
   return apiRequest<{ ruta: RutaDto }>(
     `/flota/rutas/${rutaId}/${activa ? 'activar' : 'desactivar'}`,
     { body: JSON.stringify({}), method: 'POST' },
   )
 }
 
-export function registerMileage(busId: string, kilometrajeNuevo: number, motivo?: string) {
+export function registerMileage(busId: number, kilometrajeNuevo: number, motivo?: string) {
   return apiRequest(`/flota/buses/${busId}/kilometraje`, {
     body: JSON.stringify({ kilometrajeNuevo, motivo }),
     method: 'POST',
   })
 }
 
-export function changeBusState(busId: string, estadoNuevo: BusStatus, motivo: string) {
+export function changeBusState(busId: number, estadoNuevo: BusStatus, motivo: string) {
   return apiRequest(`/flota/buses/${busId}/estado`, {
     body: JSON.stringify({ estadoNuevo, motivo }),
     method: 'POST',

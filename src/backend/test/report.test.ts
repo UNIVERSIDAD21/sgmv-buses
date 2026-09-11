@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { PrismaClient, type Rol } from '@prisma/client'
@@ -31,11 +32,11 @@ const created = {
 
 interface ReportFixture {
   adminEmail: string
-  busId: string
+  busId: number
   conductorEmail: string
   despachadorEmail: string
   mecanicoEmail: string
-  otherBusId: string
+  otherBusId: number
 }
 
 async function ensureRoles() {
@@ -66,7 +67,7 @@ async function ensureRoles() {
 }
 
 async function createUser(label: string, role: Rol) {
-  const id = randomUUID()
+  const id = testEntityId()
   created.usuarios.push(id)
 
   return prisma.usuario.create({
@@ -94,7 +95,7 @@ async function createFixture(): Promise<ReportFixture> {
     data: {
       anio: 2024,
       codigoInterno: `RF06-BUS-${suffix}`,
-      id: randomUUID(),
+      id: testEntityId(),
       kilometrajeActual: 48000,
       marca: 'Mercedes-Benz',
       modelo: 'O500',
@@ -105,7 +106,7 @@ async function createFixture(): Promise<ReportFixture> {
     data: {
       anio: 2022,
       codigoInterno: `RF06-OTRO-${suffix}`,
-      id: randomUUID(),
+      id: testEntityId(),
       kilometrajeActual: 62000,
       marca: 'Volvo',
       modelo: 'B340M',
@@ -237,7 +238,7 @@ async function createFixture(): Promise<ReportFixture> {
       categoria: 'Frenos',
       codigo: `REP-RF06-${suffix}`,
       costoUnitario: '92500.00',
-      id: randomUUID(),
+      id: testEntityId(),
       nombre: 'Pastilla de freno RF-06',
       stockActual: '8.00',
       stockMinimo: '2.00',
@@ -258,7 +259,7 @@ async function createFixture(): Promise<ReportFixture> {
     },
   })
   created.compatibilidades.push(compatibility.id)
-  const consumptionId = randomUUID()
+  const consumptionId = testEntityId()
   created.consumos.push(consumptionId)
   await prisma.$transaction(async (tx) => {
     await tx.repuesto.update({
@@ -544,8 +545,8 @@ describe('RF-06 History and reports API', () => {
     const mechanic = await loginAgent(fixture.mecanicoEmail)
     const buses = await mechanic.get('/historial/buses').expect(200)
 
-    expect(buses.body.data.buses.map((bus: { id: string }) => bus.id)).toContain(fixture.busId)
-    expect(buses.body.data.buses.map((bus: { id: string }) => bus.id)).not.toContain(
+    expect(buses.body.data.buses.map((bus: { id: number }) => bus.id)).toContain(fixture.busId)
+    expect(buses.body.data.buses.map((bus: { id: number }) => bus.id)).not.toContain(
       fixture.otherBusId,
     )
     expect(JSON.stringify(buses.body)).not.toContain('costoAcumulado')

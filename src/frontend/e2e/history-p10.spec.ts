@@ -1,3 +1,4 @@
+import { testEntityId } from '../../backend/test/entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { hash } from 'bcryptjs'
@@ -10,39 +11,39 @@ const suffix = randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase()
 const marker = `P10-E2E-${suffix}`
 
 const ids = {
-  activity: randomUUID(),
-  alertAdmin: randomUUID(),
-  alertDriver: randomUUID(),
-  alertDispatcherRecipient: randomUUID(),
-  alertDriverRecipient: randomUUID(),
-  alertAdminRecipient: randomUUID(),
-  assignment: randomUUID(),
-  bus: randomUUID(),
-  compatibility: randomUUID(),
-  consumption: randomUUID(),
-  driverReading: randomUUID(),
-  foreignBus: randomUUID(),
-  intervention: randomUUID(),
-  journeyFinalReading: randomUUID(),
-  journey: randomUUID(),
-  model: randomUUID(),
-  movement: randomUUID(),
-  novelty: randomUUID(),
-  noveltyReading: randomUUID(),
-  order: randomUUID(),
-  orderState: randomUUID(),
-  part: randomUUID(),
-  route: randomUUID(),
-  schedule: randomUUID(),
-  technicalReading: randomUUID(),
+  activity: testEntityId(),
+  alertAdmin: testEntityId(),
+  alertDriver: testEntityId(),
+  alertDispatcherRecipient: testEntityId(),
+  alertDriverRecipient: testEntityId(),
+  alertAdminRecipient: testEntityId(),
+  assignment: testEntityId(),
+  bus: testEntityId(),
+  compatibility: testEntityId(),
+  consumption: testEntityId(),
+  driverReading: testEntityId(),
+  foreignBus: testEntityId(),
+  intervention: testEntityId(),
+  journeyFinalReading: testEntityId(),
+  journey: testEntityId(),
+  model: testEntityId(),
+  movement: testEntityId(),
+  novelty: testEntityId(),
+  noveltyReading: testEntityId(),
+  order: testEntityId(),
+  orderState: testEntityId(),
+  part: testEntityId(),
+  route: testEntityId(),
+  schedule: testEntityId(),
+  technicalReading: testEntityId(),
 } as const
 
 const users = {
-  admin: '20000000-0000-4000-8000-000000000001',
-  dispatcher: '20000000-0000-4000-8000-000000000005',
-  mechanic: '20000000-0000-4000-8000-000000000002',
-  otherMechanic: '20000000-0000-4000-8000-000000000004',
-  driver: randomUUID(),
+  admin: 1005,
+  dispatcher: 1006,
+  mechanic: 1007,
+  otherMechanic: 1008,
+  driver: testEntityId(),
 } as const
 
 const busCode = `000-${marker}`
@@ -58,25 +59,25 @@ interface ApiHistoryOrder {
   costoTotal?: string
   diagnosticos?: Array<{ diagnostico: string }>
   disponibilidadAlCierre?: boolean
-  id: string
-  jornada?: { id: string }
+  id: number
+  jornada?: { id: number }
   repuestos?: Array<{
     codigo: string
-    compatibilidad: { reglaId: string; reglaVersion: number; resultado: string }
-    movimiento: { id: string; tipo: string }
+    compatibilidad: { reglaId: number; reglaVersion: number; resultado: string }
+    movimiento: { id: number; tipo: string }
     subtotal?: string
   }>
 }
 
 interface ApiHistoryData {
-  alertas: Array<{ estado?: string; id: string }>
-  bus: { id: string }
+  alertas: Array<{ estado?: string; id: number }>
+  bus: { id: number }
   costoTotal: string
   historial: ApiHistoryData
-  jornadas: Array<{ id: string }>
-  novedades: Array<{ id: string }>
+  jornadas: Array<{ id: number }>
+  novedades: Array<{ id: number }>
   ordenes: ApiHistoryOrder[]
-  registros: Array<{ busId: string; costoTotal: string }>
+  registros: Array<{ busId: number; costoTotal: string }>
 }
 
 type ApiResult = { status: number; body: { data?: ApiHistoryData } }
@@ -484,8 +485,12 @@ async function cleanupFixture() {
     await tx.ruta.deleteMany({ where: { id: ids.route } })
     await tx.modeloBus.deleteMany({ where: { id: ids.model } })
     await tx.usuario.deleteMany({ where: { id: users.driver } })
-    await tx.eventoAuditoria.deleteMany({ where: { recursoId: { in: Object.values(ids) } } })
-    await tx.solicitudIdempotente.deleteMany({ where: { recursoId: { in: Object.values(ids) } } })
+    await tx.eventoAuditoria.deleteMany({
+      where: { recursoId: { in: Object.values(ids).map(String) } },
+    })
+    await tx.solicitudIdempotente.deleteMany({
+      where: { recursoId: { in: Object.values(ids).map(String) } },
+    })
   })
 }
 
@@ -567,12 +572,12 @@ test('P10 reconstruye historial, respeta privacidad por rol y mantiene GET sin e
   expect(adminDetail.status).toBe(200)
   const adminHistory = adminDetail.body.data!
   expect(adminHistory.bus.id).toBe(ids.bus)
-  expect(adminHistory.novedades.some((item: { id: string }) => item.id === ids.novelty)).toBe(true)
-  expect(adminHistory.jornadas.some((item: { id: string }) => item.id === ids.journey)).toBe(true)
-  expect(adminHistory.alertas.map((item: { id: string }) => item.id)).toEqual(
+  expect(adminHistory.novedades.some((item: { id: number }) => item.id === ids.novelty)).toBe(true)
+  expect(adminHistory.jornadas.some((item: { id: number }) => item.id === ids.journey)).toBe(true)
+  expect(adminHistory.alertas.map((item: { id: number }) => item.id)).toEqual(
     expect.arrayContaining([ids.alertAdmin, ids.alertDriver]),
   )
-  const adminOrder = adminHistory.ordenes.find((item: { id: string }) => item.id === ids.order)
+  const adminOrder = adminHistory.ordenes.find((item: { id: number }) => item.id === ids.order)
   expect(adminOrder).toBeDefined()
   expect(adminOrder).toMatchObject({
     costoTotal: '185000.00',

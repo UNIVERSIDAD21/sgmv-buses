@@ -1,3 +1,4 @@
+import { entityIdSchema } from '../shared/entity-id.js'
 import { z } from 'zod'
 
 import {
@@ -65,15 +66,15 @@ const reportFilters = z
     alertaEstado: z.enum(alertRecipientStateValues).optional(),
     alertaPrioridad: z.enum(alertPriorityValues).optional(),
     alertaTipo: z.enum(alertTypeValues).optional(),
-    busId: z.uuid().optional(),
+    busId: entityIdSchema.optional(),
     busqueda: optionalTrimmedText(),
     compatibilidad: z.enum(compatibilityResultValues).optional(),
-    conductorId: z.uuid().optional(),
+    conductorId: entityIdSchema.optional(),
     disponibilidadAlCierre: optionalBoolean,
     estado: z.enum(workOrderStateValues).optional(),
     fechaDesde: optionalDate,
     fechaHasta: optionalDate,
-    jornadaId: z.uuid().optional(),
+    jornadaId: entityIdSchema.optional(),
     kilometrajeDesde: optionalInteger,
     kilometrajeHasta: optionalInteger,
     limite: z.coerce.number().int().min(1).max(100).optional(),
@@ -86,7 +87,7 @@ const reportFilters = z
       .enum(['PENDIENTE_REVISION', 'RESUELTA_SIN_ORDEN', 'DESCARTADA', 'CONVERTIDA_A_ORDEN'])
       .optional(),
     novedadTipo: optionalTrimmedText(),
-    repuestoId: z.uuid().optional(),
+    repuestoId: entityIdSchema.optional(),
     tipo: z.enum(workOrderTypeValues).optional(),
   })
   .strict()
@@ -119,7 +120,7 @@ const reportFilters = z
 export const reportQuerySchema = reportFilters
 
 export const busHistoryParamSchema = z.object({
-  busId: z.uuid(),
+  busId: entityIdSchema,
 })
 
 export type ReportQuery = z.infer<typeof reportQuerySchema>

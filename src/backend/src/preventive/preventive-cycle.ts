@@ -10,14 +10,14 @@ export interface PreventivePlanCycleData {
   anticipacionDias: number | null
   anticipacionKm: number | null
   bloqueaAlVencer: boolean
-  busId: string | null
+  busId: number | null
   claveTarea: string
   componente: string
   criterio: CriterioMantenimiento
-  id: string
+  id: number
   intervaloDias: number | null
   intervaloKm: number | null
-  modeloBusId: string | null
+  modeloBusId: number | null
   prioridad: PrioridadOrden
   version: number
 }
@@ -28,9 +28,9 @@ export interface PreventiveCycleTargets {
 }
 
 interface PreventiveScheduleCycleData extends PreventiveCycleTargets {
-  busId: string
+  busId: number
   createdAt: Date
-  id: string
+  id: number
   planMantenimientoPreventivo: PreventivePlanCycleData
 }
 
@@ -151,7 +151,7 @@ export function hasValidPreventivePlanSnapshot(
     fechaObjetivo: Date | null
     kilometrajeObjetivo: number | null
     plan: PreventivePlanCycleData
-    programacionId: string
+    programacionId: number
   },
 ) {
   if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return false

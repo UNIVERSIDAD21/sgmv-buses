@@ -76,7 +76,7 @@ export type PreventiveWorkOrderRecord = Prisma.OrdenTrabajoGetPayload<{
 interface UpsertScheduleData {
   activa?: boolean
   actividad: string
-  busId: string
+  busId: number
   criterio: CriterioMantenimiento
   fechaProgramada: Date | null
   kilometrajeObjetivo: number | null
@@ -105,7 +105,7 @@ export class PreventiveRepository {
     })
   }
 
-  createSchedule(data: UpsertScheduleData, actorId: string) {
+  createSchedule(data: UpsertScheduleData, actorId: number) {
     return prisma.programacionMantenimiento.create({
       data: {
         actividad: data.actividad,
@@ -120,7 +120,7 @@ export class PreventiveRepository {
     })
   }
 
-  materializePlanSchedule(planId: string, requestedBusId: string | undefined, actorId: string) {
+  materializePlanSchedule(planId: number, requestedBusId: number | undefined, actorId: number) {
     return prisma.$transaction(
       async (tx) => {
         const requestedPlan = await tx.planMantenimientoPreventivo.findUnique({
@@ -183,13 +183,13 @@ export class PreventiveRepository {
     )
   }
 
-  findBusById(id: string) {
+  findBusById(id: number) {
     return prisma.bus.findUnique({
       where: { id },
     })
   }
 
-  findExistingActiveOrderBySchedule(programacionId: string) {
+  findExistingActiveOrderBySchedule(programacionId: number) {
     return prisma.ordenTrabajo.findFirst({
       where: {
         estado: {
@@ -208,7 +208,7 @@ export class PreventiveRepository {
 
   findLogicalDuplicate(
     data: UpsertScheduleData,
-    excludeId?: string,
+    excludeId?: number,
   ): Promise<PreventiveScheduleRecord | null> {
     return prisma.programacionMantenimiento.findFirst({
       where: {
@@ -231,7 +231,7 @@ export class PreventiveRepository {
     })
   }
 
-  findScheduleById(id: string) {
+  findScheduleById(id: number) {
     return prisma.programacionMantenimiento.findUnique({
       where: { id },
       include: preventiveScheduleInclude,
@@ -248,7 +248,7 @@ export class PreventiveRepository {
     })
   }
 
-  updateSchedule(id: string, data: Omit<UpsertScheduleData, 'busId'>) {
+  updateSchedule(id: number, data: Omit<UpsertScheduleData, 'busId'>) {
     return prisma.programacionMantenimiento.update({
       where: { id },
       data: {
@@ -263,7 +263,7 @@ export class PreventiveRepository {
     })
   }
 
-  generatePreventiveOrder(programacionId: string, actorId: string, data: GenerateOrderData) {
+  generatePreventiveOrder(programacionId: number, actorId: number, data: GenerateOrderData) {
     return prisma.$transaction(
       async (tx) => {
         const schedule = await this.findScheduleByIdForTransaction(programacionId, tx)
@@ -280,7 +280,7 @@ export class PreventiveRepository {
           return { orden: null, programacion: schedule, status: 'INACTIVE' as const }
         }
 
-        const taskKey = schedule.planMantenimientoPreventivo?.claveTarea ?? schedule.id
+        const taskKey = schedule.planMantenimientoPreventivo?.claveTarea ?? String(schedule.id)
         await this.lockPreventiveObligation(tx, schedule.busId, taskKey)
         const lockedSchedule = await this.findScheduleByIdForTransaction(programacionId, tx)
         if (!lockedSchedule) {
@@ -383,7 +383,7 @@ export class PreventiveRepository {
     return `OT-PREV-${suffix}`
   }
 
-  private findScheduleByIdForTransaction(id: string, client: PreventiveDbClient) {
+  private findScheduleByIdForTransaction(id: number, client: PreventiveDbClient) {
     return client.programacionMantenimiento.findUnique({
       where: { id },
       include: preventiveScheduleInclude,
@@ -392,7 +392,7 @@ export class PreventiveRepository {
 
   private lockPreventiveObligation(
     tx: Prisma.TransactionClient,
-    busId: string,
+    busId: number,
     claveTarea: string,
   ) {
     return tx.$executeRaw(
@@ -402,7 +402,7 @@ export class PreventiveRepository {
 
   private async resolveEffectivePlan(
     tx: Prisma.TransactionClient,
-    busId: string,
+    busId: number,
     claveTarea: string,
   ) {
     const bus = await tx.bus.findUnique({

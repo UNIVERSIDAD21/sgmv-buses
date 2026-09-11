@@ -401,7 +401,7 @@ export default function FleetPage() {
     }`
   }, [listData])
 
-  async function openDetail(busId: string) {
+  async function openDetail(busId: number) {
     setDetailLoading(true)
     setError(null)
 
@@ -421,7 +421,7 @@ export default function FleetPage() {
     setAction({ bus, type } as FleetAction)
   }
 
-  async function refreshAfterOperation(busId: string) {
+  async function refreshAfterOperation(busId: number) {
     await refreshAdminList()
 
     if (selectedBus?.id === busId) {

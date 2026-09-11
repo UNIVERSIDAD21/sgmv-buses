@@ -70,7 +70,7 @@ describe('RF-04 work order frontend', () => {
     expect(await screen.findByText(/Seleccione un bus/i)).toBeInTheDocument()
 
     fireEvent.change(within(createDialog).getByLabelText(/^Bus$/i), {
-      target: { value: 'bus-1' },
+      target: { value: '2006' },
     })
     fireEvent.change(within(createDialog).getByLabelText(/^Prioridad$/i), {
       target: { value: 'ALTA' },
@@ -93,7 +93,7 @@ describe('RF-04 work order frontend', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Asignar$/i }))
     const assignDialog = await screen.findByRole('dialog', { name: /Asignar mecanico/i })
     fireEvent.change(within(assignDialog).getByLabelText(/^Mecanico$/i), {
-      target: { value: 'user-mecanico' },
+      target: { value: '2073' },
     })
     fireEvent.click(within(assignDialog).getByRole('button', { name: /^Asignar$/i }))
 
@@ -104,7 +104,7 @@ describe('RF-04 work order frontend', () => {
     fireEvent.click(within(reassignDialog).getByRole('button', { name: /^Reasignar$/i }))
     expect(await screen.findByText(/El motivo de reasignacion es obligatorio/i)).toBeInTheDocument()
     fireEvent.change(within(reassignDialog).getByLabelText(/^Mecanico$/i), {
-      target: { value: 'user-mecanico-alt' },
+      target: { value: '2074' },
     })
     fireEvent.change(within(reassignDialog).getByLabelText(/Motivo de reasignacion/i), {
       target: { value: 'Balance de carga' },
@@ -141,8 +141,7 @@ describe('RF-04 work order frontend', () => {
     expect(await screen.findByText(/REP-001 - max\. 1\.25 - VIGENTE/i)).toBeInTheDocument()
     const authorizationCall = fetchMock.mock.calls.find(
       ([input, init]) =>
-        getPath(input) === '/ordenes-trabajo/order-rf04-1/excepciones-consumo' &&
-        init?.method === 'POST',
+        getPath(input) === '/ordenes-trabajo/2045/excepciones-consumo' && init?.method === 'POST',
     )
     expect(authorizationCall).toBeTruthy()
     expect(String(authorizationCall?.[1]?.body)).not.toContain('autorizadoPor')
@@ -195,7 +194,7 @@ describe('RF-04 work order frontend', () => {
     expect(await screen.findByText(/Actividad registrada/i)).toBeInTheDocument()
 
     expect(await screen.findByText(/Pastilla de freno/i)).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText(/^Repuesto$/i), { target: { value: 'rep-1' } })
+    fireEvent.change(screen.getByLabelText(/^Repuesto$/i), { target: { value: '2064' } })
     fireEvent.change(screen.getByLabelText(/^Cantidad$/i), { target: { value: '1' } })
     fireEvent.click(screen.getByRole('button', { name: /Registrar consumo/i }))
     expect(await screen.findByText(/Consumo registrado/i)).toBeInTheDocument()
@@ -206,11 +205,11 @@ describe('RF-04 work order frontend', () => {
     expect(await screen.findByText(/Orden completada tecnicamente/i)).toBeInTheDocument()
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/ordenes-trabajo/order-rf04-1/iniciar'),
+      expect.stringContaining('/ordenes-trabajo/2045/iniciar'),
       expect.objectContaining({ method: 'POST' }),
     )
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/ordenes-trabajo/order-rf04-1/consumos'),
+      expect.stringContaining('/ordenes-trabajo/2045/consumos'),
       expect.objectContaining({ method: 'POST' }),
     )
   })

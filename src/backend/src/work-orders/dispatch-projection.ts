@@ -128,8 +128,8 @@ export function listDispatchProjections() {
   )
 }
 
-function groupByBus<T extends { busId: string }>(records: T[]) {
-  const groups = new Map<string, T[]>()
+function groupByBus<T extends { busId: number }>(records: T[]) {
+  const groups = new Map<number, T[]>()
   for (const record of records) {
     const group = groups.get(record.busId) ?? []
     group.push(record)

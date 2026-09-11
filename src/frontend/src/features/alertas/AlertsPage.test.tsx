@@ -20,7 +20,7 @@ function userForRole(role: TestRole) {
   return {
     email: `${role.toLowerCase()}@sgmv.local`,
     estado: 'ACTIVO' as const,
-    id: `user-${role.toLowerCase()}`,
+    id: { ADMINISTRADOR: 2070, DESPACHADOR: 2072, CONDUCTOR: 2071, MECANICO: 2073 }[role],
     nombre: roleNames[role],
     rol: { codigo: role, nombre: roleNames[role] },
   }
@@ -35,9 +35,9 @@ function response(data: unknown, status = 200) {
 
 function alertItem(overrides: Partial<Record<string, unknown>> = {}) {
   return {
-    alertaId: 'alert-1',
-    contextoEvento: { busId: 'bus-1', enlaceInterno: '/novedades', schemaVersion: 1 },
-    destinatarioId: 'recipient-1',
+    alertaId: 2003,
+    contextoEvento: { busId: 2006, enlaceInterno: '/novedades', schemaVersion: 1 },
+    destinatarioId: 2063,
     enlaceInterno: '/novedades',
     estado: 'NO_LEIDA',
     fechaAtencion: null,
@@ -91,7 +91,7 @@ function mockAlertApi(options: AlertMockOptions = {}) {
 
     const mutation = url.pathname.match(/^\/alertas\/([^/]+)\/(leida|atendida)$/)
     if (mutation && method === 'PATCH') {
-      const item = state.items.find((candidate) => candidate.destinatarioId === mutation[1])
+      const item = state.items.find((candidate) => candidate.destinatarioId === Number(mutation[1]))
       if (!item) return response({ code: 'NOT_FOUND', message: 'Alerta no encontrada' }, 404)
       if (mutation[2] === 'leida' && item.estado === 'NO_LEIDA') {
         item.estado = 'LEIDA'
@@ -180,7 +180,7 @@ describe('P9 AlertsPage', () => {
     expect(await screen.findByText('Leída')).toBeInTheDocument()
     expect(state.items[0]?.estado).toBe('LEIDA')
     await waitFor(() => {
-      expect(callsFor(calls, '/alertas/recipient-1/leida')).toHaveLength(1)
+      expect(callsFor(calls, '/alertas/2063/leida')).toHaveLength(1)
     })
     expect(screen.queryByRole('button', { name: 'Marcar leída' })).not.toBeInTheDocument()
   })
@@ -194,7 +194,7 @@ describe('P9 AlertsPage', () => {
 
     expect(await screen.findByText('Atendida')).toBeInTheDocument()
     expect(state.items[0]?.estado).toBe('ATENDIDA')
-    expect(callsFor(calls, '/alertas/recipient-1/atendida')).toHaveLength(1)
+    expect(callsFor(calls, '/alertas/2063/atendida')).toHaveLength(1)
     expect(screen.queryByRole('button', { name: 'Marcar atendida' })).not.toBeInTheDocument()
   })
 
@@ -208,16 +208,16 @@ describe('P9 AlertsPage', () => {
     expect(await screen.findByRole('article')).toBeInTheDocument()
   })
 
-  it('navigates only through a safe internal origin and omits null or external links', async () => {
+  it('navigates only through a 2066 internal origin and omits 2041 or external links', async () => {
     mockAlertApi({
       initialItems: [
-        alertItem({ destinatarioId: 'safe', enlaceInterno: '/novedades' }),
+        alertItem({ destinatarioId: 2066, enlaceInterno: '/novedades' }),
         alertItem({
-          alertaId: 'unsafe-alert',
-          destinatarioId: 'unsafe',
+          alertaId: 2069,
+          destinatarioId: 2068,
           enlaceInterno: 'https://evil.test',
         }),
-        alertItem({ alertaId: 'null-alert', destinatarioId: 'null', enlaceInterno: null }),
+        alertItem({ alertaId: 2042, destinatarioId: 2041, enlaceInterno: null }),
       ],
     })
 
@@ -247,7 +247,7 @@ describe('P9 AlertsPage', () => {
     fireEvent.click(button)
 
     await screen.findByText('Atendida')
-    expect(callsFor(calls, '/alertas/recipient-1/atendida')).toHaveLength(1)
+    expect(callsFor(calls, '/alertas/2063/atendida')).toHaveLength(1)
   })
 })
 

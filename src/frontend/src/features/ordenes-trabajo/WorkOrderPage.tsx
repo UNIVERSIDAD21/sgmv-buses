@@ -280,7 +280,7 @@ function ManualOrderDialog({
   const [descripcion, setDescripcion] = useState('')
   const [prioridad, setPrioridad] = useState<OrderPriority>('MEDIA')
   const [validationError, setValidationError] = useState<string | null>(null)
-  const selectedBus = buses.find((bus) => bus.id === busId) ?? null
+  const selectedBus = buses.find((bus) => bus.id === Number(busId)) ?? null
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -299,7 +299,7 @@ function ManualOrderDialog({
     }
 
     onSubmit({
-      busId,
+      busId: Number(busId),
       descripcion: normalizedDescription,
       prioridad,
       tipo: 'CORRECTIVA',
@@ -436,8 +436,8 @@ function AssignmentDialog({
 
     onSubmit(
       action.mode === 'assign'
-        ? { observacion: normalizedReason || undefined, tecnicoId }
-        : { motivo: normalizedReason, tecnicoId },
+        ? { observacion: normalizedReason || undefined, tecnicoId: Number(tecnicoId) }
+        : { motivo: normalizedReason, tecnicoId: Number(tecnicoId) },
       action.mode,
     )
   }
@@ -632,7 +632,7 @@ function WorkOrderCard({
   onOpen,
   order,
 }: {
-  onOpen: (orderId: string) => void
+  onOpen: (orderId: number) => void
   order: WorkOrderSummaryItemDto
 }) {
   return (
@@ -810,12 +810,12 @@ function TechnicalPanel({
   const [repuestoId, setRepuestoId] = useState('')
   const [technicalSubmitting, setTechnicalSubmitting] = useState(false)
   const isBusy = submitting || technicalSubmitting
-  const selectedPart = parts.find((part) => part.id === repuestoId)
+  const selectedPart = parts.find((part) => part.id === Number(repuestoId))
   const applicableAuthorization = (order.autorizacionesExcepcion ?? []).find(
     (authorization) =>
       authorization.estado === 'VIGENTE' &&
       authorization.intervencionId === activeIntervention?.id &&
-      authorization.repuesto.id === repuestoId &&
+      authorization.repuesto.id === Number(repuestoId) &&
       (!authorization.fechaExpiracion || new Date(authorization.fechaExpiracion) > new Date()),
   )
 
@@ -928,7 +928,7 @@ function TechnicalPanel({
         ...(applicableAuthorization ? { autorizacionExcepcionId: applicableAuthorization.id } : {}),
         cantidad,
         claveIdempotencia: idempotencyKey(),
-        repuestoId,
+        repuestoId: Number(repuestoId),
       }),
       'Consumo registrado.',
     )
@@ -1207,7 +1207,7 @@ function ConsumptionExceptionPanel({
         ...(expiresAt ? { fechaExpiracion: new Date(expiresAt).toISOString() } : {}),
         intervencionId: activeIntervention!.id,
         motivo: normalizeText(reason),
-        repuestoId: partId,
+        repuestoId: Number(partId),
       })
       setPartId('')
       setQuantity('')
@@ -1221,7 +1221,7 @@ function ConsumptionExceptionPanel({
     }
   }
 
-  async function revoke(authorizationId: string) {
+  async function revoke(authorizationId: number) {
     setBusy(true)
     setError(null)
     try {
@@ -1409,7 +1409,7 @@ function WorkOrderDetail({
             <FieldValue label="Jornada de origen">
               {order.jornadaOperativa.ruta
                 ? `${order.jornadaOperativa.ruta.codigo} - ${order.jornadaOperativa.ruta.nombre}`
-                : `Jornada ${order.jornadaOperativa.id.slice(0, 8)}`}{' '}
+                : `Jornada ${String(order.jornadaOperativa.id)}`}{' '}
               · {order.jornadaOperativa.estado.replaceAll('_', ' ')}
             </FieldValue>
           )}
@@ -1769,7 +1769,7 @@ export default function WorkOrderPage() {
 
   const listParams = useMemo(
     () => ({
-      busId,
+      busId: Number(busId),
       busqueda,
       direccion,
       estado,
@@ -1777,7 +1777,7 @@ export default function WorkOrderPage() {
       ordenarPor,
       origen,
       pagina,
-      tecnicoId: isAdmin ? tecnicoId : '',
+      tecnicoId: isAdmin && tecnicoId ? Number(tecnicoId) : undefined,
       tipo,
     }),
     [busId, busqueda, direccion, estado, isAdmin, ordenarPor, origen, pagina, tecnicoId, tipo],
@@ -1842,7 +1842,7 @@ export default function WorkOrderPage() {
     }`
   }, [listData])
 
-  async function openDetail(orderId: string) {
+  async function openDetail(orderId: number) {
     setDetailLoading(true)
     setLoadError(null)
 
@@ -1857,7 +1857,7 @@ export default function WorkOrderPage() {
     }
   }
 
-  async function refreshSelected(orderId: string) {
+  async function refreshSelected(orderId: number) {
     const result = await getWorkOrder(orderId)
 
     setSelectedOrder(result.orden)

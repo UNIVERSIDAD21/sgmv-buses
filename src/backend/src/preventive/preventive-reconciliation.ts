@@ -4,13 +4,13 @@ import { evaluatePreventiveAlertsForBus } from '../alerts/alert.service.js'
 import { initialPreventiveTargets } from './preventive-cycle.js'
 
 interface ReconcileInput {
-  actorId: string
-  busId: string
+  actorId: number
+  busId: number
   claveTarea: string
   materializeIfMissing?: boolean
 }
 
-async function lockObligation(tx: Prisma.TransactionClient, busId: string, claveTarea: string) {
+async function lockObligation(tx: Prisma.TransactionClient, busId: number, claveTarea: string) {
   await tx.$executeRaw(
     Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${`sgmv:obligacion:${busId}:${claveTarea}`}, 0))`,
   )
@@ -18,7 +18,7 @@ async function lockObligation(tx: Prisma.TransactionClient, busId: string, clave
 
 async function resolveEffectivePlan(
   tx: Prisma.TransactionClient,
-  busId: string,
+  busId: number,
   claveTarea: string,
 ) {
   const bus = await tx.bus.findUnique({ where: { id: busId }, select: { modeloBusId: true } })
@@ -122,7 +122,7 @@ export async function reconcilePreventiveObligationForTask(
 
 export async function reconcilePreventiveObligationsForBus(
   tx: Prisma.TransactionClient,
-  input: Pick<ReconcileInput, 'actorId' | 'busId'> & { previousModeloBusId: string | null },
+  input: Pick<ReconcileInput, 'actorId' | 'busId'> & { previousModeloBusId: number | null },
 ) {
   const bus = await tx.bus.findUnique({ where: { id: input.busId }, select: { modeloBusId: true } })
   const schedules = await tx.programacionMantenimiento.findMany({
@@ -134,7 +134,7 @@ export async function reconcilePreventiveObligationsForBus(
     select: { planMantenimientoPreventivo: { select: { claveTarea: true } } },
   })
   const modelIds = [input.previousModeloBusId, bus?.modeloBusId].filter(
-    (modeloBusId): modeloBusId is string => Boolean(modeloBusId),
+    (modeloBusId): modeloBusId is number => Boolean(modeloBusId),
   )
   const modelPlans = await tx.planMantenimientoPreventivo.findMany({
     where: { activo: true, modeloBusId: { in: modelIds } },

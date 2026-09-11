@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { PrismaClient } from '@prisma/client'
@@ -23,7 +24,7 @@ const inputSchema = z.object({
   respuestaInsegura: z.boolean().optional(),
 })
 
-let actorId = ''
+let actorId = 0
 let actorEmail = ''
 let agent: Awaited<ReturnType<typeof createCsrfAgent>>
 
@@ -66,7 +67,7 @@ describe('P2-10 HTTP idempotency', () => {
       create: { codigo: 'ADMINISTRADOR', nombre: 'Administrador' },
     })
 
-    actorId = randomUUID()
+    actorId = testEntityId()
     actorEmail = `idempotencia-${randomUUID().slice(0, 8)}@test.sgmv.local`
 
     await prisma.usuario.create({
@@ -160,7 +161,7 @@ describe('P2-10 HTTP idempotency', () => {
     const repository = new IdempotencyRepository()
     const hashSolicitud = hashIdempotentPayload({
       body,
-      params: { targetId: actorId },
+      params: { targetId: String(actorId) },
       query: {},
     })
 

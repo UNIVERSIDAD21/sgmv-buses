@@ -22,7 +22,7 @@ import type { ModeloBusSummaryDto, RutaDto } from './fleet.types'
 
 interface ModelFormState {
   especificaciones: string
-  id: string | null
+  id: number | null
   marca: string
   nombreModelo: string
   versionTecnica: string
@@ -31,7 +31,7 @@ interface ModelFormState {
 interface RouteFormState {
   codigo: string
   destino: string
-  id: string | null
+  id: number | null
   nombre: string
   origen: string
 }

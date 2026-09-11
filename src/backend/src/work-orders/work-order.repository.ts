@@ -213,19 +213,19 @@ export type SparePartRecord = Prisma.RepuestoGetPayload<{
 export type ConsumptionRecord = WorkOrderRecord['consumosRepuesto'][number]
 
 interface CreateManualOrderData {
-  busId: string
+  busId: number
   descripcion: string
   prioridad: PrioridadOrden
 }
 
 interface AssignData {
   observacion: string | null
-  tecnicoId: string
+  tecnicoId: number
 }
 
 interface ReassignData {
   motivo: string
-  tecnicoId: string
+  tecnicoId: number
 }
 
 interface UpdateInterventionData {
@@ -234,18 +234,18 @@ interface UpdateInterventionData {
 }
 
 interface ConsumptionData {
-  autorizacionExcepcionId?: string
+  autorizacionExcepcionId?: number
   cantidad: Prisma.Decimal
   claveIdempotencia: string
-  repuestoId: string
+  repuestoId: number
 }
 
 interface ConsumptionExceptionData {
   cantidadMaxima: Prisma.Decimal
   fechaExpiracion: Date | null
-  intervencionId: string
+  intervencionId: number
   motivo: string
-  repuestoId: string
+  repuestoId: number
 }
 
 export interface TechnicalReadingData {
@@ -258,12 +258,12 @@ export interface TechnicalReadingData {
 export interface DispatchOrderProjectionRecord {
   disponibilidad: ReturnType<typeof buildAvailability>
   orden: {
-    bus: { codigoInterno: string; id: string; placa: string }
+    bus: { codigoInterno: string; id: number; placa: string }
     codigo: string
     disponibilidadAlCierre: boolean | null
     estado: EstadoOrdenTrabajo
     fechaCierre: Date | null
-    id: string
+    id: number
   }
 }
 
@@ -321,7 +321,7 @@ export class WorkOrderRepository {
     })
   }
 
-  findOrderById(id: string) {
+  findOrderById(id: number) {
     return prisma.ordenTrabajo.findUnique({
       where: { id },
       include: workOrderDetailInclude,
@@ -340,7 +340,7 @@ export class WorkOrderRepository {
     })
   }
 
-  findMechanicById(id: string) {
+  findMechanicById(id: number) {
     return prisma.usuario.findUnique({
       where: { id },
       include: {
@@ -383,7 +383,7 @@ export class WorkOrderRepository {
     })
   }
 
-  findAvailableSpareParts(busqueda: string | undefined, take: number, busId?: string) {
+  findAvailableSpareParts(busqueda: string | undefined, take: number, busId?: number) {
     return prisma.$transaction(async (tx) => {
       const parts = await tx.repuesto.findMany({
         where: {
@@ -413,7 +413,7 @@ export class WorkOrderRepository {
     })
   }
 
-  findClosedOrdersByBus(busId: string, excludeOrderId: string, take = 5) {
+  findClosedOrdersByBus(busId: number, excludeOrderId: number, take = 5) {
     return prisma.ordenTrabajo.findMany({
       where: {
         busId,
@@ -437,7 +437,7 @@ export class WorkOrderRepository {
     })
   }
 
-  createManualOrder(actorId: string, data: CreateManualOrderData) {
+  createManualOrder(actorId: number, data: CreateManualOrderData) {
     return prisma.$transaction(
       async (tx) => {
         const bus = await tx.bus.findUnique({
@@ -504,7 +504,7 @@ export class WorkOrderRepository {
     )
   }
 
-  assignMechanic(orderId: string, actorId: string, data: AssignData) {
+  assignMechanic(orderId: number, actorId: number, data: AssignData) {
     return prisma.$transaction(
       async (tx) => {
         await this.lockWorkOrder(tx, orderId)
@@ -584,7 +584,7 @@ export class WorkOrderRepository {
     )
   }
 
-  reassignMechanic(orderId: string, actorId: string, data: ReassignData) {
+  reassignMechanic(orderId: number, actorId: number, data: ReassignData) {
     return prisma.$transaction(
       async (tx) => {
         await this.lockWorkOrder(tx, orderId)
@@ -695,7 +695,7 @@ export class WorkOrderRepository {
     )
   }
 
-  startOrder(orderId: string, actorId: string, observacion: string | null) {
+  startOrder(orderId: number, actorId: number, observacion: string | null) {
     return prisma.$transaction(
       async (tx) => {
         await this.lockWorkOrder(tx, orderId)
@@ -773,7 +773,7 @@ export class WorkOrderRepository {
     )
   }
 
-  resumeOrder(orderId: string, actorId: string, observacion: string | null) {
+  resumeOrder(orderId: number, actorId: number, observacion: string | null) {
     return prisma.$transaction(
       async (tx) => {
         await this.lockWorkOrder(tx, orderId)
@@ -852,7 +852,7 @@ export class WorkOrderRepository {
     )
   }
 
-  updateActiveIntervention(orderId: string, actorId: string, data: UpdateInterventionData) {
+  updateActiveIntervention(orderId: number, actorId: number, data: UpdateInterventionData) {
     return prisma.$transaction(
       async (tx) => {
         await this.lockWorkOrder(tx, orderId)
@@ -905,7 +905,7 @@ export class WorkOrderRepository {
     )
   }
 
-  createActivity(orderId: string, actorId: string, descripcion: string) {
+  createActivity(orderId: number, actorId: number, descripcion: string) {
     return prisma.$transaction(
       async (tx) => {
         await this.lockWorkOrder(tx, orderId)
@@ -962,8 +962,8 @@ export class WorkOrderRepository {
   }
 
   createTechnicalReading(
-    orderId: string,
-    actorId: string,
+    orderId: number,
+    actorId: number,
     actorRole: 'ADMINISTRADOR' | 'MECANICO',
     data: TechnicalReadingData,
   ) {
@@ -978,7 +978,7 @@ export class WorkOrderRepository {
         }
         if (order.estado === 'CERRADA') return { orden: order, status: 'INVALID_STATE' as const }
 
-        let interventionId: string | undefined
+        let interventionId: number | undefined
         if (data.tipo === 'REVISION_TECNICA') {
           const activeIntervention = await tx.intervencion.findFirst({
             where: {
@@ -1030,7 +1030,7 @@ export class WorkOrderRepository {
     )
   }
 
-  authorizeConsumptionException(orderId: string, actorId: string, data: ConsumptionExceptionData) {
+  authorizeConsumptionException(orderId: number, actorId: number, data: ConsumptionExceptionData) {
     return prisma.$transaction(
       async (tx) => {
         await this.lockWorkOrder(tx, orderId)
@@ -1052,7 +1052,6 @@ export class WorkOrderRepository {
           data: {
             cantidadMaxima: data.cantidadMaxima,
             fechaExpiracion: data.fechaExpiracion,
-            id: randomUUID(),
             intervencionId: data.intervencionId,
             motivo: data.motivo,
             ordenTrabajoId: orderId,
@@ -1066,7 +1065,7 @@ export class WorkOrderRepository {
     )
   }
 
-  revokeConsumptionException(orderId: string, authorizationId: string) {
+  revokeConsumptionException(orderId: number, authorizationId: number) {
     return prisma.$transaction(
       async (tx) => {
         await this.lockWorkOrder(tx, orderId)
@@ -1087,7 +1086,7 @@ export class WorkOrderRepository {
     )
   }
 
-  createConsumption(orderId: string, actorId: string, data: ConsumptionData) {
+  createConsumption(orderId: number, actorId: number, data: ConsumptionData) {
     return prisma.$transaction(
       async (tx) => {
         await this.lockWorkOrder(tx, orderId)
@@ -1180,9 +1179,9 @@ export class WorkOrderRepository {
 
         const evaluation = await resolveCompatibility(tx, order.busId, data.repuestoId)
         let exception: {
-          autorizadoPorId: string
+          autorizadoPorId: number
           fechaAutorizacion: Date
-          id: string
+          id: number
           motivo: string
         } | null = null
 
@@ -1351,7 +1350,7 @@ export class WorkOrderRepository {
     )
   }
 
-  completeTechnical(orderId: string, actorId: string, observacion: string | null) {
+  completeTechnical(orderId: number, actorId: number, observacion: string | null) {
     return prisma.$transaction(
       async (tx) => {
         await this.lockWorkOrder(tx, orderId)
@@ -1478,7 +1477,7 @@ export class WorkOrderRepository {
     )
   }
 
-  returnForCorrection(orderId: string, actorId: string, motivo: string) {
+  returnForCorrection(orderId: number, actorId: number, motivo: string) {
     return prisma.$transaction(
       async (tx) => {
         await this.lockWorkOrder(tx, orderId)
@@ -1556,7 +1555,7 @@ export class WorkOrderRepository {
     )
   }
 
-  closeOrder(orderId: string, actorId: string, observacion: string | null) {
+  closeOrder(orderId: number, actorId: number, observacion: string | null) {
     return prisma.$transaction(
       async (tx) => {
         await this.lockWorkOrder(tx, orderId)
@@ -1791,14 +1790,14 @@ export class WorkOrderRepository {
     )
   }
 
-  private async findOrderByIdForTransaction(id: string, client: WorkOrderDbClient) {
+  private async findOrderByIdForTransaction(id: number, client: WorkOrderDbClient) {
     return client.ordenTrabajo.findUnique({
       where: { id },
       include: workOrderDetailInclude,
     })
   }
 
-  private findMechanicByIdForTransaction(id: string, client: WorkOrderDbClient) {
+  private findMechanicByIdForTransaction(id: number, client: WorkOrderDbClient) {
     return client.usuario.findUnique({
       where: { id },
       include: {
@@ -1807,7 +1806,7 @@ export class WorkOrderRepository {
     })
   }
 
-  private findActiveIntervention(client: WorkOrderDbClient, orderId: string, tecnicoId: string) {
+  private findActiveIntervention(client: WorkOrderDbClient, orderId: number, tecnicoId: number) {
     return client.intervencion.findFirst({
       where: {
         fechaFin: null,
@@ -1820,7 +1819,7 @@ export class WorkOrderRepository {
     })
   }
 
-  private async lockWorkOrder(client: Prisma.TransactionClient, orderId: string) {
+  private async lockWorkOrder(client: Prisma.TransactionClient, orderId: number) {
     await client.$executeRaw(
       Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(CAST(${orderId} AS text))::bigint)`,
     )
@@ -1828,7 +1827,7 @@ export class WorkOrderRepository {
 
   private lockPreventiveObligation(
     client: Prisma.TransactionClient,
-    busId: string,
+    busId: number,
     claveTarea: string,
   ) {
     return client.$executeRaw(
@@ -1838,7 +1837,7 @@ export class WorkOrderRepository {
 
   private async resolveEffectivePreventivePlan(
     client: Prisma.TransactionClient,
-    busId: string,
+    busId: number,
     claveTarea: string,
   ) {
     const bus = await client.bus.findUnique({
@@ -1862,7 +1861,7 @@ export class WorkOrderRepository {
     return left?.getTime() === right?.getTime()
   }
 
-  private async lockSparePart(client: Prisma.TransactionClient, repuestoId: string) {
+  private async lockSparePart(client: Prisma.TransactionClient, repuestoId: number) {
     await client.$executeRaw(
       Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(CAST(${repuestoId} AS text))::bigint)`,
     )

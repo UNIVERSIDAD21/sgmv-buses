@@ -8,22 +8,22 @@ import type {
 } from './journey.types'
 
 export interface JourneyScheduleInput {
-  busId: string
-  conductorId: string
+  busId: number
+  conductorId: number
   finProgramado: string
   inicioProgramado: string
-  rutaId?: string
+  rutaId?: number
 }
 
 export interface JourneyReassignInput {
-  busId?: string
-  conductorId?: string
+  busId?: number
+  conductorId?: number
   fechaEvento: string
   finProgramado?: string
   inicioProgramado?: string
   kilometrajeFinal?: number
   motivo: string
-  rutaId?: string | null
+  rutaId?: number | null
 }
 
 export function listJourneys(input: {
@@ -52,14 +52,14 @@ export function createJourney(input: JourneyScheduleInput) {
   })
 }
 
-export function startJourney(journeyId: string, fechaEvento: string, kilometraje: number) {
+export function startJourney(journeyId: number, fechaEvento: string, kilometraje: number) {
   return apiRequest<{ jornada: JourneyDto }>(`/jornadas/${journeyId}/iniciar`, {
     body: JSON.stringify({ fechaEvento, kilometraje }),
     method: 'POST',
   })
 }
 
-export function finishJourney(journeyId: string, fechaEvento: string, kilometraje: number) {
+export function finishJourney(journeyId: number, fechaEvento: string, kilometraje: number) {
   return apiRequest<{ jornada: JourneyDto }>(`/jornadas/${journeyId}/finalizar`, {
     body: JSON.stringify({ fechaEvento, kilometraje }),
     method: 'POST',
@@ -67,7 +67,7 @@ export function finishJourney(journeyId: string, fechaEvento: string, kilometraj
 }
 
 export function cancelJourney(
-  journeyId: string,
+  journeyId: number,
   input: { fechaEvento: string; kilometrajeFinal?: number; motivo: string },
 ) {
   return apiRequest<{ jornada: JourneyDto }>(`/jornadas/${journeyId}/cancelar`, {
@@ -76,7 +76,7 @@ export function cancelJourney(
   })
 }
 
-export function reassignJourney(journeyId: string, input: JourneyReassignInput) {
+export function reassignJourney(journeyId: number, input: JourneyReassignInput) {
   return apiRequest<{ jornadaAnterior: JourneyDto; jornadaSucesora: JourneyDto }>(
     `/jornadas/${journeyId}/reasignar`,
     { body: JSON.stringify(input), method: 'POST' },

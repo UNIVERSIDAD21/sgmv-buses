@@ -22,13 +22,13 @@ export function getUnreadAlertCount() {
   return apiRequest<{ count: number }>('/alertas/no-leidas/count')
 }
 
-export function markAlertRead(destinatarioId: string) {
+export function markAlertRead(destinatarioId: number) {
   return apiRequest<{ alerta: AlertItemDto }>(`/alertas/${destinatarioId}/leida`, {
     method: 'PATCH',
   })
 }
 
-export function markAlertAttended(destinatarioId: string) {
+export function markAlertAttended(destinatarioId: number) {
   return apiRequest<{ alerta: AlertItemDto }>(`/alertas/${destinatarioId}/atendida`, {
     method: 'PATCH',
   })

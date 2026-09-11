@@ -342,8 +342,8 @@ function BusCards({
   onDetail,
 }: {
   buses: HistoryBusDto[]
-  loadingId: string | null
-  onDetail: (busId: string) => void
+  loadingId: number | null
+  onDetail: (busId: number) => void
 }) {
   if (buses.length === 0) {
     return (
@@ -433,7 +433,7 @@ function OrderHistory({ admin, orders }: { admin: boolean; orders: HistoryOrderD
             <span>{order.tipo === 'PREVENTIVA' ? 'Preventiva' : 'Correctiva'}</span>
             <span>Creada: {formatDate(order.fechaCreacion)}</span>
             <span>Técnico: {order.tecnico ?? 'Sin asignar'}</span>
-            {order.jornada && <span>Jornada: {order.jornada.id.slice(0, 8)}</span>}
+            {order.jornada && <span>Jornada: {String(order.jornada.id)}</span>}
             {order.disponibilidadAlCierre !== undefined &&
               order.disponibilidadAlCierre !== null && (
                 <span>
@@ -810,7 +810,7 @@ export default function HistoryReportsPage() {
   const [parts, setParts] = useState<PartsReportDto | null>(null)
   const [costs, setCosts] = useState<CostReportDto | null>(null)
   const [loading, setLoading] = useState(true)
-  const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [loadingId, setLoadingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const loadVersion = useRef(0)
   const detailVersion = useRef(0)
@@ -885,7 +885,7 @@ export default function HistoryReportsPage() {
     }
   }, [load])
 
-  const openDetail = async (busId: string) => {
+  const openDetail = async (busId: number) => {
     const version = ++detailVersion.current
     setLoadingId(busId)
     setError(null)

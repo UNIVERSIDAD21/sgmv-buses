@@ -1,7 +1,7 @@
 export interface ModeloBusSummaryDto {
   activo: boolean
   busesAsociados: number
-  id: string
+  id: number
   marca: string
   nombreModelo: string
   updatedAt: string
@@ -18,7 +18,7 @@ export interface RutaDto {
   codigo: string
   createdAt: string
   destino: string
-  id: string
+  id: number
   jornadasAsociadas: number
   nombre: string
   origen: string

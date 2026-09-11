@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { PrismaClient, type CriterioMantenimiento, type RolCodigo } from '@prisma/client'
@@ -35,7 +36,7 @@ async function createUser(roleCode: RolCodigo) {
     update: { nombre: roleCode },
     create: { codigo: roleCode, nombre: roleCode },
   })
-  const id = randomUUID()
+  const id = testEntityId()
   const email = `p6c-${roleCode.toLowerCase()}-${suffix().toLowerCase()}@test.sgmv.local`
   created.users.push(id)
   const user = await prisma.usuario.create({
@@ -59,7 +60,7 @@ async function createUser(roleCode: RolCodigo) {
 }
 
 async function createModel() {
-  const id = randomUUID()
+  const id = testEntityId()
   created.models.push(id)
   return prisma.modeloBus.create({
     data: {
@@ -72,8 +73,8 @@ async function createModel() {
   })
 }
 
-async function createBus(modeloBusId?: string, kilometrajeActual = 40000) {
-  const id = randomUUID()
+async function createBus(modeloBusId?: number, kilometrajeActual = 40000) {
+  const id = testEntityId()
   const code = suffix()
   created.buses.push(id)
   return prisma.bus.create({
@@ -91,8 +92,8 @@ async function createBus(modeloBusId?: string, kilometrajeActual = 40000) {
 }
 
 async function createPlan(
-  actorId: string,
-  destination: { busId?: string; modeloBusId?: string },
+  actorId: number,
+  destination: { busId?: number; modeloBusId?: number },
   overrides: Partial<{
     anticipacionDias: number | null
     anticipacionKm: number | null
@@ -124,7 +125,7 @@ async function createPlan(
   })
 }
 
-async function makeOrderClosable(orderId: string, mechanicId: string) {
+async function makeOrderClosable(orderId: number, mechanicId: number) {
   const order = await prisma.ordenTrabajo.findUniqueOrThrow({
     where: { id: orderId },
     select: { createdAt: true, fechaCreacion: true },
@@ -239,11 +240,11 @@ describe('P6-C ciclo preventivo recurrente', () => {
         anticipacionDias: 2,
         anticipacionKm: 100,
         bloqueaAlVencer: true,
-        busId: randomUUID(),
+        busId: testEntityId(),
         claveTarea: 'CICLO.COMBINADO',
         componente: 'Motor',
         criterio: 'FECHA_KILOMETRAJE',
-        id: randomUUID(),
+        id: testEntityId(),
         intervaloDias: 10,
         intervaloKm: 1000,
         modeloBusId: null,

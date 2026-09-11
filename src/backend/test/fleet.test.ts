@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { PrismaClient, type Prisma, type Rol } from '@prisma/client'
@@ -20,13 +21,13 @@ const created = {
 
 interface FleetFixture {
   adminEmail: string
-  adminId: string
+  adminId: number
   conductorAltEmail: string
-  conductorAltId: string
+  conductorAltId: number
   conductorEmail: string
-  conductorId: string
+  conductorId: number
   mecanicoEmail: string
-  mecanicoId: string
+  mecanicoId: number
 }
 
 function shortCode() {
@@ -73,7 +74,7 @@ async function ensureRoles() {
 }
 
 async function createUser(email: string, role: Rol) {
-  const id = randomUUID()
+  const id = testEntityId()
   created.usuarios.push(id)
 
   return prisma.usuario.create({
@@ -88,7 +89,7 @@ async function createUser(email: string, role: Rol) {
 }
 
 async function createBus(overrides: Partial<Prisma.BusCreateInput> = {}) {
-  const id = randomUUID()
+  const id = testEntityId()
   created.buses.push(id)
 
   return prisma.bus.create({
@@ -451,7 +452,7 @@ describe('RF-01 Fleet API', () => {
     const fakeAdmin: AuthenticatedUser = {
       email: 'fake-admin@test.sgmv.local',
       estado: 'ACTIVO',
-      id: randomUUID(),
+      id: testEntityId(),
       nombre: 'Fake Admin',
       rol: {
         codigo: 'ADMINISTRADOR',

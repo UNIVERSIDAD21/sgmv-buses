@@ -5,7 +5,7 @@ import type { RoleCode } from '../../domain/labels'
 export interface SessionUser {
   email: string
   estado: 'ACTIVO' | 'INACTIVO'
-  id: string
+  id: number
   nombre: string
   rol: {
     codigo: RoleCode

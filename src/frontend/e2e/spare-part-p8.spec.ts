@@ -1,3 +1,4 @@
+import { testEntityId } from '../../backend/test/entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { expect, test, type Page } from '@playwright/test'
@@ -8,13 +9,13 @@ const demoPassword = process.env.SEED_USER_PASSWORD
 const suffix = randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase()
 const marker = `P8E2E-${suffix}`
 const partCode = `REP-${marker}`
-const testBusId = randomUUID()
-const testOrderId = randomUUID()
-const testInterventionId = randomUUID()
-let partId: string | null = null
+const testBusId = testEntityId()
+const testOrderId = testEntityId()
+const testInterventionId = testEntityId()
+let partId: number | null = null
 const orderCode = `OT-${marker}`
-const adminId = '20000000-0000-4000-8000-000000000001'
-const mechanicId = '20000000-0000-4000-8000-000000000002'
+const adminId = 1005
+const mechanicId = 1007
 
 async function login(page: Page, email: string) {
   await page.context().clearCookies()
@@ -108,12 +109,16 @@ test.afterAll(async () => {
     await tx.ordenEstadoHistorial.deleteMany({ where: { ordenTrabajoId: testOrderId } })
     await tx.eventoAuditoria.deleteMany({
       where: {
-        recursoId: { in: [testBusId, testOrderId, ...(cleanupPartId ? [cleanupPartId] : [])] },
+        recursoId: {
+          in: [testBusId, testOrderId, ...(cleanupPartId ? [cleanupPartId] : [])].map(String),
+        },
       },
     })
     await tx.solicitudIdempotente.deleteMany({
       where: {
-        recursoId: { in: [testBusId, testOrderId, ...(cleanupPartId ? [cleanupPartId] : [])] },
+        recursoId: {
+          in: [testBusId, testOrderId, ...(cleanupPartId ? [cleanupPartId] : [])].map(String),
+        },
       },
     })
     await tx.ordenTrabajo.deleteMany({ where: { id: testOrderId } })
@@ -160,7 +165,7 @@ test('administra reglas, rechaza incompatibilidad y registra consumo decimal tra
     await detail.getByRole('button', { name: 'Nueva regla o version' }).click()
     const submitRule = page.getByRole('button', { name: 'Crear nueva version' })
     const ruleForm = page.locator('form').filter({ has: submitRule })
-    await ruleForm.locator('select').nth(0).selectOption(testBusId)
+    await ruleForm.locator('select').nth(0).selectOption(String(testBusId))
     await ruleForm.locator('select').nth(1).selectOption(String(allowed))
     await ruleForm
       .getByLabel('Condicion de uso')
@@ -257,7 +262,7 @@ test('administra reglas, rechaza incompatibilidad y registra consumo decimal tra
   await orderDetail.getByLabel('Cantidad').fill('1.25')
   const consumeButton = orderDetail.getByRole('button', { name: 'Registrar consumo' })
   const consumptionForm = orderDetail.locator('form').filter({ hasText: 'Registrar consumo' })
-  await consumptionForm.locator('select').selectOption(partId)
+  await consumptionForm.locator('select').selectOption(String(partId))
   await consumeButton.click()
   await expect(page.getByText('Consumo registrado.')).toBeVisible()
   await expect(orderDetail.getByText('1.25', { exact: true })).toBeVisible()

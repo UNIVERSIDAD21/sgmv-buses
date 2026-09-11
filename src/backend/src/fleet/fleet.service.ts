@@ -30,7 +30,7 @@ const estadoBusDefaults: Record<EstadoBus, number> = {
 
 interface ResponsibleRecord {
   email: string
-  id: string
+  id: number
   nombre: string
   telefono: string | null
 }
@@ -40,19 +40,19 @@ interface AssignmentRecord {
   asignadoPor: ResponsibleRecord
   bus?: {
     codigoInterno: string
-    id: string
+    id: number
     placa: string
   }
   conductor: ResponsibleRecord
   fechaFin: Date | null
   fechaInicio: Date
-  id: string
+  id: number
   motivo: string | null
 }
 
 interface MileageReadingRecord {
   fechaRegistro: Date
-  id: string
+  id: number
   kilometrajeAnterior: number
   kilometrajeNuevo: number
   motivo: string | null
@@ -64,7 +64,7 @@ interface StateHistoryRecord {
   estadoAnterior: EstadoBus | null
   estadoNuevo: EstadoBus
   fechaCambio: Date
-  id: string
+  id: number
   motivo: string | null
 }
 
@@ -208,7 +208,7 @@ function ensureAdminOrDispatcher(actor: AuthenticatedUser) {
 export class FleetService {
   constructor(private readonly fleetRepository = new FleetRepository()) {}
 
-  async changeState(busId: string, input: ChangeBusStateInput, actor: AuthenticatedUser) {
+  async changeState(busId: number, input: ChangeBusStateInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
     try {
@@ -274,7 +274,7 @@ export class FleetService {
     }
   }
 
-  async getAssignments(busId: string, limite: number, actor: AuthenticatedUser) {
+  async getAssignments(busId: number, limite: number, actor: AuthenticatedUser) {
     ensureAdminOrDispatcher(actor)
     await this.ensureBusExists(busId)
 
@@ -318,7 +318,7 @@ export class FleetService {
     }
   }
 
-  async getAvailableDrivers(busId: string | undefined, actor: AuthenticatedUser) {
+  async getAvailableDrivers(busId: number | undefined, actor: AuthenticatedUser) {
     ensureAdminOrDispatcher(actor)
 
     if (busId) {
@@ -348,7 +348,7 @@ export class FleetService {
     return { conductores }
   }
 
-  async getBus(busId: string, actor: AuthenticatedUser) {
+  async getBus(busId: number, actor: AuthenticatedUser) {
     if (actor.rol.codigo === 'MECANICO') {
       throw new AppError(403, 'FORBIDDEN', 'No tiene permisos para realizar esta operacion')
     }
@@ -381,7 +381,7 @@ export class FleetService {
     }
   }
 
-  async getMileageReadings(busId: string, limite: number, actor: AuthenticatedUser) {
+  async getMileageReadings(busId: number, limite: number, actor: AuthenticatedUser) {
     ensureAdminOrDispatcher(actor)
     await this.ensureBusExists(busId)
 
@@ -392,7 +392,7 @@ export class FleetService {
     }
   }
 
-  async getStateHistory(busId: string, limite: number, actor: AuthenticatedUser) {
+  async getStateHistory(busId: number, limite: number, actor: AuthenticatedUser) {
     ensureAdminOrDispatcher(actor)
     await this.ensureBusExists(busId)
 
@@ -425,7 +425,7 @@ export class FleetService {
     }
   }
 
-  async registerMileage(busId: string, input: RegisterMileageInput, actor: AuthenticatedUser) {
+  async registerMileage(busId: number, input: RegisterMileageInput, actor: AuthenticatedUser) {
     ensureAdminOrDispatcher(actor)
 
     try {
@@ -483,7 +483,7 @@ export class FleetService {
     }
   }
 
-  async updateBus(busId: string, input: UpdateBusInput, actor: AuthenticatedUser) {
+  async updateBus(busId: number, input: UpdateBusInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
     const data: Prisma.BusUpdateInput = {}
@@ -574,7 +574,7 @@ export class FleetService {
     }
   }
 
-  private async ensureBusExists(busId: string) {
+  private async ensureBusExists(busId: number) {
     const bus = await this.fleetRepository.findBusSummaryById(busId)
 
     if (!bus) {
@@ -582,7 +582,7 @@ export class FleetService {
     }
   }
 
-  private async ensureActiveModeloBus(modeloBusId: string) {
+  private async ensureActiveModeloBus(modeloBusId: number) {
     const modeloBus = await this.fleetRepository.findModeloBusById(modeloBusId)
 
     if (!modeloBus) {

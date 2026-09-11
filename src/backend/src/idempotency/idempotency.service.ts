@@ -129,8 +129,8 @@ function findResourceId(value: unknown): string | undefined {
 
   const object = value as Record<string, unknown>
 
-  if (typeof object.id === 'string') {
-    return object.id.slice(0, 120)
+  if (typeof object.id === 'number' && Number.isInteger(object.id) && object.id > 0) {
+    return String(object.id)
   }
 
   if (object.data) {

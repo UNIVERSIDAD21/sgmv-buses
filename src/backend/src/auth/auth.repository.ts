@@ -19,14 +19,14 @@ export class AuthRepository {
     })
   }
 
-  findByIdForSession(id: string) {
+  findByIdForSession(id: number) {
     return prisma.usuario.findUnique({
       where: { id },
       include: authUserInclude,
     })
   }
 
-  async registerFailedLogin(userId: string, failedAttempts: number, blockedUntil: Date | null) {
+  async registerFailedLogin(userId: number, failedAttempts: number, blockedUntil: Date | null) {
     await prisma.usuario.update({
       where: { id: userId },
       data: {
@@ -36,7 +36,7 @@ export class AuthRepository {
     })
   }
 
-  async registerSuccessfulLogin(userId: string) {
+  async registerSuccessfulLogin(userId: number) {
     await prisma.usuario.update({
       where: { id: userId },
       data: {

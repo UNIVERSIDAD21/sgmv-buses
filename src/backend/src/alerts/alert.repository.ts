@@ -44,7 +44,7 @@ function dateRange(query: ListAlertsQuery) {
 }
 
 function ownAlertsWhere(
-  userId: string,
+  userId: number,
   query: ListAlertsQuery,
 ): Prisma.AlertaDestinatarioWhereInput {
   const generatedAt = dateRange(query)
@@ -72,7 +72,7 @@ const ownRecipientSelect = {
 } as const
 
 export class AlertRepository {
-  async listOwn(userId: string, query: ListAlertsQuery) {
+  async listOwn(userId: number, query: ListAlertsQuery) {
     const where = ownAlertsWhere(userId, query)
     const [items, total] = await Promise.all([
       prisma.alertaDestinatario.findMany({
@@ -87,18 +87,18 @@ export class AlertRepository {
     return { items, total }
   }
 
-  countUnread(userId: string) {
+  countUnread(userId: number) {
     return prisma.alertaDestinatario.count({ where: { estado: 'NO_LEIDA', usuarioId: userId } })
   }
 
-  findOwnRecipient(destinatarioId: string, userId: string) {
+  findOwnRecipient(destinatarioId: number, userId: number) {
     return prisma.alertaDestinatario.findFirst({
       select: ownRecipientSelect,
       where: { id: destinatarioId, usuarioId: userId },
     })
   }
 
-  async markRead(destinatarioId: string, userId: string, at: Date) {
+  async markRead(destinatarioId: number, userId: number, at: Date) {
     const existing = await this.findOwnRecipient(destinatarioId, userId)
     if (!existing || existing.estado !== 'NO_LEIDA') return existing
     await prisma.alertaDestinatario.updateMany({
@@ -108,7 +108,7 @@ export class AlertRepository {
     return this.findOwnRecipient(destinatarioId, userId)
   }
 
-  async markAttended(destinatarioId: string, userId: string, at: Date) {
+  async markAttended(destinatarioId: number, userId: number, at: Date) {
     const existing = await this.findOwnRecipient(destinatarioId, userId)
     if (!existing || existing.estado === 'ATENDIDA') return existing
     const updated = await prisma.alertaDestinatario.updateMany({
@@ -132,22 +132,22 @@ export class AlertRepository {
 }
 
 export type AlertCreationInput = {
-  busId?: string
+  busId?: number
   context: Prisma.InputJsonObject
   deduplicationKey: string
-  journeyId?: string
+  journeyId?: number
   message: string
-  noveltyId?: string
-  orderId?: string
+  noveltyId?: number
+  orderId?: number
   priority: PrioridadAlerta
-  preventiveScheduleId?: string
-  sparePartId?: string
+  preventiveScheduleId?: number
+  sparePartId?: number
   title: string
   type: TipoAlerta
 }
 
 export async function findActiveAllowedRecipients(
-  recipientIds: string[],
+  recipientIds: number[],
   allowedRoles: readonly RolCodigo[],
   tx: Prisma.TransactionClient,
 ) {
@@ -164,7 +164,7 @@ export async function findActiveAllowedRecipients(
 }
 
 export async function createAlertRecord(
-  input: AlertCreationInput & { recipients: string[] },
+  input: AlertCreationInput & { recipients: number[] },
   tx: Prisma.TransactionClient,
 ) {
   await tx.$executeRaw(

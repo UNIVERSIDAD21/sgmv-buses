@@ -153,7 +153,7 @@ function translateJourneyError(error: unknown): never {
 export class JourneyService {
   constructor(private readonly repository = new JourneyRepository()) {}
 
-  private async lockResources(busIds: string[], driverIds: string[], tx: JourneyTransaction) {
+  private async lockResources(busIds: number[], driverIds: number[], tx: JourneyTransaction) {
     for (const busId of [...new Set(busIds)].sort()) {
       if (!(await this.repository.lockBus(busId, tx))) {
         throw new AppError(404, 'BUS_NOT_FOUND', 'Bus no encontrado')
@@ -167,9 +167,9 @@ export class JourneyService {
   }
 
   private async ensureContext(
-    busId: string,
-    conductorId: string,
-    rutaId: string | null,
+    busId: number,
+    conductorId: number,
+    rutaId: number | null,
     tx: JourneyTransaction,
   ) {
     const context = await this.repository.findContext(busId, conductorId, rutaId, tx)
@@ -226,7 +226,7 @@ export class JourneyService {
     return mapJourney(journey, actor, await this.availability(journey, eventDate, tx))
   }
 
-  async cancel(id: string, input: CancelJourneyInput, actor: AuthenticatedUser) {
+  async cancel(id: number, input: CancelJourneyInput, actor: AuthenticatedUser) {
     ensureDispatcherOrAdmin(actor)
     const eventDate = new Date(input.fechaEvento)
     ensureEventDate(eventDate)
@@ -353,7 +353,7 @@ export class JourneyService {
     }
   }
 
-  async finish(id: string, input: JourneyReadingInput, actor: AuthenticatedUser) {
+  async finish(id: number, input: JourneyReadingInput, actor: AuthenticatedUser) {
     const eventDate = new Date(input.fechaEvento)
     ensureEventDate(eventDate)
 
@@ -411,7 +411,7 @@ export class JourneyService {
     }
   }
 
-  async getById(id: string, actor: AuthenticatedUser) {
+  async getById(id: number, actor: AuthenticatedUser) {
     return this.repository.transaction(async (tx) => {
       const journey = await this.repository.findById(id, tx)
       if (!journey) throw new AppError(404, 'JOURNEY_NOT_FOUND', 'Jornada no encontrada')
@@ -495,7 +495,7 @@ export class JourneyService {
     }
   }
 
-  async listReadings(id: string, actor: AuthenticatedUser) {
+  async listReadings(id: number, actor: AuthenticatedUser) {
     const journey = await this.repository.findById(id)
     if (!journey) throw new AppError(404, 'JOURNEY_NOT_FOUND', 'Jornada no encontrada')
     ensureJourneyReader(journey, actor)
@@ -503,7 +503,7 @@ export class JourneyService {
     return { lecturas: readings.map(mapReading) }
   }
 
-  async reassign(id: string, input: ReassignJourneyInput, actor: AuthenticatedUser) {
+  async reassign(id: number, input: ReassignJourneyInput, actor: AuthenticatedUser) {
     ensureDispatcherOrAdmin(actor)
     const eventDate = new Date(input.fechaEvento)
     ensureEventDate(eventDate)
@@ -642,7 +642,7 @@ export class JourneyService {
     }
   }
 
-  async start(id: string, input: JourneyReadingInput, actor: AuthenticatedUser) {
+  async start(id: number, input: JourneyReadingInput, actor: AuthenticatedUser) {
     const eventDate = new Date(input.fechaEvento)
     ensureEventDate(eventDate)
 

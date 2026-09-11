@@ -218,8 +218,7 @@ describe('RF-05 spare parts frontend', () => {
 
     expect(await screen.findByText(/Repuesto actualizado/i)).toBeInTheDocument()
     const patchCall = fetchMock.mock.calls.find(
-      ([input, init]) =>
-        String(input).includes('/repuestos/part-available') && init?.method === 'PATCH',
+      ([input, init]) => String(input).includes('/repuestos/2047') && init?.method === 'PATCH',
     )
     expect(patchCall).toBeTruthy()
     expect(String(patchCall?.[1]?.body)).not.toContain('stockActual')
@@ -234,7 +233,7 @@ describe('RF-05 spare parts frontend', () => {
 
     expect(await screen.findByText(/Repuesto desactivado/i)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/repuestos/part-available/desactivar'),
+      expect.stringContaining('/repuestos/2047/desactivar'),
       expect.objectContaining({ method: 'POST' }),
     )
   })
@@ -271,8 +270,7 @@ describe('RF-05 spare parts frontend', () => {
     expect(
       fetchMock.mock.calls.some(
         ([input, init]) =>
-          getPath(input) === '/repuestos/part-available/compatibilidades' &&
-          init?.method === 'POST',
+          getPath(input) === '/repuestos/2047/compatibilidades' && init?.method === 'POST',
       ),
     ).toBe(true)
 
@@ -315,7 +313,7 @@ describe('RF-05 spare parts frontend', () => {
     expect(await screen.findByText(/Entrada registrada/i)).toBeInTheDocument()
     const entryCall = fetchMock.mock.calls.find(
       ([input, init]) =>
-        String(input).includes('/repuestos/part-available/entradas') && init?.method === 'POST',
+        String(input).includes('/repuestos/2047/entradas') && init?.method === 'POST',
     )
     expect(entryCall).toBeTruthy()
     const entryBody = JSON.parse(String(entryCall?.[1]?.body)) as {
@@ -366,7 +364,7 @@ describe('RF-05 spare parts frontend', () => {
     expect(await screen.findByText(/Ajuste registrado/i)).toBeInTheDocument()
     const adjustmentCalls = fetchMock.mock.calls.filter(
       ([input, init]) =>
-        String(input).includes('/repuestos/part-empty/ajustes') && init?.method === 'POST',
+        String(input).includes('/repuestos/2049/ajustes') && init?.method === 'POST',
     )
     const adjustmentCall = adjustmentCalls.at(-1)
     expect(adjustmentCall).toBeTruthy()

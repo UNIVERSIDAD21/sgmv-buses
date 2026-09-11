@@ -13,8 +13,8 @@ export interface PreventivePlanDto {
   creadoPor: PreventiveUserDto
   createdAt: string
   criterio: CriterioMantenimiento
-  destino: { busId: string; tipo: 'BUS' } | { modeloBusId: string; tipo: 'MODELO' }
-  id: string
+  destino: { busId: number; tipo: 'BUS' } | { modeloBusId: number; tipo: 'MODELO' }
+  id: number
   intervaloDias: number | null
   intervaloKm: number | null
   prioridad: PrioridadOrden

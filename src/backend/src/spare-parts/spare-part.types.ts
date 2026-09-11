@@ -10,7 +10,7 @@ export type SparePartAvailability = 'AGOTADO' | 'BAJO' | 'DISPONIBLE' | 'INACTIV
 
 export interface SparePartUserDto {
   email: string
-  id: string
+  id: number
   nombre: string
   telefono: string | null
 }
@@ -18,7 +18,7 @@ export interface SparePartUserDto {
 export interface SparePartOrderDto {
   codigo: string
   estado: EstadoOrdenTrabajo
-  id: string
+  id: number
   origen: OrigenOrdenTrabajo
   tipo: TipoOrdenTrabajo
 }
@@ -29,7 +29,7 @@ export interface SparePartSummaryItemDto {
   costoUnitario: string
   disponibilidad: SparePartAvailability
   estado: EstadoRepuesto
-  id: string
+  id: number
   nombre: string
   stockActual: string
   stockMinimo: string
@@ -49,13 +49,13 @@ export interface SparePartDto extends SparePartSummaryItemDto {
 export interface SparePartMovementDto {
   cantidad: string
   consumo: {
-    id: string
+    id: number
     orden: SparePartOrderDto
   } | null
   costoUnitario: string | null
   direccion: 'ENTRADA' | 'SALIDA'
   fechaMovimiento: string
-  id: string
+  id: number
   motivo: string | null
   repuesto: SparePartSummaryItemDto
   responsable: SparePartUserDto

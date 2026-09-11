@@ -1,3 +1,4 @@
+import { entityIdSchema } from '../shared/entity-id.js'
 import { z } from 'zod'
 
 export const criterioMantenimientoValues = ['FECHA', 'KILOMETRAJE', 'FECHA_KILOMETRAJE'] as const
@@ -90,7 +91,7 @@ function validateCriterionShape(
 }
 
 export const programacionIdParamSchema = z.object({
-  programacionId: z.uuid(),
+  programacionId: entityIdSchema,
 })
 
 export const listPreventiveSchedulesQuerySchema = z.object({
@@ -98,7 +99,7 @@ export const listPreventiveSchedulesQuerySchema = z.object({
     .enum(['true', 'false'])
     .transform((value) => value === 'true')
     .optional(),
-  busId: z.uuid().optional(),
+  busId: entityIdSchema.optional(),
   busqueda: optionalTrimmedText(120),
   criterio: z.enum(criterioMantenimientoValues).optional(),
   direccion: z.enum(['asc', 'desc']).default('desc'),
@@ -113,7 +114,7 @@ export const listPreventiveSchedulesQuerySchema = z.object({
 const createIndependentPreventiveScheduleSchema = z
   .object({
     actividad: trimmedText(10, 2000),
-    busId: z.uuid(),
+    busId: entityIdSchema,
     criterio: z.enum(criterioMantenimientoValues),
     fechaProgramada: dateOnly.optional(),
     kilometrajeObjetivo: z.coerce.number().int().positive().optional(),
@@ -124,8 +125,8 @@ const createIndependentPreventiveScheduleSchema = z
 
 const applyPreventivePlanSchema = z
   .object({
-    busId: z.uuid().optional(),
-    planId: z.uuid(),
+    busId: entityIdSchema.optional(),
+    planId: entityIdSchema,
   })
   .strict()
 

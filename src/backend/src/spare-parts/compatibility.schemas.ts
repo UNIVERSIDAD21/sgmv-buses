@@ -1,3 +1,4 @@
+import { entityIdSchema } from '../shared/entity-id.js'
 import { z } from 'zod'
 
 const jsonObject = z
@@ -7,16 +8,16 @@ const jsonObject = z
   })
 
 export const compatibilityIdParamSchema = z.object({
-  compatibilidadId: z.uuid(),
-  repuestoId: z.uuid(),
+  compatibilidadId: entityIdSchema,
+  repuestoId: entityIdSchema,
 })
 
 export const createCompatibilitySchema = z
   .object({
-    busId: z.uuid().optional(),
+    busId: entityIdSchema.optional(),
     condicionUso: z.string().trim().max(1000).optional(),
     especificacionesValidadas: jsonObject,
-    modeloBusId: z.uuid().optional(),
+    modeloBusId: entityIdSchema.optional(),
     permitido: z.boolean(),
   })
   .strict()

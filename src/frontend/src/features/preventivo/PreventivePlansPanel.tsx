@@ -111,8 +111,8 @@ function PlanForm({
       ...(initial
         ? {}
         : destination === 'BUS'
-          ? { busId: form.busId }
-          : { modeloBusId: form.modeloBusId }),
+          ? { busId: Number(form.busId) }
+          : { modeloBusId: Number(form.modeloBusId) }),
       ...(initial ? {} : { claveTarea: form.claveTarea.trim() }),
       componente: form.componente.trim(),
       criterio: criterion,
@@ -322,7 +322,7 @@ function ApplyPlanDialog({
   saving,
 }: {
   buses: BusSummaryDto[]
-  onApply: (busId: string) => Promise<void>
+  onApply: (busId: number) => Promise<void>
   onCancel: () => void
   plan: PreventivePlanDto
   saving: boolean
@@ -334,7 +334,7 @@ function ApplyPlanDialog({
         ? bus.id === plan.destino.busId
         : bus.modeloBus?.id === plan.destino.modeloBusId),
   )
-  const [busId, setBusId] = useState(eligibleBuses[0]?.id ?? '')
+  const [busId, setBusId] = useState(String(eligibleBuses[0]?.id ?? ''))
 
   return (
     <Modal onClose={onCancel} subtitle={plan.claveTarea} title="Aplicar plan preventivo">
@@ -365,7 +365,7 @@ function ApplyPlanDialog({
           <Button
             disabled={!busId}
             loading={saving}
-            onClick={() => void onApply(busId)}
+            onClick={() => void onApply(Number(busId))}
             type="button"
           >
             Aplicar plan
@@ -470,7 +470,7 @@ export default function PreventivePlansPanel() {
       setSaving(false)
     }
   }
-  async function apply(plan: PreventivePlanDto, busId: string) {
+  async function apply(plan: PreventivePlanDto, busId: number) {
     setSaving(true)
     setError(null)
     try {

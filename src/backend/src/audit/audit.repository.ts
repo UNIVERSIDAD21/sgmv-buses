@@ -4,7 +4,7 @@ import { prisma } from '../prisma/client.js'
 
 export interface CreateAuditEventInput {
   accion: string
-  actorId?: string
+  actorId?: number
   detalles: Prisma.InputJsonValue
   ipHash?: string
   metodo: string

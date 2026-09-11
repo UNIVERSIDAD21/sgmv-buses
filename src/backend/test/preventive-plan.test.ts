@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { PrismaClient } from '@prisma/client'
@@ -29,7 +30,7 @@ async function createAdmin() {
     update: { nombre: 'Administrador' },
     create: { codigo: 'ADMINISTRADOR', nombre: 'Administrador' },
   })
-  const id = randomUUID()
+  const id = testEntityId()
   const email = `p6-plan-admin-${suffix()}@test.sgmv.local`
   created.users.push(id)
   return prisma.usuario.create({
@@ -50,7 +51,7 @@ async function createConductor() {
     update: { nombre: 'Conductor' },
     create: { codigo: 'CONDUCTOR', nombre: 'Conductor' },
   })
-  const id = randomUUID()
+  const id = testEntityId()
   const email = `p6-plan-conductor-${suffix()}@test.sgmv.local`
   created.users.push(id)
   return prisma.usuario.create({
@@ -66,7 +67,7 @@ async function createConductor() {
 }
 
 async function createModel() {
-  const id = randomUUID()
+  const id = testEntityId()
   created.models.push(id)
   return prisma.modeloBus.create({
     data: {
@@ -79,8 +80,8 @@ async function createModel() {
   })
 }
 
-async function createBus(modeloBusId?: string) {
-  const id = randomUUID()
+async function createBus(modeloBusId?: number) {
+  const id = testEntityId()
   const code = suffix().toUpperCase()
   created.buses.push(id)
   return prisma.bus.create({
@@ -97,7 +98,7 @@ async function createBus(modeloBusId?: string) {
   })
 }
 
-function planPayload(destination: { busId?: string; modeloBusId?: string } = {}) {
+function planPayload(destination: { busId?: number; modeloBusId?: number } = {}) {
   return {
     actividad: 'Inspección periódica preventiva de sistema de frenos',
     anticipacionKm: 300,
@@ -162,7 +163,7 @@ describe('P6-B planes preventivos versionados', () => {
       .expect(400)
     await agent
       .post('/mantenimiento-preventivo/planes')
-      .send({ ...planPayload({ busId: bus.id }), creadoPorId: randomUUID() })
+      .send({ ...planPayload({ busId: bus.id }), creadoPorId: testEntityId() })
       .expect(400)
   }, 60000)
 

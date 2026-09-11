@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { randomUUID } from 'node:crypto'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -32,7 +33,7 @@ const created = {
 type CoreFixture = Awaited<ReturnType<typeof createCore>>
 
 function track(bucket: keyof typeof created) {
-  const id = randomUUID()
+  const id = testEntityId()
   created[bucket].push(id)
   return id
 }
@@ -208,7 +209,7 @@ async function createRepuesto(stockActual = '5') {
 
 async function startActiveIntervention(
   core: CoreFixture,
-  orden: { fechaAsignacion: Date | null; id: string },
+  orden: { fechaAsignacion: Date | null; id: number },
 ) {
   const intervencionId = track('intervenciones')
   const fechaInicio = new Date((orden.fechaAsignacion?.getTime() ?? Date.now()) + 1000)

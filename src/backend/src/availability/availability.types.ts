@@ -13,7 +13,7 @@ export interface AvailabilityCauseDto {
   bloquea: true
   codigo: AvailabilityCode
   mensaje: string
-  origenId: string
+  origenId: number
   origenTipo: 'BUS' | 'JORNADA' | 'NOVEDAD' | 'ORDEN' | 'PREVENTIVO'
   prioridad: number
 }
@@ -26,13 +26,13 @@ export interface AvailabilityDto {
 }
 
 export interface AvailabilityRecords {
-  bus: { estadoOperativo: EstadoBus; id: string; kilometrajeActual: number } | null
-  conflictingJourney: { id: string } | null
-  novelty: { id: string } | null
-  order: { id: string } | null
+  bus: { estadoOperativo: EstadoBus; id: number; kilometrajeActual: number } | null
+  conflictingJourney: { id: number } | null
+  novelty: { id: number } | null
+  order: { id: number } | null
   preventive: Array<{
     fechaProgramada: Date | null
-    id: string
+    id: number
     kilometrajeObjetivo: number | null
     plan: {
       anticipacionDias: number | null

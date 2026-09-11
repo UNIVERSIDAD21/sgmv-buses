@@ -1,5 +1,4 @@
 import { Prisma } from '@prisma/client'
-import { randomUUID } from 'node:crypto'
 
 import { prisma } from '../prisma/client.js'
 import type { CreateCompatibilityInput } from './compatibility.schemas.js'
@@ -15,7 +14,7 @@ export type CompatibilityRecord = Prisma.CompatibilidadRepuestoGetPayload<{
 }>
 
 export class CompatibilityRepository {
-  list(repuestoId: string) {
+  list(repuestoId: number) {
     return prisma.compatibilidadRepuesto.findMany({
       include,
       orderBy: [{ vigente: 'desc' }, { version: 'desc' }, { createdAt: 'desc' }],
@@ -23,7 +22,7 @@ export class CompatibilityRepository {
     })
   }
 
-  async createVersion(repuestoId: string, actorId: string, input: CreateCompatibilityInput) {
+  async createVersion(repuestoId: number, actorId: number, input: CreateCompatibilityInput) {
     const destinoId = input.busId ?? input.modeloBusId!
     const destino = input.busId ? `bus:${destinoId}` : `modelo:${destinoId}`
 
@@ -57,7 +56,6 @@ export class CompatibilityRepository {
             definidaPorId: actorId,
             especificacionesValidadas: input.especificacionesValidadas as Prisma.InputJsonObject,
             fechaDefinicion: new Date(),
-            id: randomUUID(),
             modeloBusId: input.modeloBusId ?? null,
             permitido: input.permitido,
             repuestoId,
@@ -71,14 +69,14 @@ export class CompatibilityRepository {
     )
   }
 
-  async deactivate(repuestoId: string, compatibilidadId: string) {
+  async deactivate(repuestoId: number, compatibilidadId: number) {
     return prisma.compatibilidadRepuesto.updateMany({
       data: { vigente: false },
       where: { id: compatibilidadId, repuestoId, vigente: true },
     })
   }
 
-  find(repuestoId: string, compatibilidadId: string) {
+  find(repuestoId: number, compatibilidadId: number) {
     return prisma.compatibilidadRepuesto.findFirst({ where: { id: compatibilidadId, repuestoId } })
   }
 }

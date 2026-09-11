@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto'
-
 import type { Prisma, TipoLectura } from '@prisma/client'
 
 import { evaluatePreventiveAlertsForBus } from '../alerts/alert.service.js'
@@ -13,12 +11,12 @@ const userRefSelect = {
 } satisfies Prisma.UsuarioSelect
 
 interface RegisterContextualMileageInput {
-  actorId: string
-  busId: string
+  actorId: number
+  busId: number
   eventDate: Date
-  journeyId: string
+  journeyId: number
   mileage: number
-  readingId?: string
+  readingId?: number
   type: Extract<TipoLectura, 'INICIO_JORNADA' | 'FIN_JORNADA' | 'NOVEDAD'>
 }
 
@@ -51,7 +49,7 @@ export async function registerContextualMileageReading(
       (right.fechaLectura ?? right.fechaRegistro).getTime()
     if (byEvent !== 0) return byEvent
     const byRegistration = left.fechaRegistro.getTime() - right.fechaRegistro.getTime()
-    return byRegistration !== 0 ? byRegistration : left.id.localeCompare(right.id)
+    return byRegistration !== 0 ? byRegistration : left.id - right.id
   })
 
   const nextIndex = readings.findIndex(
@@ -80,7 +78,7 @@ export async function registerContextualMileageReading(
     data: {
       busId: input.busId,
       fechaLectura: input.eventDate,
-      id: input.readingId ?? randomUUID(),
+      id: input.readingId,
       jornadaOperativaId: input.journeyId,
       kilometrajeAnterior: previousMileage,
       kilometrajeNuevo: input.mileage,

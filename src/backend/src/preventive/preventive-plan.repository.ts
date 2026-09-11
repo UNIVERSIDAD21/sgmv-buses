@@ -21,18 +21,18 @@ export interface PlanData {
   anticipacionDias: number | null
   anticipacionKm: number | null
   bloqueaAlVencer: boolean
-  busId: string | null
+  busId: number | null
   claveTarea: string
   componente: string
   criterio: CriterioMantenimiento
   intervaloDias: number | null
   intervaloKm: number | null
-  modeloBusId: string | null
+  modeloBusId: number | null
   prioridad: PrioridadOrden
 }
 
 export class PreventivePlanRepository {
-  async createFirstVersion(data: PlanData, actorId: string) {
+  async createFirstVersion(data: PlanData, actorId: number) {
     return prisma.$transaction(async (tx) => {
       await this.lockIdentity(tx, data)
       const plan = await tx.planMantenimientoPreventivo.create({
@@ -53,18 +53,18 @@ export class PreventivePlanRepository {
     })
   }
 
-  findById(id: string, client: PlanDbClient = prisma) {
+  findById(id: number, client: PlanDbClient = prisma) {
     return client.planMantenimientoPreventivo.findUnique({
       where: { id },
       include: preventivePlanInclude,
     })
   }
 
-  findBusForResolution(busId: string) {
+  findBusForResolution(busId: number) {
     return prisma.bus.findUnique({ where: { id: busId }, select: { id: true, modeloBusId: true } })
   }
 
-  findModeloBusById(modeloBusId: string) {
+  findModeloBusById(modeloBusId: number) {
     return prisma.modeloBus.findUnique({ where: { id: modeloBusId }, select: { id: true } })
   }
 
@@ -77,9 +77,9 @@ export class PreventivePlanRepository {
   }
 
   async createSuccessor(
-    planId: string,
+    planId: number,
     data: Omit<PlanData, 'busId' | 'claveTarea' | 'modeloBusId'>,
-    actorId: string,
+    actorId: number,
   ) {
     return prisma.$transaction(async (tx) => {
       const current = await this.findById(planId, tx)
@@ -119,7 +119,7 @@ export class PreventivePlanRepository {
     })
   }
 
-  async deactivate(id: string, actorId: string) {
+  async deactivate(id: number, actorId: number) {
     return prisma.$transaction(async (tx) => {
       const current = await tx.planMantenimientoPreventivo.findUniqueOrThrow({
         where: { id },
@@ -151,7 +151,7 @@ export class PreventivePlanRepository {
   }
 
   async resolveEffective(
-    busId: string,
+    busId: number,
     claveTarea: string,
   ): Promise<{ origenPlan: 'BUS' | 'MODELO'; plan: PreventivePlanRecord } | null> {
     const bus = await this.findBusForResolution(busId)

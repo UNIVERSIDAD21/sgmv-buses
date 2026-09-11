@@ -19,9 +19,9 @@ export type AlertPriority = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'
 export type AlertRecipientStatus = 'NO_LEIDA' | 'LEIDA' | 'ATENDIDA'
 
 export interface AlertItemDto {
-  alertaId: string
+  alertaId: number
   contextoEvento: Record<string, unknown>
-  destinatarioId: string
+  destinatarioId: number
   enlaceInterno: string | null
   estado: AlertRecipientStatus
   fechaAtencion: string | null

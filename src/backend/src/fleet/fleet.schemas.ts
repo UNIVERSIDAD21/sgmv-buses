@@ -1,3 +1,4 @@
+import { entityIdSchema } from '../shared/entity-id.js'
 import { z } from 'zod'
 
 export const estadoBusValues = [
@@ -21,7 +22,7 @@ const trimmedText = (max: number) => z.string().trim().min(1).max(max)
 const currentYear = new Date().getFullYear()
 
 export const busIdParamSchema = z.object({
-  busId: z.uuid(),
+  busId: entityIdSchema,
 })
 
 export const listBusesQuerySchema = z.object({
@@ -36,7 +37,7 @@ export const historyQuerySchema = z.object({
 })
 
 export const availableDriversQuerySchema = z.object({
-  busId: z.uuid().optional(),
+  busId: entityIdSchema.optional(),
 })
 
 export const createBusSchema = z
@@ -51,7 +52,7 @@ export const createBusSchema = z
     kilometrajeActual: z.coerce.number().int().min(0).default(0),
     marca: trimmedText(100),
     modelo: trimmedText(100),
-    modeloBusId: z.uuid().optional(),
+    modeloBusId: entityIdSchema.optional(),
     motivoEstado: optionalTrimmedText(500),
     placa: trimmedText(20),
   })
@@ -68,7 +69,7 @@ export const updateBusSchema = z
     codigoInterno: trimmedText(60).optional(),
     marca: trimmedText(100).optional(),
     modelo: trimmedText(100).optional(),
-    modeloBusId: z.uuid().nullable().optional(),
+    modeloBusId: entityIdSchema.nullable().optional(),
     placa: trimmedText(20).optional(),
   })
   .strict()

@@ -1,3 +1,4 @@
+import { entityIdSchema } from '../shared/entity-id.js'
 import { z } from 'zod'
 
 const optionalTrimmedText = (max = 500) =>
@@ -48,7 +49,7 @@ const decimalText = ({ allowZero }: { allowZero: boolean }) =>
   })
 
 export const sparePartIdParamSchema = z.object({
-  repuestoId: z.uuid(),
+  repuestoId: entityIdSchema,
 })
 
 export const createSparePartSchema = z
@@ -147,7 +148,7 @@ export const listInventoryMovementsQuerySchema = z
       .enum(['cantidad', 'codigo', 'fechaMovimiento', 'tipo'])
       .default('fechaMovimiento'),
     pagina: z.coerce.number().int().min(1).default(1),
-    responsableId: z.uuid().optional(),
+    responsableId: entityIdSchema.optional(),
     tipo: z.enum(['AJUSTE_ENTRADA', 'AJUSTE_SALIDA', 'CONSUMO', 'ENTRADA']).optional(),
   })
   .strict()

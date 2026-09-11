@@ -5,7 +5,7 @@ import type { AvailabilityCauseDto } from '../availability/availability.types.js
 export type { AvailabilityCauseDto, AvailabilityDto } from '../availability/availability.types.js'
 
 export interface JourneyUserRefDto {
-  id: string
+  id: number
   nombre: string
   rol: RolCodigo
 }
@@ -13,21 +13,21 @@ export interface JourneyUserRefDto {
 export interface JourneyBusRefDto {
   codigoInterno: string
   estadoOperativo: EstadoBus
-  id: string
+  id: number
   placa: string
 }
 
 export interface JourneyRouteRefDto {
   codigo: string
   destino: string
-  id: string
+  id: number
   nombre: string
   origen: string
 }
 
 export interface JourneyReadingDto {
   fechaLectura: string
-  id: string
+  id: number
   kilometraje: number
   kilometrajeAnterior: number
   registradoPor: JourneyUserRefDto
@@ -52,12 +52,12 @@ export interface JourneyDto {
   finProgramado: string
   finReal: string | null
   finalizadaPor: JourneyUserRefDto | null
-  id: string
+  id: number
   iniciadaPor: JourneyUserRefDto | null
   inicioProgramado: string
   inicioReal: string | null
-  jornadaAnteriorId: string | null
-  jornadaSucesoraId: string | null
+  jornadaAnteriorId: number | null
+  jornadaSucesoraId: number | null
   lecturaFinal: JourneyReadingDto | null
   lecturaInicial: JourneyReadingDto | null
   motivoCambio: string | null

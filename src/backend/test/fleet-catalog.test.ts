@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { PrismaClient, type Rol } from '@prisma/client'
@@ -21,8 +22,8 @@ const created = {
 
 interface CatalogFixture {
   adminEmail: string
-  adminId: string
-  conductorId: string
+  adminId: number
+  conductorId: number
   despachadorEmail: string
   mecanicoEmail: string
 }
@@ -50,13 +51,13 @@ async function ensureRoles() {
 }
 
 async function createUser(label: string, role: Rol) {
-  const id = randomUUID()
+  const id = testEntityId()
   created.usuarios.push(id)
 
   return prisma.usuario.create({
     data: {
       contrasenaHash: await hash(password, 10),
-      email: `catalog-${label}-${id.slice(0, 8)}@test.sgmv.local`,
+      email: `catalog-${label}-${String(id)}@test.sgmv.local`,
       id,
       nombre: `Usuario ${label}`,
       rolId: role.id,
@@ -89,7 +90,7 @@ async function loginAgent(email: string) {
 }
 
 async function createModelDirect(activo = true) {
-  const id = randomUUID()
+  const id = testEntityId()
   created.modelos.push(id)
 
   return prisma.modeloBus.create({
@@ -97,7 +98,7 @@ async function createModelDirect(activo = true) {
       activo,
       especificaciones: { combustible: 'Diesel' },
       id,
-      marca: `Marca ${id.slice(0, 8)}`,
+      marca: `Marca ${String(id)}`,
       nombreModelo: 'Modelo prueba',
       versionTecnica: 'V1',
     },
@@ -105,7 +106,7 @@ async function createModelDirect(activo = true) {
 }
 
 async function createRouteDirect(activa = true) {
-  const id = randomUUID()
+  const id = testEntityId()
   created.rutas.push(id)
 
   return prisma.ruta.create({
@@ -120,8 +121,8 @@ async function createRouteDirect(activa = true) {
   })
 }
 
-async function createBusDirect(modeloBusId?: string) {
-  const id = randomUUID()
+async function createBusDirect(modeloBusId?: number) {
+  const id = testEntityId()
   created.buses.push(id)
 
   return prisma.bus.create({
@@ -256,14 +257,14 @@ describe('P3 - catalogos operativos de flota', () => {
       .expect(200)
     const detail = await despachador.get(`/flota/modelos-bus/${activeModel.id}`).expect(200)
 
-    expect(models.body.data.modelosBus.map((item: { id: string }) => item.id)).toContain(
+    expect(models.body.data.modelosBus.map((item: { id: number }) => item.id)).toContain(
       activeModel.id,
     )
-    expect(models.body.data.modelosBus.map((item: { id: string }) => item.id)).not.toContain(
+    expect(models.body.data.modelosBus.map((item: { id: number }) => item.id)).not.toContain(
       inactiveModel.id,
     )
-    expect(routes.body.data.rutas.map((item: { id: string }) => item.id)).toContain(activeRoute.id)
-    expect(routes.body.data.rutas.map((item: { id: string }) => item.id)).not.toContain(
+    expect(routes.body.data.rutas.map((item: { id: number }) => item.id)).toContain(activeRoute.id)
+    expect(routes.body.data.rutas.map((item: { id: number }) => item.id)).not.toContain(
       inactiveRoute.id,
     )
     expect(detail.body.data.modeloBus).not.toHaveProperty('especificaciones')
@@ -340,7 +341,7 @@ describe('P3 - catalogos operativos de flota', () => {
     const model = await createModelDirect(true)
     const route = await createRouteDirect(true)
     const bus = await createBusDirect(model.id)
-    const journeyId = randomUUID()
+    const journeyId = testEntityId()
     created.jornadas.push(journeyId)
 
     await prisma.jornadaOperativa.create({

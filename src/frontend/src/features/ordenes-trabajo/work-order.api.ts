@@ -14,7 +14,7 @@ import type {
 } from './work-order.types'
 
 export interface ListWorkOrdersParams {
-  busId?: string
+  busId?: number
   busqueda?: string
   direccion?: 'asc' | 'desc'
   estado?: WorkOrderStatus | ''
@@ -23,12 +23,12 @@ export interface ListWorkOrdersParams {
     'bus' | 'codigo' | 'costoTotal' | 'estado' | 'fechaCierre' | 'fechaCreacion' | 'prioridad'
   origen?: WorkOrderOrigin | ''
   pagina: number
-  tecnicoId?: string
+  tecnicoId?: number
   tipo?: WorkOrderType | ''
 }
 
 export interface CreateManualWorkOrderInput {
-  busId: string
+  busId: number
   descripcion: string
   prioridad: OrderPriority
   tipo: WorkOrderType
@@ -36,12 +36,12 @@ export interface CreateManualWorkOrderInput {
 
 export interface AssignWorkOrderInput {
   observacion?: string
-  tecnicoId: string
+  tecnicoId: number
 }
 
 export interface ReassignWorkOrderInput {
   motivo: string
-  tecnicoId: string
+  tecnicoId: number
 }
 
 export interface TransitionObservationInput {
@@ -58,18 +58,18 @@ export interface CreateActivityInput {
 }
 
 export interface CreateConsumptionInput {
-  autorizacionExcepcionId?: string
+  autorizacionExcepcionId?: number
   cantidad: string
   claveIdempotencia: string
-  repuestoId: string
+  repuestoId: number
 }
 
 export interface AuthorizeConsumptionExceptionInput {
   cantidadMaxima: string
   fechaExpiracion?: string
-  intervencionId: string
+  intervencionId: number
   motivo: string
-  repuestoId: string
+  repuestoId: number
 }
 
 export interface CreateTechnicalReadingInput {
@@ -86,7 +86,7 @@ function buildWorkOrderQuery(params: ListWorkOrdersParams) {
   })
 
   if (params.busId) {
-    searchParams.set('busId', params.busId)
+    searchParams.set('busId', String(params.busId))
   }
 
   if (params.busqueda?.trim()) {
@@ -110,7 +110,7 @@ function buildWorkOrderQuery(params: ListWorkOrdersParams) {
   }
 
   if (params.tecnicoId) {
-    searchParams.set('tecnicoId', params.tecnicoId)
+    searchParams.set('tecnicoId', String(params.tecnicoId))
   }
 
   if (params.tipo) {
@@ -134,7 +134,7 @@ export function listMyWorkOrders(params: ListWorkOrdersParams) {
   )
 }
 
-export function getWorkOrder(ordenId: string) {
+export function getWorkOrder(ordenId: number) {
   return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}`)
 }
 
@@ -155,42 +155,42 @@ export function getAvailableMechanics(busqueda?: string) {
   )
 }
 
-export function assignWorkOrder(ordenId: string, input: AssignWorkOrderInput) {
+export function assignWorkOrder(ordenId: number, input: AssignWorkOrderInput) {
   return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/asignar`, {
     body: JSON.stringify(input),
     method: 'POST',
   })
 }
 
-export function reassignWorkOrder(ordenId: string, input: ReassignWorkOrderInput) {
+export function reassignWorkOrder(ordenId: number, input: ReassignWorkOrderInput) {
   return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/reasignar`, {
     body: JSON.stringify(input),
     method: 'POST',
   })
 }
 
-export function startWorkOrder(ordenId: string, input: TransitionObservationInput = {}) {
+export function startWorkOrder(ordenId: number, input: TransitionObservationInput = {}) {
   return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/iniciar`, {
     body: JSON.stringify(input),
     method: 'POST',
   })
 }
 
-export function resumeWorkOrder(ordenId: string, input: TransitionObservationInput = {}) {
+export function resumeWorkOrder(ordenId: number, input: TransitionObservationInput = {}) {
   return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/reanudar`, {
     body: JSON.stringify(input),
     method: 'POST',
   })
 }
 
-export function updateWorkOrderIntervention(ordenId: string, input: InterventionUpdateInput) {
+export function updateWorkOrderIntervention(ordenId: number, input: InterventionUpdateInput) {
   return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/intervencion`, {
     body: JSON.stringify(input),
     method: 'PATCH',
   })
 }
 
-export function createWorkOrderActivity(ordenId: string, input: CreateActivityInput) {
+export function createWorkOrderActivity(ordenId: number, input: CreateActivityInput) {
   return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/actividades`, {
     body: JSON.stringify(input),
     method: 'POST',
@@ -198,7 +198,7 @@ export function createWorkOrderActivity(ordenId: string, input: CreateActivityIn
 }
 
 export function createTechnicalWorkOrderReading(
-  ordenId: string,
+  ordenId: number,
   input: CreateTechnicalReadingInput,
 ) {
   return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/lecturas`, {
@@ -211,7 +211,7 @@ export function listDispatchWorkOrders() {
   return apiRequest<{ ordenes: DispatchWorkOrderProjectionDto[] }>('/ordenes-trabajo/despacho')
 }
 
-export function getAvailableSpareParts(ordenId: string, busqueda?: string) {
+export function getAvailableSpareParts(ordenId: number, busqueda?: string) {
   const query = busqueda?.trim()
     ? `?${new URLSearchParams({ busqueda: busqueda.trim() }).toString()}`
     : ''
@@ -221,7 +221,7 @@ export function getAvailableSpareParts(ordenId: string, busqueda?: string) {
   )
 }
 
-export function createWorkOrderConsumption(ordenId: string, input: CreateConsumptionInput) {
+export function createWorkOrderConsumption(ordenId: number, input: CreateConsumptionInput) {
   return apiRequest<{ orden: WorkOrderDetailDto; yaExistia: boolean }>(
     `/ordenes-trabajo/${ordenId}/consumos`,
     {
@@ -232,37 +232,37 @@ export function createWorkOrderConsumption(ordenId: string, input: CreateConsump
 }
 
 export function authorizeWorkOrderConsumptionException(
-  ordenId: string,
+  ordenId: number,
   input: AuthorizeConsumptionExceptionInput,
 ) {
-  return apiRequest<{ autorizacion: { id: string } }>(
+  return apiRequest<{ autorizacion: { id: number } }>(
     `/ordenes-trabajo/${ordenId}/excepciones-consumo`,
     { body: JSON.stringify(input), method: 'POST' },
   )
 }
 
-export function revokeWorkOrderConsumptionException(ordenId: string, autorizacionId: string) {
-  return apiRequest<{ autorizacion: { id: string } }>(
+export function revokeWorkOrderConsumptionException(ordenId: number, autorizacionId: number) {
+  return apiRequest<{ autorizacion: { id: number } }>(
     `/ordenes-trabajo/${ordenId}/excepciones-consumo/${autorizacionId}/revocar`,
     { body: '{}', method: 'POST' },
   )
 }
 
-export function completeWorkOrder(ordenId: string, input: TransitionObservationInput = {}) {
+export function completeWorkOrder(ordenId: number, input: TransitionObservationInput = {}) {
   return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/completar`, {
     body: JSON.stringify(input),
     method: 'POST',
   })
 }
 
-export function returnWorkOrder(ordenId: string, motivo: string) {
+export function returnWorkOrder(ordenId: number, motivo: string) {
   return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/devolver`, {
     body: JSON.stringify({ motivo }),
     method: 'POST',
   })
 }
 
-export function closeWorkOrder(ordenId: string, input: TransitionObservationInput = {}) {
+export function closeWorkOrder(ordenId: number, input: TransitionObservationInput = {}) {
   return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/cerrar`, {
     body: JSON.stringify(input),
     method: 'POST',

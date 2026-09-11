@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '../prisma/client.js'
 
 export interface IdempotencyScope {
-  actorId: string
+  actorId: number
   clave: string
   hashSolicitud: string
   metodo: string
@@ -13,7 +13,7 @@ export interface IdempotencyScope {
 }
 
 export interface IdempotencyReservation {
-  id: string
+  id: number
   requestId: string
 }
 

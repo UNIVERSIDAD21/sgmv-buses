@@ -191,7 +191,7 @@ enum EstadoSolicitudIdempotente {
 }
 
 model Rol {
-  id          String    @id @default(uuid()) @db.Uuid
+  id          Int       @id @default(autoincrement())
   codigo      RolCodigo @unique
   nombre      String    @db.VarChar(120)
   descripcion String?   @db.Text
@@ -204,13 +204,13 @@ model Rol {
 }
 
 model Usuario {
-  id                    String        @id @default(uuid()) @db.Uuid
+  id                    Int           @id @default(autoincrement())
   nombre                String        @db.VarChar(160)
   email                 String        @unique @db.VarChar(180)
   telefono              String?       @db.VarChar(40)
   contrasenaHash        String        @map("contrasena_hash") @db.VarChar(255)
   estado                EstadoUsuario @default(ACTIVO)
-  rolId                 String        @map("rol_id") @db.Uuid
+  rolId                 Int           @map("rol_id")
   intentosFallidosLogin Int           @default(0) @map("intentos_fallidos_login")
   bloqueadoHasta        DateTime?     @map("bloqueado_hasta") @db.Timestamptz(6)
   ultimoAccesoAt        DateTime?     @map("ultimo_acceso_at") @db.Timestamptz(6)
@@ -219,32 +219,32 @@ model Usuario {
 
   rol Rol @relation(fields: [rolId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  actividadesRegistradas            ActividadOrden[]              @relation("ActividadRegistradaPor")
-  asignacionesCreadas               AsignacionConductor[]         @relation("AsignacionAsignadaPor")
-  asignacionesConductor             AsignacionConductor[]         @relation("AsignacionConductorUsuario")
-  busEstadosCambiados               BusEstadoHistorial[]          @relation("BusEstadoCambiadoPor")
-  consumosRepuesto                  ConsumoRepuesto[]             @relation("ConsumoConsumidoPor")
-  intervenciones                    Intervencion[]                @relation("IntervencionTecnico")
-  lecturasKilometraje               LecturaKilometraje[]          @relation("LecturaRegistradaPor")
-  movimientosInventario             MovimientoInventario[]        @relation("MovimientoResponsable")
-  novedades                         Novedad[]                     @relation("NovedadConductor")
-  novedadesRevisadas                Novedad[]                     @relation("NovedadRevisadaPor")
-  ordenEstadoCambios                OrdenEstadoHistorial[]        @relation("OrdenEstadoCambiadoPor")
-  ordenesAsignadas                  OrdenTrabajo[]                @relation("OrdenTecnicoAsignado")
-  ordenesCerradas                   OrdenTrabajo[]                @relation("OrdenCerradaPor")
-  ordenesCreadas                    OrdenTrabajo[]                @relation("OrdenCreadaPor")
-  programacionesCreadas             ProgramacionMantenimiento[]   @relation("ProgramacionCreadaPor")
-  reasignacionesComoTecnicoAnterior OrdenReasignacion[]           @relation("OrdenReasignacionTecnicoAnterior")
-  reasignacionesComoTecnicoNuevo    OrdenReasignacion[]           @relation("OrdenReasignacionTecnicoNuevo")
-  reasignacionesHechas              OrdenReasignacion[]           @relation("OrdenReasignadoPor")
-  jornadasConducidas                JornadaOperativa[]            @relation("JornadaConductor")
-  jornadasProgramadas               JornadaOperativa[]            @relation("JornadaProgramadaPor")
-  jornadasCambiadas                 JornadaOperativa[]            @relation("JornadaCambioPor")
-  jornadasIniciadas                 JornadaOperativa[]            @relation("JornadaIniciadaPor")
-  jornadasFinalizadas               JornadaOperativa[]            @relation("JornadaFinalizadaPor")
-  planesPreventivosCreados          PlanMantenimientoPreventivo[] @relation("PlanCreadoPor")
-  compatibilidadesDefinidas         CompatibilidadRepuesto[]      @relation("CompatibilidadDefinidaPor")
-  consumosAutorizados               ConsumoRepuesto[]             @relation("ConsumoAutorizadoPor")
+  actividadesRegistradas            ActividadOrden[]               @relation("ActividadRegistradaPor")
+  asignacionesCreadas               AsignacionConductor[]          @relation("AsignacionAsignadaPor")
+  asignacionesConductor             AsignacionConductor[]          @relation("AsignacionConductorUsuario")
+  busEstadosCambiados               BusEstadoHistorial[]           @relation("BusEstadoCambiadoPor")
+  consumosRepuesto                  ConsumoRepuesto[]              @relation("ConsumoConsumidoPor")
+  intervenciones                    Intervencion[]                 @relation("IntervencionTecnico")
+  lecturasKilometraje               LecturaKilometraje[]           @relation("LecturaRegistradaPor")
+  movimientosInventario             MovimientoInventario[]         @relation("MovimientoResponsable")
+  novedades                         Novedad[]                      @relation("NovedadConductor")
+  novedadesRevisadas                Novedad[]                      @relation("NovedadRevisadaPor")
+  ordenEstadoCambios                OrdenEstadoHistorial[]         @relation("OrdenEstadoCambiadoPor")
+  ordenesAsignadas                  OrdenTrabajo[]                 @relation("OrdenTecnicoAsignado")
+  ordenesCerradas                   OrdenTrabajo[]                 @relation("OrdenCerradaPor")
+  ordenesCreadas                    OrdenTrabajo[]                 @relation("OrdenCreadaPor")
+  programacionesCreadas             ProgramacionMantenimiento[]    @relation("ProgramacionCreadaPor")
+  reasignacionesComoTecnicoAnterior OrdenReasignacion[]            @relation("OrdenReasignacionTecnicoAnterior")
+  reasignacionesComoTecnicoNuevo    OrdenReasignacion[]            @relation("OrdenReasignacionTecnicoNuevo")
+  reasignacionesHechas              OrdenReasignacion[]            @relation("OrdenReasignadoPor")
+  jornadasConducidas                JornadaOperativa[]             @relation("JornadaConductor")
+  jornadasProgramadas               JornadaOperativa[]             @relation("JornadaProgramadaPor")
+  jornadasCambiadas                 JornadaOperativa[]             @relation("JornadaCambioPor")
+  jornadasIniciadas                 JornadaOperativa[]             @relation("JornadaIniciadaPor")
+  jornadasFinalizadas               JornadaOperativa[]             @relation("JornadaFinalizadaPor")
+  planesPreventivosCreados          PlanMantenimientoPreventivo[]  @relation("PlanCreadoPor")
+  compatibilidadesDefinidas         CompatibilidadRepuesto[]       @relation("CompatibilidadDefinidaPor")
+  consumosAutorizados               ConsumoRepuesto[]              @relation("ConsumoAutorizadoPor")
   autorizacionesExcepcion           AutorizacionExcepcionConsumo[] @relation("ExcepcionAutorizadaPor")
   alertasRecibidas                  AlertaDestinatario[]
   eventosAuditoria                  EventoAuditoria[]
@@ -256,7 +256,7 @@ model Usuario {
 }
 
 model Bus {
-  id                String    @id @default(uuid()) @db.Uuid
+  id                Int       @id @default(autoincrement())
   codigoInterno     String    @unique @map("codigo_interno") @db.VarChar(60)
   placa             String    @unique @db.VarChar(20)
   marca             String    @db.VarChar(100)
@@ -266,7 +266,7 @@ model Bus {
   estadoOperativo   EstadoBus @default(OPERATIVO) @map("estado_operativo")
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  modeloBusId       String?   @map("modelo_bus_id") @db.Uuid
+  modeloBusId       Int?      @map("modelo_bus_id")
 
   modeloBus ModeloBus? @relation(fields: [modeloBusId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
@@ -287,18 +287,18 @@ model Bus {
 }
 
 model LecturaKilometraje {
-  id                  String       @id @default(uuid()) @db.Uuid
-  busId               String       @map("bus_id") @db.Uuid
+  id                  Int          @id @default(autoincrement())
+  busId               Int          @map("bus_id")
   kilometrajeAnterior Int          @map("kilometraje_anterior")
   kilometrajeNuevo    Int          @map("kilometraje_nuevo")
-  registradoPorId     String       @map("registrado_por_id") @db.Uuid
+  registradoPorId     Int          @map("registrado_por_id")
   fechaRegistro       DateTime     @default(now()) @map("fecha_registro") @db.Timestamptz(6)
   motivo              String?      @db.Text
   tipo                TipoLectura?
   fechaLectura        DateTime?    @map("fecha_lectura") @db.Timestamptz(6)
-  jornadaOperativaId  String?      @map("jornada_operativa_id") @db.Uuid
-  ordenTrabajoId      String?      @map("orden_trabajo_id") @db.Uuid
-  intervencionId      String?      @map("intervencion_id") @db.Uuid
+  jornadaOperativaId  Int?         @map("jornada_operativa_id")
+  ordenTrabajoId      Int?         @map("orden_trabajo_id")
+  intervencionId      Int?         @map("intervencion_id")
 
   bus              Bus               @relation(fields: [busId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   registradoPor    Usuario           @relation("LecturaRegistradaPor", fields: [registradoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -318,11 +318,11 @@ model LecturaKilometraje {
 }
 
 model BusEstadoHistorial {
-  id             String     @id @default(uuid()) @db.Uuid
-  busId          String     @map("bus_id") @db.Uuid
+  id             Int        @id @default(autoincrement())
+  busId          Int        @map("bus_id")
   estadoAnterior EstadoBus? @map("estado_anterior")
   estadoNuevo    EstadoBus  @map("estado_nuevo")
-  cambiadoPorId  String     @map("cambiado_por_id") @db.Uuid
+  cambiadoPorId  Int        @map("cambiado_por_id")
   fechaCambio    DateTime   @default(now()) @map("fecha_cambio") @db.Timestamptz(6)
   motivo         String?    @db.Text
 
@@ -335,13 +335,13 @@ model BusEstadoHistorial {
 }
 
 model AsignacionConductor {
-  id            String    @id @default(uuid()) @db.Uuid
-  conductorId   String    @map("conductor_id") @db.Uuid
-  busId         String    @map("bus_id") @db.Uuid
+  id            Int       @id @default(autoincrement())
+  conductorId   Int       @map("conductor_id")
+  busId         Int       @map("bus_id")
   fechaInicio   DateTime  @default(now()) @map("fecha_inicio") @db.Timestamptz(6)
   fechaFin      DateTime? @map("fecha_fin") @db.Timestamptz(6)
   activa        Boolean   @default(true)
-  asignadoPorId String    @map("asignado_por_id") @db.Uuid
+  asignadoPorId Int       @map("asignado_por_id")
   motivo        String?   @db.Text
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -357,21 +357,21 @@ model AsignacionConductor {
 }
 
 model Novedad {
-  id                    String             @id @default(uuid()) @db.Uuid
-  conductorId           String             @map("conductor_id") @db.Uuid
-  busId                 String             @map("bus_id") @db.Uuid
+  id                    Int                @id @default(autoincrement())
+  conductorId           Int                @map("conductor_id")
+  busId                 Int                @map("bus_id")
   fechaReporte          DateTime           @default(now()) @map("fecha_reporte") @db.Timestamptz(6)
   tipo                  String             @db.VarChar(120)
   descripcion           String             @db.Text
   clasificacion         String?            @db.VarChar(120)
   estado                EstadoNovedad      @default(PENDIENTE_REVISION)
-  revisadaPorId         String?            @map("revisada_por_id") @db.Uuid
+  revisadaPorId         Int?               @map("revisada_por_id")
   fechaRevision         DateTime?          @map("fecha_revision") @db.Timestamptz(6)
   observacionRevision   String?            @map("observacion_revision") @db.Text
   createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
-  jornadaOperativaId    String?            @map("jornada_operativa_id") @db.Uuid
-  lecturaKilometrajeId  String?            @unique @map("lectura_kilometraje_id") @db.Uuid
+  jornadaOperativaId    Int?               @map("jornada_operativa_id")
+  lecturaKilometrajeId  Int?               @unique @map("lectura_kilometraje_id")
   fechaOcurrencia       DateTime?          @map("fecha_ocurrencia") @db.Timestamptz(6)
   criticidad            CriticidadNovedad?
   afectaOperacion       Boolean?           @map("afecta_operacion")
@@ -395,18 +395,18 @@ model Novedad {
 }
 
 model ProgramacionMantenimiento {
-  id                            String                @id @default(uuid()) @db.Uuid
-  busId                         String                @map("bus_id") @db.Uuid
+  id                            Int                   @id @default(autoincrement())
+  busId                         Int                   @map("bus_id")
   tipo                          String                @db.VarChar(120)
   actividad                     String                @db.Text
   criterio                      CriterioMantenimiento
   fechaProgramada               DateTime?             @map("fecha_programada") @db.Date
   kilometrajeObjetivo           Int?                  @map("kilometraje_objetivo")
   activa                        Boolean               @default(true)
-  creadaPorId                   String                @map("creada_por_id") @db.Uuid
+  creadaPorId                   Int                   @map("creada_por_id")
   createdAt                     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
-  planMantenimientoPreventivoId String?               @map("plan_mantenimiento_preventivo_id") @db.Uuid
+  planMantenimientoPreventivoId Int?                  @map("plan_mantenimiento_preventivo_id")
   prioridad                     PrioridadOrden?
 
   bus                         Bus                          @relation(fields: [busId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -423,30 +423,30 @@ model ProgramacionMantenimiento {
 }
 
 model OrdenTrabajo {
-  id                            String             @id @default(uuid()) @db.Uuid
+  id                            Int                @id @default(autoincrement())
   codigo                        String             @unique @db.VarChar(80)
-  busId                         String             @map("bus_id") @db.Uuid
+  busId                         Int                @map("bus_id")
   tipo                          TipoOrdenTrabajo
   origen                        OrigenOrdenTrabajo
   prioridad                     PrioridadOrden     @default(MEDIA)
   descripcion                   String             @db.Text
   estado                        EstadoOrdenTrabajo @default(PENDIENTE_ASIGNACION)
-  tecnicoAsignadoId             String?            @map("tecnico_asignado_id") @db.Uuid
-  creadaPorId                   String             @map("creada_por_id") @db.Uuid
+  tecnicoAsignadoId             Int?               @map("tecnico_asignado_id")
+  creadaPorId                   Int                @map("creada_por_id")
   fechaCreacion                 DateTime           @default(now()) @map("fecha_creacion") @db.Timestamptz(6)
   fechaAsignacion               DateTime?          @map("fecha_asignacion") @db.Timestamptz(6)
   fechaInicioEjecucion          DateTime?          @map("fecha_inicio_ejecucion") @db.Timestamptz(6)
   fechaCompletadaTecnico        DateTime?          @map("fecha_completada_tecnico") @db.Timestamptz(6)
   fechaCierre                   DateTime?          @map("fecha_cierre") @db.Timestamptz(6)
-  cerradaPorId                  String?            @map("cerrada_por_id") @db.Uuid
-  novedadId                     String?            @unique @map("novedad_id") @db.Uuid
-  programacionMantenimientoId   String?            @map("programacion_mantenimiento_id") @db.Uuid
+  cerradaPorId                  Int?               @map("cerrada_por_id")
+  novedadId                     Int?               @unique @map("novedad_id")
+  programacionMantenimientoId   Int?               @map("programacion_mantenimiento_id")
   fechaObjetivoPreventivo       DateTime?          @map("fecha_objetivo_preventivo") @db.Date
   kilometrajeObjetivoPreventivo Int?               @map("kilometraje_objetivo_preventivo")
   costoTotal                    Decimal            @default(0) @map("costo_total") @db.Decimal(12, 2)
   createdAt                     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
-  jornadaOperativaId            String?            @map("jornada_operativa_id") @db.Uuid
+  jornadaOperativaId            Int?               @map("jornada_operativa_id")
   planAplicado                  Json?              @map("plan_aplicado") @db.JsonB
   disponibilidadAlCierre        Boolean?           @map("disponibilidad_al_cierre")
 
@@ -458,12 +458,12 @@ model OrdenTrabajo {
   tecnicoAsignado           Usuario?                   @relation("OrdenTecnicoAsignado", fields: [tecnicoAsignadoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   jornadaOperativa          JornadaOperativa?          @relation(fields: [jornadaOperativaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  consumosRepuesto    ConsumoRepuesto[]
-  estadosHistorial    OrdenEstadoHistorial[]
-  intervenciones      Intervencion[]
-  reasignaciones      OrdenReasignacion[]
-  lecturasKilometraje LecturaKilometraje[]
-  alertasInternas     AlertaInterna[]
+  consumosRepuesto        ConsumoRepuesto[]
+  estadosHistorial        OrdenEstadoHistorial[]
+  intervenciones          Intervencion[]
+  reasignaciones          OrdenReasignacion[]
+  lecturasKilometraje     LecturaKilometraje[]
+  alertasInternas         AlertaInterna[]
   autorizacionesExcepcion AutorizacionExcepcionConsumo[]
 
   @@unique([id, busId])
@@ -477,9 +477,9 @@ model OrdenTrabajo {
 }
 
 model Intervencion {
-  id             String    @id @default(uuid()) @db.Uuid
-  ordenTrabajoId String    @map("orden_trabajo_id") @db.Uuid
-  tecnicoId      String    @map("tecnico_id") @db.Uuid
+  id             Int       @id @default(autoincrement())
+  ordenTrabajoId Int       @map("orden_trabajo_id")
+  tecnicoId      Int       @map("tecnico_id")
   fechaInicio    DateTime  @default(now()) @map("fecha_inicio") @db.Timestamptz(6)
   fechaFin       DateTime? @map("fecha_fin") @db.Timestamptz(6)
   diagnostico    String?   @db.Text
@@ -490,9 +490,9 @@ model Intervencion {
   ordenTrabajo OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   tecnico      Usuario      @relation("IntervencionTecnico", fields: [tecnicoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  actividades         ActividadOrden[]
-  lecturasKilometraje LecturaKilometraje[]
-  consumosRepuesto    ConsumoRepuesto[]
+  actividades             ActividadOrden[]
+  lecturasKilometraje     LecturaKilometraje[]
+  consumosRepuesto        ConsumoRepuesto[]
   autorizacionesExcepcion AutorizacionExcepcionConsumo[]
 
   @@unique([id, ordenTrabajoId])
@@ -502,11 +502,11 @@ model Intervencion {
 }
 
 model ActividadOrden {
-  id              String   @id @default(uuid()) @db.Uuid
-  intervencionId  String   @map("intervencion_id") @db.Uuid
+  id              Int      @id @default(autoincrement())
+  intervencionId  Int      @map("intervencion_id")
   descripcion     String   @db.Text
   fechaRegistro   DateTime @default(now()) @map("fecha_registro") @db.Timestamptz(6)
-  registradaPorId String   @map("registrada_por_id") @db.Uuid
+  registradaPorId Int      @map("registrada_por_id")
 
   intervencion  Intervencion @relation(fields: [intervencionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   registradaPor Usuario      @relation("ActividadRegistradaPor", fields: [registradaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -517,11 +517,11 @@ model ActividadOrden {
 }
 
 model OrdenEstadoHistorial {
-  id             String              @id @default(uuid()) @db.Uuid
-  ordenTrabajoId String              @map("orden_trabajo_id") @db.Uuid
+  id             Int                 @id @default(autoincrement())
+  ordenTrabajoId Int                 @map("orden_trabajo_id")
   estadoAnterior EstadoOrdenTrabajo? @map("estado_anterior")
   estadoNuevo    EstadoOrdenTrabajo  @map("estado_nuevo")
-  cambiadoPorId  String              @map("cambiado_por_id") @db.Uuid
+  cambiadoPorId  Int                 @map("cambiado_por_id")
   fechaCambio    DateTime            @default(now()) @map("fecha_cambio") @db.Timestamptz(6)
   observacion    String?             @db.Text
 
@@ -534,11 +534,11 @@ model OrdenEstadoHistorial {
 }
 
 model OrdenReasignacion {
-  id                String   @id @default(uuid()) @db.Uuid
-  ordenTrabajoId    String   @map("orden_trabajo_id") @db.Uuid
-  tecnicoAnteriorId String?  @map("tecnico_anterior_id") @db.Uuid
-  tecnicoNuevoId    String   @map("tecnico_nuevo_id") @db.Uuid
-  reasignadoPorId   String   @map("reasignado_por_id") @db.Uuid
+  id                Int      @id @default(autoincrement())
+  ordenTrabajoId    Int      @map("orden_trabajo_id")
+  tecnicoAnteriorId Int?     @map("tecnico_anterior_id")
+  tecnicoNuevoId    Int      @map("tecnico_nuevo_id")
+  reasignadoPorId   Int      @map("reasignado_por_id")
   fechaReasignacion DateTime @default(now()) @map("fecha_reasignacion") @db.Timestamptz(6)
   motivo            String?  @db.Text
 
@@ -555,7 +555,7 @@ model OrdenReasignacion {
 }
 
 model Repuesto {
-  id               String         @id @default(uuid()) @db.Uuid
+  id               Int            @id @default(autoincrement())
   codigo           String         @unique @db.VarChar(80)
   nombre           String         @db.VarChar(160)
   categoria        String?        @db.VarChar(120)
@@ -571,43 +571,43 @@ model Repuesto {
   especificaciones Json?          @db.JsonB
   dimensiones      Json?          @db.JsonB
 
-  consumosRepuesto      ConsumoRepuesto[]
-  movimientosInventario MovimientoInventario[]
-  compatibilidades      CompatibilidadRepuesto[]
+  consumosRepuesto        ConsumoRepuesto[]
+  movimientosInventario   MovimientoInventario[]
+  compatibilidades        CompatibilidadRepuesto[]
   autorizacionesExcepcion AutorizacionExcepcionConsumo[]
-  alertasInternas       AlertaInterna[]
+  alertasInternas         AlertaInterna[]
 
   @@index([estado])
   @@map("repuestos")
 }
 
 model ConsumoRepuesto {
-  id                      String                   @id @default(uuid()) @db.Uuid
-  ordenTrabajoId          String                   @map("orden_trabajo_id") @db.Uuid
-  repuestoId              String                   @map("repuesto_id") @db.Uuid
+  id                      Int                      @id @default(autoincrement())
+  ordenTrabajoId          Int                      @map("orden_trabajo_id")
+  repuestoId              Int                      @map("repuesto_id")
   cantidad                Decimal                  @db.Decimal(12, 2)
   costoUnitario           Decimal                  @map("costo_unitario") @db.Decimal(12, 2)
   subtotal                Decimal                  @db.Decimal(12, 2)
-  consumidoPorId          String                   @map("consumido_por_id") @db.Uuid
+  consumidoPorId          Int                      @map("consumido_por_id")
   claveIdempotencia       String?                  @map("clave_idempotencia") @db.Uuid
   fechaConsumo            DateTime                 @default(now()) @map("fecha_consumo") @db.Timestamptz(6)
   createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
-  intervencionId          String?                  @map("intervencion_id") @db.Uuid
+  intervencionId          Int?                     @map("intervencion_id")
   resultadoCompatibilidad ResultadoCompatibilidad? @map("resultado_compatibilidad")
-  reglaCompatibilidadId   String?                  @map("regla_compatibilidad_id") @db.Uuid
+  reglaCompatibilidadId   Int?                     @map("regla_compatibilidad_id")
   reglaVersion            Int?                     @map("regla_version")
   evidenciaCompatibilidad Json?                    @map("evidencia_compatibilidad") @db.JsonB
-  autorizadoPorId         String?                  @map("autorizado_por_id") @db.Uuid
+  autorizadoPorId         Int?                     @map("autorizado_por_id")
   fechaAutorizacion       DateTime?                @map("fecha_autorizacion") @db.Timestamptz(6)
   motivoExcepcion         String?                  @map("motivo_excepcion") @db.Text
-  autorizacionExcepcionId String?                  @unique @map("autorizacion_excepcion_id") @db.Uuid
+  autorizacionExcepcionId Int?                     @unique @map("autorizacion_excepcion_id")
 
-  consumidoPor        Usuario                 @relation("ConsumoConsumidoPor", fields: [consumidoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  ordenTrabajo        OrdenTrabajo            @relation(fields: [ordenTrabajoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  repuesto            Repuesto                @relation(fields: [repuestoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  intervencion        Intervencion?           @relation(fields: [intervencionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  reglaCompatibilidad CompatibilidadRepuesto? @relation(fields: [reglaCompatibilidadId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  autorizadoPor       Usuario?                @relation("ConsumoAutorizadoPor", fields: [autorizadoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  consumidoPor          Usuario                       @relation("ConsumoConsumidoPor", fields: [consumidoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  ordenTrabajo          OrdenTrabajo                  @relation(fields: [ordenTrabajoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  repuesto              Repuesto                      @relation(fields: [repuestoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  intervencion          Intervencion?                 @relation(fields: [intervencionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  reglaCompatibilidad   CompatibilidadRepuesto?       @relation(fields: [reglaCompatibilidadId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  autorizadoPor         Usuario?                      @relation("ConsumoAutorizadoPor", fields: [autorizadoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   autorizacionExcepcion AutorizacionExcepcionConsumo? @relation(fields: [autorizacionExcepcionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   movimientoInventario MovimientoInventario?
@@ -623,23 +623,23 @@ model ConsumoRepuesto {
 }
 
 model AutorizacionExcepcionConsumo {
-  id                String                     @id @default(uuid()) @db.Uuid
-  ordenTrabajoId    String                     @map("orden_trabajo_id") @db.Uuid
-  intervencionId    String                     @map("intervencion_id") @db.Uuid
-  repuestoId        String                     @map("repuesto_id") @db.Uuid
-  cantidadMaxima    Decimal                    @map("cantidad_maxima") @db.Decimal(12, 2)
-  motivo            String                     @db.Text
-  autorizadoPorId   String                     @map("autorizado_por_id") @db.Uuid
-  fechaAutorizacion DateTime                   @default(now()) @map("fecha_autorizacion") @db.Timestamptz(6)
-  fechaExpiracion   DateTime?                  @map("fecha_expiracion") @db.Timestamptz(6)
+  id                Int                         @id @default(autoincrement())
+  ordenTrabajoId    Int                         @map("orden_trabajo_id")
+  intervencionId    Int                         @map("intervencion_id")
+  repuestoId        Int                         @map("repuesto_id")
+  cantidadMaxima    Decimal                     @map("cantidad_maxima") @db.Decimal(12, 2)
+  motivo            String                      @db.Text
+  autorizadoPorId   Int                         @map("autorizado_por_id")
+  fechaAutorizacion DateTime                    @default(now()) @map("fecha_autorizacion") @db.Timestamptz(6)
+  fechaExpiracion   DateTime?                   @map("fecha_expiracion") @db.Timestamptz(6)
   estado            EstadoAutorizacionExcepcion @default(VIGENTE)
-  createdAt         DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt         DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  ordenTrabajo  OrdenTrabajo @relation(fields: [ordenTrabajoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  intervencion  Intervencion @relation(fields: [intervencionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  repuesto      Repuesto     @relation(fields: [repuestoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  autorizadoPor Usuario      @relation("ExcepcionAutorizadaPor", fields: [autorizadoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  ordenTrabajo  OrdenTrabajo     @relation(fields: [ordenTrabajoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  intervencion  Intervencion     @relation(fields: [intervencionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  repuesto      Repuesto         @relation(fields: [repuestoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  autorizadoPor Usuario          @relation("ExcepcionAutorizadaPor", fields: [autorizadoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   consumo       ConsumoRepuesto?
 
   @@index([ordenTrabajoId, estado])
@@ -650,14 +650,14 @@ model AutorizacionExcepcionConsumo {
 }
 
 model MovimientoInventario {
-  id                String                   @id @default(uuid()) @db.Uuid
-  repuestoId        String                   @map("repuesto_id") @db.Uuid
+  id                Int                      @id @default(autoincrement())
+  repuestoId        Int                      @map("repuesto_id")
   tipo              TipoMovimientoInventario
   cantidad          Decimal                  @db.Decimal(12, 2)
   costoUnitario     Decimal?                 @map("costo_unitario") @db.Decimal(12, 2)
   motivo            String?                  @db.Text
-  responsableId     String                   @map("responsable_id") @db.Uuid
-  consumoRepuestoId String?                  @unique @map("consumo_repuesto_id") @db.Uuid
+  responsableId     Int                      @map("responsable_id")
+  consumoRepuestoId Int?                     @unique @map("consumo_repuesto_id")
   claveIdempotencia String?                  @map("clave_idempotencia") @db.Uuid
   fechaMovimiento   DateTime                 @default(now()) @map("fecha_movimiento") @db.Timestamptz(6)
   createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -675,7 +675,7 @@ model MovimientoInventario {
 // Foundation of the revised model. New workflows must validate required context;
 // nullable extensions above preserve existing RF-01 to RF-06 data without guessing it.
 model ModeloBus {
-  id               String   @id @default(uuid()) @db.Uuid
+  id               Int      @id @default(autoincrement())
   marca            String   @db.VarChar(100)
   nombreModelo     String   @map("nombre_modelo") @db.VarChar(100)
   versionTecnica   String?  @map("version_tecnica") @db.VarChar(120)
@@ -694,7 +694,7 @@ model ModeloBus {
 }
 
 model Ruta {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        Int      @id @default(autoincrement())
   codigo    String   @unique @db.VarChar(80)
   nombre    String   @db.VarChar(160)
   origen    String   @db.VarChar(160)
@@ -710,22 +710,22 @@ model Ruta {
 }
 
 model JornadaOperativa {
-  id                String        @id @default(uuid()) @db.Uuid
-  busId             String        @map("bus_id") @db.Uuid
-  conductorId       String        @map("conductor_id") @db.Uuid
-  rutaId            String?       @map("ruta_id") @db.Uuid
+  id                Int           @id @default(autoincrement())
+  busId             Int           @map("bus_id")
+  conductorId       Int           @map("conductor_id")
+  rutaId            Int?          @map("ruta_id")
   estado            EstadoJornada
   inicioProgramado  DateTime      @map("inicio_programado") @db.Timestamptz(6)
   finProgramado     DateTime      @map("fin_programado") @db.Timestamptz(6)
   inicioReal        DateTime?     @map("inicio_real") @db.Timestamptz(6)
   finReal           DateTime?     @map("fin_real") @db.Timestamptz(6)
-  programadaPorId   String        @map("programada_por_id") @db.Uuid
-  cambioPorId       String?       @map("cambio_por_id") @db.Uuid
-  iniciadaPorId     String?       @map("iniciada_por_id") @db.Uuid
-  finalizadaPorId   String?       @map("finalizada_por_id") @db.Uuid
+  programadaPorId   Int           @map("programada_por_id")
+  cambioPorId       Int?          @map("cambio_por_id")
+  iniciadaPorId     Int?          @map("iniciada_por_id")
+  finalizadaPorId   Int?          @map("finalizada_por_id")
   fechaCambio       DateTime?     @map("fecha_cambio") @db.Timestamptz(6)
   motivoCambio      String?       @map("motivo_cambio") @db.Text
-  jornadaAnteriorId String?       @unique @map("jornada_anterior_id") @db.Uuid
+  jornadaAnteriorId Int?          @unique @map("jornada_anterior_id")
   createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -758,11 +758,11 @@ model JornadaOperativa {
 }
 
 model PlanMantenimientoPreventivo {
-  id               String                @id @default(uuid()) @db.Uuid
+  id               Int                   @id @default(autoincrement())
   version          Int
   claveTarea       String                @map("clave_tarea") @db.VarChar(120)
-  busId            String?               @map("bus_id") @db.Uuid
-  modeloBusId      String?               @map("modelo_bus_id") @db.Uuid
+  busId            Int?                  @map("bus_id")
+  modeloBusId      Int?                  @map("modelo_bus_id")
   componente       String                @db.VarChar(160)
   actividad        String                @db.Text
   criterio         CriterioMantenimiento
@@ -773,7 +773,7 @@ model PlanMantenimientoPreventivo {
   prioridad        PrioridadOrden
   bloqueaAlVencer  Boolean               @map("bloquea_al_vencer")
   activo           Boolean
-  creadoPorId      String                @map("creado_por_id") @db.Uuid
+  creadoPorId      Int                   @map("creado_por_id")
   createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -790,17 +790,17 @@ model PlanMantenimientoPreventivo {
 }
 
 model CompatibilidadRepuesto {
-  id                        String   @id @default(uuid()) @db.Uuid
-  repuestoId                String   @map("repuesto_id") @db.Uuid
-  busId                     String?  @map("bus_id") @db.Uuid
-  modeloBusId               String?  @map("modelo_bus_id") @db.Uuid
+  id                        Int      @id @default(autoincrement())
+  repuestoId                Int      @map("repuesto_id")
+  busId                     Int?     @map("bus_id")
+  modeloBusId               Int?     @map("modelo_bus_id")
   version                   Int
   permitido                 Boolean
   condicionUso              String?  @map("condicion_uso") @db.Text
   especificacionesValidadas Json     @map("especificaciones_validadas") @db.JsonB
   vigente                   Boolean
   fechaDefinicion           DateTime @map("fecha_definicion") @db.Timestamptz(6)
-  definidaPorId             String   @map("definida_por_id") @db.Uuid
+  definidaPorId             Int      @map("definida_por_id")
   createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                 DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -820,7 +820,7 @@ model CompatibilidadRepuesto {
 }
 
 model AlertaInterna {
-  id                          String          @id @default(uuid()) @db.Uuid
+  id                          Int             @id @default(autoincrement())
   tipo                        TipoAlerta
   prioridad                   PrioridadAlerta
   titulo                      String          @db.VarChar(180)
@@ -828,12 +828,12 @@ model AlertaInterna {
   fechaGeneracion             DateTime        @default(now()) @map("fecha_generacion") @db.Timestamptz(6)
   claveDeduplicacion          String          @unique @map("clave_deduplicacion") @db.VarChar(255)
   contextoEvento              Json            @map("contexto_evento") @db.JsonB
-  busId                       String?         @map("bus_id") @db.Uuid
-  jornadaOperativaId          String?         @map("jornada_operativa_id") @db.Uuid
-  novedadId                   String?         @map("novedad_id") @db.Uuid
-  programacionMantenimientoId String?         @map("programacion_mantenimiento_id") @db.Uuid
-  ordenTrabajoId              String?         @map("orden_trabajo_id") @db.Uuid
-  repuestoId                  String?         @map("repuesto_id") @db.Uuid
+  busId                       Int?            @map("bus_id")
+  jornadaOperativaId          Int?            @map("jornada_operativa_id")
+  novedadId                   Int?            @map("novedad_id")
+  programacionMantenimientoId Int?            @map("programacion_mantenimiento_id")
+  ordenTrabajoId              Int?            @map("orden_trabajo_id")
+  repuestoId                  Int?            @map("repuesto_id")
   createdAt                   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
 
   bus                       Bus?                       @relation(fields: [busId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -856,9 +856,9 @@ model AlertaInterna {
 }
 
 model AlertaDestinatario {
-  id              String                   @id @default(uuid()) @db.Uuid
-  alertaInternaId String                   @map("alerta_interna_id") @db.Uuid
-  usuarioId       String                   @map("usuario_id") @db.Uuid
+  id              Int                      @id @default(autoincrement())
+  alertaInternaId Int                      @map("alerta_interna_id")
+  usuarioId       Int                      @map("usuario_id")
   estado          EstadoAlertaDestinatario
   fechaLectura    DateTime?                @map("fecha_lectura") @db.Timestamptz(6)
   fechaAtencion   DateTime?                @map("fecha_atencion") @db.Timestamptz(6)
@@ -889,9 +889,9 @@ model LimiteTasa {
 
 // Security audit trail. Domain histories remain the source for business state transitions.
 model EventoAuditoria {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          Int      @id @default(autoincrement())
   requestId   String   @map("request_id") @db.Uuid
-  actorId     String?  @map("actor_id") @db.Uuid
+  actorId     Int?     @map("actor_id")
   accion      String   @db.VarChar(180)
   metodo      String   @db.VarChar(10)
   ruta        String   @db.VarChar(255)
@@ -913,23 +913,23 @@ model EventoAuditoria {
 
 // HTTP idempotency store. This is infrastructure and does not add a domain RF.
 model SolicitudIdempotente {
-  id              String                      @id @default(uuid()) @db.Uuid
-  actorId         String                      @map("actor_id") @db.Uuid
-  metodo          String                      @db.VarChar(10)
-  rutaPlantilla   String                      @map("ruta_plantilla") @db.VarChar(255)
-  operacion       String                      @db.VarChar(280)
-  clave           String                      @db.Uuid
-  hashSolicitud   String                      @map("hash_solicitud") @db.Char(64)
-  estado          EstadoSolicitudIdempotente  @default(EN_PROCESO)
-  statusHttp      Int?                        @map("status_http") @db.SmallInt
-  respuestaSegura Json?                       @map("respuesta_segura") @db.JsonB
-  recursoTipo     String?                     @map("recurso_tipo") @db.VarChar(100)
-  recursoId       String?                     @map("recurso_id") @db.VarChar(120)
-  requestId       String                      @map("request_id") @db.Uuid
-  expiraAt        DateTime                    @map("expira_at") @db.Timestamptz(6)
-  completadaAt    DateTime?                   @map("completada_at") @db.Timestamptz(6)
-  createdAt       DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id              Int                        @id @default(autoincrement())
+  actorId         Int                        @map("actor_id")
+  metodo          String                     @db.VarChar(10)
+  rutaPlantilla   String                     @map("ruta_plantilla") @db.VarChar(255)
+  operacion       String                     @db.VarChar(280)
+  clave           String                     @db.Uuid
+  hashSolicitud   String                     @map("hash_solicitud") @db.Char(64)
+  estado          EstadoSolicitudIdempotente @default(EN_PROCESO)
+  statusHttp      Int?                       @map("status_http") @db.SmallInt
+  respuestaSegura Json?                      @map("respuesta_segura") @db.JsonB
+  recursoTipo     String?                    @map("recurso_tipo") @db.VarChar(100)
+  recursoId       String?                    @map("recurso_id") @db.VarChar(120)
+  requestId       String                     @map("request_id") @db.Uuid
+  expiraAt        DateTime                   @map("expira_at") @db.Timestamptz(6)
+  completadaAt    DateTime?                  @map("completada_at") @db.Timestamptz(6)
+  createdAt       DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   actor Usuario @relation(fields: [actorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 

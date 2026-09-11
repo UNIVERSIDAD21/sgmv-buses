@@ -171,7 +171,7 @@ function ScheduleFormDialog({
   )
   const [tipo, setTipo] = useState(initial?.tipo ?? '')
   const [validationError, setValidationError] = useState<string | null>(null)
-  const selectedBus = buses.find((bus) => bus.id === busId) ?? initial?.bus ?? null
+  const selectedBus = buses.find((bus) => bus.id === Number(busId)) ?? initial?.bus ?? null
   const requiresDate = criterio === 'FECHA' || criterio === 'FECHA_KILOMETRAJE'
   const requiresMileage = criterio === 'KILOMETRAJE' || criterio === 'FECHA_KILOMETRAJE'
   const title = initial ? 'Reprogramar mantenimiento' : 'Crear programacion preventiva'
@@ -214,7 +214,7 @@ function ScheduleFormDialog({
     }
 
     onSubmit({
-      ...(initial ? {} : { busId }),
+      ...(initial ? {} : { busId: Number(busId) }),
       ...(initial ? { activa } : {}),
       actividad: normalizedActividad,
       criterio,
@@ -586,7 +586,7 @@ export default function PreventivePage() {
     const [summaryData, schedules, busData] = await Promise.all([
       getPreventiveSummary(),
       listPreventiveSchedules({
-        busId,
+        busId: Number(busId),
         busqueda,
         criterio,
         direccion,
@@ -621,7 +621,7 @@ export default function PreventivePage() {
         const [summaryData, schedules, busData] = await Promise.all([
           getPreventiveSummary(),
           listPreventiveSchedules({
-            busId,
+            busId: Number(busId),
             busqueda,
             criterio,
             direccion,
@@ -669,7 +669,7 @@ export default function PreventivePage() {
     }`
   }, [listData])
 
-  async function openDetail(programacionId: string) {
+  async function openDetail(programacionId: number) {
     setLoadError(null)
 
     try {
@@ -681,7 +681,7 @@ export default function PreventivePage() {
     }
   }
 
-  async function refreshSelected(programacionId: string) {
+  async function refreshSelected(programacionId: number) {
     const data = await getPreventiveSchedule(programacionId)
     setSelectedSchedule(data.programacion)
   }

@@ -99,7 +99,7 @@ export default function AlertsPage() {
   const [inbox, setInbox] = useState<AlertInboxDto | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [mutatingId, setMutatingId] = useState<string | null>(null)
+  const [mutatingId, setMutatingId] = useState<number | null>(null)
   const navigate = useNavigate()
 
   const load = useCallback(async () => {

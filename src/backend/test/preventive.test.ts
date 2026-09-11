@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { createHmac, randomUUID } from 'node:crypto'
 
 import { PrismaClient, type Prisma, type Rol } from '@prisma/client'
@@ -51,12 +52,12 @@ const created = {
 
 interface PreventiveFixture {
   adminEmail: string
-  adminId: string
+  adminId: number
   conductorEmail: string
-  conductorId: string
+  conductorId: number
   inactiveAdminEmail: string
   mecanicoEmail: string
-  mecanicoId: string
+  mecanicoId: number
 }
 
 function shortCode() {
@@ -113,7 +114,7 @@ async function ensureRoles() {
 }
 
 async function createUser(email: string, role: Rol, estado: 'ACTIVO' | 'INACTIVO' = 'ACTIVO') {
-  const id = randomUUID()
+  const id = testEntityId()
   created.usuarios.push(id)
 
   return prisma.usuario.create({
@@ -152,7 +153,7 @@ async function createFixture(): Promise<PreventiveFixture> {
 }
 
 async function createBus(overrides: Partial<Prisma.BusCreateInput> = {}) {
-  const id = randomUUID()
+  const id = testEntityId()
   created.buses.push(id)
 
   return prisma.bus.create({
@@ -170,11 +171,11 @@ async function createBus(overrides: Partial<Prisma.BusCreateInput> = {}) {
 }
 
 async function createSchedule(
-  busId: string,
-  adminId: string,
+  busId: number,
+  adminId: number,
   overrides: Partial<Prisma.ProgramacionMantenimientoUncheckedCreateInput> = {},
 ) {
-  const id = randomUUID()
+  const id = testEntityId()
   created.programaciones.push(id)
 
   return prisma.programacionMantenimiento.create({
@@ -199,7 +200,7 @@ async function loginAgent(email: string) {
   return agent
 }
 
-function createTokenWithRole(userId: string, email: string, rol: string, expiresInSeconds: number) {
+function createTokenWithRole(userId: number, email: string, rol: string, expiresInSeconds: number) {
   if (!env.JWT_SECRET) {
     throw new Error('JWT_SECRET test configuration is missing')
   }
@@ -500,7 +501,7 @@ describe('RF-03 Preventive maintenance API', () => {
       .post('/mantenimiento-preventivo/programaciones')
       .send({
         actividad: 'Programacion con bus inexistente',
-        busId: randomUUID(),
+        busId: testEntityId(),
         criterio: 'KILOMETRAJE',
         kilometrajeObjetivo: 12000,
         tipo: 'Revision',
@@ -622,7 +623,7 @@ describe('RF-03 Preventive maintenance API', () => {
     expect(summary.body.data.estados.PROXIMO).toBeGreaterThanOrEqual(1)
     expect(summary.body.data.umbrales).toEqual({ dias: 7, kilometros: 500 })
 
-    await admin.get(`/mantenimiento-preventivo/programaciones/${randomUUID()}`).expect(404)
+    await admin.get(`/mantenimiento-preventivo/programaciones/${testEntityId()}`).expect(404)
   }, 60000)
 
   it('updates only allowed schedule fields and recalculates classification from the server', async () => {
@@ -648,7 +649,7 @@ describe('RF-03 Preventive maintenance API', () => {
     await admin
       .patch(`/mantenimiento-preventivo/programaciones/${schedule.id}`)
       .send({
-        busId: randomUUID(),
+        busId: testEntityId(),
         creadaPorId: fixture.conductorId,
       })
       .expect(400)
@@ -841,7 +842,7 @@ describe('RF-03 Preventive maintenance API', () => {
     const fakeAdmin: AuthenticatedUser = {
       email: 'fake-admin@test.sgmv.local',
       estado: 'ACTIVO',
-      id: randomUUID(),
+      id: testEntityId(),
       nombre: 'Fake Admin',
       rol: {
         codigo: 'ADMINISTRADOR',

@@ -148,7 +148,7 @@ export class FleetCatalogService {
     }
   }
 
-  async getModeloBus(id: string, actor: AuthenticatedUser) {
+  async getModeloBus(id: number, actor: AuthenticatedUser) {
     ensureAdminOrDispatcher(actor)
     const modelo = await this.repository.findModeloBusById(id)
 
@@ -161,7 +161,7 @@ export class FleetCatalogService {
     }
   }
 
-  async getRuta(id: string, actor: AuthenticatedUser) {
+  async getRuta(id: number, actor: AuthenticatedUser) {
     ensureAdminOrDispatcher(actor)
     const ruta = await this.repository.findRutaById(id)
 
@@ -209,7 +209,7 @@ export class FleetCatalogService {
     return { rutas: rutas.map(mapRuta) }
   }
 
-  async setModeloBusActive(id: string, activo: boolean, actor: AuthenticatedUser) {
+  async setModeloBusActive(id: number, activo: boolean, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
     try {
@@ -228,7 +228,7 @@ export class FleetCatalogService {
     }
   }
 
-  async setRutaActive(id: string, activa: boolean, actor: AuthenticatedUser) {
+  async setRutaActive(id: number, activa: boolean, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
     try {
@@ -247,7 +247,7 @@ export class FleetCatalogService {
     }
   }
 
-  async updateModeloBus(id: string, input: UpdateModeloBusInput, actor: AuthenticatedUser) {
+  async updateModeloBus(id: number, input: UpdateModeloBusInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
     const data: Prisma.ModeloBusUpdateInput = {}
 
@@ -268,7 +268,7 @@ export class FleetCatalogService {
     }
   }
 
-  async updateRuta(id: string, input: UpdateRutaInput, actor: AuthenticatedUser) {
+  async updateRuta(id: number, input: UpdateRutaInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
     const data: Prisma.RutaUpdateInput = {}
 

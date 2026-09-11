@@ -85,7 +85,7 @@ export class AuthService {
     }
   }
 
-  async getSessionUser(userId: string) {
+  async getSessionUser(userId: number) {
     const user = await this.authRepository.findByIdForSession(userId)
 
     if (!user || user.estado !== 'ACTIVO') {

@@ -87,7 +87,7 @@ describe('RF-03 preventive maintenance frontend', () => {
       name: /Crear programacion preventiva/i,
     })
 
-    fireEvent.change(within(dateDialog).getByLabelText(/^Bus$/i), { target: { value: 'bus-1' } })
+    fireEvent.change(within(dateDialog).getByLabelText(/^Bus$/i), { target: { value: '2006' } })
     fireEvent.change(within(dateDialog).getByLabelText(/^Tipo$/i), {
       target: { value: 'Revision mensual' },
     })
@@ -109,7 +109,7 @@ describe('RF-03 preventive maintenance frontend', () => {
       name: /Crear programacion preventiva/i,
     })
     fireEvent.change(within(mileageDialog).getByLabelText(/^Bus$/i), {
-      target: { value: 'bus-1' },
+      target: { value: '2006' },
     })
     fireEvent.change(within(mileageDialog).getByLabelText(/^Criterio$/i), {
       target: { value: 'KILOMETRAJE' },
@@ -132,7 +132,7 @@ describe('RF-03 preventive maintenance frontend', () => {
       name: /Crear programacion preventiva/i,
     })
     fireEvent.change(within(combinedDialog).getByLabelText(/^Bus$/i), {
-      target: { value: 'bus-1' },
+      target: { value: '2006' },
     })
     fireEvent.change(within(combinedDialog).getByLabelText(/^Criterio$/i), {
       target: { value: 'FECHA_KILOMETRAJE' },
@@ -206,11 +206,11 @@ describe('RF-03 preventive maintenance frontend', () => {
     expect(await screen.findByText(/Orden preventiva activa/i)).toBeInTheDocument()
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/mantenimiento-preventivo/programaciones/prev-1'),
+      expect.stringContaining('/mantenimiento-preventivo/programaciones/2056'),
       expect.objectContaining({ method: 'PATCH' }),
     )
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/mantenimiento-preventivo/programaciones/prev-1/generar-orden'),
+      expect.stringContaining('/mantenimiento-preventivo/programaciones/2056/generar-orden'),
       expect.objectContaining({ method: 'POST' }),
     )
   })
@@ -267,14 +267,14 @@ describe('RF-03 preventive maintenance frontend', () => {
       target: { value: 'Cambio preventivo de aceite del motor.' },
     })
     fireEvent.change(within(dialog).getByLabelText(/Intervalo dias/i), { target: { value: '30' } })
-    fireEvent.change(within(dialog).getByLabelText(/Bus destino/i), { target: { value: 'bus-1' } })
+    fireEvent.change(within(dialog).getByLabelText(/Bus destino/i), { target: { value: '2006' } })
     fireEvent.click(within(dialog).getByRole('button', { name: /^Crear plan$/i }))
     expect(await screen.findByText(/Plan preventivo registrado/i)).toBeInTheDocument()
     const createCall = fetchMock.mock.calls.find(
       ([input, init]) =>
         String(input).endsWith('/mantenimiento-preventivo/planes') && init?.method === 'POST',
     )
-    expect(String(createCall?.[1]?.body)).toContain('bus-1')
+    expect(String(createCall?.[1]?.body)).toContain('2006')
     expect(String(createCall?.[1]?.body)).not.toContain('modeloBusId')
 
     fireEvent.click(screen.getByRole('button', { name: /^Aplicar$/i }))
@@ -286,7 +286,7 @@ describe('RF-03 preventive maintenance frontend', () => {
         ([input, init]) =>
           String(input).endsWith('/mantenimiento-preventivo/programaciones') &&
           init?.method === 'POST' &&
-          String(init.body).includes('"planId":"plan-1"'),
+          JSON.parse(String(init.body)).planId === 2052,
       ),
     ).toBe(true)
 

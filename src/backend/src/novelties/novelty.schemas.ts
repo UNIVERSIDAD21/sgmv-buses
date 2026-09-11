@@ -1,3 +1,4 @@
+import { entityIdSchema } from '../shared/entity-id.js'
 import { z } from 'zod'
 
 export const estadoNovedadValues = [
@@ -22,7 +23,7 @@ const optionalTrimmedText = (max = 500) =>
 const trimmedText = (min: number, max: number) => z.string().trim().min(min).max(max)
 
 export const noveltyIdParamSchema = z.object({
-  novedadId: z.uuid(),
+  novedadId: entityIdSchema,
 })
 
 export const listNoveltiesQuerySchema = z.object({

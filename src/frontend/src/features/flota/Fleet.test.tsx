@@ -97,17 +97,17 @@ describe('RF-01 fleet frontend', () => {
     expect(screen.queryByRole('button', { name: /Asignar/i })).not.toBeInTheDocument()
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/flota/buses/bus-1/kilometraje'),
+      expect.stringContaining('/flota/buses/2006/kilometraje'),
       expect.objectContaining({ method: 'POST' }),
     )
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/flota/buses/bus-1/estado'),
+      expect.stringContaining('/flota/buses/2006/estado'),
       expect.objectContaining({ method: 'POST' }),
     )
     expect(
       fetchMock.mock.calls.some(
         ([input, init]) =>
-          getPath(input) === '/flota/buses/bus-1/asignaciones' && init?.method === 'POST',
+          getPath(input) === '/flota/buses/2006/asignaciones' && init?.method === 'POST',
       ),
     ).toBe(false)
   })
@@ -195,7 +195,7 @@ describe('RF-01 fleet frontend', () => {
     fireEvent.change(screen.getByLabelText(/^Marca$/i), { target: { value: 'Mercedes' } })
     fireEvent.change(screen.getByLabelText(/^Modelo$/i), { target: { value: 'Padron' } })
     fireEvent.change(await screen.findByLabelText(/Modelo tecnico normalizado/i), {
-      target: { value: 'model-1' },
+      target: { value: '2033' },
     })
     fireEvent.change(screen.getByLabelText(/Anio/i), { target: { value: '2022' } })
     fireEvent.change(screen.getByLabelText(/Kilometraje actual/i), { target: { value: '1000' } })
@@ -205,14 +205,14 @@ describe('RF-01 fleet frontend', () => {
     const createCall = fetchMock.mock.calls.find(
       ([input, init]) => getPath(input) === '/flota/buses' && init?.method === 'POST',
     )
-    expect(JSON.parse(String(createCall?.[1]?.body))).toMatchObject({ modeloBusId: 'model-1' })
+    expect(JSON.parse(String(createCall?.[1]?.body))).toMatchObject({ modeloBusId: 2033 })
 
     fireEvent.click(screen.getByRole('button', { name: /Guardar/i }))
     expect(await screen.findByText(/La placa ya esta registrada/i)).toBeInTheDocument()
   })
 
   it('edits a bus through the real PATCH endpoint', async () => {
-    window.history.pushState({}, '', '/flota/bus-1/editar')
+    window.history.pushState({}, '', '/flota/2006/editar')
     const fetchMock = mockApi(fleetHandler())
 
     render(<App />)
@@ -223,7 +223,7 @@ describe('RF-01 fleet frontend', () => {
 
     expect(await screen.findByText(/Bus actualizado/i)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/flota/buses/bus-1'),
+      expect.stringContaining('/flota/buses/2006'),
       expect.objectContaining({ method: 'PATCH' }),
     )
   })

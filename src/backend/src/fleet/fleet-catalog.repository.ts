@@ -30,11 +30,11 @@ export class FleetCatalogRepository {
     return prisma.ruta.create({ data, include: rutaInclude })
   }
 
-  findModeloBusById(id: string) {
+  findModeloBusById(id: number) {
     return prisma.modeloBus.findUnique({ where: { id }, include: modeloBusInclude })
   }
 
-  findRutaById(id: string) {
+  findRutaById(id: number) {
     return prisma.ruta.findUnique({ where: { id }, include: rutaInclude })
   }
 
@@ -54,7 +54,7 @@ export class FleetCatalogRepository {
     })
   }
 
-  setModeloBusActive(id: string, activo: boolean) {
+  setModeloBusActive(id: number, activo: boolean) {
     return prisma.modeloBus.update({
       where: { id },
       data: { activo },
@@ -62,7 +62,7 @@ export class FleetCatalogRepository {
     })
   }
 
-  setRutaActive(id: string, activa: boolean) {
+  setRutaActive(id: number, activa: boolean) {
     return prisma.ruta.update({
       where: { id },
       data: { activa },
@@ -70,11 +70,11 @@ export class FleetCatalogRepository {
     })
   }
 
-  updateModeloBus(id: string, data: Prisma.ModeloBusUpdateInput) {
+  updateModeloBus(id: number, data: Prisma.ModeloBusUpdateInput) {
     return prisma.modeloBus.update({ where: { id }, data, include: modeloBusInclude })
   }
 
-  updateRuta(id: string, data: Prisma.RutaUpdateInput) {
+  updateRuta(id: number, data: Prisma.RutaUpdateInput) {
     return prisma.ruta.update({ where: { id }, data, include: rutaInclude })
   }
 }

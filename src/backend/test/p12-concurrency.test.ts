@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { PrismaClient } from '@prisma/client'
@@ -12,8 +13,8 @@ import { hashIdempotentPayload } from '../src/idempotency/idempotency.service.js
 
 const prisma = new PrismaClient()
 const password = 'P12-concurrency-test-123'
-let actorId = ''
-let roleId = ''
+let actorId = 0
+let roleId = 0
 
 describe('P12 real PostgreSQL concurrency', () => {
   beforeAll(async () => {
@@ -23,12 +24,12 @@ describe('P12 real PostgreSQL concurrency', () => {
       create: { codigo: 'ADMINISTRADOR', nombre: 'Administrador' },
     })
     roleId = role.id
-    actorId = randomUUID()
+    actorId = testEntityId()
 
     await prisma.usuario.create({
       data: {
         contrasenaHash: await hash(password, 10),
-        email: `p12-concurrency-${actorId.slice(0, 8)}@test.sgmv.local`,
+        email: `p12-concurrency-${actorId}@test.sgmv.local`,
         id: actorId,
         nombre: 'Actor P12 concurrencia',
         rolId: roleId,

@@ -8,14 +8,14 @@ import type {
 
 export interface NoveltyUserDto {
   email?: string
-  id: string
+  id: number
   nombre: string
 }
 
 export interface NoveltyBusDto {
   codigoInterno: string
   estadoOperativo: string
-  id: string
+  id: number
   placa: string
 }
 
@@ -24,7 +24,7 @@ export interface WorkOrderSummaryDto {
   descripcion?: string
   estado: EstadoOrdenTrabajo
   fechaCreacion: string
-  id: string
+  id: number
   origen: 'NOVEDAD'
   prioridad: PrioridadOrden
   tipo: 'CORRECTIVA'
@@ -33,12 +33,12 @@ export interface WorkOrderSummaryDto {
 export interface NoveltyJourneyDto {
   estado: EstadoJornada
   finReal: string | null
-  id: string
+  id: number
   inicioReal: string | null
   ruta: {
     codigo: string
     destino: string
-    id: string
+    id: number
     nombre: string
     origen: string
   } | null
@@ -46,7 +46,7 @@ export interface NoveltyJourneyDto {
 
 export interface NoveltyReadingDto {
   fechaLectura: string
-  id: string
+  id: number
   kilometraje: number
   kilometrajeAnterior: number
   tipo: 'NOVEDAD'
@@ -69,7 +69,7 @@ export interface NoveltyDto {
   fechaOcurrencia: string | null
   fechaReporte: string
   fechaRevision: string | null
-  id: string
+  id: number
   jornada: NoveltyJourneyDto | null
   lecturaKilometraje: NoveltyReadingDto | null
   observacionRevision: string | null

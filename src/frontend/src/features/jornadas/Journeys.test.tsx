@@ -24,13 +24,13 @@ describe('P4 journey frontend', () => {
       (await screen.findAllByRole('heading', { name: /Jornadas operativas/i })).length,
     ).toBeGreaterThan(0)
     fireEvent.change(await screen.findByLabelText(/Bus de jornada/i), {
-      target: { value: 'bus-journey-1' },
+      target: { value: '2007' },
     })
     fireEvent.change(screen.getByLabelText(/Conductor de jornada/i), {
-      target: { value: 'user-conductor' },
+      target: { value: '2071' },
     })
     fireEvent.change(screen.getByLabelText(/Ruta de jornada/i), {
-      target: { value: 'route-1' },
+      target: { value: '2065' },
     })
     fireEvent.click(screen.getByRole('button', { name: /Programar jornada/i }))
 
@@ -40,9 +40,9 @@ describe('P4 journey frontend', () => {
     )
     const body = JSON.parse(String(createCall?.[1]?.body))
     expect(body).toMatchObject({
-      busId: 'bus-journey-1',
-      conductorId: 'user-conductor',
-      rutaId: 'route-1',
+      busId: 2007,
+      conductorId: 2071,
+      rutaId: 2065,
     })
     expect(body).not.toHaveProperty('programadaPorId')
     expect(body).not.toHaveProperty('estado')
@@ -61,8 +61,7 @@ describe('P4 journey frontend', () => {
     expect(await screen.findByText(/Jornada iniciada con lectura inicial/i)).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: /Finalizar jornada/i })).toBeInTheDocument()
     const startCall = fetchMock.mock.calls.find(
-      ([input, init]) =>
-        getPath(input) === '/jornadas/journey-1/iniciar' && init?.method === 'POST',
+      ([input, init]) => getPath(input) === '/jornadas/2029/iniciar' && init?.method === 'POST',
     )
     const body = JSON.parse(String(startCall?.[1]?.body))
     expect(body).toMatchObject({ kilometraje: 45000 })

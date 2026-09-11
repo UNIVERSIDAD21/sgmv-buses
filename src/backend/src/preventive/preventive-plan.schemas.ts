@@ -1,3 +1,4 @@
+import { entityIdSchema } from '../shared/entity-id.js'
 import { z } from 'zod'
 
 import { criterioMantenimientoValues, prioridadOrdenValues } from './preventive.schemas.js'
@@ -60,11 +61,11 @@ const planShape = z
     }
   })
 
-export const planIdParamSchema = z.object({ planId: z.uuid() })
+export const planIdParamSchema = z.object({ planId: entityIdSchema })
 
 export const createPreventivePlanSchema = planShape
   .extend({
-    busId: z.uuid().optional(),
+    busId: entityIdSchema.optional(),
     claveTarea: z
       .string()
       .trim()
@@ -74,7 +75,7 @@ export const createPreventivePlanSchema = planShape
         keyPattern,
         'La clave de tarea solo admite letras, números, punto, guion y guion bajo',
       ),
-    modeloBusId: z.uuid().optional(),
+    modeloBusId: entityIdSchema.optional(),
   })
   .superRefine((input, context) => {
     if ((input.busId ? 1 : 0) + (input.modeloBusId ? 1 : 0) !== 1) {
@@ -93,13 +94,13 @@ export const listPreventivePlansQuerySchema = z.object({
     .enum(['true', 'false'])
     .transform((value) => value === 'true')
     .optional(),
-  busId: z.uuid().optional(),
+  busId: entityIdSchema.optional(),
   claveTarea: z.string().trim().max(120).optional(),
   incluirHistoricos: z
     .enum(['true', 'false'])
     .transform((value) => value === 'true')
     .default(false),
-  modeloBusId: z.uuid().optional(),
+  modeloBusId: entityIdSchema.optional(),
 })
 
 export type CreatePreventivePlanInput = z.infer<typeof createPreventivePlanSchema>

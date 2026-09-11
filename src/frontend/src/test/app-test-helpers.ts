@@ -17,7 +17,7 @@ export function userForRole(role: RoleCode) {
   return {
     email: `${role.toLowerCase()}@sgmv.local`,
     estado: 'ACTIVO' as const,
-    id: `user-${role.toLowerCase()}`,
+    id: { ADMINISTRADOR: 2070, DESPACHADOR: 2072, CONDUCTOR: 2071, MECANICO: 2073 }[role],
     nombre: roleNames[role],
     rol: {
       codigo: role,
@@ -84,26 +84,26 @@ export const fleetBus = {
       activa: true,
       asignadoPor: {
         email: 'admin@sgmv.local',
-        id: 'admin-1',
+        id: 2002,
         nombre: 'Administrador Uno',
         telefono: null,
       },
       conductor: {
         email: 'driver@sgmv.local',
-        id: 'driver-1',
+        id: 2011,
         nombre: 'Conductor Uno',
         telefono: null,
       },
       fechaFin: null,
       fechaInicio: '2026-08-27T10:00:00.000Z',
-      id: 'assign-1',
+      id: 2004,
       motivo: 'Asignacion de prueba',
     },
   ],
   codigoInterno: 'BUS-001',
   conductorAsignado: {
     email: 'driver@sgmv.local',
-    id: 'driver-1',
+    id: 2011,
     nombre: 'Conductor Uno',
     telefono: null,
   },
@@ -112,29 +112,29 @@ export const fleetBus = {
     {
       cambiadoPor: {
         email: 'admin@sgmv.local',
-        id: 'admin-1',
+        id: 2002,
         nombre: 'Administrador Uno',
         telefono: null,
       },
       estadoAnterior: null,
       estadoNuevo: 'OPERATIVO',
       fechaCambio: '2026-08-27T09:00:00.000Z',
-      id: 'state-1',
+      id: 2067,
       motivo: 'Registro inicial',
     },
   ],
-  id: 'bus-1',
+  id: 2006,
   kilometrajeActual: 11000,
   lecturasKilometraje: [
     {
       fechaRegistro: '2026-08-27T11:00:00.000Z',
-      id: 'km-1',
+      id: 2032,
       kilometrajeAnterior: 10000,
       kilometrajeNuevo: 11000,
       motivo: 'Lectura de prueba',
       registradoPor: {
         email: 'admin@sgmv.local',
-        id: 'admin-1',
+        id: 2002,
         nombre: 'Administrador Uno',
         telefono: null,
       },
@@ -144,7 +144,7 @@ export const fleetBus = {
   modelo: 'Padron',
   modeloBus: {
     activo: true,
-    id: 'model-1',
+    id: 2033,
     marca: 'Mercedes-Benz',
     nombreModelo: 'OF-1721',
     versionTecnica: 'Euro V',
@@ -158,7 +158,7 @@ export const catalogModel = {
   busesAsociados: 1,
   createdAt: '2026-09-04T12:00:00.000Z',
   especificaciones: { combustible: 'Diesel' },
-  id: 'model-1',
+  id: 2033,
   marca: 'Mercedes-Benz',
   nombreModelo: 'OF-1721',
   updatedAt: '2026-09-04T12:00:00.000Z',
@@ -170,7 +170,7 @@ export const catalogRoute = {
   codigo: 'RUTA-CENTRO-NORTE',
   createdAt: '2026-09-04T12:00:00.000Z',
   destino: 'Terminal Norte',
-  id: 'route-1',
+  id: 2065,
   jornadasAsociadas: 0,
   nombre: 'Centro - Norte',
   origen: 'Patio Central',
@@ -220,23 +220,19 @@ export function journeyFixture(
     bus: {
       codigoInterno: 'BUS-JORNADA-01',
       estadoOperativo: 'OPERATIVO',
-      id: 'bus-journey-1',
+      id: 2007,
       placa: 'JOR001',
     },
     cambioPor: null,
     causasDisponibilidad: [],
-    conductor: { id: 'user-conductor', nombre: 'Conductor', rol: 'CONDUCTOR' },
+    conductor: { id: 2071, nombre: 'Conductor', rol: 'CONDUCTOR' },
     estado: status,
     fechaCambio: null,
     finProgramado: '2026-09-06T22:00:00.000Z',
     finReal: finished ? '2026-09-06T21:45:00.000Z' : null,
-    finalizadaPor: finished
-      ? { id: 'user-conductor', nombre: 'Conductor', rol: 'CONDUCTOR' }
-      : null,
-    id: 'journey-1',
-    iniciadaPor: inProgress
-      ? { id: 'user-conductor', nombre: 'Conductor', rol: 'CONDUCTOR' }
-      : null,
+    finalizadaPor: finished ? { id: 2071, nombre: 'Conductor', rol: 'CONDUCTOR' } : null,
+    id: 2029,
+    iniciadaPor: inProgress ? { id: 2071, nombre: 'Conductor', rol: 'CONDUCTOR' } : null,
     inicioProgramado: '2026-09-06T14:00:00.000Z',
     inicioReal: inProgress ? '2026-09-06T14:05:00.000Z' : null,
     jornadaAnteriorId: null,
@@ -244,29 +240,29 @@ export function journeyFixture(
     lecturaFinal: finished
       ? {
           fechaLectura: '2026-09-06T21:45:00.000Z',
-          id: 'reading-end-1',
+          id: 2059,
           kilometraje: 45250,
           kilometrajeAnterior: 45000,
-          registradoPor: { id: 'user-conductor', nombre: 'Conductor', rol: 'CONDUCTOR' },
+          registradoPor: { id: 2071, nombre: 'Conductor', rol: 'CONDUCTOR' },
           tipo: 'FIN_JORNADA',
         }
       : null,
     lecturaInicial: inProgress
       ? {
           fechaLectura: '2026-09-06T14:05:00.000Z',
-          id: 'reading-start-1',
+          id: 2061,
           kilometraje: 45000,
           kilometrajeAnterior: 44900,
-          registradoPor: { id: 'user-conductor', nombre: 'Conductor', rol: 'CONDUCTOR' },
+          registradoPor: { id: 2071, nombre: 'Conductor', rol: 'CONDUCTOR' },
           tipo: 'INICIO_JORNADA',
         }
       : null,
     motivoCambio: null,
-    programadaPor: { id: 'user-despachador', nombre: 'Despachador', rol: 'DESPACHADOR' },
+    programadaPor: { id: 2072, nombre: 'Despachador', rol: 'DESPACHADOR' },
     ruta: {
       codigo: 'RUTA-01',
       destino: 'Terminal Norte',
-      id: 'route-1',
+      id: 2065,
       nombre: 'Centro - Norte',
       origen: 'Patio Central',
     },
@@ -280,17 +276,17 @@ export function journeyOptions() {
       {
         codigoInterno: 'BUS-JORNADA-01',
         estadoOperativo: 'OPERATIVO',
-        id: 'bus-journey-1',
+        id: 2007,
         kilometrajeActual: 45000,
         placa: 'JOR001',
       },
     ],
-    conductores: [{ id: 'user-conductor', nombre: 'Conductor' }],
+    conductores: [{ id: 2071, nombre: 'Conductor' }],
     rutas: [
       {
         codigo: 'RUTA-01',
         destino: 'Terminal Norte',
-        id: 'route-1',
+        id: 2065,
         nombre: 'Centro - Norte',
         origen: 'Patio Central',
       },
@@ -303,7 +299,7 @@ export const noveltyOrder = {
   descripcion: 'Orden correctiva generada desde novedad',
   estado: 'PENDIENTE_ASIGNACION',
   fechaCreacion: '2026-08-27T12:30:00.000Z',
-  id: 'order-1',
+  id: 2043,
   origen: 'NOVEDAD',
   prioridad: 'MEDIA',
   tipo: 'CORRECTIVA',
@@ -325,7 +321,7 @@ export const noveltyOne = {
   },
   clasificacion: null,
   conductor: {
-    id: 'driver-1',
+    id: 2011,
     nombre: 'Conductor Uno',
   },
   criticidad: null,
@@ -334,23 +330,23 @@ export const noveltyOne = {
   fechaOcurrencia: '2026-08-27T11:55:00.000Z',
   fechaReporte: '2026-08-27T12:00:00.000Z',
   fechaRevision: null,
-  id: 'nov-1',
+  id: 2040,
   jornada: {
     estado: 'EN_CURSO',
     finReal: null,
-    id: 'journey-1',
+    id: 2029,
     inicioReal: '2026-08-27T10:00:00.000Z',
     ruta: {
       codigo: 'RUTA-01',
       destino: 'Terminal Norte',
-      id: 'route-1',
+      id: 2065,
       nombre: 'Centro - Norte',
       origen: 'Patio Central',
     },
   },
   lecturaKilometraje: {
     fechaLectura: '2026-08-27T11:55:00.000Z',
-    id: 'reading-novelty-1',
+    id: 2060,
     kilometraje: 45010,
     kilometrajeAnterior: 45000,
     tipo: 'NOVEDAD',
@@ -376,7 +372,7 @@ export const reviewedNovelty = {
   fechaRevision: '2026-08-27T12:10:00.000Z',
   observacionRevision: 'Revisada por administrador',
   revisadaPor: {
-    id: 'admin-1',
+    id: 2002,
     nombre: 'Administrador Uno',
   },
 }
@@ -427,7 +423,7 @@ export const preventiveOrder = {
   estado: 'PENDIENTE_ASIGNACION',
   fechaCreacion: '2026-08-27T13:00:00.000Z',
   fechaObjetivoPreventivo: null,
-  id: 'order-prev-1',
+  id: 2044,
   kilometrajeObjetivoPreventivo: 11500,
   origen: 'PREVENTIVO',
   prioridad: 'MEDIA',
@@ -452,13 +448,13 @@ export const preventiveOne = {
   },
   creadaPor: {
     email: 'admin@sgmv.local',
-    id: 'admin-1',
+    id: 2002,
     nombre: 'Administrador Uno',
   },
   createdAt: '2026-08-27T12:00:00.000Z',
   criterio: 'KILOMETRAJE',
   fechaProgramada: null,
-  id: 'prev-1',
+  id: 2056,
   kilometrajeObjetivo: 11500,
   ordenActiva: null,
   plan: null,
@@ -485,7 +481,7 @@ export const preventiveVigente = {
   },
   criterio: 'FECHA',
   fechaProgramada: '2026-09-04',
-  id: 'prev-2',
+  id: 2057,
   kilometrajeObjetivo: null,
   tipo: 'Carroceria',
 }
@@ -505,13 +501,13 @@ export const preventiveVencida = {
     estado: 'VENCIDO',
     kilometrosRestantes: -100,
   },
-  id: 'prev-3',
+  id: 2058,
   kilometrajeObjetivo: 10900,
   plan: {
     anticipacionDiasEfectiva: 7,
     anticipacionKmEfectiva: 500,
     claveTarea: 'ELECTRICO.001',
-    id: 'plan-schedule-1',
+    id: 2055,
     origen: 'MODELO',
     version: 2,
   },
@@ -567,21 +563,21 @@ export function preventiveList(
 
 export const workOrderAdmin = {
   email: 'admin@sgmv.local',
-  id: 'user-administrador',
+  id: 2070,
   nombre: 'Administrador',
   telefono: null,
 }
 
 export const workOrderMechanic = {
   email: 'mecanico@sgmv.local',
-  id: 'user-mecanico',
+  id: 2073,
   nombre: 'Mecanico Uno',
   telefono: null,
 }
 
 export const workOrderMechanicAlt = {
   email: 'mecanico-alt@sgmv.local',
-  id: 'user-mecanico-alt',
+  id: 2074,
   nombre: 'Mecanico Dos',
   telefono: null,
 }
@@ -591,7 +587,7 @@ export const workOrderPart = {
   codigo: 'REP-001',
   costoUnitario: '120000.00',
   estado: 'ACTIVO',
-  id: 'rep-1',
+  id: 2064,
   nombre: 'Pastilla de freno',
   stockActual: '3.00',
   stockMinimo: '1.00',
@@ -640,7 +636,16 @@ export function workOrderStateHistory(estadoNuevo: string, estadoAnterior: strin
     estadoAnterior,
     estadoNuevo,
     fechaCambio: '2026-08-28T12:00:00.000Z',
-    id: `history-${estadoNuevo}-${estadoAnterior ?? 'inicio'}`,
+    id:
+      3000 +
+      [
+        'PENDIENTE_ASIGNACION',
+        'ASIGNADA',
+        'EN_EJECUCION',
+        'COMPLETADA_TECNICO',
+        'DEVUELTA_CORRECCION',
+        'CERRADA',
+      ].indexOf(estadoNuevo),
     observacion: estadoAnterior ? 'Transicion RF-04' : 'Orden creada',
   }
 }
@@ -697,7 +702,7 @@ export function createWorkOrderDetail(status = 'PENDIENTE_ASIGNACION') {
                     {
                       descripcion: 'Revision y ajuste tecnico',
                       fechaRegistro: '2026-08-28T12:20:00.000Z',
-                      id: 'activity-1',
+                      id: 2001,
                       registradaPor: workOrderMechanic,
                     },
                   ],
@@ -710,7 +715,7 @@ export function createWorkOrderDetail(status = 'PENDIENTE_ASIGNACION') {
                 ? '2026-08-28T12:40:00.000Z'
                 : null,
             fechaInicio: '2026-08-28T12:10:00.000Z',
-            id: 'intervention-1',
+            id: 2027,
             observaciones: 'Prueba funcional pendiente de cierre',
             tecnico: workOrderMechanic,
           },
@@ -744,16 +749,16 @@ export function createWorkOrderDetail(status = 'PENDIENTE_ASIGNACION') {
     fechaObjetivoPreventivo: null,
     historialEstados: [workOrderStateHistory('PENDIENTE_ASIGNACION')],
     historialTecnicoBus: [],
-    id: 'order-rf04-1',
+    id: 2045,
     intervenciones: interventions,
     jornadaOperativa: {
       estado: 'FINALIZADA',
       finProgramado: '2026-08-28T11:30:00.000Z',
       finReal: '2026-08-28T11:25:00.000Z',
-      id: 'journey-rf04-1',
+      id: 2031,
       inicioProgramado: '2026-08-28T08:00:00.000Z',
       inicioReal: '2026-08-28T08:05:00.000Z',
-      ruta: { codigo: 'R-01', id: 'route-1', nombre: 'Centro Norte' },
+      ruta: { codigo: 'R-01', id: 2065, nombre: 'Centro Norte' },
     },
     lecturasTecnicas: [],
     kilometrajeObjetivoPreventivo: null,
@@ -762,14 +767,14 @@ export function createWorkOrderDetail(status = 'PENDIENTE_ASIGNACION') {
       clasificacion: 'Falla mecanica',
       conductor: {
         email: 'driver@sgmv.local',
-        id: 'driver-1',
+        id: 2011,
         nombre: 'Conductor Uno',
         telefono: null,
       },
       descripcion: 'Novedad que origino la orden',
       estado: 'CONVERTIDA_A_ORDEN',
       fechaReporte: '2026-08-28T11:30:00.000Z',
-      id: 'nov-1',
+      id: 2040,
       tipo: 'Ruido en frenos',
     },
     origen: 'NOVEDAD',
@@ -904,7 +909,7 @@ export function workOrderHandler(
         ...createWorkOrderDetail('PENDIENTE_ASIGNACION'),
         codigo: 'OT-DIR-001',
         descripcion: 'Orden correctiva directa creada desde frontend',
-        id: 'order-rf04-created',
+        id: 2046,
         novedad: null,
         origen: 'CORRECTIVO_DIRECTO',
       }
@@ -912,10 +917,7 @@ export function workOrderHandler(
       return ok({ orden: decoratedOrder() })
     }
 
-    if (
-      path === '/ordenes-trabajo/order-rf04-1' ||
-      path === '/ordenes-trabajo/order-rf04-created'
-    ) {
+    if (path === '/ordenes-trabajo/2045' || path === '/ordenes-trabajo/2046') {
       return ok({ orden: decoratedOrder() })
     }
 
@@ -938,7 +940,7 @@ export function workOrderHandler(
           ...order.reasignaciones,
           {
             fechaReasignacion: '2026-08-28T12:08:00.000Z',
-            id: 'reassign-1',
+            id: 2062,
             motivo: 'Balance de carga',
             reasignadoPor: workOrderAdmin,
             tecnicoAnterior: workOrderMechanic,
@@ -962,7 +964,7 @@ export function workOrderHandler(
             diagnostico: null,
             fechaFin: null,
             fechaInicio: '2026-08-28T12:10:00.000Z',
-            id: 'intervention-1',
+            id: 2027,
             observaciones: null,
             tecnico: workOrderMechanic,
           },
@@ -985,7 +987,7 @@ export function workOrderHandler(
             diagnostico: null,
             fechaFin: null,
             fechaInicio: '2026-08-28T12:45:00.000Z',
-            id: 'intervention-2',
+            id: 2028,
             observaciones: null,
             tecnico: workOrderMechanic,
           },
@@ -1034,7 +1036,7 @@ export function workOrderHandler(
                   {
                     descripcion: payload.descripcion ?? 'Actividad registrada',
                     fechaRegistro: '2026-08-28T12:20:00.000Z',
-                    id: `activity-${intervention.actividades.length + 1}`,
+                    id: 4000 + intervention.actividades.length,
                     registradaPor: workOrderMechanic,
                   },
                 ],
@@ -1053,9 +1055,9 @@ export function workOrderHandler(
       const payload = JSON.parse(String(init.body ?? '{}')) as {
         cantidadMaxima: string
         fechaExpiracion?: string
-        intervencionId: string
+        intervencionId: number
         motivo: string
-        repuestoId: string
+        repuestoId: number
       }
       const authorization = {
         autorizadoPor: { id: workOrderAdmin.id, nombre: workOrderAdmin.nombre },
@@ -1063,7 +1065,7 @@ export function workOrderHandler(
         estado: 'VIGENTE',
         fechaAutorizacion: '2026-08-28T12:15:00.000Z',
         fechaExpiracion: payload.fechaExpiracion ?? null,
-        id: 'authorization-p8-1',
+        id: 2005,
         intervencionId: payload.intervencionId,
         motivo: payload.motivo,
         repuesto: workOrderPart,
@@ -1076,7 +1078,7 @@ export function workOrderHandler(
       return ok({ autorizacion: authorization })
     }
 
-    if (path.endsWith('/excepciones-consumo/authorization-p8-1/revocar')) {
+    if (path.endsWith('/excepciones-consumo/2005/revocar')) {
       const authorization = {
         ...order.autorizacionesExcepcion[0],
         estado: 'REVOCADA',
@@ -1095,12 +1097,12 @@ export function workOrderHandler(
             cantidad: '1.00',
             costoUnitario: '120000.00',
             fechaConsumo: '2026-08-28T12:25:00.000Z',
-            id: 'consumption-1',
+            id: 2010,
             movimientoInventario: {
               cantidad: '1.00',
               costoUnitario: '120000.00',
               fechaMovimiento: '2026-08-28T12:25:00.000Z',
-              id: 'movement-1',
+              id: 2039,
               motivo: 'Consumo asociado a orden OT-RF04-001',
               tipo: 'CONSUMO',
             },
@@ -1131,8 +1133,8 @@ export function workOrderHandler(
           ...order.lecturasTecnicas,
           {
             fechaLectura: payload.fechaEvento,
-            id: `technical-reading-${order.lecturasTecnicas.length + 1}`,
-            intervencionId: payload.tipo === 'REVISION_TECNICA' ? 'intervention-1' : null,
+            id: 5000 + order.lecturasTecnicas.length,
+            intervencionId: payload.tipo === 'REVISION_TECNICA' ? '2027' : null,
             kilometraje: payload.kilometraje,
             kilometrajeAnterior: fleetBus.kilometrajeActual,
             motivo: payload.motivo ?? null,
@@ -1196,7 +1198,7 @@ export type TestSparePart = {
   createdAt: string
   disponibilidad: 'AGOTADO' | 'BAJO' | 'DISPONIBLE' | 'INACTIVO'
   estado: 'ACTIVO' | 'INACTIVO'
-  id: string
+  id: number
   nombre: string
   stockActual: string
   stockMinimo: string
@@ -1208,11 +1210,11 @@ export type TestSparePart = {
 export type TestMovement = {
   cantidad: string
   consumo: {
-    id: string
+    id: number
     orden: {
       codigo: string
       estado: string
-      id: string
+      id: number
       origen: string
       tipo: string
     }
@@ -1220,12 +1222,12 @@ export type TestMovement = {
   costoUnitario: string | null
   direccion: 'ENTRADA' | 'SALIDA'
   fechaMovimiento: string
-  id: string
+  id: number
   motivo: string | null
   repuesto: Omit<TestSparePart, 'createdAt' | 'updatedAt'>
   responsable: {
     email: string
-    id: string
+    id: number
     nombre: string
     telefono: string | null
   }
@@ -1294,7 +1296,7 @@ export function sparePartFixture(
     costoUnitario: '45000.00',
     createdAt: '2026-08-29T09:00:00.000Z',
     estado: 'ACTIVO',
-    id: 'part-low',
+    id: 2051,
     nombre: 'Filtro de aceite',
     stockActual: '1.00',
     stockMinimo: '2.00',
@@ -1311,7 +1313,7 @@ export function sparePartMovement(part: TestSparePart, overrides: Partial<TestMo
     costoUnitario: part.costoUnitario,
     direccion: 'ENTRADA',
     fechaMovimiento: '2026-08-29T09:12:00.000Z',
-    id: `mov-${part.id}`,
+    id: 6000 + part.id,
     motivo: 'Entrada inicial RF-05',
     repuesto: movementPart(part),
     responsable: workOrderAdmin,
@@ -1355,7 +1357,7 @@ export function sparePartHandler(
   const available = sparePartFixture({
     codigo: 'REP-FRENO-001',
     costoUnitario: '120000.00',
-    id: 'part-available',
+    id: 2047,
     nombre: 'Pastilla de freno',
     stockActual: '8.00',
     stockMinimo: '2.00',
@@ -1364,7 +1366,7 @@ export function sparePartHandler(
   const empty = sparePartFixture({
     categoria: 'Lubricantes',
     codigo: 'REP-ACEITE-001',
-    id: 'part-empty',
+    id: 2049,
     nombre: 'Aceite motor',
     stockActual: '0.00',
     stockMinimo: '3.00',
@@ -1373,7 +1375,7 @@ export function sparePartHandler(
     categoria: 'Transmision',
     codigo: 'REP-BANDA-001',
     estado: 'INACTIVO',
-    id: 'part-inactive',
+    id: 2050,
     nombre: 'Banda auxiliar',
     stockActual: '3.00',
     stockMinimo: '1.00',
@@ -1387,31 +1389,31 @@ export function sparePartHandler(
         sparePartMovement(available, {
           cantidad: '2.00',
           consumo: {
-            id: 'consumo-rf04-1',
+            id: 2009,
             orden: {
               codigo: 'OT-RF04-001',
               estado: 'EN_EJECUCION',
-              id: 'order-rf04-1',
+              id: 2045,
               origen: 'NOVEDAD',
               tipo: 'CORRECTIVA',
             },
           },
           direccion: 'SALIDA',
           fechaMovimiento: '2026-08-29T10:00:00.000Z',
-          id: 'mov-consumo-rf04-1',
+          id: 2035,
           motivo: 'Consumo registrado desde RF-04',
           tipo: 'CONSUMO',
         }),
         sparePartMovement(low, {
           cantidad: '1.00',
           direccion: 'SALIDA',
-          id: 'mov-ajuste-low',
+          id: 2034,
           motivo: 'Ajuste por conteo fisico',
           tipo: 'AJUSTE_SALIDA',
         }),
         sparePartMovement(inactive, {
           cantidad: '3.00',
-          id: 'mov-inactive-entry',
+          id: 2038,
           motivo: 'Entrada antes de desactivacion',
         }),
       ]
@@ -1441,7 +1443,7 @@ export function sparePartHandler(
     return next
   }
 
-  function findPart(partId: string) {
+  function findPart(partId: number) {
     return parts.find((part) => part.id === partId)
   }
 
@@ -1518,7 +1520,7 @@ export function sparePartHandler(
         costoUnitario: fixedDecimal(Number(body.costoUnitario)),
         createdAt: '2026-08-29T10:40:00.000Z',
         estado: 'ACTIVO',
-        id: 'part-created',
+        id: 2048,
         nombre: body.nombre.trim(),
         stockActual: fixedDecimal(Number(body.stockInicial)),
         stockMinimo: fixedDecimal(Number(body.stockMinimo)),
@@ -1531,7 +1533,7 @@ export function sparePartHandler(
         Number(part.stockActual) > 0
           ? sparePartMovement(part, {
               cantidad: part.stockActual,
-              id: 'mov-created-initial',
+              id: 2036,
               motivo: 'Existencia inicial autorizada',
             })
           : null
@@ -1548,7 +1550,8 @@ export function sparePartHandler(
     )
 
     if (compatibilityMatch) {
-      const [, partId, compatibilityId] = compatibilityMatch
+      const partId = Number(compatibilityMatch[1])
+      const compatibilityId = compatibilityMatch[2] ? Number(compatibilityMatch[2]) : undefined
       const part = findPart(partId)
 
       if (!part) {
@@ -1561,10 +1564,10 @@ export function sparePartHandler(
 
       if (!compatibilityId && init?.method === 'POST') {
         const body = parseRequestBody<{
-          busId?: string
+          busId?: number
           condicionUso?: string
           especificacionesValidadas: Record<string, unknown>
-          modeloBusId?: string
+          modeloBusId?: number
           permitido: boolean
         }>(init)
         const targetRules = compatibilityRules.filter(
@@ -1578,10 +1581,10 @@ export function sparePartHandler(
           bus: body.busId ? { codigoInterno: fleetBus.codigoInterno, id: fleetBus.id } : null,
           busId: body.busId ?? null,
           condicionUso: body.condicionUso ?? null,
-          definidaPor: { id: 'user-administrador', nombre: 'Administrador' },
+          definidaPor: { id: 2070, nombre: 'Administrador' },
           especificacionesValidadas: body.especificacionesValidadas,
           fechaDefinicion: '2026-09-07T16:00:00.000Z',
-          id: `compatibility-${compatibilityRules.length + 1}`,
+          id: 7000 + compatibilityRules.length,
           modeloBus: body.modeloBusId
             ? {
                 id: catalogModel.id,
@@ -1616,7 +1619,8 @@ export function sparePartHandler(
     const partIdMatch = path.match(/^\/repuestos\/([^/]+)(?:\/([^/]+))?$/)
 
     if (partIdMatch) {
-      const [, partId, action] = partIdMatch
+      const partId = Number(partIdMatch[1])
+      const action = partIdMatch[2]
       const part = findPart(partId)
 
       if (!part) {
@@ -1689,7 +1693,7 @@ export function sparePartHandler(
         const movement = sparePartMovement(next, {
           cantidad: fixedDecimal(quantity),
           costoUnitario: next.costoUnitario,
-          id: 'mov-entry-ui',
+          id: 2037,
           motivo: body.motivo,
         })
         movements = [movement, ...movements]
@@ -1772,7 +1776,7 @@ export function fleetHandler(role: RoleCode = 'ADMINISTRADOR') {
       return ok({ bus: fleetBus })
     }
 
-    if (path === '/flota/buses/bus-1') {
+    if (path === '/flota/buses/2006') {
       if (init?.method === 'PATCH') {
         return ok({ bus: { ...fleetBus, marca: 'Volvo' } })
       }
@@ -1780,15 +1784,15 @@ export function fleetHandler(role: RoleCode = 'ADMINISTRADOR') {
       return ok({ bus: fleetBus })
     }
 
-    if (path === '/flota/buses/bus-1/kilometraje') {
+    if (path === '/flota/buses/2006/kilometraje') {
       return ok({ ok: true })
     }
 
-    if (path === '/flota/buses/bus-1/estado') {
+    if (path === '/flota/buses/2006/estado') {
       return ok({ ok: true })
     }
 
-    if (path === '/flota/buses/bus-1/asignaciones') {
+    if (path === '/flota/buses/2006/asignaciones') {
       return ok({ ok: true })
     }
 
@@ -1798,7 +1802,7 @@ export function fleetHandler(role: RoleCode = 'ADMINISTRADOR') {
           {
             asignacionActiva: null,
             email: 'driver-two@sgmv.local',
-            id: 'driver-2',
+            id: 2012,
             nombre: 'Conductor Dos',
             telefono: null,
           },
@@ -1860,15 +1864,15 @@ export function journeyHandler(
     if (path === '/jornadas' && init?.method === 'POST') {
       return ok({ jornada: journeyFixture('PROGRAMADA') })
     }
-    if (path === '/jornadas/journey-1/iniciar' && init?.method === 'POST') {
+    if (path === '/jornadas/2029/iniciar' && init?.method === 'POST') {
       currentStatus = 'EN_CURSO'
       return ok({ jornada: journeyFixture(currentStatus) })
     }
-    if (path === '/jornadas/journey-1/finalizar' && init?.method === 'POST') {
+    if (path === '/jornadas/2029/finalizar' && init?.method === 'POST') {
       currentStatus = 'FINALIZADA'
       return ok({ jornada: journeyFixture(currentStatus) })
     }
-    if (path === '/jornadas/journey-1/cancelar' && init?.method === 'POST') {
+    if (path === '/jornadas/2029/cancelar' && init?.method === 'POST') {
       return ok({
         jornada: {
           ...journeyFixture('CANCELADA'),
@@ -1881,13 +1885,13 @@ export function journeyHandler(
         },
       })
     }
-    if (path === '/jornadas/journey-1/reasignar' && init?.method === 'POST') {
+    if (path === '/jornadas/2029/reasignar' && init?.method === 'POST') {
       return ok({
         jornadaAnterior: journeyFixture('REASIGNADA'),
         jornadaSucesora: {
           ...journeyFixture('PROGRAMADA'),
-          id: 'journey-2',
-          jornadaAnteriorId: 'journey-1',
+          id: 2030,
+          jornadaAnteriorId: 2029,
         },
       })
     }
@@ -1926,7 +1930,7 @@ export function noveltyHandler(
       return ok(noveltyList(options.empty ? [] : [converted ? convertedNovelty : noveltyOne], 2))
     }
 
-    if (path === '/novedades/mis-novedades/nov-1') {
+    if (path === '/novedades/mis-novedades/2040') {
       return ok({ novedad: converted ? convertedNovelty : noveltyOne })
     }
 
@@ -1942,16 +1946,16 @@ export function noveltyHandler(
       return ok(noveltyList(options.empty ? [] : [converted ? convertedNovelty : noveltyOne], 2))
     }
 
-    if (path === '/novedades/nov-1' && !init?.method) {
+    if (path === '/novedades/2040' && !init?.method) {
       return ok({ novedad: converted ? convertedNovelty : reviewed ? reviewedNovelty : noveltyOne })
     }
 
-    if (path === '/novedades/nov-1/revision' && init?.method === 'POST') {
+    if (path === '/novedades/2040/revision' && init?.method === 'POST') {
       reviewed = true
       return ok({ novedad: reviewedNovelty })
     }
 
-    if (path === '/novedades/nov-1/convertir-orden' && init?.method === 'POST') {
+    if (path === '/novedades/2040/convertir-orden' && init?.method === 'POST') {
       converted = true
       return ok({ novedad: convertedNovelty, orden: noveltyOrder, yaExistia: false })
     }
@@ -1997,7 +2001,7 @@ export function preventiveHandler(
           {
             activo: true,
             busesAsociados: 1,
-            id: 'model-1',
+            id: 2033,
             marca: 'Volvo',
             nombreModelo: 'B340',
             updatedAt: '2026-09-01T00:00:00.000Z',
@@ -2018,8 +2022,8 @@ export function preventiveHandler(
             claveTarea: 'FRENOS.001',
             componente: 'Frenos',
             criterio: 'FECHA',
-            destino: { busId: 'bus-1', tipo: 'BUS' },
-            id: 'plan-1',
+            destino: { busId: 2006, tipo: 'BUS' },
+            id: 2052,
             intervaloDias: 30,
             intervaloKm: null,
             prioridad: 'MEDIA',
@@ -2030,13 +2034,13 @@ export function preventiveHandler(
       })
     }
     if (path === '/mantenimiento-preventivo/planes' && init?.method === 'POST')
-      return ok({ plan: { id: 'plan-new' } })
-    if (path === '/mantenimiento-preventivo/planes/plan-1' && !init?.method)
+      return ok({ plan: { id: 2054 } })
+    if (path === '/mantenimiento-preventivo/planes/2052' && !init?.method)
       return ok({
         plan: {
           activa: true,
           claveTarea: 'FRENOS.001',
-          id: 'plan-1',
+          id: 2052,
           version: 1,
         },
         versiones: [
@@ -2049,8 +2053,8 @@ export function preventiveHandler(
             claveTarea: 'FRENOS.001',
             componente: 'Frenos',
             criterio: 'FECHA',
-            destino: { busId: 'bus-1', tipo: 'BUS' },
-            id: 'plan-1',
+            destino: { busId: 2006, tipo: 'BUS' },
+            id: 2052,
             intervaloDias: 30,
             intervaloKm: null,
             prioridad: 'MEDIA',
@@ -2059,20 +2063,20 @@ export function preventiveHandler(
           },
         ],
       })
-    if (path === '/mantenimiento-preventivo/planes/plan-1/versiones' && init?.method === 'POST')
-      return ok({ plan: { id: 'plan-2' } })
-    if (path === '/mantenimiento-preventivo/planes/plan-1/desactivar' && init?.method === 'POST')
-      return ok({ plan: { id: 'plan-1', activa: false } })
+    if (path === '/mantenimiento-preventivo/planes/2052/versiones' && init?.method === 'POST')
+      return ok({ plan: { id: 2053 } })
+    if (path === '/mantenimiento-preventivo/planes/2052/desactivar' && init?.method === 'POST')
+      return ok({ plan: { id: 2052, activa: false } })
     if (path === '/mantenimiento-preventivo/restricciones') {
       return ok({
         evaluadoAt: '2026-09-06T00:00:00.000Z',
         restricciones: [
           {
             bloqueaDespacho: true,
-            bus: { codigoInterno: 'ABC123', id: 'bus-1' },
+            bus: { codigoInterno: 'ABC123', id: 2006 },
             estado: 'VENCIDO',
             objetivos: { fecha: '2026-09-01', kilometraje: null },
-            programacionId: 'prev-1',
+            programacionId: 2056,
             restantes: { dias: -5, kilometros: null },
             restriccion: 'PREVENTIVO_VENCIDO_BLOQUEANTE',
           },
@@ -2103,25 +2107,25 @@ export function preventiveHandler(
     }
 
     if (path === '/mantenimiento-preventivo/programaciones' && init?.method === 'POST') {
-      const body = JSON.parse(String(init.body)) as { planId?: string }
+      const body = JSON.parse(String(init.body)) as { planId?: number }
       return body.planId
         ? ok({ programacion: preventiveVencida, yaExistia: false })
         : ok({ programacion: preventiveVigente })
     }
 
-    if (path === '/mantenimiento-preventivo/programaciones/prev-1' && !init?.method) {
+    if (path === '/mantenimiento-preventivo/programaciones/2056' && !init?.method) {
       return ok({
         programacion: generated ? preventiveWithOrder : updated ? preventiveUpdated : preventiveOne,
       })
     }
 
-    if (path === '/mantenimiento-preventivo/programaciones/prev-1' && init?.method === 'PATCH') {
+    if (path === '/mantenimiento-preventivo/programaciones/2056' && init?.method === 'PATCH') {
       updated = true
       return ok({ programacion: preventiveUpdated })
     }
 
     if (
-      path === '/mantenimiento-preventivo/programaciones/prev-1/generar-orden' &&
+      path === '/mantenimiento-preventivo/programaciones/2056/generar-orden' &&
       init?.method === 'POST'
     ) {
       generated = true
@@ -2161,19 +2165,19 @@ export function fleetCatalogHandler(
       return ok({ modeloBus: model })
     }
 
-    if (path === '/flota/modelos-bus/model-1') {
+    if (path === '/flota/modelos-bus/2033') {
       if (init?.method === 'PATCH') {
         model = { ...model, nombreModelo: 'OF-1722' }
       }
       return ok({ modeloBus: model })
     }
 
-    if (path === '/flota/modelos-bus/model-1/desactivar') {
+    if (path === '/flota/modelos-bus/2033/desactivar') {
       model = { ...model, activo: false }
       return ok({ modeloBus: model })
     }
 
-    if (path === '/flota/modelos-bus/model-1/activar') {
+    if (path === '/flota/modelos-bus/2033/activar') {
       model = { ...model, activo: true }
       return ok({ modeloBus: model })
     }
@@ -2182,17 +2186,17 @@ export function fleetCatalogHandler(
       return ok({ ruta: route })
     }
 
-    if (path === '/flota/rutas/route-1' && init?.method === 'PATCH') {
+    if (path === '/flota/rutas/2065' && init?.method === 'PATCH') {
       route = { ...route, destino: 'Terminal Sur' }
       return ok({ ruta: route })
     }
 
-    if (path === '/flota/rutas/route-1/desactivar') {
+    if (path === '/flota/rutas/2065/desactivar') {
       route = { ...route, activa: false }
       return ok({ ruta: route })
     }
 
-    if (path === '/flota/rutas/route-1/activar') {
+    if (path === '/flota/rutas/2065/activar') {
       route = { ...route, activa: true }
       return ok({ ruta: route })
     }
@@ -2206,7 +2210,7 @@ export const historyBus = {
   codigoInterno: 'BUS-RF06-001',
   costoAcumulado: '185000.00',
   estadoOperativo: 'OPERATIVO',
-  id: 'history-bus-1',
+  id: 2015,
   kilometrajeActual: 48000,
   marca: 'Mercedes-Benz',
   modelo: 'O500',
@@ -2245,7 +2249,7 @@ export function historyDetail(role: RoleCode) {
       {
         ...(isAdmin ? {} : { estado: 'NO_LEIDA' }),
         fechaGeneracion: '2026-08-10T09:05:00.000Z',
-        id: 'history-alert-1',
+        id: 2013,
         prioridad: 'ALTA',
         tipo: 'NOVEDAD_CRITICA',
         titulo: 'Novedad crítica reportada',
@@ -2259,7 +2263,7 @@ export function historyDetail(role: RoleCode) {
             conductor: 'Conductor Uno',
             fechaFin: null,
             fechaInicio: '2026-08-01T10:00:00.000Z',
-            id: 'history-assignment-1',
+            id: 2014,
             motivo: 'Ruta principal',
           },
         ]
@@ -2282,7 +2286,7 @@ export function historyDetail(role: RoleCode) {
             estadoAnterior: 'EN_MANTENIMIENTO',
             estadoNuevo: 'OPERATIVO',
             fechaCambio: '2026-08-12T18:00:00.000Z',
-            id: 'history-state-1',
+            id: 2026,
             motivo: 'Mantenimiento finalizado',
           },
         ],
@@ -2290,7 +2294,7 @@ export function historyDetail(role: RoleCode) {
       ? [
           {
             fechaRegistro: '2026-08-12T18:00:00.000Z',
-            id: 'history-mileage-1',
+            id: 2019,
             kilometrajeAnterior: 47500,
             kilometrajeNuevo: 48000,
             motivo: 'Cierre de ruta',
@@ -2304,19 +2308,19 @@ export function historyDetail(role: RoleCode) {
         estado: 'FINALIZADA',
         finReal: '2026-08-12T18:00:00.000Z',
         finProgramado: '2026-08-12T17:00:00.000Z',
-        id: 'history-journey-1',
+        id: 2016,
         inicioReal: '2026-08-10T07:00:00.000Z',
         inicioProgramado: '2026-08-10T07:00:00.000Z',
         lecturas: [
           {
             fechaLectura: '2026-08-10T07:00:00.000Z',
-            id: 'history-journey-reading-1',
+            id: 2017,
             kilometraje: 47500,
             tipo: 'INICIO_JORNADA',
           },
           {
             fechaLectura: '2026-08-12T18:00:00.000Z',
-            id: 'history-journey-reading-2',
+            id: 2018,
             kilometraje: 48000,
             tipo: 'FIN_JORNADA',
           },
@@ -2330,7 +2334,7 @@ export function historyDetail(role: RoleCode) {
         actividad: 'Cambio de aceite y revisión de filtros',
         criterio: 'FECHA_KILOMETRAJE',
         fechaProgramada: '2026-09-15T00:00:00.000Z',
-        id: 'history-schedule-1',
+        id: 2025,
         kilometrajeObjetivo: 50000,
         tipo: 'Revisión 50.000 km',
       },
@@ -2343,7 +2347,7 @@ export function historyDetail(role: RoleCode) {
               descripcion: 'Vibración leve al frenar',
               estado: 'CONVERTIDA_A_ORDEN',
               fechaReporte: '2026-08-10T09:00:00.000Z',
-              id: 'history-novelty-1',
+              id: 2021,
               ...(isAdmin ? { reportadaPor: 'Conductor Uno' } : {}),
               tipo: 'Frenos',
             },
@@ -2372,7 +2376,7 @@ export function historyDetail(role: RoleCode) {
                   codigo: 'REP-RF06-001',
                   compatibilidad: {
                     evidencia: { fuente: 'fixture-frontend-p10' },
-                    reglaId: 'history-rule-1',
+                    reglaId: 2024,
                     reglaVersion: 1,
                     resultado: 'COMPATIBLE',
                   },
@@ -2381,7 +2385,7 @@ export function historyDetail(role: RoleCode) {
                   movimiento: {
                     cantidad: '2.00',
                     fechaMovimiento: '2026-08-11T12:00:00.000Z',
-                    id: 'history-movement-1',
+                    id: 2020,
                     tipo: 'CONSUMO',
                   },
                   nombre: 'Pastilla de freno',
@@ -2394,10 +2398,10 @@ export function historyDetail(role: RoleCode) {
         disponibilidadAlCierre: true,
         fechaCierre: '2026-08-12T18:00:00.000Z',
         fechaCreacion: '2026-08-10T10:00:00.000Z',
-        id: 'history-order-1',
+        id: 2022,
         jornada: {
           estado: 'FINALIZADA',
-          id: 'history-journey-1',
+          id: 2016,
           ruta: { codigo: 'R-01', nombre: 'Centro norte' },
         },
         origen: 'NOVEDAD',
@@ -2425,7 +2429,7 @@ export function historyHandler(role: RoleCode, options: { noAssignment?: boolean
           : {
               asignacion: {
                 fechaInicio: '2026-08-01T10:00:00.000Z',
-                id: 'history-assignment-1',
+                id: 2014,
               },
               historial: historyDetail(role),
             },
@@ -2461,7 +2465,7 @@ export function historyHandler(role: RoleCode, options: { noAssignment?: boolean
             estado: 'CERRADA',
             fechaCierre: '2026-08-12T18:00:00.000Z',
             fechaCreacion: '2026-08-10T10:00:00.000Z',
-            id: 'history-order-1',
+            id: 2022,
             intervenciones: 1,
             origen: 'NOVEDAD',
             repuestosConsumidos: 1,
@@ -2482,7 +2486,7 @@ export function historyHandler(role: RoleCode, options: { noAssignment?: boolean
             categoria: 'Frenos',
             codigo: 'REP-RF06-001',
             costoTotal: '185000.00',
-            id: 'history-part-1',
+            id: 2023,
             nombre: 'Pastilla de freno',
             ordenes: 1,
             unidadMedida: 'unidad',

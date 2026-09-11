@@ -1,3 +1,4 @@
+import { entityIdSchema } from '../shared/entity-id.js'
 import { z } from 'zod'
 
 import {
@@ -43,16 +44,16 @@ const decimalQuantity = z.union([z.string(), z.number()]).transform((value, cont
 })
 
 export const orderIdParamSchema = z.object({
-  ordenId: z.uuid(),
+  ordenId: entityIdSchema,
 })
 
 export const consumptionExceptionParamSchema = z.object({
-  autorizacionId: z.uuid(),
-  ordenId: z.uuid(),
+  autorizacionId: entityIdSchema,
+  ordenId: entityIdSchema,
 })
 
 export const listWorkOrdersQuerySchema = z.object({
-  busId: z.uuid().optional(),
+  busId: entityIdSchema.optional(),
   busqueda: optionalTrimmedText(120),
   direccion: z.enum(['asc', 'desc']).default('desc'),
   estado: z.enum(workOrderStateValues).optional(),
@@ -62,7 +63,7 @@ export const listWorkOrdersQuerySchema = z.object({
     .default('fechaCreacion'),
   origen: z.enum(workOrderOriginValues).optional(),
   pagina: z.coerce.number().int().min(1).default(1),
-  tecnicoId: z.uuid().optional(),
+  tecnicoId: entityIdSchema.optional(),
   tipo: z.enum(workOrderTypeValues).optional(),
 })
 
@@ -78,7 +79,7 @@ export const availablePartsQuerySchema = z.object({
 
 export const createManualWorkOrderSchema = z
   .object({
-    busId: z.uuid(),
+    busId: entityIdSchema,
     descripcion: trimmedText(10, 2000),
     prioridad: z.enum(workOrderPriorityValues).default('MEDIA'),
     tipo: z.enum(workOrderTypeValues).default('CORRECTIVA'),
@@ -88,14 +89,14 @@ export const createManualWorkOrderSchema = z
 export const assignWorkOrderSchema = z
   .object({
     observacion: optionalTrimmedText(1000),
-    tecnicoId: z.uuid(),
+    tecnicoId: entityIdSchema,
   })
   .strict()
 
 export const reassignWorkOrderSchema = z
   .object({
     motivo: trimmedText(3, 1000),
-    tecnicoId: z.uuid(),
+    tecnicoId: entityIdSchema,
   })
   .strict()
 
@@ -132,10 +133,10 @@ export const createTechnicalReadingSchema = z
 
 export const createConsumptionSchema = z
   .object({
-    autorizacionExcepcionId: z.uuid().optional(),
+    autorizacionExcepcionId: entityIdSchema.optional(),
     cantidad: decimalQuantity,
     claveIdempotencia: z.uuid(),
-    repuestoId: z.uuid(),
+    repuestoId: entityIdSchema,
   })
   .strict()
 
@@ -143,9 +144,9 @@ export const authorizeConsumptionExceptionSchema = z
   .object({
     cantidadMaxima: decimalQuantity,
     fechaExpiracion: z.coerce.date().optional(),
-    intervencionId: z.uuid(),
+    intervencionId: entityIdSchema,
     motivo: trimmedText(3, 1000),
-    repuestoId: z.uuid(),
+    repuestoId: entityIdSchema,
   })
   .strict()
 

@@ -231,9 +231,7 @@ function MovementReference({ movement }: { movement: SparePartMovementDto }) {
   return (
     <span>
       {movement.consumo.orden.codigo}
-      <span className="block text-xs text-slate-400">
-        Consumo {movement.consumo.id.slice(0, 8)}
-      </span>
+      <span className="block text-xs text-slate-400">Consumo {String(movement.consumo.id)}</span>
     </span>
   )
 }
@@ -988,7 +986,9 @@ function CompatibilityRuleForm({
     }
     setLocalError(null)
     await onSubmit({
-      ...(destination === 'BUS' ? { busId: destinationId } : { modeloBusId: destinationId }),
+      ...(destination === 'BUS'
+        ? { busId: Number(destinationId) }
+        : { modeloBusId: Number(destinationId) }),
       condicionUso: normalizeText(condition) || undefined,
       especificacionesValidadas: specifications,
       permitido: allowed,
@@ -1203,7 +1203,7 @@ export default function SparePartsPage() {
     }
   }
 
-  async function refreshSelected(partId: string) {
+  async function refreshSelected(partId: number) {
     const [detail, movements] = await Promise.all([
       getSparePart(partId),
       listSparePartMovements(partId, {
@@ -1219,7 +1219,7 @@ export default function SparePartsPage() {
     setCompatibilityRules((await listCompatibilityRules(partId)).compatibilidades)
   }
 
-  async function runAction(operation: () => Promise<{ id: string }>, message: string) {
+  async function runAction(operation: () => Promise<{ id: number }>, message: string) {
     setSubmitting(true)
     setFormError(null)
     setFeedback(null)

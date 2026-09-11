@@ -478,7 +478,7 @@ function DriverNoveltyCard({
   onOpen,
 }: {
   novelty: NoveltyDto
-  onOpen: (noveltyId: string) => void
+  onOpen: (noveltyId: number) => void
 }) {
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-4">
@@ -692,7 +692,7 @@ function DriverView() {
     }
   }
 
-  async function openDetail(novedadId: string) {
+  async function openDetail(novedadId: number) {
     setDetailLoading(true)
     setLoadError(null)
 
@@ -1068,7 +1068,7 @@ function AdminView() {
     }`
   }, [listData])
 
-  async function openDetail(novedadId: string) {
+  async function openDetail(novedadId: number) {
     setDetailLoading(true)
     setLoadError(null)
 
@@ -1083,7 +1083,7 @@ function AdminView() {
     }
   }
 
-  async function refreshSelected(novedadId: string) {
+  async function refreshSelected(novedadId: number) {
     const data = await getAdminNovelty(novedadId)
     setSelectedNovelty(data.novedad)
   }

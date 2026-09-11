@@ -1,3 +1,4 @@
+import { entityIdSchema } from '../shared/entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import type { RolCodigo } from '@prisma/client'
@@ -11,7 +12,7 @@ import type { SessionTokenPayload } from './auth.types.js'
 const sessionClaimsSchema = z.object({
   email: z.email(),
   rol: z.enum(['ADMINISTRADOR', 'DESPACHADOR', 'MECANICO', 'CONDUCTOR']),
-  sub: z.uuid(),
+  sub: entityIdSchema,
 })
 
 function getJwtSecret() {
@@ -64,7 +65,7 @@ export async function createSessionToken(payload: SessionTokenPayload) {
 
   return new SignJWT({ email: payload.email, rol: payload.rol })
     .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
-    .setSubject(payload.sub)
+    .setSubject(String(payload.sub))
     .setIssuer(env.JWT_ISSUER)
     .setAudience(env.JWT_AUDIENCE)
     .setIssuedAt()

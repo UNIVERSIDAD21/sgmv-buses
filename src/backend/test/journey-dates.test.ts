@@ -4,8 +4,8 @@ import { createJourneySchema, listJourneysQuerySchema } from '../src/journeys/jo
 
 describe('RF-01 intervalos con offsets ISO 8601', () => {
   const scope = {
-    busId: 'c589a7dd-1a16-420a-8bea-f78bc303d691',
-    conductorId: 'c589a7dd-1a16-420a-8bea-f78bc303d692',
+    busId: 1,
+    conductorId: 2,
   }
 
   it.each([

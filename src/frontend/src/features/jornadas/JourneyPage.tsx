@@ -196,11 +196,11 @@ function ScheduleForm({
     setSubmitting(true)
     try {
       await createJourney({
-        busId,
-        conductorId,
+        busId: Number(busId),
+        conductorId: Number(conductorId),
         finProgramado: toIso(fin),
         inicioProgramado: toIso(inicio),
-        ...(rutaId ? { rutaId } : {}),
+        ...(rutaId ? { rutaId: Number(rutaId) } : {}),
       })
       setBusId('')
       setConductorId('')
@@ -319,8 +319,8 @@ function ActionDialog({
   const [fechaEvento, setFechaEvento] = useState(toLocalInput(now))
   const [kilometraje, setKilometraje] = useState(String(journey.lecturaInicial?.kilometraje ?? 0))
   const [motivo, setMotivo] = useState('')
-  const [busId, setBusId] = useState(journey.bus.id)
-  const [conductorId, setConductorId] = useState(journey.conductor.id)
+  const [busId, setBusId] = useState(String(journey.bus.id))
+  const [conductorId, setConductorId] = useState(String(journey.conductor.id))
   const [rutaId, setRutaId] = useState(journey.ruta?.id ?? '')
   const [inicioProgramado, setInicioProgramado] = useState(
     journey.estado === 'EN_CURSO'
@@ -366,14 +366,14 @@ function ActionDialog({
           return
         }
         await reassignJourney(journey.id, {
-          busId,
-          conductorId,
+          busId: Number(busId),
+          conductorId: Number(conductorId),
           fechaEvento: toIso(fechaEvento),
           finProgramado: toIso(finProgramado),
           inicioProgramado: toIso(inicioProgramado),
           ...(journey.estado === 'EN_CURSO' ? { kilometrajeFinal: mileageValue } : {}),
           motivo: motivo.trim(),
-          rutaId: rutaId || null,
+          rutaId: rutaId ? Number(rutaId) : null,
         })
         await onCompleted('Cambio registrado mediante una jornada sucesora')
       }

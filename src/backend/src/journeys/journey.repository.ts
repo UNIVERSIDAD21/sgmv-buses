@@ -59,14 +59,14 @@ export class JourneyRepository {
     return tx.jornadaOperativa.create({ data, include: journeyInclude })
   }
 
-  findById(id: string, tx: JourneyTransaction | PrismaClient = prisma) {
+  findById(id: number, tx: JourneyTransaction | PrismaClient = prisma) {
     return tx.jornadaOperativa.findUnique({ where: { id }, include: journeyInclude })
   }
 
   async findContext(
-    busId: string,
-    conductorId: string,
-    rutaId: string | null,
+    busId: number,
+    conductorId: number,
+    rutaId: number | null,
     tx: JourneyTransaction,
   ) {
     const [bus, conductor, ruta] = await Promise.all([
@@ -86,7 +86,7 @@ export class JourneyRepository {
     return { bus, conductor, ruta }
   }
 
-  findCurrentAndNextByDriver(conductorId: string, now: Date) {
+  findCurrentAndNextByDriver(conductorId: number, now: Date) {
     return Promise.all([
       prisma.jornadaOperativa.findFirst({
         where: { conductorId, estado: 'EN_CURSO' },
@@ -102,9 +102,9 @@ export class JourneyRepository {
   }
 
   getAvailabilityRecords(
-    busId: string,
-    conductorId: string,
-    journeyId: string | null,
+    busId: number,
+    conductorId: number,
+    journeyId: number | null,
     eventDate: Date,
     tx: JourneyTransaction,
   ): Promise<AvailabilityRecords> {
@@ -147,7 +147,7 @@ export class JourneyRepository {
     return prisma.jornadaOperativa.findMany({ where, include: journeyInclude, orderBy, skip, take })
   }
 
-  listReadings(journeyId: string) {
+  listReadings(journeyId: number) {
     return prisma.lecturaKilometraje.findMany({
       where: { jornadaOperativaId: journeyId },
       include: { registradoPor: { select: userRefSelect } },
@@ -155,33 +155,33 @@ export class JourneyRepository {
     })
   }
 
-  async lockBus(busId: string, tx: JourneyTransaction) {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>`
-      SELECT id FROM buses WHERE id = ${busId}::uuid FOR UPDATE
+  async lockBus(busId: number, tx: JourneyTransaction) {
+    const rows = await tx.$queryRaw<Array<{ id: number }>>`
+      SELECT id FROM buses WHERE id = ${busId}::integer FOR UPDATE
     `
     return rows.length > 0
   }
 
-  async lockDriver(conductorId: string, tx: JourneyTransaction) {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>`
-      SELECT id FROM usuarios WHERE id = ${conductorId}::uuid FOR UPDATE
+  async lockDriver(conductorId: number, tx: JourneyTransaction) {
+    const rows = await tx.$queryRaw<Array<{ id: number }>>`
+      SELECT id FROM usuarios WHERE id = ${conductorId}::integer FOR UPDATE
     `
     return rows.length > 0
   }
 
-  async lockJourney(journeyId: string, tx: JourneyTransaction) {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>`
-      SELECT id FROM jornadas_operativas WHERE id = ${journeyId}::uuid FOR UPDATE
+  async lockJourney(journeyId: number, tx: JourneyTransaction) {
+    const rows = await tx.$queryRaw<Array<{ id: number }>>`
+      SELECT id FROM jornadas_operativas WHERE id = ${journeyId}::integer FOR UPDATE
     `
     return rows.length > 0
   }
 
   async registerJourneyReading(
     input: {
-      actorId: string
-      busId: string
+      actorId: number
+      busId: number
       eventDate: Date
-      journeyId: string
+      journeyId: number
       mileage: number
       type: 'INICIO_JORNADA' | 'FIN_JORNADA'
     },
@@ -194,7 +194,7 @@ export class JourneyRepository {
     return prisma.$transaction(operation, { maxWait: 15_000, timeout: 60_000 })
   }
 
-  update(id: string, data: Prisma.JornadaOperativaUncheckedUpdateInput, tx: JourneyTransaction) {
+  update(id: number, data: Prisma.JornadaOperativaUncheckedUpdateInput, tx: JourneyTransaction) {
     return tx.jornadaOperativa.update({ where: { id }, data, include: journeyInclude })
   }
 }

@@ -10,7 +10,7 @@ export type InventoryMovementType = 'AJUSTE_ENTRADA' | 'AJUSTE_SALIDA' | 'CONSUM
 
 export interface SparePartUserDto {
   email: string
-  id: string
+  id: number
   nombre: string
   telefono: string | null
 }
@@ -18,7 +18,7 @@ export interface SparePartUserDto {
 export interface SparePartOrderDto {
   codigo: string
   estado: WorkOrderStatus
-  id: string
+  id: number
   origen: WorkOrderOrigin
   tipo: WorkOrderType
 }
@@ -29,7 +29,7 @@ export interface SparePartSummaryItemDto {
   costoUnitario: string
   disponibilidad: SparePartAvailability
   estado: SparePartStatus
-  id: string
+  id: number
   nombre: string
   stockActual: string
   stockMinimo: string
@@ -47,15 +47,15 @@ export interface SparePartDto extends SparePartSummaryItemDto {
 }
 
 export interface CompatibilityRuleDto {
-  bus: { codigoInterno: string; id: string } | null
-  busId: string | null
+  bus: { codigoInterno: string; id: number } | null
+  busId: number | null
   condicionUso: string | null
-  definidaPor: { id: string; nombre: string }
+  definidaPor: { id: number; nombre: string }
   especificacionesValidadas: Record<string, unknown>
   fechaDefinicion: string
-  id: string
-  modeloBus: { id: string; marca: string; nombreModelo: string } | null
-  modeloBusId: string | null
+  id: number
+  modeloBus: { id: number; marca: string; nombreModelo: string } | null
+  modeloBusId: number | null
   permitido: boolean
   version: number
   vigente: boolean
@@ -64,13 +64,13 @@ export interface CompatibilityRuleDto {
 export interface SparePartMovementDto {
   cantidad: string
   consumo: {
-    id: string
+    id: number
     orden: SparePartOrderDto
   } | null
   costoUnitario: string | null
   direccion: 'ENTRADA' | 'SALIDA'
   fechaMovimiento: string
-  id: string
+  id: number
   motivo: string | null
   repuesto: SparePartSummaryItemDto
   responsable: SparePartUserDto

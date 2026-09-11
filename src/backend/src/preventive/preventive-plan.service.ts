@@ -53,7 +53,7 @@ export class PreventivePlanService {
   }
 
   async createVersion(
-    planId: string,
+    planId: number,
     input: CreatePreventivePlanVersionInput,
     actor: AuthenticatedUser,
   ) {
@@ -80,7 +80,7 @@ export class PreventivePlanService {
     }
   }
 
-  async deactivatePlan(planId: string, actor: AuthenticatedUser) {
+  async deactivatePlan(planId: number, actor: AuthenticatedUser) {
     ensureAdmin(actor)
     const current = await this.repository.findById(planId)
     if (!current)
@@ -89,7 +89,7 @@ export class PreventivePlanService {
     return { plan: this.mapPlan(plan) }
   }
 
-  async getPlan(planId: string, actor: AuthenticatedUser) {
+  async getPlan(planId: number, actor: AuthenticatedUser) {
     ensureAdmin(actor)
     const plan = await this.repository.findById(planId)
     if (!plan) throw new AppError(404, 'PREVENTIVE_PLAN_NOT_FOUND', 'Plan preventivo no encontrado')
@@ -115,7 +115,7 @@ export class PreventivePlanService {
 
   /** Internal selector for P6-C materialization; it performs no write or authorization decision. */
   async resolveEffectivePlanForBus(
-    busId: string,
+    busId: number,
     claveTarea: string,
   ): Promise<EffectivePreventivePlanDto | null> {
     const result = await this.repository.resolveEffective(busId, normalizeTaskKey(claveTarea))

@@ -6,19 +6,19 @@ export interface CompatibilityEvaluation {
   evidencia: Prisma.InputJsonObject
   regla: {
     condicionUso: string | null
-    id: string
-    modeloBusId: string | null
+    id: number
+    modeloBusId: number | null
     permitido: boolean
     version: number
-    busId: string | null
+    busId: number | null
   } | null
   resultado: 'COMPATIBLE' | 'INCOMPATIBLE' | 'SIN_EVIDENCIA'
 }
 
 export async function resolveCompatibility(
   tx: Client,
-  busId: string,
-  repuestoId: string,
+  busId: number,
+  repuestoId: number,
   evaluatedAt = new Date(),
 ): Promise<CompatibilityEvaluation> {
   const [bus, sparePart] = await Promise.all([

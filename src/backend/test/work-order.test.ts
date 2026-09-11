@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { createHmac, randomUUID } from 'node:crypto'
 
 import { Prisma, PrismaClient, type Rol } from '@prisma/client'
@@ -35,21 +36,21 @@ function expectNoEconomicFields(value: unknown) {
 
 interface WorkOrderFixture {
   adminEmail: string
-  adminId: string
+  adminId: number
   conductorEmail: string
-  conductorId: string
+  conductorId: number
   inactiveAdminEmail: string
-  inactiveMechanicId: string
+  inactiveMechanicId: number
   mecanicoAltEmail: string
-  mecanicoAltId: string
+  mecanicoAltId: number
   mecanicoEmail: string
-  mecanicoId: string
+  mecanicoId: number
   despachadorEmail: string
-  despachadorId: string
+  despachadorId: number
 }
 
 function track(bucket: keyof typeof created) {
-  const id = randomUUID()
+  const id = testEntityId()
   created[bucket].push(id)
   return id
 }
@@ -239,7 +240,7 @@ async function createRepuesto(overrides: Partial<Prisma.RepuestoUncheckedCreateI
   })
 }
 
-async function allowPartForBus(repuestoId: string, busId: string, adminId: string) {
+async function allowPartForBus(repuestoId: number, busId: number, adminId: number) {
   const id = track('compatibilidades')
   await prisma.compatibilidadRepuesto.create({
     data: {
@@ -258,7 +259,7 @@ async function allowPartForBus(repuestoId: string, busId: string, adminId: strin
 
 async function createNovelty(
   fixture: WorkOrderFixture,
-  busId: string,
+  busId: number,
   overrides: Partial<Prisma.NovedadUncheckedCreateInput> = {},
 ) {
   const novelty = await prisma.novedad.create({
@@ -275,7 +276,7 @@ async function createNovelty(
   return novelty
 }
 
-async function createEligibleSchedule(fixture: WorkOrderFixture, busId: string) {
+async function createEligibleSchedule(fixture: WorkOrderFixture, busId: number) {
   const schedule = await prisma.programacionMantenimiento.create({
     data: {
       id: track('programaciones'),
@@ -299,7 +300,7 @@ async function loginAgent(email: string) {
   return agent
 }
 
-function createTokenWithRole(userId: string, email: string, rol: string, expiresInSeconds: number) {
+function createTokenWithRole(userId: number, email: string, rol: string, expiresInSeconds: number) {
   if (!env.JWT_SECRET) {
     throw new Error('JWT_SECRET test configuration is missing')
   }
@@ -678,8 +679,8 @@ describe('RF-04 Work order tracking API', () => {
           descripcion: 'Intento de enviar campos internos protegidos',
           estado: 'CERRADA',
           fechaCierre: new Date().toISOString(),
-          novedadId: randomUUID(),
-          programacionMantenimientoId: randomUUID(),
+          novedadId: testEntityId(),
+          programacionMantenimientoId: testEntityId(),
           tecnicoAsignadoId: fixture.mecanicoId,
           tipo: 'CORRECTIVA',
         })
@@ -793,7 +794,7 @@ describe('RF-04 Work order tracking API', () => {
         .query({ busId: noveltyBus.id, origen: 'NOVEDAD', tipo: 'CORRECTIVA' })
         .expect(200)
 
-      expect(filtered.body.data.ordenes.map((item: { id: string }) => item.id)).toContain(
+      expect(filtered.body.data.ordenes.map((item: { id: number }) => item.id)).toContain(
         correctiveOrderId,
       )
     },
@@ -832,7 +833,7 @@ describe('RF-04 Work order tracking API', () => {
         })
         .expect(200)
       const ownList = await mecanico.get('/ordenes-trabajo/mis-ordenes').expect(200)
-      const ownIds = ownList.body.data.ordenes.map((item: { id: string }) => item.id)
+      const ownIds = ownList.body.data.ordenes.map((item: { id: number }) => item.id)
       const summary = await mecanico.get('/ordenes-trabajo/resumen').expect(200)
       const ownDetail = await mecanico.get(`/ordenes-trabajo/${ownOrder.id}`).expect(200)
 
@@ -1324,7 +1325,7 @@ describe('RF-04 Work order tracking API', () => {
           }),
           expect.objectContaining({
             fechaLectura: revisionAt.toISOString(),
-            intervencionId: expect.any(String),
+            intervencionId: expect.any(Number),
             kilometraje: 20002,
             tipo: 'REVISION_TECNICA',
           }),
@@ -1454,7 +1455,7 @@ describe('RF-04 Work order tracking API', () => {
       const dispatcher = await loginAgent(fixture.despachadorEmail)
       const projectionResponse = await dispatcher.get('/ordenes-trabajo/despacho').expect(200)
       const closedProjection = projectionResponse.body.data.ordenes.find(
-        (item: { orden: { id: string } }) => item.orden.id === context.order.id,
+        (item: { orden: { id: number } }) => item.orden.id === context.order.id,
       )
       expect(closedProjection).toEqual(
         expect.objectContaining({
@@ -1480,7 +1481,7 @@ describe('RF-04 Work order tracking API', () => {
 
       const response = await dispatcher.get('/ordenes-trabajo/despacho').expect(200)
       const projection = response.body.data.ordenes.find(
-        (item: { orden: { id: string } }) => item.orden.id === context.order.id,
+        (item: { orden: { id: number } }) => item.orden.id === context.order.id,
       )
 
       expect(projection).toEqual(

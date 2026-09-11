@@ -5,13 +5,13 @@ import { AppError } from '../shared/http.js'
 import { lockBusMileage } from './mileage-lock.js'
 
 export interface RegisterTechnicalMileageInput {
-  actorId: string
-  busId: string
+  actorId: number
+  busId: number
   eventDate: Date
-  interventionId?: string
+  interventionId?: number
   mileage: number
   motivo?: string
-  orderId: string
+  orderId: number
   type: Extract<TipoLectura, 'INGRESO_TALLER' | 'REVISION_TECNICA' | 'CIERRE_MANTENIMIENTO'>
 }
 
@@ -49,7 +49,7 @@ export async function registerTechnicalMileageReading(
       (right.fechaLectura ?? right.fechaRegistro).getTime()
     if (eventDifference !== 0) return eventDifference
     const registrationDifference = left.fechaRegistro.getTime() - right.fechaRegistro.getTime()
-    return registrationDifference !== 0 ? registrationDifference : left.id.localeCompare(right.id)
+    return registrationDifference !== 0 ? registrationDifference : left.id - right.id
   })
 
   const nextIndex = readings.findIndex(

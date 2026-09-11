@@ -3,7 +3,7 @@ import type { EstadoUsuario, RolCodigo } from '@prisma/client'
 export interface AuthenticatedUser {
   email: string
   estado: EstadoUsuario
-  id: string
+  id: number
   nombre: string
   rol: {
     codigo: RolCodigo
@@ -14,7 +14,7 @@ export interface AuthenticatedUser {
 export interface SessionTokenPayload {
   email: string
   rol: RolCodigo
-  sub: string
+  sub: number
 }
 
 export interface LoginResult {

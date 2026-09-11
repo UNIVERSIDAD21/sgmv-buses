@@ -18,26 +18,26 @@ interface NoveltyAlertInput {
   afectaOperacion: boolean
   bloqueaDisponibilidad: boolean
   busCodigo: string
-  busId: string
-  conductorId: string
+  busId: number
+  conductorId: number
   criticidad: CriticidadNovedad
   eventAt: Date
-  jornadaId: string
-  novedadId: string
+  jornadaId: number
+  novedadId: number
 }
 
 export type AlertOrigin = {
-  busId?: string
-  jornadaId?: string
-  novedadId?: string
-  ordenId?: string
-  programacionMantenimientoId?: string
-  repuestoId?: string
+  busId?: number
+  jornadaId?: number
+  novedadId?: number
+  ordenId?: number
+  programacionMantenimientoId?: number
+  repuestoId?: number
 }
 
 /** Inputs are for trusted domain services only; HTTP routes never accept recipient IDs. */
 export type AlertRecipientResolution =
-  { kind: 'ROLES'; roles: AlertRecipientRole[] } | { kind: 'USERS'; userIds: string[] }
+  { kind: 'ROLES'; roles: AlertRecipientRole[] } | { kind: 'USERS'; userIds: number[] }
 
 export interface MaterializeAlertInput {
   contextoEvento: Prisma.InputJsonObject
@@ -120,9 +120,7 @@ function sanitizedContext(
   const compatibilityContext: Prisma.InputJsonObject =
     type === 'CONSUMO_INCOMPATIBLE'
       ? {
-          ...(stringValue(rawContext.busId, 40)
-            ? { busId: stringValue(rawContext.busId, 40)! }
-            : {}),
+          ...(numberValue(rawContext.busId) ? { busId: numberValue(rawContext.busId)! } : {}),
           ...(stringValue(rawContext.destino, 20)
             ? { destino: stringValue(rawContext.destino, 20)! }
             : {}),
@@ -132,14 +130,12 @@ function sanitizedContext(
           ...(stringValue(rawContext.precedencia, 40)
             ? { precedencia: stringValue(rawContext.precedencia, 40)! }
             : {}),
-          ...(stringValue(rawContext.reglaId, 40)
-            ? { reglaId: stringValue(rawContext.reglaId, 40)! }
-            : {}),
+          ...(numberValue(rawContext.reglaId) ? { reglaId: numberValue(rawContext.reglaId)! } : {}),
           ...(numberValue(rawContext.reglaVersion) !== undefined
             ? { reglaVersion: numberValue(rawContext.reglaVersion)! }
             : {}),
-          ...(stringValue(rawContext.repuestoId, 40)
-            ? { repuestoId: stringValue(rawContext.repuestoId, 40)! }
+          ...(numberValue(rawContext.repuestoId)
+            ? { repuestoId: numberValue(rawContext.repuestoId)! }
             : {}),
         }
       : {}
@@ -212,14 +208,14 @@ export async function materializeAlert(input: MaterializeAlertInput, tx: Prisma.
 
 export async function createConsumptionIncompatibilityAlert(
   input: {
-    busId: string
+    busId: number
     busCodigo: string
     claveIdempotencia: string
     contexto: Prisma.InputJsonObject
-    ordenId: string
+    ordenId: number
     repuestoCodigo: string
-    repuestoId: string
-    tecnicoAsignadoId: string
+    repuestoId: number
+    tecnicoAsignadoId: number
   },
   tx: Prisma.TransactionClient,
 ) {
@@ -289,9 +285,9 @@ export async function createNoveltyAlerts(input: NoveltyAlertInput, tx: Prisma.T
 }
 
 interface PreventiveAlertSchedule {
-  bus: { codigoInterno: string; id: string; kilometrajeActual: number }
+  bus: { codigoInterno: string; id: number; kilometrajeActual: number }
   fechaProgramada: Date | null
-  id: string
+  id: number
   kilometrajeObjetivo: number | null
   planMantenimientoPreventivo: {
     anticipacionDias: number | null
@@ -367,7 +363,7 @@ async function createPreventiveAlert(
 }
 
 export async function evaluatePreventiveAlertsForBus(
-  busId: string,
+  busId: number,
   tx: Prisma.TransactionClient,
   evaluatedAt = new Date(),
 ) {
@@ -398,7 +394,7 @@ export async function evaluatePreventiveAlertsForBus(
 }
 
 export async function createWorkOrderPendingAlert(
-  input: { busCodigo: string; eventAt: Date; orderCode: string; orderId: string },
+  input: { busCodigo: string; eventAt: Date; orderCode: string; orderId: number },
   tx: Prisma.TransactionClient,
 ) {
   return materializeInternal(
@@ -423,10 +419,10 @@ export async function createWorkOrderAssignedAlert(
   input: {
     busCodigo: string
     eventAt: Date
-    mechanicId: string
-    occurrenceId: string
+    mechanicId: number
+    occurrenceId: string | number
     orderCode: string
-    orderId: string
+    orderId: number
   },
   tx: Prisma.TransactionClient,
 ) {
@@ -452,9 +448,9 @@ export async function createWorkOrderCompletedAlert(
   input: {
     busCodigo: string
     eventAt: Date
-    occurrenceId: string
+    occurrenceId: string | number
     orderCode: string
-    orderId: string
+    orderId: number
   },
   tx: Prisma.TransactionClient,
 ) {
@@ -480,10 +476,10 @@ export async function createWorkOrderReturnedAlert(
   input: {
     busCodigo: string
     eventAt: Date
-    mechanicId: string
-    occurrenceId: string
+    mechanicId: number
+    occurrenceId: string | number
     orderCode: string
-    orderId: string
+    orderId: number
   },
   tx: Prisma.TransactionClient,
 ) {
@@ -508,9 +504,9 @@ export async function createWorkOrderReturnedAlert(
 export async function createLowInventoryAlert(
   input: {
     eventAt: Date
-    movementId: string
+    movementId: number
     partCode: string
-    partId: string
+    partId: number
     stockActual: number
   },
   tx: Prisma.TransactionClient,
@@ -531,9 +527,9 @@ export async function createLowInventoryAlert(
 
 export async function createJourneyChangeAlert(
   input: {
-    affectedDriverIds: string[]
+    affectedDriverIds: number[]
     eventAt: Date
-    journeyId: string
+    journeyId: number
     occurrence: 'ALTA' | 'CANCELACION' | 'REASIGNACION'
   },
   tx: Prisma.TransactionClient,
@@ -556,7 +552,7 @@ export async function createJourneyChangeAlert(
 }
 
 export async function createNoveltyStateChangeAlert(
-  input: { conductorId: string; eventAt: Date; noveltyId: string; state: string },
+  input: { conductorId: number; eventAt: Date; noveltyId: number; state: string },
   tx: Prisma.TransactionClient,
 ) {
   return materializeInternal(
@@ -576,7 +572,7 @@ export async function createNoveltyStateChangeAlert(
 export async function evaluateJourneyMileageAlerts(
   tx: Prisma.TransactionClient,
   evaluatedAt = new Date(),
-  journeyIds?: string[],
+  journeyIds?: number[],
 ) {
   const journeys = await tx.jornadaOperativa.findMany({
     select: {
@@ -636,9 +632,9 @@ export async function evaluateJourneyMileageAlerts(
 }
 
 export async function persistJourneyConflictAlert(input: {
-  busId?: string
+  busId?: number
   idempotencyKey: string
-  journeyId?: string
+  journeyId?: number
 }) {
   return prisma.$transaction(async (tx) => {
     const journey = input.journeyId
@@ -717,13 +713,13 @@ export class AlertService {
     return { count: await this.alertRepository.countUnread(actor.id) }
   }
 
-  async markRead(destinatarioId: string, actor: AuthenticatedUser) {
+  async markRead(destinatarioId: number, actor: AuthenticatedUser) {
     const record = await this.alertRepository.markRead(destinatarioId, actor.id, new Date())
     if (!record) throw new AppError(404, 'ALERT_NOT_FOUND', 'Alerta no encontrada')
     return { alerta: mapRecipientAlert(record, actor) }
   }
 
-  async markAttended(destinatarioId: string, actor: AuthenticatedUser) {
+  async markAttended(destinatarioId: number, actor: AuthenticatedUser) {
     const record = await this.alertRepository.markAttended(destinatarioId, actor.id, new Date())
     if (!record) throw new AppError(404, 'ALERT_NOT_FOUND', 'Alerta no encontrada')
     return { alerta: mapRecipientAlert(record, actor) }

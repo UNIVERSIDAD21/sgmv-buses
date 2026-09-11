@@ -16,15 +16,15 @@ export interface HistoryFilters {
   alertaEstado?: 'NO_LEIDA' | 'LEIDA' | 'ATENDIDA' | ''
   alertaPrioridad?: 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA' | ''
   alertaTipo?: string
-  busId?: string
+  busId?: number
   busqueda?: string
   compatibilidad?: 'COMPATIBLE' | 'EXCEPCION_AUTORIZADA' | 'NO_EVALUADA_LEGADO' | ''
-  conductorId?: string
+  conductorId?: number
   disponibilidadAlCierre?: boolean | ''
   estado?: HistoryOrderState | ''
   fechaDesde?: string
   fechaHasta?: string
-  jornadaId?: string
+  jornadaId?: number
   kilometrajeDesde?: number | ''
   kilometrajeHasta?: number | ''
   limite?: number
@@ -34,7 +34,7 @@ export interface HistoryFilters {
   novedadTipo?: string
   origen?: HistoryOrderOrigin | ''
   pagina?: number
-  repuestoId?: string
+  repuestoId?: number
   tipo?: HistoryOrderType | ''
 }
 
@@ -63,13 +63,13 @@ export function listHistoryBuses(filters?: HistoryFilters) {
   )
 }
 
-export function getBusHistory(busId: string, filters?: HistoryFilters) {
+export function getBusHistory(busId: number, filters?: HistoryFilters) {
   return apiRequest<HistoryDetailDto>(`/historial/buses/${busId}?${buildQuery(filters)}`)
 }
 
 export function getMyBusHistory(filters?: HistoryFilters) {
   return apiRequest<{
-    asignacion: { fechaInicio: string; id: string } | null
+    asignacion: { fechaInicio: string; id: number } | null
     historial: HistoryDetailDto | null
   }>(`/historial/mi-bus?${buildQuery(filters)}`)
 }

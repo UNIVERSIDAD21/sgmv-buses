@@ -101,7 +101,7 @@ function pagination(query: { limite: number; pagina: number }) {
 
 function movementWhere(
   query: ListInventoryMovementsQuery,
-  repuestoId?: string,
+  repuestoId?: number,
 ): Prisma.MovimientoInventarioWhereInput {
   const where: Prisma.MovimientoInventarioWhereInput = {}
 
@@ -366,7 +366,7 @@ export class SparePartRepository {
     }
   }
 
-  findSparePartById(repuestoId: string, client: SparePartDbClient = prisma) {
+  findSparePartById(repuestoId: number, client: SparePartDbClient = prisma) {
     return client.repuesto.findUnique({
       select: sparePartSelect,
       where: { id: repuestoId },
@@ -382,14 +382,14 @@ export class SparePartRepository {
     })
   }
 
-  findMovementById(movementId: string, client: SparePartDbClient = prisma) {
+  findMovementById(movementId: number, client: SparePartDbClient = prisma) {
     return client.movimientoInventario.findUnique({
       include: movementInclude,
       where: { id: movementId },
     })
   }
 
-  async listMovements(query: ListInventoryMovementsQuery, repuestoId?: string) {
+  async listMovements(query: ListInventoryMovementsQuery, repuestoId?: number) {
     const { skip, take } = pagination(query)
     const where = movementWhere(query, repuestoId)
     const [movimientos, total] = await Promise.all([
@@ -409,7 +409,7 @@ export class SparePartRepository {
     }
   }
 
-  async createSparePart(actorId: string, input: CreateSparePartInput) {
+  async createSparePart(actorId: number, input: CreateSparePartInput) {
     return prisma.$transaction(
       async (tx) => {
         if (input.claveIdempotencia) {
@@ -493,7 +493,7 @@ export class SparePartRepository {
     )
   }
 
-  async updateSparePart(repuestoId: string, input: UpdateSparePartInput) {
+  async updateSparePart(repuestoId: number, input: UpdateSparePartInput) {
     return prisma.$transaction(
       async (tx) => {
         const current = await this.findSparePartById(repuestoId, tx)
@@ -556,7 +556,7 @@ export class SparePartRepository {
     )
   }
 
-  async setSparePartStatus(repuestoId: string, estado: 'ACTIVO' | 'INACTIVO') {
+  async setSparePartStatus(repuestoId: number, estado: 'ACTIVO' | 'INACTIVO') {
     return prisma.$transaction(
       async (tx) => {
         const current = await this.findSparePartById(repuestoId, tx)
@@ -593,7 +593,7 @@ export class SparePartRepository {
     )
   }
 
-  registerEntry(repuestoId: string, actorId: string, input: StockEntryInput) {
+  registerEntry(repuestoId: number, actorId: number, input: StockEntryInput) {
     return this.applyStockOperation(repuestoId, actorId, 'ENTRADA', {
       cantidad: new Prisma.Decimal(input.cantidad),
       claveIdempotencia: input.claveIdempotencia,
@@ -603,7 +603,7 @@ export class SparePartRepository {
     })
   }
 
-  registerAdjustment(repuestoId: string, actorId: string, input: StockAdjustmentInput) {
+  registerAdjustment(repuestoId: number, actorId: number, input: StockAdjustmentInput) {
     return this.applyStockOperation(
       repuestoId,
       actorId,
@@ -618,8 +618,8 @@ export class SparePartRepository {
   }
 
   private async applyStockOperation(
-    repuestoId: string,
-    actorId: string,
+    repuestoId: number,
+    actorId: number,
     tipo: Exclude<TipoMovimientoInventario, 'CONSUMO'>,
     input: StockOperationData,
   ): Promise<OperationResult> {
@@ -763,7 +763,7 @@ export class SparePartRepository {
     )
   }
 
-  private async lockSparePart(client: Prisma.TransactionClient, repuestoId: string) {
+  private async lockSparePart(client: Prisma.TransactionClient, repuestoId: number) {
     await client.$executeRaw(
       Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(CAST(${repuestoId} AS text))::bigint)`,
     )

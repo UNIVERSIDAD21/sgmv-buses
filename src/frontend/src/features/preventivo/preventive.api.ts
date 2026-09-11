@@ -16,19 +16,19 @@ export interface PreventivePlanInput {
   anticipacionDias?: number
   anticipacionKm?: number
   bloqueaAlVencer: boolean
-  busId?: string
+  busId?: number
   claveTarea?: string
   componente: string
   criterio: PreventiveCriterion
   intervaloDias?: number
   intervaloKm?: number
-  modeloBusId?: string
+  modeloBusId?: number
   prioridad: OrderPriority
 }
 
 export interface ListPreventiveParams {
   activa?: boolean | ''
-  busId?: string
+  busId?: number
   busqueda?: string
   criterio?: PreventiveCriterion | ''
   direccion?: 'asc' | 'desc'
@@ -42,7 +42,7 @@ export interface ListPreventiveParams {
 export interface PreventiveScheduleInput {
   activa?: boolean
   actividad: string
-  busId?: string
+  busId?: number
   criterio: PreventiveCriterion
   fechaProgramada?: string
   kilometrajeObjetivo?: number
@@ -50,8 +50,8 @@ export interface PreventiveScheduleInput {
 }
 
 export interface ApplyPreventivePlanInput {
-  busId?: string
-  planId: string
+  busId?: number
+  planId: number
 }
 
 export interface GeneratePreventiveOrderInput {
@@ -75,7 +75,7 @@ function buildPreventiveQuery(params: ListPreventiveParams) {
   }
 
   if (params.busId) {
-    searchParams.set('busId', params.busId)
+    searchParams.set('busId', String(params.busId))
   }
 
   if (params.criterio) {
@@ -107,7 +107,7 @@ export function listPreventivePlans(incluirHistoricos = false) {
   )
 }
 
-export function getPreventivePlan(planId: string) {
+export function getPreventivePlan(planId: number) {
   return apiRequest<PreventivePlanDetailDto>(`/mantenimiento-preventivo/planes/${planId}`)
 }
 
@@ -119,7 +119,7 @@ export function createPreventivePlan(input: PreventivePlanInput) {
 }
 
 export function createPreventivePlanVersion(
-  planId: string,
+  planId: number,
   input: Omit<PreventivePlanInput, 'busId' | 'claveTarea' | 'modeloBusId'>,
 ) {
   return apiRequest<{ plan: PreventivePlanDto }>(
@@ -131,7 +131,7 @@ export function createPreventivePlanVersion(
   )
 }
 
-export function deactivatePreventivePlan(planId: string) {
+export function deactivatePreventivePlan(planId: number) {
   return apiRequest<{ plan: PreventivePlanDto }>(
     `/mantenimiento-preventivo/planes/${planId}/desactivar`,
     {
@@ -153,7 +153,7 @@ export function listPreventiveSchedules(params: ListPreventiveParams) {
   )
 }
 
-export function getPreventiveSchedule(programacionId: string) {
+export function getPreventiveSchedule(programacionId: number) {
   return apiRequest<{ programacion: PreventiveScheduleDto }>(
     `/mantenimiento-preventivo/programaciones/${programacionId}`,
   )
@@ -180,7 +180,7 @@ export function applyPreventivePlan(input: ApplyPreventivePlanInput) {
 }
 
 export function updatePreventiveSchedule(
-  programacionId: string,
+  programacionId: number,
   input: Omit<PreventiveScheduleInput, 'busId'>,
 ) {
   return apiRequest<{ programacion: PreventiveScheduleDto }>(
@@ -193,7 +193,7 @@ export function updatePreventiveSchedule(
 }
 
 export function generatePreventiveOrder(
-  programacionId: string,
+  programacionId: number,
   input: GeneratePreventiveOrderInput,
 ) {
   return apiRequest<{

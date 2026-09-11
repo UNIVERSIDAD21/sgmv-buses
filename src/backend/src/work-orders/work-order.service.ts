@@ -478,7 +478,7 @@ function translatePrismaError(error: unknown): never {
 export class WorkOrderService {
   constructor(private readonly workOrderRepository = new WorkOrderRepository()) {}
 
-  async assign(orderId: string, input: AssignWorkOrderInput, actor: AuthenticatedUser) {
+  async assign(orderId: number, input: AssignWorkOrderInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
     try {
@@ -495,7 +495,7 @@ export class WorkOrderService {
     }
   }
 
-  async close(orderId: string, input: TransitionObservationInput, actor: AuthenticatedUser) {
+  async close(orderId: number, input: TransitionObservationInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
     try {
@@ -513,7 +513,7 @@ export class WorkOrderService {
     }
   }
 
-  async complete(orderId: string, input: TransitionObservationInput, actor: AuthenticatedUser) {
+  async complete(orderId: number, input: TransitionObservationInput, actor: AuthenticatedUser) {
     ensureMechanic(actor)
 
     try {
@@ -531,7 +531,7 @@ export class WorkOrderService {
     }
   }
 
-  async createActivity(orderId: string, input: CreateActivityInput, actor: AuthenticatedUser) {
+  async createActivity(orderId: number, input: CreateActivityInput, actor: AuthenticatedUser) {
     ensureMechanic(actor)
 
     try {
@@ -550,7 +550,7 @@ export class WorkOrderService {
   }
 
   async createConsumption(
-    orderId: string,
+    orderId: number,
     input: CreateConsumptionInput,
     actor: AuthenticatedUser,
   ) {
@@ -622,7 +622,7 @@ export class WorkOrderService {
   }
 
   async authorizeConsumptionException(
-    orderId: string,
+    orderId: number,
     input: AuthorizeConsumptionExceptionInput,
     actor: AuthenticatedUser,
   ) {
@@ -668,8 +668,8 @@ export class WorkOrderService {
   }
 
   async revokeConsumptionException(
-    orderId: string,
-    authorizationId: string,
+    orderId: number,
+    authorizationId: number,
     actor: AuthenticatedUser,
   ) {
     ensureAdmin(actor)
@@ -733,7 +733,7 @@ export class WorkOrderService {
   }
 
   async createTechnicalReading(
-    orderId: string,
+    orderId: number,
     input: CreateTechnicalReadingInput,
     actor: AuthenticatedUser,
   ) {
@@ -797,7 +797,7 @@ export class WorkOrderService {
   }
 
   async getAvailableSpareParts(
-    orderId: string,
+    orderId: number,
     query: AvailablePartsQuery,
     actor: AuthenticatedUser,
   ) {
@@ -822,7 +822,7 @@ export class WorkOrderService {
     }
   }
 
-  async getOrder(orderId: string, actor: AuthenticatedUser) {
+  async getOrder(orderId: number, actor: AuthenticatedUser) {
     const order = await this.getAuthorizedOrder(orderId, actor)
     const history = await this.workOrderRepository.findClosedOrdersByBus(order.busId, order.id)
 
@@ -831,7 +831,7 @@ export class WorkOrderService {
     }
   }
 
-  async getReassignments(orderId: string, actor: AuthenticatedUser) {
+  async getReassignments(orderId: number, actor: AuthenticatedUser) {
     const order = await this.getAuthorizedOrder(orderId, actor)
 
     return {
@@ -839,7 +839,7 @@ export class WorkOrderService {
     }
   }
 
-  async getStateHistory(orderId: string, actor: AuthenticatedUser) {
+  async getStateHistory(orderId: number, actor: AuthenticatedUser) {
     const order = await this.getAuthorizedOrder(orderId, actor)
 
     return {
@@ -869,7 +869,7 @@ export class WorkOrderService {
     return this.listOrders(query, actor, actor.id)
   }
 
-  async reassign(orderId: string, input: ReassignWorkOrderInput, actor: AuthenticatedUser) {
+  async reassign(orderId: number, input: ReassignWorkOrderInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
     try {
@@ -886,7 +886,7 @@ export class WorkOrderService {
     }
   }
 
-  async resume(orderId: string, input: TransitionObservationInput, actor: AuthenticatedUser) {
+  async resume(orderId: number, input: TransitionObservationInput, actor: AuthenticatedUser) {
     ensureMechanic(actor)
 
     try {
@@ -905,7 +905,7 @@ export class WorkOrderService {
   }
 
   async returnForCorrection(
-    orderId: string,
+    orderId: number,
     input: ReturnWorkOrderInput,
     actor: AuthenticatedUser,
   ) {
@@ -926,7 +926,7 @@ export class WorkOrderService {
     }
   }
 
-  async start(orderId: string, input: TransitionObservationInput, actor: AuthenticatedUser) {
+  async start(orderId: number, input: TransitionObservationInput, actor: AuthenticatedUser) {
     ensureMechanic(actor)
 
     try {
@@ -985,7 +985,7 @@ export class WorkOrderService {
   }
 
   async updateIntervention(
-    orderId: string,
+    orderId: number,
     input: InterventionUpdateInput,
     actor: AuthenticatedUser,
   ) {
@@ -1048,7 +1048,7 @@ export class WorkOrderService {
     return [{ fechaCreacion: direction }]
   }
 
-  private createWhere(query: ListWorkOrdersQuery, tecnicoId?: string): WorkOrderWhere {
+  private createWhere(query: ListWorkOrdersQuery, tecnicoId?: number): WorkOrderWhere {
     const filters: Prisma.OrdenTrabajoWhereInput[] = []
 
     if (tecnicoId) {
@@ -1127,7 +1127,7 @@ export class WorkOrderService {
     }
   }
 
-  private async getAuthorizedOrder(orderId: string, actor: AuthenticatedUser) {
+  private async getAuthorizedOrder(orderId: number, actor: AuthenticatedUser) {
     const order = await this.workOrderRepository.findOrderById(orderId)
 
     if (!order) {
@@ -1155,7 +1155,7 @@ export class WorkOrderService {
   private async listOrders(
     query: ListWorkOrdersQuery,
     actor: AuthenticatedUser,
-    tecnicoId?: string,
+    tecnicoId?: number,
   ) {
     const where = this.createWhere(query, tecnicoId)
     const skip = (query.pagina - 1) * query.limite

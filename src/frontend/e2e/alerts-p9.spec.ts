@@ -1,3 +1,4 @@
+import { testEntityId } from '../../backend/test/entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { expect, test, type Page } from '@playwright/test'
@@ -9,12 +10,12 @@ const demoPassword = process.env.SEED_USER_PASSWORD
 const suffix = randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase()
 const marker = `P9E2E-${suffix}`
 const ids = {
-  admin: randomUUID(),
-  bus: randomUUID(),
-  dispatcher: randomUUID(),
-  driver: randomUUID(),
-  journey: randomUUID(),
-  mechanic: randomUUID(),
+  admin: testEntityId(),
+  bus: testEntityId(),
+  dispatcher: testEntityId(),
+  driver: testEntityId(),
+  journey: testEntityId(),
+  mechanic: testEntityId(),
 }
 const emails = {
   admin: `p9-admin-${suffix.toLowerCase()}@test.sgmv.local`,
@@ -22,10 +23,10 @@ const emails = {
   driver: `p9-conductor-${suffix.toLowerCase()}@test.sgmv.local`,
   mechanic: `p9-mecanico-${suffix.toLowerCase()}@test.sgmv.local`,
 }
-let noveltyId: string | null = null
-let alertId: string | null = null
-let adminRecipientId: string | null = null
-let dispatcherRecipientId: string | null = null
+let noveltyId: number | null = null
+let alertId: number | null = null
+let adminRecipientId: number | null = null
+let dispatcherRecipientId: number | null = null
 
 async function login(page: Page, email: string) {
   await page.context().clearCookies()
@@ -180,7 +181,11 @@ test.afterAll(async () => {
       where: {
         OR: [
           { actorId: { in: [ids.admin, ids.dispatcher, ids.driver, ids.mechanic] } },
-          { recursoId: { in: [ids.bus, ids.journey, ...(noveltyId ? [noveltyId] : [])] } },
+          {
+            recursoId: {
+              in: [ids.bus, ids.journey, ...(noveltyId ? [noveltyId] : [])].map(String),
+            },
+          },
         ],
       },
     })
@@ -213,7 +218,7 @@ test('materializa evento crítico, opera bandeja propia y bloquea lectura ajena'
     tipo: `Falla crítica ${marker}`,
   })
   expect(report.status).toBe(201)
-  noveltyId = (report.body as { data: { novedad: { id: string } } }).data.novedad.id
+  noveltyId = (report.body as { data: { novedad: { id: number } } }).data.novedad.id
 
   await login(page, emails.admin)
   const review = await csrfPost(page, `/novedades/${noveltyId}/revision`, {

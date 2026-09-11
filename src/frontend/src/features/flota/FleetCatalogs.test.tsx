@@ -40,11 +40,11 @@ describe('P3 fleet catalogs frontend', () => {
     expect(await screen.findByText(/Ruta actualizada/i)).toBeInTheDocument()
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/flota/modelos-bus/model-1'),
+      expect.stringContaining('/flota/modelos-bus/2033'),
       expect.objectContaining({ method: 'PATCH' }),
     )
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/flota/rutas/route-1'),
+      expect.stringContaining('/flota/rutas/2065'),
       expect.objectContaining({ method: 'PATCH' }),
     )
   })

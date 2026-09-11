@@ -6,7 +6,7 @@ import { prisma } from '../../backend/src/prisma/client.js'
 
 const demoPassword = process.env.SEED_USER_PASSWORD
 const marker = `E2E-P5-${randomUUID().slice(0, 8)}`
-let createdNoveltyId: string | null = null
+let createdNoveltyId: number | null = null
 
 async function login(page: Page, email: string) {
   await page.goto('/login')

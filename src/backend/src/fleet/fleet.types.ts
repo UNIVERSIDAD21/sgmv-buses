@@ -2,7 +2,7 @@ import type { EstadoBus } from '@prisma/client'
 
 export interface ResponsibleDto {
   email: string
-  id: string
+  id: number
   nombre: string
   telefono: string | null
 }
@@ -12,19 +12,19 @@ export interface ActiveAssignmentDto {
   asignadoPor: ResponsibleDto
   bus?: {
     codigoInterno: string
-    id: string
+    id: number
     placa: string
   }
   conductor: ResponsibleDto
   fechaFin: string | null
   fechaInicio: string
-  id: string
+  id: number
   motivo: string | null
 }
 
 export interface MileageReadingDto {
   fechaRegistro: string
-  id: string
+  id: number
   kilometrajeAnterior: number
   kilometrajeNuevo: number
   motivo: string | null
@@ -36,13 +36,13 @@ export interface StateHistoryDto {
   estadoAnterior: EstadoBus | null
   estadoNuevo: EstadoBus
   fechaCambio: string
-  id: string
+  id: number
   motivo: string | null
 }
 
 export interface BusModelReferenceDto {
   activo: boolean
-  id: string
+  id: number
   marca: string
   nombreModelo: string
   versionTecnica: string | null
@@ -53,7 +53,7 @@ export interface BusSummaryDto {
   codigoInterno: string
   conductorAsignado: ResponsibleDto | null
   estadoOperativo: EstadoBus
-  id: string
+  id: number
   kilometrajeActual: number
   marca: string
   modelo: string
@@ -72,10 +72,10 @@ export interface DriverOptionDto extends ResponsibleDto {
   asignacionActiva: {
     bus: {
       codigoInterno: string
-      id: string
+      id: number
       placa: string
     }
-    id: string
+    id: number
   } | null
 }
 

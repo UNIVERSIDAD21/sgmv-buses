@@ -1,3 +1,4 @@
+import { entityIdSchema } from '../shared/entity-id.js'
 import { z } from 'zod'
 import type { TipoAlerta } from '@prisma/client'
 
@@ -12,7 +13,7 @@ const optionalDate = z.preprocess((value) => {
   return value
 }, z.iso.date().optional())
 
-export const alertRecipientIdParamSchema = z.object({ destinatarioId: z.uuid() })
+export const alertRecipientIdParamSchema = z.object({ destinatarioId: entityIdSchema })
 
 export const listAlertsQuerySchema = z
   .object({

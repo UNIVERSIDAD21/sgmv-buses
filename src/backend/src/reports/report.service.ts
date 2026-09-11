@@ -118,7 +118,7 @@ export class ReportService {
     return { buses, paginacion: pagination(query, result.total) }
   }
 
-  async getBusHistory(busId: string, query: ReportQuery, user: AuthenticatedUser) {
+  async getBusHistory(busId: number, query: ReportQuery, user: AuthenticatedUser) {
     if (user.rol.codigo === 'CONDUCTOR') {
       throw new AppError(
         403,
@@ -161,10 +161,10 @@ export class ReportService {
   }
 
   private async buildBusHistory(
-    busId: string,
+    busId: number,
     query: ReportQuery,
     user: AuthenticatedUser,
-    mechanicId?: string,
+    mechanicId?: number,
   ) {
     const isAdmin = user.rol.codigo === 'ADMINISTRADOR'
     const alertRecipientId = isAdmin ? undefined : user.id
@@ -476,7 +476,7 @@ export class ReportService {
     this.requireAdmin(user)
     const result = await this.reportRepository.partsReport(query)
     const parts = new Map(result.parts.map((part) => [part.id, part]))
-    const orderCount = new Map<string, number>()
+    const orderCount = new Map<number, number>()
     for (const pair of result.orderPairs) {
       orderCount.set(pair.repuestoId, (orderCount.get(pair.repuestoId) ?? 0) + 1)
     }

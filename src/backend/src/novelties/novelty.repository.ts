@@ -85,7 +85,7 @@ export type NoveltyRecord = Prisma.NovedadGetPayload<{ include: typeof noveltyIn
 export type WorkOrderRecord = Prisma.OrdenTrabajoGetPayload<{ include: typeof orderSummaryInclude }>
 
 interface CreateNoveltyData {
-  conductorId: string
+  conductorId: number
   descripcion: string
   fechaOcurrencia: Date
   kilometraje: number
@@ -99,7 +99,7 @@ interface ReviewNoveltyData {
   criticidad?: CriticidadNovedad
   estado?: EstadoNovedad
   observacionRevision?: string
-  revisadaPorId: string
+  revisadaPorId: number
 }
 
 interface ConvertNoveltyData {
@@ -156,8 +156,8 @@ export class NoveltyRepository {
           return { novedad: null, status: 'JOURNEY_NOT_FOUND' as const }
         }
 
-        await tx.$queryRaw`SELECT id FROM buses WHERE id = ${journey.busId}::uuid FOR UPDATE`
-        await tx.$queryRaw`SELECT id FROM jornadas_operativas WHERE id = ${journey.id}::uuid FOR UPDATE`
+        await tx.$queryRaw`SELECT id FROM buses WHERE id = ${journey.busId}::integer FOR UPDATE`
+        await tx.$queryRaw`SELECT id FROM jornadas_operativas WHERE id = ${journey.id}::integer FOR UPDATE`
 
         const lockedJourney = await tx.jornadaOperativa.findUnique({
           where: { id: journey.id },
@@ -181,16 +181,13 @@ export class NoveltyRepository {
           return { novedad: null, status: 'JOURNEY_NOT_FOUND' as const }
         }
 
-        const noveltyId = randomUUID()
-        const readingId = randomUUID()
-        await registerContextualMileageReading(
+        const reading = await registerContextualMileageReading(
           {
             actorId: data.conductorId,
             busId: lockedJourney.busId,
             eventDate: data.fechaOcurrencia,
             journeyId: lockedJourney.id,
             mileage: data.kilometraje,
-            readingId,
             type: 'NOVEDAD',
           },
           tx,
@@ -201,9 +198,8 @@ export class NoveltyRepository {
             conductorId: data.conductorId,
             descripcion: data.descripcion,
             fechaOcurrencia: data.fechaOcurrencia,
-            id: noveltyId,
             jornadaOperativaId: lockedJourney.id,
-            lecturaKilometrajeId: readingId,
+            lecturaKilometrajeId: reading.id,
             tipo: data.tipo,
           },
           include: noveltyInclude,
@@ -215,14 +211,14 @@ export class NoveltyRepository {
     )
   }
 
-  findNoveltyById(id: string) {
+  findNoveltyById(id: number) {
     return prisma.novedad.findUnique({
       where: { id },
       include: noveltyInclude,
     })
   }
 
-  findExistingOrderByNovelty(novedadId: string) {
+  findExistingOrderByNovelty(novedadId: number) {
     return prisma.ordenTrabajo.findUnique({
       where: { novedadId },
       include: orderSummaryInclude,
@@ -241,7 +237,7 @@ export class NoveltyRepository {
     })
   }
 
-  reviewPendingNovelty(novedadId: string, data: ReviewNoveltyData) {
+  reviewPendingNovelty(novedadId: number, data: ReviewNoveltyData) {
     return prisma.$transaction(
       async (tx) => {
         const novelty = await this.findNoveltyByIdForTransaction(novedadId, tx)
@@ -323,7 +319,7 @@ export class NoveltyRepository {
     )
   }
 
-  convertToCorrectiveOrder(novedadId: string, actorId: string, data: ConvertNoveltyData) {
+  convertToCorrectiveOrder(novedadId: number, actorId: number, data: ConvertNoveltyData) {
     return prisma.$transaction(
       async (tx) => {
         const novelty = await this.findNoveltyByIdForTransaction(novedadId, tx)
@@ -428,7 +424,7 @@ export class NoveltyRepository {
     return `OT-NOV-${suffix}`
   }
 
-  private findNoveltyByIdForTransaction(novedadId: string, client: NoveltyDbClient) {
+  private findNoveltyByIdForTransaction(novedadId: number, client: NoveltyDbClient) {
     return client.novedad.findUnique({
       where: { id: novedadId },
       include: noveltyInclude,

@@ -3,10 +3,10 @@ import type { Prisma, PrismaClient } from '@prisma/client'
 import type { AvailabilityRecords } from './availability.types.js'
 
 export interface AvailabilityQuery {
-  busId: string
-  conductorId?: string
+  busId: number
+  conductorId?: number
   eventDate: Date
-  journeyId?: string | null
+  journeyId?: number | null
 }
 
 export async function getAvailabilityRecords(

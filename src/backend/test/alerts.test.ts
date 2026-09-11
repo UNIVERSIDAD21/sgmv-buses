@@ -114,13 +114,13 @@ describe('P9 alertas internas por destinatario', () => {
   let driver: TestUser
   let driverTwo: TestUser
   let bus: Awaited<ReturnType<typeof createBus>>
-  let futureJourneyId: string
-  let pastProgrammedJourneyId: string
-  let pastActiveJourneyId: string
-  let noveltyId: string
-  let orderId: string
-  let scheduleId: string
-  let partId: string
+  let futureJourneyId: number
+  let pastProgrammedJourneyId: number
+  let pastActiveJourneyId: number
+  let noveltyId: number
+  let orderId: number
+  let scheduleId: number
+  let partId: number
 
   beforeAll(async () => {
     admin = await createUser('ADMINISTRADOR', 'admin')
@@ -396,7 +396,7 @@ describe('P9 alertas internas por destinatario', () => {
 
       const inbox = await adminAgent.get('/alertas?estado=NO_LEIDA&page=1&pageSize=100').expect(200)
       expect(
-        inbox.body.data.items.some((item: { alertaId: string }) => item.alertaId === alert.id),
+        inbox.body.data.items.some((item: { alertaId: number }) => item.alertaId === alert.id),
       ).toBe(true)
       await mechanicAgent.patch(`/alertas/${adminRecipient.id}/leida`).send({}).expect(404)
       await dispatcherAgent.patch(`/alertas/${adminRecipient.id}/leida`).send({}).expect(404)

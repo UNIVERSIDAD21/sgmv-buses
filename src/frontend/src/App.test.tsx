@@ -131,7 +131,7 @@ describe('App authentication and role navigation', () => {
     expect(new Headers(loginCall?.[1]?.headers).get('X-CSRF-Token')).toBe(testCsrfToken)
   })
 
-  it('shows a safe error when login credentials are rejected', async () => {
+  it('shows a 2066 error when login credentials are rejected', async () => {
     window.history.pushState({}, '', '/login')
     mockApi(async (path) => {
       if (path === '/auth/me') {

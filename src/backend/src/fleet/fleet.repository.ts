@@ -118,7 +118,7 @@ export class FleetRepository {
 
   createBusWithInitialState(
     data: Prisma.BusCreateInput,
-    actorId: string,
+    actorId: number,
     motivoEstado: string | null,
   ) {
     return prisma.$transaction(
@@ -150,7 +150,7 @@ export class FleetRepository {
     )
   }
 
-  findActiveAssignmentWithBusByConductor(conductorId: string) {
+  findActiveAssignmentWithBusByConductor(conductorId: number) {
     return prisma.asignacionConductor.findFirst({
       where: {
         activa: true,
@@ -173,7 +173,7 @@ export class FleetRepository {
     })
   }
 
-  findAvailableDrivers(busId?: string) {
+  findAvailableDrivers(busId?: number) {
     return prisma.usuario.findMany({
       where: {
         estado: 'ACTIVO',
@@ -228,34 +228,34 @@ export class FleetRepository {
     })
   }
 
-  findBusDetailById(id: string) {
+  findBusDetailById(id: number) {
     return prisma.bus.findUnique({
       where: { id },
       include: busDetailInclude,
     })
   }
 
-  findBusSummaryById(id: string) {
+  findBusSummaryById(id: number) {
     return prisma.bus.findUnique({
       where: { id },
       include: busSummaryInclude,
     })
   }
 
-  findBusByIdForTransaction(id: string, client: Prisma.TransactionClient) {
+  findBusByIdForTransaction(id: number, client: Prisma.TransactionClient) {
     return client.bus.findUnique({
       where: { id },
     })
   }
 
-  findModeloBusById(modeloBusId: string) {
+  findModeloBusById(modeloBusId: number) {
     return prisma.modeloBus.findUnique({
       where: { id: modeloBusId },
       select: modeloBusSelect,
     })
   }
 
-  getAssignments(busId: string, limite: number) {
+  getAssignments(busId: number, limite: number) {
     return prisma.asignacionConductor.findMany({
       where: { busId },
       include: activeAssignmentInclude,
@@ -266,7 +266,7 @@ export class FleetRepository {
     })
   }
 
-  getMileageReadings(busId: string, limite: number) {
+  getMileageReadings(busId: number, limite: number) {
     return prisma.lecturaKilometraje.findMany({
       where: { busId },
       include: {
@@ -281,7 +281,7 @@ export class FleetRepository {
     })
   }
 
-  getStateHistory(busId: string, limite: number) {
+  getStateHistory(busId: number, limite: number) {
     return prisma.busEstadoHistorial.findMany({
       where: { busId },
       include: {
@@ -313,7 +313,7 @@ export class FleetRepository {
     })
   }
 
-  registerMileage(busId: string, kilometrajeNuevo: number, actorId: string, motivo: string | null) {
+  registerMileage(busId: number, kilometrajeNuevo: number, actorId: number, motivo: string | null) {
     return prisma.$transaction(
       async (tx) => {
         const bus = await this.findBusByIdForTransaction(busId, tx)
@@ -371,7 +371,7 @@ export class FleetRepository {
     )
   }
 
-  updateBus(id: string, data: Prisma.BusUpdateInput, actorId: string) {
+  updateBus(id: number, data: Prisma.BusUpdateInput, actorId: number) {
     return prisma.$transaction(async (tx) => {
       const previous = await tx.bus.findUnique({ where: { id }, select: { modeloBusId: true } })
       const bus = await tx.bus.update({ where: { id }, data, include: busDetailInclude })
@@ -388,7 +388,7 @@ export class FleetRepository {
     })
   }
 
-  updateState(busId: string, estadoNuevo: EstadoBus, actorId: string, motivo: string) {
+  updateState(busId: number, estadoNuevo: EstadoBus, actorId: number, motivo: string) {
     return prisma.$transaction(
       async (tx) => {
         const bus = await this.findBusByIdForTransaction(busId, tx)

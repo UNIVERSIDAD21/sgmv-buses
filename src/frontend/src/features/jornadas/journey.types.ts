@@ -3,14 +3,14 @@ import type { BusStatus, RutaDto } from '../flota/fleet.types'
 export type JourneyStatus = 'PROGRAMADA' | 'EN_CURSO' | 'FINALIZADA' | 'CANCELADA' | 'REASIGNADA'
 
 export interface JourneyUserRefDto {
-  id: string
+  id: number
   nombre: string
   rol: 'ADMINISTRADOR' | 'DESPACHADOR' | 'MECANICO' | 'CONDUCTOR'
 }
 
 export interface JourneyReadingDto {
   fechaLectura: string
-  id: string
+  id: number
   kilometraje: number
   kilometrajeAnterior: number
   registradoPor: JourneyUserRefDto
@@ -20,7 +20,7 @@ export interface JourneyReadingDto {
 export interface AvailabilityCauseDto {
   codigo: string
   mensaje: string
-  origenId: string
+  origenId: number
   origenTipo: string
   prioridad: number
 }
@@ -35,7 +35,7 @@ export interface JourneyDto {
   bus: {
     codigoInterno: string
     estadoOperativo: BusStatus
-    id: string
+    id: number
     placa: string
   }
   cambioPor: JourneyUserRefDto | null
@@ -46,12 +46,12 @@ export interface JourneyDto {
   finProgramado: string
   finReal: string | null
   finalizadaPor: JourneyUserRefDto | null
-  id: string
+  id: number
   iniciadaPor: JourneyUserRefDto | null
   inicioProgramado: string
   inicioReal: string | null
-  jornadaAnteriorId: string | null
-  jornadaSucesoraId: string | null
+  jornadaAnteriorId: number | null
+  jornadaSucesoraId: number | null
   lecturaFinal: JourneyReadingDto | null
   lecturaInicial: JourneyReadingDto | null
   motivoCambio: string | null
@@ -74,11 +74,11 @@ export interface JourneyOptionsResponse {
   buses: Array<{
     codigoInterno: string
     estadoOperativo: BusStatus
-    id: string
+    id: number
     kilometrajeActual: number
     placa: string
   }>
-  conductores: Array<{ id: string; nombre: string }>
+  conductores: Array<{ id: number; nombre: string }>
   rutas: Array<Pick<RutaDto, 'codigo' | 'destino' | 'id' | 'nombre' | 'origen'>>
 }
 

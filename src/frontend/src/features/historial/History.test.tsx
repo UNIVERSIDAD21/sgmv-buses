@@ -32,7 +32,7 @@ describe('RF-06 history and reports frontend', () => {
     mockApi(async (path) => {
       if (path === '/historial/buses')
         return ok({
-          buses: [historyBus, { ...historyBus, id: 'bus-second', codigoInterno: 'BUS-SEGUNDO' }],
+          buses: [historyBus, { ...historyBus, id: 2008, codigoInterno: 'BUS-SEGUNDO' }],
           paginacion: { limite: 10, pagina: 1, total: 2, totalPaginas: 1 },
         })
       if (path === `/historial/buses/${historyBus.id}`) {
@@ -40,11 +40,11 @@ describe('RF-06 history and reports frontend', () => {
         await delayed
         return ok(historyDetail('DESPACHADOR'))
       }
-      if (path === '/historial/buses/bus-second') {
+      if (path === '/historial/buses/2008') {
         const detail = historyDetail('DESPACHADOR')
         return ok({
           ...detail,
-          bus: { ...detail.bus, id: 'bus-second', codigoInterno: 'BUS-SEGUNDO' },
+          bus: { ...detail.bus, id: 2008, codigoInterno: 'BUS-SEGUNDO' },
         })
       }
       return handler(path)

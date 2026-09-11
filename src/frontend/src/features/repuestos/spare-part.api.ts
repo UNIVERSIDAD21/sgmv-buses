@@ -38,7 +38,7 @@ export interface ListMovementsParams {
   limite: number
   ordenarPor?: 'cantidad' | 'codigo' | 'fechaMovimiento' | 'tipo'
   pagina: number
-  responsableId?: string
+  responsableId?: number
   tipo?: InventoryMovementType | ''
 }
 
@@ -86,10 +86,10 @@ export interface StockAdjustmentInput {
 }
 
 export interface CreateCompatibilityInput {
-  busId?: string
+  busId?: number
   condicionUso?: string
   especificacionesValidadas: Record<string, unknown>
-  modeloBusId?: string
+  modeloBusId?: number
   permitido: boolean
 }
 
@@ -153,7 +153,7 @@ function buildMovementQuery(params: ListMovementsParams) {
   }
 
   if (params.responsableId) {
-    searchParams.set('responsableId', params.responsableId)
+    searchParams.set('responsableId', String(params.responsableId))
   }
 
   if (params.tipo) {
@@ -171,24 +171,24 @@ export function listSpareParts(params: ListSparePartsParams) {
   return apiRequest<SparePartListResponse>(`/repuestos?${buildSparePartQuery(params)}`)
 }
 
-export function getSparePart(repuestoId: string) {
+export function getSparePart(repuestoId: number) {
   return apiRequest<{ repuesto: SparePartDto }>(`/repuestos/${repuestoId}`)
 }
 
-export function listCompatibilityRules(repuestoId: string) {
+export function listCompatibilityRules(repuestoId: number) {
   return apiRequest<{ compatibilidades: CompatibilityRuleDto[] }>(
     `/repuestos/${repuestoId}/compatibilidades`,
   )
 }
 
-export function createCompatibilityRule(repuestoId: string, input: CreateCompatibilityInput) {
+export function createCompatibilityRule(repuestoId: number, input: CreateCompatibilityInput) {
   return apiRequest<{ compatibilidad: CompatibilityRuleDto }>(
     `/repuestos/${repuestoId}/compatibilidades`,
     { body: JSON.stringify(input), method: 'POST' },
   )
 }
 
-export function deactivateCompatibilityRule(repuestoId: string, compatibilidadId: string) {
+export function deactivateCompatibilityRule(repuestoId: number, compatibilidadId: number) {
   return apiRequest<{ compatibilidad: CompatibilityRuleDto }>(
     `/repuestos/${repuestoId}/compatibilidades/${compatibilidadId}/inactivar`,
     { body: '{}', method: 'POST' },
@@ -206,14 +206,14 @@ export function createSparePart(input: CreateSparePartInput) {
   })
 }
 
-export function updateSparePart(repuestoId: string, input: UpdateSparePartInput) {
+export function updateSparePart(repuestoId: number, input: UpdateSparePartInput) {
   return apiRequest<{ repuesto: SparePartDto }>(`/repuestos/${repuestoId}`, {
     body: JSON.stringify(input),
     method: 'PATCH',
   })
 }
 
-export function activateSparePart(repuestoId: string) {
+export function activateSparePart(repuestoId: number) {
   return apiRequest<{ repuesto: SparePartDto; yaExistia: boolean }>(
     `/repuestos/${repuestoId}/activar`,
     {
@@ -223,7 +223,7 @@ export function activateSparePart(repuestoId: string) {
   )
 }
 
-export function deactivateSparePart(repuestoId: string) {
+export function deactivateSparePart(repuestoId: number) {
   return apiRequest<{ repuesto: SparePartDto; yaExistia: boolean }>(
     `/repuestos/${repuestoId}/desactivar`,
     {
@@ -233,14 +233,14 @@ export function deactivateSparePart(repuestoId: string) {
   )
 }
 
-export function registerStockEntry(repuestoId: string, input: StockEntryInput) {
+export function registerStockEntry(repuestoId: number, input: StockEntryInput) {
   return apiRequest<SparePartOperationDto>(`/repuestos/${repuestoId}/entradas`, {
     body: JSON.stringify(input),
     method: 'POST',
   })
 }
 
-export function registerStockAdjustment(repuestoId: string, input: StockAdjustmentInput) {
+export function registerStockAdjustment(repuestoId: number, input: StockAdjustmentInput) {
   return apiRequest<SparePartOperationDto>(`/repuestos/${repuestoId}/ajustes`, {
     body: JSON.stringify(input),
     method: 'POST',
@@ -253,7 +253,7 @@ export function listInventoryMovements(params: ListMovementsParams) {
   )
 }
 
-export function listSparePartMovements(repuestoId: string, params: ListMovementsParams) {
+export function listSparePartMovements(repuestoId: number, params: ListMovementsParams) {
   return apiRequest<SparePartMovementListResponse>(
     `/repuestos/${repuestoId}/movimientos?${buildMovementQuery(params)}`,
   )

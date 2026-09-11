@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { createHmac, randomUUID } from 'node:crypto'
 
 import { PrismaClient, type Rol } from '@prisma/client'
@@ -67,7 +68,7 @@ async function ensureRoles() {
 }
 
 async function createUser(email: string, role: Rol, estado: 'ACTIVO' | 'INACTIVO' = 'ACTIVO') {
-  const id = randomUUID()
+  const id = testEntityId()
   createdUserIds.push(id)
 
   return prisma.usuario.create({
@@ -117,7 +118,7 @@ function expectNoSensitiveUserFields(body: unknown) {
   expect(serialized).not.toContain('hash')
 }
 
-function createTokenWithRole(userId: string, email: string, rol: string, expiresInSeconds: number) {
+function createTokenWithRole(userId: number, email: string, rol: string, expiresInSeconds: number) {
   const secret = env.JWT_SECRET
 
   if (!secret) {
@@ -141,7 +142,7 @@ function createTokenWithRole(userId: string, email: string, rol: string, expires
 }
 
 function createExpiredToken(
-  userId: string,
+  userId: number,
   email: string,
   rol: 'ADMINISTRADOR' | 'DESPACHADOR' | 'MECANICO' | 'CONDUCTOR',
 ) {
@@ -282,7 +283,7 @@ describe('Auth API', () => {
     expect(header).toEqual({ alg: 'HS256', typ: 'JWT' })
     expect(claims.iss).toBe(env.JWT_ISSUER)
     expect(claims.aud).toBe(env.JWT_AUDIENCE)
-    expect(claims.sub).toMatch(/^[0-9a-f-]{36}$/i)
+    expect(claims.sub).toBe(String(response.body.data.user.id))
     expect(claims.jti).toMatch(/^[0-9a-f-]{36}$/i)
     expect(claims.nbf).toBeTypeOf('number')
     expect((claims.exp as number) - (claims.iat as number)).toBe(3600)
@@ -321,7 +322,7 @@ describe('Auth API', () => {
       rol: 'ADMINISTRADOR',
     })
       .setProtectedHeader({ alg: 'HS256', typ: 'NOT_JWT' })
-      .setSubject(user.id)
+      .setSubject(String(user.id))
       .setIssuer(env.JWT_ISSUER)
       .setAudience('audiencia-no-autorizada')
       .setIssuedAt(now)
@@ -371,7 +372,7 @@ describe('Auth API', () => {
         { timeout: 5000 },
       )
       .toMatchObject({
-        actorId: expect.any(String),
+        actorId: expect.any(Number),
         ipHash: expect.stringMatching(/^[0-9a-f]{64}$/),
         metodo: 'POST',
         resultado: 'EXITO',

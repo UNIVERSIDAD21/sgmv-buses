@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { PrismaClient, type Rol } from '@prisma/client'
@@ -24,15 +25,15 @@ const created = {
 
 interface NoveltyFixture {
   adminEmail: string
-  adminId: string
+  adminId: number
   conductorAltEmail: string
-  conductorAltId: string
+  conductorAltId: number
   conductorEmail: string
-  conductorId: string
+  conductorId: number
   conductorSinBusEmail: string
-  conductorSinBusId: string
+  conductorSinBusId: number
   despachadorEmail: string
-  despachadorId: string
+  despachadorId: number
   mecanicoEmail: string
 }
 
@@ -88,7 +89,7 @@ async function ensureRoles() {
 }
 
 async function createUser(email: string, role: Rol) {
-  const id = randomUUID()
+  const id = testEntityId()
   created.usuarios.push(id)
 
   return prisma.usuario.create({
@@ -103,7 +104,7 @@ async function createUser(email: string, role: Rol) {
 }
 
 async function createBus() {
-  const id = randomUUID()
+  const id = testEntityId()
   created.buses.push(id)
 
   return prisma.bus.create({
@@ -119,7 +120,7 @@ async function createBus() {
   })
 }
 
-async function createAssignment(conductorId: string, busId: string, adminId: string) {
+async function createAssignment(conductorId: number, busId: number, adminId: number) {
   return prisma.asignacionConductor.create({
     data: {
       asignadoPorId: adminId,
@@ -130,9 +131,9 @@ async function createAssignment(conductorId: string, busId: string, adminId: str
   })
 }
 
-async function createActiveJourney(conductorId: string, busId: string, adminId: string) {
-  const journeyId = randomUUID()
-  const readingId = randomUUID()
+async function createActiveJourney(conductorId: number, busId: number, adminId: number) {
+  const journeyId = testEntityId()
+  const readingId = testEntityId()
   const startedAt = new Date(Date.now() - 30 * 60_000)
   created.jornadas.push(journeyId)
   created.lecturas.push(readingId)
@@ -171,12 +172,12 @@ async function createActiveJourney(conductorId: string, busId: string, adminId: 
 }
 
 async function finishJourney(
-  journeyId: string,
-  busId: string,
-  conductorId: string,
+  journeyId: number,
+  busId: number,
+  conductorId: number,
   finishedAt = new Date(Date.now() - 2 * 60_000),
 ) {
-  const readingId = randomUUID()
+  const readingId = testEntityId()
   created.lecturas.push(readingId)
 
   await prisma.$transaction(async (tx) => {
@@ -211,8 +212,8 @@ async function finishJourney(
   return finishedAt
 }
 
-async function createProgrammedJourney(conductorId: string, busId: string, adminId: string) {
-  const journeyId = randomUUID()
+async function createProgrammedJourney(conductorId: number, busId: number, adminId: number) {
+  const journeyId = testEntityId()
   created.jornadas.push(journeyId)
   await prisma.jornadaOperativa.create({
     data: {
@@ -228,7 +229,7 @@ async function createProgrammedJourney(conductorId: string, busId: string, admin
   return journeyId
 }
 
-async function createNovelty(conductorId: string, busId: string, overrides = {}) {
+async function createNovelty(conductorId: number, busId: number, overrides = {}) {
   const novelty = await prisma.novedad.create({
     data: {
       busId,
@@ -479,7 +480,7 @@ describe('RF-02 Novelty API', () => {
     const conductor = await loginAgent(fixture.conductorEmail)
 
     const list = await conductor.get('/novedades/mis-novedades').expect(200)
-    const ids = list.body.data.novedades.map((novelty: { id: string }) => novelty.id)
+    const ids = list.body.data.novedades.map((novelty: { id: number }) => novelty.id)
 
     expect(ids).toContain(ownNovelty.id)
     expect(ids).not.toContain(foreignNovelty.id)
@@ -507,7 +508,7 @@ describe('RF-02 Novelty API', () => {
       })
       .expect(200)
 
-    expect(list.body.data.novedades.some((item: { id: string }) => item.id === novelty.id)).toBe(
+    expect(list.body.data.novedades.some((item: { id: number }) => item.id === novelty.id)).toBe(
       true,
     )
     expect(list.body.data.paginacion.total).toBeGreaterThanOrEqual(1)
@@ -873,11 +874,11 @@ describe('RF-02 Novelty API', () => {
     const novelty = await createNovelty(fixture.conductorId, bus.id)
     const fakeAdmin: AuthenticatedUser = {
       email: 'fake-admin@test.sgmv.local',
-      id: randomUUID(),
+      id: testEntityId(),
       nombre: 'Fake Admin',
       rol: {
         codigo: 'ADMINISTRADOR',
-        id: randomUUID(),
+        id: testEntityId(),
         nombre: 'Administrador',
       },
     }

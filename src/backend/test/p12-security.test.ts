@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { PrismaClient, type Rol } from '@prisma/client'
@@ -19,7 +20,7 @@ interface Fixture {
 }
 
 async function createUser(email: string, role: Rol) {
-  const id = randomUUID()
+  const id = testEntityId()
   createdUserIds.push(id)
 
   return prisma.usuario.create({

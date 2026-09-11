@@ -1,3 +1,4 @@
+import { testEntityId } from '../../backend/test/entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { expect, test, type Page } from '@playwright/test'
@@ -7,11 +8,11 @@ import { prisma } from '../../backend/src/prisma/client.js'
 
 const demoPassword = process.env.SEED_USER_PASSWORD
 const marker = `E2E.P6.${randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase()}`
-const busId = randomUUID()
+const busId = testEntityId()
 const busCode = `000-P6E2E-${marker.slice(-8)}`
-let planId: string | null = null
-let scheduleId: string | null = null
-let orderId: string | null = null
+let planId: number | null = null
+let scheduleId: number | null = null
+let orderId: number | null = null
 
 async function login(page: Page, email: string) {
   await page.goto('/login')
@@ -96,8 +97,10 @@ test.afterAll(async () => {
     await tx.planMantenimientoPreventivo.deleteMany({
       where: { id: { in: plans.map((plan) => plan.id) } },
     })
-    await tx.eventoAuditoria.deleteMany({ where: { recursoId: { in: resourceIds } } })
-    await tx.solicitudIdempotente.deleteMany({ where: { recursoId: { in: resourceIds } } })
+    await tx.eventoAuditoria.deleteMany({ where: { recursoId: { in: resourceIds.map(String) } } })
+    await tx.solicitudIdempotente.deleteMany({
+      where: { recursoId: { in: resourceIds.map(String) } },
+    })
     await tx.bus.deleteMany({ where: { id: busId } })
   })
   await prisma.$disconnect()
@@ -124,7 +127,7 @@ test('P6 aplica plan, deriva obligacion, restringe despacho y evita orden duplic
   await planDialog.getByLabel('Criterio de plan').selectOption('KILOMETRAJE')
   await planDialog.getByLabel('Intervalo kilometraje').fill('100')
   await planDialog.getByLabel('Anticipacion kilometraje').fill('50')
-  await planDialog.getByLabel('Bus destino').selectOption(busId)
+  await planDialog.getByLabel('Bus destino').selectOption(String(busId))
   await planDialog.getByText('Bloquear operacion al vencer').click()
   await planDialog.getByRole('button', { name: 'Crear plan' }).click()
   await expect(page.getByText('Plan preventivo registrado.')).toBeVisible()
@@ -137,7 +140,7 @@ test('P6 aplica plan, deriva obligacion, restringe despacho y evita orden duplic
   const row = page.getByRole('row').filter({ hasText: marker })
   await row.getByRole('button', { name: 'Aplicar' }).click()
   const applyDialog = page.getByRole('dialog', { name: 'Aplicar plan preventivo' })
-  await expect(applyDialog.getByLabel('Bus para aplicar plan')).toHaveValue(busId)
+  await expect(applyDialog.getByLabel('Bus para aplicar plan')).toHaveValue(String(busId))
   await applyDialog.getByRole('button', { name: 'Aplicar plan' }).click()
   await expect(page.getByText(/objetivos derivados correctamente/i)).toBeVisible()
 
@@ -157,7 +160,7 @@ test('P6 aplica plan, deriva obligacion, restringe despacho y evita orden duplic
         kilometrajeAnterior: 10_000,
         kilometrajeNuevo: 10_100,
         motivo: marker,
-        registradoPorId: '20000000-0000-4000-8000-000000000001',
+        registradoPorId: 1005,
         tipo: 'AJUSTE_ADMINISTRATIVO',
       },
     })

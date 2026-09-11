@@ -1,3 +1,4 @@
+import { entityIdSchema } from '../shared/entity-id.js'
 import type { NextFunction, Request, RequestHandler, Response } from 'express'
 
 import { persistJourneyConflictAlert } from '../alerts/alert.service.js'
@@ -80,9 +81,8 @@ export function idempotent(handler: RequestHandler): RequestHandler {
             request.body && typeof request.body === 'object' && !Array.isArray(request.body)
               ? (request.body as Record<string, unknown>)
               : {}
-          const busId = typeof body.busId === 'string' ? body.busId : undefined
-          const journeyId =
-            typeof request.params.jornadaId === 'string' ? request.params.jornadaId : undefined
+          const busId = entityIdSchema.safeParse(body.busId).data
+          const journeyId = entityIdSchema.safeParse(request.params.jornadaId).data
           const idempotencyKey = request.get('idempotency-key')
 
           if (idempotencyKey) {

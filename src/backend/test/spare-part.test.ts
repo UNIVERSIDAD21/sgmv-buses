@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { PrismaClient, type Prisma, type Rol } from '@prisma/client'
@@ -27,14 +28,14 @@ const created = {
 
 interface SparePartFixture {
   adminEmail: string
-  adminId: string
+  adminId: number
   conductorEmail: string
   mecanicoEmail: string
-  mecanicoId: string
+  mecanicoId: number
 }
 
 function track(bucket: keyof typeof created) {
-  const id = randomUUID()
+  const id = testEntityId()
   created[bucket].push(id)
   return id
 }
@@ -149,7 +150,7 @@ async function createSparePart(overrides: Partial<Prisma.RepuestoUncheckedCreate
   })
 }
 
-async function allowPartForBus(repuestoId: string, busId: string, adminId: string) {
+async function allowPartForBus(repuestoId: number, busId: number, adminId: number) {
   const id = track('compatibilidades')
   await prisma.compatibilidadRepuesto.create({
     data: {
@@ -1232,7 +1233,7 @@ describe('RF-05 spare parts inventory API', () => {
         .expect(200)
 
       const movement = movements.body.data.movimientos.find(
-        (item: { consumo: { id: string } | null }) =>
+        (item: { consumo: { id: number } | null }) =>
           item.consumo?.id === consumption.body.data.consumo.id,
       )
       const reloadedConsumption = await prisma.consumoRepuesto.findUniqueOrThrow({

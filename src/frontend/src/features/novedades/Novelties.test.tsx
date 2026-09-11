@@ -57,7 +57,7 @@ describe('RF-02 novelty frontend', () => {
     expect(String(createCalls[0][1]?.body)).not.toContain('conductorId')
   })
 
-  it('allows a safe late report when the driver has no journey currently in progress', async () => {
+  it('allows a 2066 late report when the driver has no journey currently in progress', async () => {
     window.history.pushState({}, '', '/novedades')
     mockApi(noveltyHandler('CONDUCTOR', { noBus: true }))
 
@@ -169,11 +169,11 @@ describe('RF-02 novelty frontend', () => {
     expect(await screen.findByText(/Orden generada/i)).toBeInTheDocument()
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/novedades/nov-1/revision'),
+      expect.stringContaining('/novedades/2040/revision'),
       expect.objectContaining({ method: 'POST' }),
     )
     const reviewCall = fetchMock.mock.calls.find(
-      ([input, init]) => getPath(input) === '/novedades/nov-1/revision' && init?.method === 'POST',
+      ([input, init]) => getPath(input) === '/novedades/2040/revision' && init?.method === 'POST',
     )
     expect(JSON.parse(String(reviewCall?.[1]?.body))).toMatchObject({
       afectaOperacion: true,
@@ -181,7 +181,7 @@ describe('RF-02 novelty frontend', () => {
       criticidad: 'CRITICA',
     })
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/novedades/nov-1/convertir-orden'),
+      expect.stringContaining('/novedades/2040/convertir-orden'),
       expect.objectContaining({ method: 'POST' }),
     )
   })

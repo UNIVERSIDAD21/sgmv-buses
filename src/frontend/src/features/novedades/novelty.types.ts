@@ -6,14 +6,14 @@ export type NoveltyCriticality = 'ALTA' | 'BAJA' | 'CRITICA' | 'MEDIA'
 
 export interface NoveltyUserDto {
   email?: string
-  id: string
+  id: number
   nombre: string
 }
 
 export interface NoveltyBusDto {
   codigoInterno: string
   estadoOperativo: string
-  id: string
+  id: number
   placa: string
 }
 
@@ -22,7 +22,7 @@ export interface WorkOrderSummaryDto {
   descripcion?: string
   estado: string
   fechaCreacion: string
-  id: string
+  id: number
   origen: 'NOVEDAD'
   prioridad: OrderPriority
   tipo: 'CORRECTIVA'
@@ -45,23 +45,23 @@ export interface NoveltyDto {
   fechaOcurrencia: string | null
   fechaReporte: string
   fechaRevision: string | null
-  id: string
+  id: number
   jornada: {
     estado: 'PROGRAMADA' | 'EN_CURSO' | 'FINALIZADA' | 'CANCELADA' | 'REASIGNADA'
     finReal: string | null
-    id: string
+    id: number
     inicioReal: string | null
     ruta: {
       codigo: string
       destino: string
-      id: string
+      id: number
       nombre: string
       origen: string
     } | null
   } | null
   lecturaKilometraje: {
     fechaLectura: string
-    id: string
+    id: number
     kilometraje: number
     kilometrajeAnterior: number
     tipo: 'NOVEDAD'

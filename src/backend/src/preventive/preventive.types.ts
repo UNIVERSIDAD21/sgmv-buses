@@ -9,7 +9,7 @@ import type { PreventiveClassificationResult } from './preventive.classification
 
 export interface PreventiveUserDto {
   email: string
-  id: string
+  id: number
   nombre: string
 }
 
@@ -17,7 +17,7 @@ export interface PreventiveBusDto {
   anio: number
   codigoInterno: string
   estadoOperativo: EstadoBus
-  id: string
+  id: number
   kilometrajeActual: number
   marca: string
   modelo: string
@@ -30,7 +30,7 @@ export interface PreventiveOrderSummaryDto {
   estado: EstadoOrdenTrabajo
   fechaCreacion: string
   fechaObjetivoPreventivo: string | null
-  id: string
+  id: number
   kilometrajeObjetivoPreventivo: number | null
   origen: 'PREVENTIVO'
   prioridad: PrioridadOrden
@@ -46,14 +46,14 @@ export interface PreventiveScheduleDto {
   createdAt: string
   criterio: CriterioMantenimiento
   fechaProgramada: string | null
-  id: string
+  id: number
   kilometrajeObjetivo: number | null
   ordenActiva: PreventiveOrderSummaryDto | null
   plan: {
     anticipacionDiasEfectiva: number
     anticipacionKmEfectiva: number
     claveTarea: string
-    id: string
+    id: number
     origen: 'BUS' | 'MODELO'
     version: number
   } | null

@@ -1,6 +1,6 @@
+import { entityIdSchema } from '../shared/entity-id.js'
 import { z } from 'zod'
 
-const uuid = z.uuid()
 const eventDate = z.iso.datetime({ offset: true })
 const trimmedText = (min: number, max: number) => z.string().trim().min(min).max(max)
 
@@ -21,14 +21,14 @@ const statesQuery = z.preprocess(
 )
 
 export const journeyIdParamSchema = z.object({
-  jornadaId: uuid,
+  jornadaId: entityIdSchema,
 })
 
 export const listJourneysQuerySchema = z
   .object({
     buscar: z.string().trim().max(80).optional(),
-    busId: uuid.optional(),
-    conductorId: uuid.optional(),
+    busId: entityIdSchema.optional(),
+    conductorId: entityIdSchema.optional(),
     direccion: z.enum(['asc', 'desc']).default('desc'),
     desde: eventDate.optional(),
     estado: statesQuery,
@@ -36,7 +36,7 @@ export const listJourneysQuerySchema = z
     limite: z.coerce.number().int().min(1).max(100).default(20),
     orden: z.enum(['inicioProgramado', 'estado', 'updatedAt']).default('inicioProgramado'),
     pagina: z.coerce.number().int().min(1).default(1),
-    rutaId: uuid.optional(),
+    rutaId: entityIdSchema.optional(),
   })
   .refine(
     (value) => !value.desde || !value.hasta || Date.parse(value.desde) <= Date.parse(value.hasta),
@@ -48,11 +48,11 @@ export const listJourneysQuerySchema = z
 
 export const createJourneySchema = z
   .object({
-    busId: uuid,
-    conductorId: uuid,
+    busId: entityIdSchema,
+    conductorId: entityIdSchema,
     finProgramado: eventDate,
     inicioProgramado: eventDate,
-    rutaId: uuid.optional(),
+    rutaId: entityIdSchema.optional(),
   })
   .strict()
   .refine((value) => Date.parse(value.inicioProgramado) < Date.parse(value.finProgramado), {
@@ -77,14 +77,14 @@ export const cancelJourneySchema = z
 
 export const reassignJourneySchema = z
   .object({
-    busId: uuid.optional(),
-    conductorId: uuid.optional(),
+    busId: entityIdSchema.optional(),
+    conductorId: entityIdSchema.optional(),
     fechaEvento: eventDate,
     finProgramado: eventDate.optional(),
     inicioProgramado: eventDate.optional(),
     kilometrajeFinal: z.coerce.number().int().min(0).optional(),
     motivo: trimmedText(3, 500),
-    rutaId: uuid.nullable().optional(),
+    rutaId: entityIdSchema.nullable().optional(),
   })
   .strict()
 

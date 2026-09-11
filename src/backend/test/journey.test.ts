@@ -1,3 +1,4 @@
+import { testEntityId } from './entity-id.js'
 import { randomUUID } from 'node:crypto'
 
 import { PrismaClient, type Rol } from '@prisma/client'
@@ -21,9 +22,9 @@ const created = {
 interface JourneyFixture {
   adminEmail: string
   conductorEmail: string
-  conductorId: string
+  conductorId: number
   conductorOtroEmail: string
-  conductorOtroId: string
+  conductorOtroId: number
   despachadorEmail: string
   mecanicoEmail: string
 }
@@ -54,12 +55,12 @@ async function ensureRoles() {
 }
 
 async function createUser(label: string, role: Rol) {
-  const id = randomUUID()
+  const id = testEntityId()
   created.usuarios.push(id)
   return prisma.usuario.create({
     data: {
       contrasenaHash: await hash(password, 10),
-      email: `jornada-${label}-${id.slice(0, 8)}@test.sgmv.local`,
+      email: `jornada-${label}-${String(id)}@test.sgmv.local`,
       id,
       nombre: `Usuario ${label}`,
       rolId: role.id,
@@ -93,7 +94,7 @@ async function createDriver(label: string) {
 }
 
 async function createBus(estadoOperativo: 'OPERATIVO' | 'EN_MANTENIMIENTO' = 'OPERATIVO') {
-  const id = randomUUID()
+  const id = testEntityId()
   created.buses.push(id)
   return prisma.bus.create({
     data: {
@@ -110,7 +111,7 @@ async function createBus(estadoOperativo: 'OPERATIVO' | 'EN_MANTENIMIENTO' = 'OP
 }
 
 async function createRoute(activa = true) {
-  const id = randomUUID()
+  const id = testEntityId()
   created.rutas.push(id)
   return prisma.ruta.create({
     data: {
@@ -133,11 +134,11 @@ async function loginAgent(email: string) {
 async function programJourney(
   agent: Awaited<ReturnType<typeof loginAgent>>,
   input: {
-    busId: string
-    conductorId: string
+    busId: number
+    conductorId: number
     finProgramado?: Date
     inicioProgramado?: Date
-    rutaId?: string
+    rutaId?: number
   },
 ) {
   const response = await agent.post('/jornadas').send({
@@ -296,8 +297,8 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
     const bus = await createBus()
     const journeyDriver = await createDriver('lectura-tardia')
     const dispatcher = await loginAgent(fixture.despachadorEmail)
-    const firstId = randomUUID()
-    const nextId = randomUUID()
+    const firstId = testEntityId()
+    const nextId = testEntityId()
     created.lecturas.push(firstId, nextId)
     const firstDate = past(300)
     const nextDate = past(100)
