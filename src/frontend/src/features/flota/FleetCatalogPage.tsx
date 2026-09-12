@@ -496,10 +496,26 @@ export default function FleetCatalogPage() {
                       <p className="mt-1 text-xs text-slate-400">
                         {route.jornadasAsociadas} jornada(s) asociada(s)
                       </p>
+                      {route.origenDato === 'OFICIAL' && (
+                        <div className="mt-2 text-sm text-teal-800">
+                          <p>
+                            AMB · Longitud oficial: <strong>{route.longitudKmOficial} km</strong> ·{' '}
+                            {route.operador}
+                          </p>
+                          <p>
+                            Semántica oficial no determinada. La demo usa circuito completo como
+                            convención simulada SGMV.
+                          </p>
+                          <p className="text-xs">
+                            Referencia documental; vigencia operativa parcialmente confirmada.
+                          </p>
+                        </div>
+                      )}
                     </div>
                     {canEdit && (
                       <div className="flex gap-2">
                         <Button
+                          disabled={route.origenDato === 'OFICIAL'}
                           onClick={() =>
                             setRouteForm({
                               codigo: route.codigo,

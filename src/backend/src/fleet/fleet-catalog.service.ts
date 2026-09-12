@@ -1,3 +1,4 @@
+import { mapRouteReference } from '../amb/route-contract.js'
 import { Prisma } from '@prisma/client'
 
 import type { AuthenticatedUser } from '../auth/auth.types.js'
@@ -71,6 +72,7 @@ function mapModeloBusDetail(
 
 function mapRuta(ruta: RutaRecord): RutaDto {
   return {
+    ...mapRouteReference(ruta),
     activa: ruta.activa,
     codigo: ruta.codigo,
     createdAt: ruta.createdAt.toISOString(),
@@ -270,6 +272,14 @@ export class FleetCatalogService {
 
   async updateRuta(id: number, input: UpdateRutaInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
+    const current = await this.repository.findRutaById(id)
+    if (current?.origenDato === 'OFICIAL') {
+      throw new AppError(
+        409,
+        'OFFICIAL_ROUTE_IMMUTABLE',
+        'Los datos oficiales AMB son de solo lectura; se conserva su fuente publicada',
+      )
+    }
     const data: Prisma.RutaUpdateInput = {}
 
     if (input.codigo !== undefined) data.codigo = normalizeIdentifier(input.codigo)

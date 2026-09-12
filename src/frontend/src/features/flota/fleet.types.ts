@@ -59,6 +59,13 @@ export interface ModeloBusDetailDto extends ModeloBusSummaryDto {
 }
 
 export interface RutaDto {
+  longitudKmOficial?: number | null
+  origenDato?: 'OFICIAL' | 'SIMULADO_SGMV'
+  operador?: string | null
+  semanticaLongitudOficial?: 'NO_DETERMINADA'
+  semanticaLongitudDemo?: 'CIRCUITO_COMPLETO'
+  origenSemanticaDemo?: 'SIMULADO_SGMV'
+  procedencia?: Record<string, unknown>
   activa: boolean
   codigo: string
   createdAt: string

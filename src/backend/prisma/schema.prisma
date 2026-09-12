@@ -694,6 +694,13 @@ model ModeloBus {
 }
 
 model Ruta {
+  longitudKmOficial Decimal? @map("longitud_km_oficial") @db.Decimal(10, 3)
+  semanticaLongitudOficial String @default("NO_DETERMINADA") @map("semantica_longitud_oficial") @db.VarChar(40)
+  semanticaLongitudDemo String @default("CIRCUITO_COMPLETO") @map("semantica_longitud_demo") @db.VarChar(40)
+  origenSemanticaDemo String @default("SIMULADO_SGMV") @map("origen_semantica_demo") @db.VarChar(40)
+  origenDato String @default("SIMULADO_SGMV") @map("origen_dato") @db.VarChar(40)
+  operador String? @db.VarChar(160)
+  procedencia Json @default("{}") @db.JsonB
   id        Int      @id @default(autoincrement())
   codigo    String   @unique @db.VarChar(80)
   nombre    String   @db.VarChar(160)
@@ -710,6 +717,10 @@ model Ruta {
 }
 
 model JornadaOperativa {
+  ciclosCompletosSimulados Int? @map("ciclos_completos_simulados")
+  kmNoComercialesSimulados Decimal? @map("km_no_comerciales_simulados") @db.Decimal(10, 3)
+  longitudKmOficialSnapshot Decimal? @map("longitud_km_oficial_snapshot") @db.Decimal(10, 3)
+  kmProyectadosDemo Decimal? @map("km_proyectados_demo") @db.Decimal(12, 3)
   id                Int           @id @default(autoincrement())
   busId             Int           @map("bus_id")
   conductorId       Int           @map("conductor_id")

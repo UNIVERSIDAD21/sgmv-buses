@@ -1,3 +1,4 @@
+import type { RouteReferenceDto } from '../amb/route-contract.js'
 export interface ModeloBusSummaryDto {
   activo: boolean
   busesAsociados: number
@@ -13,7 +14,7 @@ export interface ModeloBusDetailDto extends ModeloBusSummaryDto {
   especificaciones?: Record<string, unknown>
 }
 
-export interface RutaDto {
+export interface RutaDto extends RouteReferenceDto {
   activa: boolean
   codigo: string
   createdAt: string
