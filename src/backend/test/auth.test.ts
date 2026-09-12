@@ -17,7 +17,7 @@ import { createCsrfAgent } from './http-test-client.js'
 
 const prisma = new PrismaClient()
 const password = 'Clave-demo-segura-123'
-const createdUserIds: string[] = []
+const createdUserIds: number[] = []
 
 interface AuthFixture {
   adminEmail: string
@@ -437,6 +437,24 @@ describe('Auth API', () => {
 
     expect(response.body.error.code).toBe('RATE_LIMITED')
     expect(Number(response.headers['retry-after'])).toBeGreaterThanOrEqual(1)
+  })
+
+  it('returns Retry-After for a persisted account block even when the rate counter is empty', async () => {
+    const email = `blocked-${randomUUID().slice(0, 8)}@test.sgmv.local`
+    const role = await prisma.rol.findUniqueOrThrow({ where: { codigo: 'ADMINISTRADOR' } })
+    const user = await createUser(email, role)
+    await prisma.usuario.update({
+      where: { id: user.id },
+      data: { bloqueadoHasta: new Date(Date.now() + 60_000) },
+    })
+    const agent = await createCsrfAgent(createApp())
+    const response = await agent
+      .post('/auth/login')
+      .send({ email, contrasena: password })
+      .expect(429)
+    expect(response.body.error.code).toBe('RATE_LIMITED')
+    expect(Number(response.headers['retry-after'])).toBeGreaterThanOrEqual(1)
+    expect(Number(response.headers['retry-after'])).toBeLessThanOrEqual(60)
   })
 
   it('serializes identity and IP limits across independent database clients', async () => {

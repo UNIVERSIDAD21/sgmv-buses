@@ -48,6 +48,12 @@ export class AuthService {
         429,
         'RATE_LIMITED',
         'Demasiados intentos de inicio de sesion. Intente mas tarde.',
+        {
+          retryAfterSeconds: Math.max(
+            1,
+            Math.ceil((user.bloqueadoHasta.getTime() - Date.now()) / 1000),
+          ),
+        },
       )
     }
 
