@@ -1,3 +1,5 @@
+import { officialAmbRoutes } from '../src/amb/routes.js'
+import { seedAmbDemo } from './seed-amb-demo.js'
 import { PrismaClient } from '@prisma/client'
 import { hash } from 'bcryptjs'
 
@@ -281,22 +283,36 @@ async function main() {
           activo: true,
           especificaciones: {
             combustible: 'Diesel',
-            configuracion: 'Bus urbano',
+            configuracion: 'Bus urbano dual académico',
+            origenDato: 'SIMULADO_SGMV',
+            contextoReal:
+              'Padrón dual SITME y transición de buses duales Transpiedecuesta; marca y componentes no verificados',
+            motorDemo: 'SGMV-MOTOR-DUAL-01',
+            transmisionDemo: 'SGMV-TRANSMISION-AUTO-01',
+            chasisDemo: 'SGMV-CHASIS-URBANO-01',
+            marcaOficial: 'NO_DETERMINADA',
           },
-          marca: 'Mercedes-Benz',
-          nombreModelo: 'OF-1721',
-          versionTecnica: 'Euro V',
+          marca: 'SGMV-DEMO',
+          nombreModelo: 'URBANO-DUAL-A',
+          versionTecnica: 'DEMO-2026-A',
         },
         create: {
           id: ids.modelosBus.principal,
           activo: true,
           especificaciones: {
             combustible: 'Diesel',
-            configuracion: 'Bus urbano',
+            configuracion: 'Bus urbano dual académico',
+            origenDato: 'SIMULADO_SGMV',
+            contextoReal:
+              'Padrón dual SITME y transición de buses duales Transpiedecuesta; marca y componentes no verificados',
+            motorDemo: 'SGMV-MOTOR-DUAL-01',
+            transmisionDemo: 'SGMV-TRANSMISION-AUTO-01',
+            chasisDemo: 'SGMV-CHASIS-URBANO-01',
+            marcaOficial: 'NO_DETERMINADA',
           },
-          marca: 'Mercedes-Benz',
-          nombreModelo: 'OF-1721',
-          versionTecnica: 'Euro V',
+          marca: 'SGMV-DEMO',
+          nombreModelo: 'URBANO-DUAL-A',
+          versionTecnica: 'DEMO-2026-A',
         },
       })
 
@@ -306,42 +322,52 @@ async function main() {
           activo: true,
           especificaciones: {
             combustible: 'Diesel',
-            configuracion: 'Bus urbano',
+            configuracion: 'Bus urbano dual académico',
+            origenDato: 'SIMULADO_SGMV',
+            contextoReal:
+              'Padrón dual SITME y transición de buses duales Transpiedecuesta; marca y componentes no verificados',
+            motorDemo: 'SGMV-MOTOR-DUAL-01',
+            transmisionDemo: 'SGMV-TRANSMISION-AUTO-01',
+            chasisDemo: 'SGMV-CHASIS-URBANO-01',
+            marcaOficial: 'NO_DETERMINADA',
           },
-          marca: 'Volkswagen',
-          nombreModelo: '17-230',
-          versionTecnica: 'OD',
+          marca: 'SGMV-DEMO',
+          nombreModelo: 'URBANO-DUAL-B',
+          versionTecnica: 'DEMO-2026-B',
         },
         create: {
           id: ids.modelosBus.respaldo,
           activo: true,
           especificaciones: {
             combustible: 'Diesel',
-            configuracion: 'Bus urbano',
+            configuracion: 'Bus urbano dual académico',
+            origenDato: 'SIMULADO_SGMV',
+            contextoReal:
+              'Padrón dual SITME y transición de buses duales Transpiedecuesta; marca y componentes no verificados',
+            motorDemo: 'SGMV-MOTOR-DUAL-01',
+            transmisionDemo: 'SGMV-TRANSMISION-AUTO-01',
+            chasisDemo: 'SGMV-CHASIS-URBANO-01',
+            marcaOficial: 'NO_DETERMINADA',
           },
-          marca: 'Volkswagen',
-          nombreModelo: '17-230',
-          versionTecnica: 'OD',
+          marca: 'SGMV-DEMO',
+          nombreModelo: 'URBANO-DUAL-B',
+          versionTecnica: 'DEMO-2026-B',
         },
       })
 
-      await tx.ruta.upsert({
-        where: { codigo: 'RUTA-CENTRO-NORTE' },
-        update: {
-          activa: true,
-          destino: 'Terminal Norte',
-          nombre: 'Centro - Norte',
-          origen: 'Patio Central',
-        },
-        create: {
-          id: ids.rutas.centroNorte,
-          activa: true,
-          codigo: 'RUTA-CENTRO-NORTE',
-          destino: 'Terminal Norte',
-          nombre: 'Centro - Norte',
-          origen: 'Patio Central',
-        },
-      })
+      for (const [index, official] of officialAmbRoutes.entries()) {
+        const route = await tx.ruta.upsert({
+          where: { codigo: official.codigo },
+          update: {}, // The consolidated published snapshot is immutable.
+          create: {
+            ...official,
+            origenDato: 'OFICIAL',
+            activa: true,
+            id: index === 0 ? ids.rutas.centroNorte : 11000 + index,
+          },
+        })
+        if (index === 0) ids.rutas.centroNorte = route.id
+      }
 
       await tx.ruta.upsert({
         where: { codigo: 'RUTA-ALTERNA-DEMO' },
@@ -365,8 +391,8 @@ async function main() {
         where: { codigoInterno: 'BUS-001' },
         update: {
           placa: 'SGM001',
-          marca: 'Mercedes-Benz',
-          modelo: 'OF-1721',
+          marca: 'SGMV-DEMO',
+          modelo: 'URBANO-DUAL-A',
           anio: 2020,
           kilometrajeActual: 45200,
           estadoOperativo: 'OPERATIVO',
@@ -376,8 +402,8 @@ async function main() {
           id: ids.buses.principal,
           codigoInterno: 'BUS-001',
           placa: 'SGM001',
-          marca: 'Mercedes-Benz',
-          modelo: 'OF-1721',
+          marca: 'SGMV-DEMO',
+          modelo: 'URBANO-DUAL-A',
           anio: 2020,
           kilometrajeActual: 45200,
           estadoOperativo: 'OPERATIVO',
@@ -389,8 +415,8 @@ async function main() {
         where: { codigoInterno: 'BUS-002' },
         update: {
           placa: 'SGM002',
-          marca: 'Volkswagen',
-          modelo: '17-230',
+          marca: 'SGMV-DEMO',
+          modelo: 'URBANO-DUAL-B',
           anio: 2019,
           kilometrajeActual: 58750,
           estadoOperativo: 'EN_MANTENIMIENTO',
@@ -400,8 +426,8 @@ async function main() {
           id: ids.buses.respaldo,
           codigoInterno: 'BUS-002',
           placa: 'SGM002',
-          marca: 'Volkswagen',
-          modelo: '17-230',
+          marca: 'SGMV-DEMO',
+          modelo: 'URBANO-DUAL-B',
           anio: 2019,
           kilometrajeActual: 58750,
           estadoOperativo: 'EN_MANTENIMIENTO',
@@ -460,6 +486,10 @@ async function main() {
           busId: ids.buses.principal,
           conductorId: ids.usuarios.conductor,
           rutaId: ids.rutas.centroNorte,
+          ciclosCompletosSimulados: 4,
+          kmNoComercialesSimulados: 10,
+          longitudKmOficialSnapshot: 24,
+          kmProyectadosDemo: 106,
           estado: 'FINALIZADA',
           inicioProgramado: jornadaFinalizada.inicioProgramado,
           finProgramado: jornadaFinalizada.finProgramado,
@@ -548,9 +578,13 @@ async function main() {
           busId: ids.buses.principal,
           conductorId: ids.usuarios.conductor,
           rutaId: ids.rutas.centroNorte,
+          ciclosCompletosSimulados: 4,
+          kmNoComercialesSimulados: 10,
+          longitudKmOficialSnapshot: 24,
+          kmProyectadosDemo: 106,
           estado: 'PROGRAMADA',
-          inicioProgramado: new Date('2026-09-06T12:00:00.000Z'),
-          finProgramado: new Date('2026-09-06T20:00:00.000Z'),
+          inicioProgramado: new Date(Date.now() + 24 * 60 * 60_000),
+          finProgramado: new Date(Date.now() + 32 * 60 * 60_000),
           programadaPorId: ids.usuarios.despachador,
         },
       })
@@ -863,8 +897,8 @@ async function main() {
           estado: 'ACTIVO',
           dimensiones: { largoMm: 320, anchoMm: 145, altoMm: 18 },
           especificaciones: { material: 'Ceramica reforzada', eje: 'Delantero' },
-          fabricante: 'Frenos Andinos',
-          numeroParte: 'FA-OF1721-001',
+          fabricante: 'SGMV-DEMO REPUESTOS',
+          numeroParte: 'DEMO-FRENO-A-001',
         },
         create: {
           id: ids.repuesto,
@@ -878,8 +912,8 @@ async function main() {
           estado: 'ACTIVO',
           dimensiones: { largoMm: 320, anchoMm: 145, altoMm: 18 },
           especificaciones: { material: 'Ceramica reforzada', eje: 'Delantero' },
-          fabricante: 'Frenos Andinos',
-          numeroParte: 'FA-OF1721-001',
+          fabricante: 'SGMV-DEMO REPUESTOS',
+          numeroParte: 'DEMO-FRENO-A-001',
         },
       })
 
@@ -890,7 +924,7 @@ async function main() {
           permitido: false,
           version: 1,
           vigente: false,
-          especificacionesValidadas: { homologacion: 'historica', fuente: 'catalogo-2025' },
+          especificacionesValidadas: { homologacion: 'historica', fuente: 'SIMULADO_SGMV' },
           condicionUso: 'No usar; version historica.',
         },
         {
@@ -899,7 +933,10 @@ async function main() {
           permitido: true,
           version: 2,
           vigente: true,
-          especificacionesValidadas: { homologacion: 'OF-1721-Euro-V', fuente: 'fabricante' },
+          especificacionesValidadas: {
+            homologacion: 'URBANO-DUAL-A-Euro-V',
+            fuente: 'SIMULADO_SGMV',
+          },
           condicionUso: 'Instalar en eje delantero y verificar desgaste.',
         },
         {
@@ -908,7 +945,7 @@ async function main() {
           permitido: false,
           version: 1,
           vigente: false,
-          especificacionesValidadas: { homologacion: 'version anterior', fuente: 'inspeccion' },
+          especificacionesValidadas: { homologacion: 'version anterior', fuente: 'SIMULADO_SGMV' },
           condicionUso: 'No usar; regla reemplazada.',
         },
         {
@@ -917,7 +954,7 @@ async function main() {
           permitido: true,
           version: 2,
           vigente: true,
-          especificacionesValidadas: { homologacion: 'BUS-001', fuente: 'inspeccion' },
+          especificacionesValidadas: { homologacion: 'BUS-001', fuente: 'SIMULADO_SGMV' },
           condicionUso: 'Compatible solo con la configuracion vigente del BUS-001.',
         },
         {
@@ -926,7 +963,7 @@ async function main() {
           permitido: false,
           version: 1,
           vigente: true,
-          especificacionesValidadas: { homologacion: '17-230', fuente: 'fabricante' },
+          especificacionesValidadas: { homologacion: 'URBANO-DUAL-B', fuente: 'SIMULADO_SGMV' },
           condicionUso: 'Requiere repuesto alternativo homologado.',
         },
       ]
@@ -1113,10 +1150,10 @@ async function main() {
         dimensionesRepuesto: { largoMm: 320, anchoMm: 145, altoMm: 18 },
         evaluadoAt: '2026-09-02T12:00:05.000Z',
         especificacionesRepuesto: { material: 'Ceramica reforzada', eje: 'Delantero' },
-        especificacionesValidadas: { homologacion: 'BUS-001', fuente: 'inspeccion' },
-        fabricanteRepuesto: 'Frenos Andinos',
+        especificacionesValidadas: { homologacion: 'BUS-001', fuente: 'SIMULADO_SGMV' },
+        fabricanteRepuesto: 'SGMV-DEMO REPUESTOS',
         modeloBusId: ids.modelosBus.principal,
-        numeroParteRepuesto: 'FA-OF1721-001',
+        numeroParteRepuesto: 'DEMO-FRENO-A-001',
         permitido: true,
         precedencia: 'BUS',
         repuestoId: ids.repuesto,
@@ -1354,6 +1391,13 @@ async function main() {
         })
       }
       // Explicit deterministic demo IDs must not leave their sequences behind.
+      await seedAmbDemo(tx, {
+        adminId: ids.usuarios.admin,
+        dispatcherId: ids.usuarios.despachador,
+        driverRoleId: ids.roles.conductor,
+        modelId: ids.modelosBus.principal,
+        passwordHash: contrasenaHash,
+      })
       await tx.$executeRawUnsafe(`DO $$ DECLARE item record; max_id bigint; BEGIN
         FOR item IN SELECT table_name, pg_get_serial_sequence(format('public.%I',table_name),'id') AS seq
           FROM information_schema.columns WHERE table_schema='public' AND column_name='id' AND data_type='integer'
