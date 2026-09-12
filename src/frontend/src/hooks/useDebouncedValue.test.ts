@@ -8,10 +8,9 @@ afterEach(() => vi.useRealTimers())
 describe('useDebouncedValue', () => {
   it('coalesces rapid changes and publishes only the latest value after the delay', () => {
     vi.useFakeTimers()
-    const { result, rerender } = renderHook(
-      ({ value }) => useDebouncedValue(value, 250),
-      { initialProps: { value: '' } },
-    )
+    const { result, rerender } = renderHook(({ value }) => useDebouncedValue(value, 250), {
+      initialProps: { value: '' },
+    })
 
     rerender({ value: 'b' })
     rerender({ value: 'bu' })

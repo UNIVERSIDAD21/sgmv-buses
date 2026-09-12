@@ -53,7 +53,9 @@ test('SOL sidebar conserva navegación accesible en desktop, tablet y móvil', a
   await mobileMenu.getByRole('link', { name: 'Jornadas operativas' }).click()
   await expect(page).toHaveURL(/\/jornadas$/)
   await expect(mobileMenu).toBeHidden()
-  await expect(page.locator('#contenido-principal h2').filter({ hasText: 'Jornadas operativas' })).toBeVisible()
+  await expect(
+    page.locator('#contenido-principal h2').filter({ hasText: 'Jornadas operativas' }),
+  ).toBeVisible()
   await page.waitForLoadState('networkidle')
 
   const overflow = await page.evaluate(() => {
