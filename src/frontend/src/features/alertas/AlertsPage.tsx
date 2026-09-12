@@ -91,9 +91,7 @@ function contextEntries(context: Record<string, unknown>) {
 
   return labels.flatMap(([key, label]) => {
     const value = context[key]
-    return typeof value === 'string' && value.trim()
-      ? [[label, value.replaceAll('_', ' ').toLocaleLowerCase('es-CO')] as const]
-      : []
+    return typeof value === 'string' && value.trim() ? [[label, value] as const] : []
   })
 }
 

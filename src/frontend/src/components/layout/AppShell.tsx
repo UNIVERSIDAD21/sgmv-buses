@@ -155,7 +155,7 @@ function NavigationList({
         <div key={section}>
           {!compact && (
             <p
-              className={`mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 ${mobile ? '' : 'hidden xl:block'}`}
+              className={`mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-600 ${mobile ? '' : 'hidden xl:block'}`}
             >
               {sectionLabels[section as NavigationItem['section']]}
             </p>
