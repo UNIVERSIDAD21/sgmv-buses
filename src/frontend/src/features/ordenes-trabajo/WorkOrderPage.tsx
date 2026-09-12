@@ -636,7 +636,7 @@ function WorkOrderCard({
   order: WorkOrderSummaryItemDto
 }) {
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4">
+    <article className="surface p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="break-words text-sm font-semibold text-slate-900">{order.codigo}</p>
@@ -726,7 +726,7 @@ function TechnicalReadingPanel({
   }
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4">
+    <section className="surface p-4">
       <h3 className="text-xs font-semibold uppercase text-slate-500">Kilometraje tecnico</h3>
       <form className="mt-3 grid gap-3 sm:grid-cols-2" onSubmit={submit}>
         <label className="block text-sm font-medium text-slate-700">
@@ -1386,7 +1386,7 @@ function WorkOrderDetail({
         </section>
       )}
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <section className="surface p-4">
         <h3 className="text-xs font-semibold uppercase text-slate-500">Descripcion</h3>
         <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
           {order.descripcion}
@@ -1427,7 +1427,7 @@ function WorkOrderDetail({
       )}
 
       {isAdmin && (
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <section className="surface p-4">
           <h3 className="text-xs font-semibold uppercase text-slate-500">
             Acciones administrativas
           </h3>
@@ -1511,7 +1511,7 @@ function WorkOrderDetail({
         />
       )}
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <section className="surface p-4">
         <h3 className="text-xs font-semibold uppercase text-slate-500">Lecturas tecnicas</h3>
         {order.lecturasTecnicas.length === 0 ? (
           <div className="mt-3">
@@ -1552,7 +1552,7 @@ function WorkOrderDetail({
         </FieldValue>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <section className="surface p-4">
         <h3 className="text-xs font-semibold uppercase text-slate-500">Intervenciones</h3>
         {order.intervenciones.length === 0 ? (
           <div className="mt-3">
@@ -1599,7 +1599,7 @@ function WorkOrderDetail({
         )}
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <section className="surface p-4">
         <h3 className="text-xs font-semibold uppercase text-slate-500">
           {isAdmin ? 'Consumos y costo' : 'Consumos'}
         </h3>
@@ -1629,7 +1629,7 @@ function WorkOrderDetail({
         )}
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <section className="surface p-4">
         <h3 className="text-xs font-semibold uppercase text-slate-500">Historial de estados</h3>
         <div className="mt-3 space-y-2">
           {order.historialEstados.map((history) => (
@@ -1655,7 +1655,7 @@ function WorkOrderDetail({
         </div>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <section className="surface p-4">
         <h3 className="text-xs font-semibold uppercase text-slate-500">Reasignaciones</h3>
         {order.reasignaciones.length === 0 ? (
           <div className="mt-3">
@@ -1679,7 +1679,7 @@ function WorkOrderDetail({
         )}
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <section className="surface p-4">
         <h3 className="text-xs font-semibold uppercase text-slate-500">
           Historial tecnico del bus
         </h3>
@@ -1950,9 +1950,9 @@ export default function WorkOrderPage() {
   }
 
   return (
-    <div className="relative min-h-full p-4 md:p-6">
-      <div className="mx-auto max-w-6xl space-y-5">
-        <section className="rounded-lg border border-slate-200 bg-white p-5">
+    <div className="relative min-h-full">
+      <div className="page-container">
+        <section className="surface p-4 md:p-5">
           <Badge tone="emerald">RF-04</Badge>
           <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
@@ -1981,7 +1981,7 @@ export default function WorkOrderPage() {
 
         <SummaryMetrics isAdmin={Boolean(isAdmin)} summary={summary} />
 
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <section className="surface p-4">
           <div className="grid gap-3 lg:grid-cols-[1fr_160px_160px_170px_120px]">
             <label className="relative">
               <span className="sr-only">Buscar ordenes</span>

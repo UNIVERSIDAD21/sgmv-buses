@@ -16,6 +16,7 @@ import {
 } from '../../components/ui/Icons'
 import StatePanel from '../../components/ui/StatePanel'
 import { BUS_STATUS_LABELS } from '../../domain/labels'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { ApiError } from '../../lib/api'
 import { formatNumber } from '../../lib/format'
 import { useSession } from '../auth/session.context'
@@ -326,6 +327,7 @@ export default function FleetPage() {
   const canEditMasterData = user?.rol.codigo === 'ADMINISTRADOR'
   const canManage = user?.rol.codigo === 'ADMINISTRADOR' || user?.rol.codigo === 'DESPACHADOR'
   const [busqueda, setBusqueda] = useState('')
+  const busquedaEstable = useDebouncedValue(busqueda)
   const [estado, setEstado] = useState<BusStatus | ''>('')
   const [pagina, setPagina] = useState(1)
   const [listData, setListData] = useState<ListBusesResponse | null>(null)
@@ -344,14 +346,14 @@ export default function FleetPage() {
     }
 
     const data = await listBuses({
-      busqueda,
+      busqueda: busquedaEstable,
       estado,
       limite: 8,
       pagina,
     })
 
     setListData(data)
-  }, [busqueda, canManage, estado, pagina])
+  }, [busquedaEstable, canManage, estado, pagina])
 
   useEffect(() => {
     let active = true
@@ -363,7 +365,7 @@ export default function FleetPage() {
       try {
         if (canManage) {
           const data = await listBuses({
-            busqueda,
+            busqueda: busquedaEstable,
             estado,
             limite: 8,
             pagina,
@@ -389,7 +391,7 @@ export default function FleetPage() {
     return () => {
       active = false
     }
-  }, [busqueda, canManage, estado, pagina])
+  }, [busquedaEstable, canManage, estado, pagina])
 
   const totalLabel = useMemo(() => {
     if (!listData) {
@@ -464,9 +466,9 @@ export default function FleetPage() {
   }
 
   return (
-    <div className="relative min-h-full p-4 md:p-6">
-      <div className="mx-auto max-w-6xl space-y-5">
-        <section className="rounded-lg border border-slate-200 bg-white p-5">
+    <div className="relative min-h-full">
+      <div className="page-container">
+        <section className="surface p-4 md:p-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
@@ -575,12 +577,9 @@ export default function FleetPage() {
         )}
 
         {!loading && !error && listData && listData.buses.length > 0 && (
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <div className="table-shell">
             <div className="overflow-x-auto">
-              <table
-                aria-label="Buses de la flota"
-                className="w-full min-w-[860px] text-left text-sm"
-              >
+              <table aria-label="Buses de la flota" className="data-table min-w-[860px]">
                 <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500">
                   <tr>
                     <th className="px-4 py-3">Codigo</th>

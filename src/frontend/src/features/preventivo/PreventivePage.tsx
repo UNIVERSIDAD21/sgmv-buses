@@ -498,7 +498,7 @@ function PreventiveDetail({
         </FieldValue>
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <section className="surface p-4">
         <h3 className="text-xs font-semibold uppercase text-slate-500">Actividad</h3>
         <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
           {schedule.actividad}
@@ -762,7 +762,7 @@ export default function PreventivePage() {
       schedule.activa && !schedule.ordenActiva && schedule.clasificacion.estado !== 'VIGENTE'
 
     return (
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <section className="surface p-4">
         <h3 className="text-xs font-semibold uppercase text-slate-500">Acciones administrativas</h3>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {!schedule.ordenActiva && schedule.fuente === 'INDEPENDIENTE' && (
@@ -807,9 +807,9 @@ export default function PreventivePage() {
   }
 
   return (
-    <div className="relative min-h-full p-4 md:p-6">
-      <div className="mx-auto max-w-6xl space-y-5">
-        <section className="rounded-lg border border-slate-200 bg-white p-5">
+    <div className="relative min-h-full">
+      <div className="page-container">
+        <section className="surface p-4 md:p-5">
           <Badge tone="emerald">RF-03</Badge>
           <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
@@ -865,7 +865,7 @@ export default function PreventivePage() {
 
             <ScheduleSummaryMetrics summary={summary} />
 
-            <section className="rounded-lg border border-slate-200 bg-white p-4">
+            <section className="surface p-4">
               <div className="grid gap-3 lg:grid-cols-[1fr_190px_190px_170px_120px]">
                 <label className="relative">
                   <span className="sr-only">Buscar programaciones</span>
@@ -1005,10 +1005,7 @@ export default function PreventivePage() {
               <>
                 <div className="space-y-3 md:hidden">
                   {listData.programaciones.map((schedule) => (
-                    <article
-                      className="rounded-lg border border-slate-200 bg-white p-4"
-                      key={schedule.id}
-                    >
+                    <article className="surface p-4" key={schedule.id}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-semibold text-slate-900">

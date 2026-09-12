@@ -308,7 +308,7 @@ function PartCards({
   return (
     <div className="grid gap-3 xl:hidden">
       {parts.map((part) => (
-        <article className="rounded-lg border border-slate-200 bg-white p-4" key={part.id}>
+        <article className="surface p-4" key={part.id}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="break-words text-sm font-semibold text-slate-900">{part.codigo}</p>
@@ -1356,9 +1356,9 @@ export default function SparePartsPage() {
   }
 
   return (
-    <div className="relative min-h-full p-4 md:p-6">
-      <div className="mx-auto max-w-6xl space-y-5">
-        <section className="rounded-lg border border-slate-200 bg-white p-5">
+    <div className="relative min-h-full">
+      <div className="page-container">
+        <section className="surface p-4 md:p-5">
           <Badge tone="emerald">RF-05</Badge>
           <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
@@ -1417,7 +1417,7 @@ export default function SparePartsPage() {
             <label className="block text-sm font-medium text-slate-700">
               Categoria
               <input
-                className="mt-1.5 min-h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setCategoria(event.target.value)
                   setPagina(1)
@@ -1428,7 +1428,7 @@ export default function SparePartsPage() {
             <label className="block text-sm font-medium text-slate-700">
               Disponibilidad
               <select
-                className="mt-1.5 min-h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setDisponibilidad(event.target.value as SparePartAvailability | '')
                   setPagina(1)
@@ -1446,7 +1446,7 @@ export default function SparePartsPage() {
             <label className="block text-sm font-medium text-slate-700">
               Estado
               <select
-                className="mt-1.5 min-h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setEstado(event.target.value as SparePartStatus | '')
                   setPagina(1)
@@ -1461,7 +1461,7 @@ export default function SparePartsPage() {
             <label className="block text-sm font-medium text-slate-700">
               Ordenar
               <select
-                className="mt-1.5 min-h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setOrdenarPor(event.target.value as SortField)}
                 value={ordenarPor}
               >
@@ -1527,7 +1527,7 @@ export default function SparePartsPage() {
             <label className="block text-sm font-medium text-slate-700">
               Buscar
               <input
-                className="mt-1.5 min-h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setMovementBusquedas(event.target.value)
                   setMovementPagina(1)
@@ -1538,7 +1538,7 @@ export default function SparePartsPage() {
             <label className="block text-sm font-medium text-slate-700">
               Tipo
               <select
-                className="mt-1.5 min-h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setMovementTipo(event.target.value as InventoryMovementType | '')
                   setMovementPagina(1)
@@ -1556,7 +1556,7 @@ export default function SparePartsPage() {
             <label className="block text-sm font-medium text-slate-700">
               Ordenar
               <select
-                className="mt-1.5 min-h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setMovementOrdenarPor(event.target.value as MovementSortField)}
                 value={movementOrdenarPor}
               >
@@ -1739,7 +1739,7 @@ export default function SparePartsPage() {
                 </Button>
               )}
             </div>
-            <section className="rounded-lg border border-slate-200 bg-white p-4">
+            <section className="surface p-4">
               <h3 className="text-xs font-semibold uppercase text-slate-500">
                 Movimientos del repuesto
               </h3>

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
+import PageHeader from '../../components/ui/PageHeader'
 import StatePanel from '../../components/ui/StatePanel'
 import { ApiError } from '../../lib/api'
 import { announceAlertsUpdated, listAlerts, markAlertAttended, markAlertRead } from './alert.api'
@@ -90,7 +91,9 @@ function contextEntries(context: Record<string, unknown>) {
 
   return labels.flatMap(([key, label]) => {
     const value = context[key]
-    return typeof value === 'string' && value.trim() ? [[label, value] as const] : []
+    return typeof value === 'string' && value.trim()
+      ? [[label, value.replaceAll('_', ' ').toLocaleLowerCase('es-CO')] as const]
+      : []
   })
 }
 
@@ -100,21 +103,25 @@ export default function AlertsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mutatingId, setMutatingId] = useState<number | null>(null)
+  const requestIdRef = useRef(0)
   const navigate = useNavigate()
 
   const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current
     setLoading(true)
     setError(null)
     try {
-      setInbox(await listAlerts(filters))
+      const result = await listAlerts(filters)
+      if (requestId === requestIdRef.current) setInbox(result)
     } catch (requestError) {
-      setError(
-        requestError instanceof ApiError
-          ? requestError.message
-          : 'No se pudo consultar la bandeja de alertas.',
-      )
+      if (requestId === requestIdRef.current)
+        setError(
+          requestError instanceof ApiError
+            ? requestError.message
+            : 'No se pudo consultar la bandeja de alertas.',
+        )
     } finally {
-      setLoading(false)
+      if (requestId === requestIdRef.current) setLoading(false)
     }
   }, [filters])
 
@@ -144,24 +151,22 @@ export default function AlertsPage() {
   }
 
   return (
-    <section className="space-y-5 p-4 md:p-6">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">RNF-05</p>
-        <h2 className="mt-1 text-2xl font-semibold text-slate-900">Alertas internas</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Eventos operativos y técnicos dirigidos exclusivamente a tu usuario.
-        </p>
-      </div>
+    <section className="page-container">
+      <PageHeader
+        description="Eventos operativos y técnicos dirigidos exclusivamente a tu usuario."
+        eyebrow="RNF-05 · Bandeja personal"
+        title="Alertas internas"
+      />
 
       <form
         aria-label="Filtros de alertas"
-        className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-6"
+        className="surface grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-6"
         onSubmit={(event) => event.preventDefault()}
       >
         <label className="text-xs font-medium text-slate-600">
           Estado
           <select
-            className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+            className="field-control"
             onChange={(event) =>
               setFilters((current) => ({
                 ...current,
@@ -182,7 +187,7 @@ export default function AlertsPage() {
         <label className="text-xs font-medium text-slate-600">
           Prioridad
           <select
-            className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+            className="field-control"
             onChange={(event) =>
               setFilters((current) => ({
                 ...current,
@@ -203,7 +208,7 @@ export default function AlertsPage() {
         <label className="text-xs font-medium text-slate-600 md:col-span-2">
           Tipo
           <select
-            className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+            className="field-control"
             onChange={(event) =>
               setFilters((current) => ({
                 ...current,
@@ -224,7 +229,7 @@ export default function AlertsPage() {
         <label className="text-xs font-medium text-slate-600">
           Desde
           <input
-            className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+            className="field-control"
             onChange={(event) =>
               setFilters((current) => ({
                 ...current,
@@ -239,7 +244,7 @@ export default function AlertsPage() {
         <label className="text-xs font-medium text-slate-600">
           Hasta
           <input
-            className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+            className="field-control"
             min={filters.fechaDesde || undefined}
             onChange={(event) =>
               setFilters((current) => ({
@@ -282,15 +287,15 @@ export default function AlertsPage() {
       )}
 
       {!loading && inbox && inbox.items.length > 0 && (
-        <div className="space-y-3" aria-live="polite">
+        <div className="space-y-2.5" aria-live="polite">
           {inbox.items.map((item) => {
             const context = contextEntries(item.contextoEvento)
             return (
               <article
-                className={`rounded-lg border bg-white p-4 shadow-sm ${item.estado === 'NO_LEIDA' ? 'border-emerald-300' : 'border-slate-200'}`}
+                className={`relative overflow-hidden rounded-xl border bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] ${item.estado === 'NO_LEIDA' ? 'border-emerald-300 before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-emerald-500' : 'border-slate-200'}`}
                 key={item.destinatarioId}
               >
-                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone={priorityTone(item.prioridad)}>
@@ -299,12 +304,16 @@ export default function AlertsPage() {
                       <Badge tone={statusTone(item.estado)}>{STATUS_LABELS[item.estado]}</Badge>
                       <span className="text-xs text-slate-500">{TYPE_LABELS[item.tipo]}</span>
                     </div>
-                    <h3 className="mt-3 text-base font-semibold text-slate-900">{item.titulo}</h3>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">{item.mensaje}</p>
+                    <h3 className="mt-2 text-sm font-semibold text-slate-950 md:text-base">
+                      {item.titulo}
+                    </h3>
+                    <p className="mt-1 max-w-4xl text-sm leading-5 text-slate-600">
+                      {item.mensaje}
+                    </p>
                     {context.length > 0 && (
                       <dl
                         aria-label="Contexto permitido del evento"
-                        className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500"
+                        className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500"
                       >
                         {context.map(([label, value]) => (
                           <div className="flex gap-1" key={label}>
@@ -321,7 +330,7 @@ export default function AlertsPage() {
                       {formatAlertDate(item.fechaGeneracion)}
                     </time>
                   </div>
-                  <div className="flex shrink-0 flex-wrap gap-2">
+                  <div className="flex shrink-0 flex-wrap gap-2 lg:max-w-[300px] lg:justify-end">
                     {item.estado === 'NO_LEIDA' && (
                       <Button
                         loading={mutatingId === item.destinatarioId}

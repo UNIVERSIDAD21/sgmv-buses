@@ -37,17 +37,17 @@ import type { SparePartSummaryDto } from '../repuestos/spare-part.types'
 
 function ModuleList({ items }: { items: RequirementNavItem[] }) {
   return (
-    <div className="grid gap-3 md:grid-cols-2">
+    <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
       {items.map((item) => (
         <Link
-          className="group rounded-lg border border-slate-200 bg-white p-4 transition-colors hover:border-emerald-700/40"
+          className="group rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition hover:border-emerald-700/40 hover:shadow-sm"
           key={item.id}
           to={item.path}
         >
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold leading-6 text-slate-900">{item.label}</p>
-              <p className="mt-1 text-sm leading-6 text-slate-500">{item.description}</p>
+              <p className="text-sm font-semibold leading-5 text-slate-900">{item.label}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">{item.description}</p>
             </div>
             <ArrowRight
               className="mt-1 shrink-0 text-slate-300 group-hover:text-emerald-700"
@@ -160,17 +160,19 @@ export default function DashboardPage() {
   const activeDriverJourney = driverJourney?.jornadaActual ?? driverJourney?.proximaJornada ?? null
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
-      <section className="rounded-lg border border-slate-200 bg-white p-5">
+    <div className="page-container">
+      <section className="surface p-4 md:p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <Badge tone="emerald">{ROLE_LABELS[user.rol.codigo]}</Badge>
-            <h2 className="mt-3 text-2xl font-semibold text-slate-900">Hola, {user.nombre}</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              Modulos principales del sistema de mantenimiento vehicular.
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 md:text-2xl">
+              Hola, {user.nombre}
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm leading-5 text-slate-600">
+              Prioridades y accesos de tu jornada de trabajo.
             </p>
           </div>
-          <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-500">
+          <div className="surface-muted px-3 py-2 text-xs text-slate-600">
             <span className="block text-xs font-medium text-slate-400">Fecha del sistema</span>
             {formatDateTime()}
           </div>
@@ -179,36 +181,39 @@ export default function DashboardPage() {
 
       {isAdmin && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <div
+            aria-label="Resumen operativo"
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5"
+          >
             <StatCard
               icon={<Bus size={16} />}
               label="Flota"
               note={fleetError ?? 'Buses registrados'}
-              value={fleetSummary?.totalBuses ?? '...'}
+              value={fleetSummary?.totalBuses ?? null}
             />
             <StatCard
               icon={<Shield size={16} />}
               label="Operativos"
               note="Estado actual"
-              value={fleetSummary?.porEstado.OPERATIVO ?? '...'}
+              value={fleetSummary?.porEstado.OPERATIVO ?? null}
             />
             <StatCard
               icon={<ClipboardList size={16} />}
               label="En mantenimiento"
               note="Estado actual"
-              value={fleetSummary?.porEstado.EN_MANTENIMIENTO ?? '...'}
+              value={fleetSummary?.porEstado.EN_MANTENIMIENTO ?? null}
             />
             <StatCard
               icon={<Package size={16} />}
               label="Sin conductor"
               note="Asignacion activa"
-              value={fleetSummary?.sinConductor ?? '...'}
+              value={fleetSummary?.sinConductor ?? null}
             />
             <StatCard
               icon={<AlertTriangle size={16} />}
               label="Novedades"
               note="Pendientes de revision"
-              value={noveltySummary?.pendientes ?? '...'}
+              value={noveltySummary?.pendientes ?? null}
             />
             <StatCard
               icon={<Shield size={16} />}
@@ -217,33 +222,33 @@ export default function DashboardPage() {
               value={
                 preventiveSummary
                   ? preventiveSummary.estados.PROXIMO + preventiveSummary.estados.VENCIDO
-                  : '...'
+                  : null
               }
             />
             <StatCard
               icon={<ClipboardList size={16} />}
               label="Por asignar"
               note="Ordenes RF-04"
-              value={workOrderSummary?.pendientesAsignacion ?? '...'}
+              value={workOrderSummary?.pendientesAsignacion ?? null}
             />
             <StatCard
               icon={<Wrench size={16} />}
               label="En ejecucion"
               note="Ordenes RF-04"
-              value={workOrderSummary?.porEstado.EN_EJECUCION ?? '...'}
+              value={workOrderSummary?.porEstado.EN_EJECUCION ?? null}
             />
             <StatCard
               icon={<CheckCircle size={16} />}
               label="Revision"
               note="Completadas tecnico"
-              value={workOrderSummary?.pendientesRevision ?? '...'}
+              value={workOrderSummary?.pendientesRevision ?? null}
             />
             <StatCard
               icon={<Package size={16} />}
               label="Repuestos"
               note="Bajo stock o agotados"
               value={
-                sparePartSummary ? sparePartSummary.bajoStock + sparePartSummary.agotados : '...'
+                sparePartSummary ? sparePartSummary.bajoStock + sparePartSummary.agotados : null
               }
             />
           </div>
@@ -252,7 +257,7 @@ export default function DashboardPage() {
       )}
 
       {isDispatcher && (
-        <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
           <section>
             <h2 className="mb-3 text-xs font-semibold uppercase text-slate-500">Panel operativo</h2>
             <ModuleList items={visibleItems} />
@@ -262,13 +267,13 @@ export default function DashboardPage() {
               icon={<Bus size={16} />}
               label="Flota"
               note={fleetError ?? 'Buses registrados'}
-              value={fleetSummary?.totalBuses ?? '...'}
+              value={fleetSummary?.totalBuses ?? null}
             />
             <StatCard
               icon={<Shield size={16} />}
               label="Operativos"
               note="Disponibles para despacho"
-              value={fleetSummary?.porEstado.OPERATIVO ?? '...'}
+              value={fleetSummary?.porEstado.OPERATIVO ?? null}
             />
             <StatCard
               icon={<AlertTriangle size={16} />}
@@ -278,21 +283,21 @@ export default function DashboardPage() {
                 fleetSummary
                   ? fleetSummary.porEstado.EN_MANTENIMIENTO +
                     fleetSummary.porEstado.FUERA_DE_SERVICIO
-                  : '...'
+                  : null
               }
             />
             <StatCard
               icon={<ClipboardList size={16} />}
               label="Novedades"
               note="Pendientes de atencion"
-              value={noveltySummary?.pendientes ?? '...'}
+              value={noveltySummary?.pendientes ?? null}
             />
           </div>
         </div>
       )}
 
       {isMechanic && (
-        <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
           <section>
             <h2 className="mb-3 text-xs font-semibold uppercase text-slate-500">Panel tecnico</h2>
             <ModuleList items={visibleItems} />
@@ -302,26 +307,26 @@ export default function DashboardPage() {
               icon={<ClipboardList size={16} />}
               label="Asignadas"
               note={fleetError ?? 'Ordenes propias'}
-              value={workOrderSummary?.porEstado.ASIGNADA ?? '...'}
+              value={workOrderSummary?.porEstado.ASIGNADA ?? null}
             />
             <StatCard
               icon={<Wrench size={16} />}
               label="En ejecucion"
               note="Ordenes propias"
-              value={workOrderSummary?.porEstado.EN_EJECUCION ?? '...'}
+              value={workOrderSummary?.porEstado.EN_EJECUCION ?? null}
             />
             <StatCard
               icon={<AlertTriangle size={16} />}
               label="Devueltas"
               note="Correccion tecnica"
-              value={workOrderSummary?.porEstado.DEVUELTA_CORRECCION ?? '...'}
+              value={workOrderSummary?.porEstado.DEVUELTA_CORRECCION ?? null}
             />
           </div>
         </div>
       )}
 
       {isDriver && (
-        <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
           <section>
             <h2 className="mb-3 text-xs font-semibold uppercase text-slate-500">
               Panel del conductor

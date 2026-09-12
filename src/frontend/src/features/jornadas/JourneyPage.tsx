@@ -5,8 +5,10 @@ import Badge from '../../components/ui/Badge'
 import JourneyProjection from './JourneyProjection'
 import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
+import PageHeader from '../../components/ui/PageHeader'
 import StatePanel from '../../components/ui/StatePanel'
 import { BUS_STATUS_LABELS } from '../../domain/labels'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { ApiError } from '../../lib/api'
 import { formatNumber } from '../../lib/format'
 import { useSession } from '../auth/session.context'
@@ -78,7 +80,7 @@ function JourneyCard({
   onAction: (action: JourneyAction, journey: JourneyDto) => void
 }) {
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4">
+    <article className="surface overflow-hidden p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -99,13 +101,13 @@ function JourneyCard({
         </Badge>
       </div>
 
-      <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-        <div className="rounded-lg bg-slate-50 p-3">
+      <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+        <div className="surface-muted p-3">
           <p className="text-xs font-medium uppercase text-slate-400">Horario programado</p>
           <p className="mt-1 text-slate-700">{formatDateTime(journey.inicioProgramado)}</p>
           <p className="text-slate-700">{formatDateTime(journey.finProgramado)}</p>
         </div>
-        <div className="rounded-lg bg-slate-50 p-3">
+        <div className="surface-muted p-3">
           <p className="text-xs font-medium uppercase text-slate-400">Odometro real</p>
           <p className="mt-1 text-slate-700">
             Inicio:{' '}
@@ -180,6 +182,7 @@ function ScheduleForm({
   const selectedRoute = options.rutas.find((route) => route.id === Number(rutaId))
   const selectedBus = options.buses.find((bus) => bus.id === Number(busId))
   const projectedKm = (selectedRoute?.longitudKmOficial ?? 0) * cycles + nonCommercial
+  const nextMaintenance = selectedBus?.mantenimientos?.[0]
   const [inicio, setInicio] = useState(defaultSchedule(1))
   const [fin, setFin] = useState(defaultSchedule(9))
   const [error, setError] = useState<string | null>(null)
@@ -230,172 +233,215 @@ function ScheduleForm({
   }
 
   return (
-    <form className="rounded-lg border border-slate-200 bg-white p-5" onSubmit={handleSubmit}>
-      <h2 className="text-base font-semibold text-slate-900">Programar jornada</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        El responsable se deriva de la sesion y la agenda queda protegida contra solapamientos.
-      </p>
-      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <label className="text-sm font-medium text-slate-700">
-          Bus
-          <select
-            aria-label="Bus de jornada"
-            className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
-            onChange={(event) => setBusId(event.target.value)}
-            value={busId}
-          >
-            <option value="">Seleccione bus</option>
-            {options.buses.map((bus) => (
-              <option
-                key={bus.id}
-                value={bus.id}
-                disabled={bus.disponibilidadTecnica?.disponible === false}
-              >
-                {bus.codigoInterno} · {bus.placa} · {BUS_STATUS_LABELS[bus.estadoOperativo]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm font-medium text-slate-700">
-          Conductor
-          <select
-            aria-label="Conductor de jornada"
-            className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
-            onChange={(event) => setConductorId(event.target.value)}
-            value={conductorId}
-          >
-            <option value="">Seleccione conductor</option>
-            {options.conductores.map((driver) => (
-              <option key={driver.id} value={driver.id}>
-                {driver.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm font-medium text-slate-700">
-          Ruta contextual
-          <select
-            aria-label="Ruta de jornada"
-            className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
-            onChange={(event) => setRutaId(event.target.value)}
-            value={rutaId}
-          >
-            <option value="">Sin ruta</option>
-            {options.rutas.map((route) => (
-              <option key={route.id} value={route.id}>
-                {route.codigo} · {route.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm font-medium text-slate-700">
-          Inicio programado
-          <input
-            aria-label="Inicio programado"
-            className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-            onChange={(event) => setInicio(event.target.value)}
-            type="datetime-local"
-            value={inicio}
-          />
-        </label>
-        <label className="text-sm font-medium text-slate-700">
-          Fin programado
-          <input
-            aria-label="Fin programado"
-            className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-            onChange={(event) => setFin(event.target.value)}
-            type="datetime-local"
-            value={fin}
-          />
-        </label>
+    <form className="surface overflow-hidden" onSubmit={handleSubmit}>
+      <div className="border-b border-slate-100 px-4 py-3.5 md:px-5">
+        <h3 className="text-base font-semibold text-slate-950">Programar jornada</h3>
+        <p className="mt-1 text-xs leading-5 text-slate-500">
+          El responsable se deriva de la sesion y la agenda queda protegida contra solapamientos.
+        </p>
       </div>
-      {selectedBus && (
-        <p className="mt-3 text-sm">
-          Odómetro actual: {formatNumber(selectedBus.kilometrajeActual)} km.
-        </p>
-      )}
-      {selectedBus?.mantenimientos?.map((maintenance) => (
-        <p className="mt-1 text-sm text-slate-600" key={maintenance.id}>
-          Preventivo: {maintenance.estado} · Objetivo:{' '}
-          {maintenance.kilometrajeObjetivo === null
-            ? maintenance.fechaObjetivo
-            : `${formatNumber(maintenance.kilometrajeObjetivo)} km`}
-          {simulate &&
-          selectedRoute?.longitudKmOficial &&
-          maintenance.kilometrajeObjetivo !== null &&
-          selectedBus.kilometrajeActual + projectedKm >=
-            maintenance.kilometrajeObjetivo - maintenance.anticipacionKm
-            ? ' · La proyección simulada anticipa cercanía al objetivo.'
-            : ''}
-        </p>
-      ))}
-      {selectedRoute?.longitudKmOficial && (
-        <fieldset className="mt-3 space-y-2 rounded-lg bg-teal-50 p-3 text-sm">
-          <legend className="font-semibold">Planificación por ruta AMB</legend>
-          <p>
-            Longitud oficial: {formatNumber(selectedRoute.longitudKmOficial)} km ·{' '}
-            {selectedRoute.operador}. Semántica oficial no determinada.
-          </p>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={simulate}
-              onChange={(event) => setSimulate(event.target.checked)}
-            />{' '}
-            Usar proyección simulada SGMV
+      <div className="p-4 md:p-5">
+        <p className="page-eyebrow">Asignación y ruta</p>
+        <div className="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <label className="field-label">
+            Bus
+            <select
+              aria-label="Bus de jornada"
+              className="field-control"
+              onChange={(event) => setBusId(event.target.value)}
+              value={busId}
+            >
+              <option value="">Seleccione bus</option>
+              {options.buses.map((bus) => (
+                <option
+                  key={bus.id}
+                  value={bus.id}
+                  disabled={bus.disponibilidadTecnica?.disponible === false}
+                >
+                  {bus.codigoInterno} · {bus.placa} · {BUS_STATUS_LABELS[bus.estadoOperativo]}
+                </option>
+              ))}
+            </select>
           </label>
-          {simulate && (
-            <>
-              <p>
-                Convención demo: circuito completo. Ciclos y kilómetros no comerciales son
-                simulados.
+          <label className="field-label">
+            Conductor
+            <select
+              aria-label="Conductor de jornada"
+              className="field-control"
+              onChange={(event) => setConductorId(event.target.value)}
+              value={conductorId}
+            >
+              <option value="">Seleccione conductor</option>
+              {options.conductores.map((driver) => (
+                <option key={driver.id} value={driver.id}>
+                  {driver.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field-label">
+            Ruta contextual
+            <select
+              aria-label="Ruta de jornada"
+              className="field-control"
+              onChange={(event) => setRutaId(event.target.value)}
+              value={rutaId}
+            >
+              <option value="">Sin ruta</option>
+              {options.rutas.map((route) => (
+                <option key={route.id} value={route.id}>
+                  {route.codigo} · {route.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field-label">
+            Inicio programado
+            <input
+              aria-label="Inicio programado"
+              className="field-control"
+              onChange={(event) => setInicio(event.target.value)}
+              type="datetime-local"
+              value={inicio}
+            />
+          </label>
+          <label className="field-label">
+            Fin programado
+            <input
+              aria-label="Fin programado"
+              className="field-control"
+              onChange={(event) => setFin(event.target.value)}
+              type="datetime-local"
+              value={fin}
+            />
+          </label>
+        </div>
+        {selectedBus && (
+          <dl className="mt-4 grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm sm:grid-cols-3">
+            <div>
+              <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                Disponibilidad
+              </dt>
+              <dd
+                className={`mt-1 font-semibold ${selectedBus.disponibilidadTecnica?.disponible === false ? 'text-amber-700' : 'text-emerald-700'}`}
+              >
+                {selectedBus.disponibilidadTecnica?.disponible === false
+                  ? 'Restringido'
+                  : 'Disponible'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                Odómetro actual
+              </dt>
+              <dd className="mt-1 font-semibold tabular-nums text-slate-900">
+                {formatNumber(selectedBus.kilometrajeActual)} km
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                Próximo preventivo
+              </dt>
+              <dd className="mt-1 font-semibold text-slate-900">
+                {nextMaintenance
+                  ? `${nextMaintenance.estado} · ${nextMaintenance.kilometrajeObjetivo === null ? nextMaintenance.fechaObjetivo : `${formatNumber(nextMaintenance.kilometrajeObjetivo)} km`}`
+                  : 'Sin objetivo próximo'}
+              </dd>
+            </div>
+            {selectedBus.disponibilidadTecnica?.causas.map((cause) => (
+              <p
+                className="text-xs text-amber-700 sm:col-span-3"
+                key={`${cause.codigo}-${cause.origenId}`}
+              >
+                {cause.mensaje}
               </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label>
-                  Ciclos completos simulados
-                  <input
-                    aria-label="Ciclos completos simulados"
-                    className="mt-1 w-full rounded border p-2"
-                    type="number"
-                    min="1"
-                    max="100"
-                    step="1"
-                    value={cycles}
-                    onChange={(event) => setCycles(Number(event.target.value))}
-                    required
-                  />
-                </label>
-                <label>
-                  Km no comerciales simulados
-                  <input
-                    aria-label="Km no comerciales simulados"
-                    className="mt-1 w-full rounded border p-2"
-                    type="number"
-                    min="0"
-                    max="1000"
-                    step="0.001"
-                    value={nonCommercial}
-                    onChange={(event) => setNonCommercial(Number(event.target.value))}
-                    required
-                  />
-                </label>
+            ))}
+            {nextMaintenance &&
+              simulate &&
+              selectedRoute?.longitudKmOficial &&
+              nextMaintenance.kilometrajeObjetivo !== null &&
+              selectedBus.kilometrajeActual + projectedKm >=
+                nextMaintenance.kilometrajeObjetivo - nextMaintenance.anticipacionKm && (
+                <p className="text-xs font-medium text-amber-700 sm:col-span-3">
+                  La proyección simulada anticipa cercanía al objetivo.
+                </p>
+              )}
+          </dl>
+        )}
+        {selectedRoute?.longitudKmOficial && (
+          <fieldset className="mt-3 rounded-xl border border-cyan-200 bg-cyan-50/60 p-3 text-sm text-slate-700">
+            <legend className="px-1 text-xs font-bold uppercase tracking-wide text-cyan-800">
+              Ruta y proyección
+            </legend>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p>
+                <strong className="text-slate-900">
+                  {formatNumber(selectedRoute.longitudKmOficial)} km oficiales
+                </strong>{' '}
+                · {selectedRoute.operador} · semántica no determinada
+              </p>
+              <label className="flex min-h-10 items-center gap-2 rounded-lg bg-white px-3 font-semibold text-cyan-900 shadow-sm">
+                <input
+                  type="checkbox"
+                  checked={simulate}
+                  onChange={(event) => setSimulate(event.target.checked)}
+                />{' '}
+                Usar proyección simulada SGMV
+              </label>
+            </div>
+            {simulate && (
+              <div className="mt-3 border-t border-cyan-200 pt-3">
+                <p className="text-xs text-cyan-900">
+                  Convención demo: circuito completo. Ciclos y kilómetros no comerciales son
+                  simulados.
+                </p>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  <label className="field-label">
+                    Ciclos completos simulados
+                    <input
+                      aria-label="Ciclos completos simulados"
+                      className="field-control"
+                      type="number"
+                      min="1"
+                      max="100"
+                      step="1"
+                      value={cycles}
+                      onChange={(event) => setCycles(Number(event.target.value))}
+                      required
+                    />
+                  </label>
+                  <label className="field-label">
+                    Km no comerciales simulados
+                    <input
+                      aria-label="Km no comerciales simulados"
+                      className="field-control"
+                      type="number"
+                      min="0"
+                      max="1000"
+                      step="0.001"
+                      value={nonCommercial}
+                      onChange={(event) => setNonCommercial(Number(event.target.value))}
+                      required
+                    />
+                  </label>
+                </div>
+                <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs leading-5 text-slate-600">
+                  Jornada proyectada: <strong>{formatNumber(projectedKm)} km</strong>
+                  {selectedBus
+                    ? ` · Cierre estimado: ${formatNumber(selectedBus.kilometrajeActual + projectedKm)} km`
+                    : ''}
+                  . No cambia el odómetro.
+                </p>
               </div>
-              <p>
-                Jornada proyectada: <strong>{formatNumber(projectedKm)} km</strong>
-                {selectedBus
-                  ? ` · Cierre estimado: ${formatNumber(selectedBus.kilometrajeActual + projectedKm)} km`
-                  : ''}
-                . No cambia el odómetro.
-              </p>
-            </>
-          )}
-        </fieldset>
-      )}
-      {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
-      <div className="mt-4 flex justify-end">
-        <Button loading={submitting} type="submit">
-          Programar jornada
-        </Button>
+            )}
+          </fieldset>
+        )}
+        {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
+        <div className="mt-4 flex justify-end">
+          <Button loading={submitting} type="submit">
+            Programar jornada
+          </Button>
+        </div>
       </div>
     </form>
   )
@@ -635,6 +681,7 @@ export default function JourneyPage() {
   const [own, setOwn] = useState<MyJourneyResponse | null>(null)
   const [options, setOptions] = useState<JourneyOptionsResponse | null>(null)
   const [buscar, setBuscar] = useState('')
+  const busquedaEstable = useDebouncedValue(buscar)
   const [estado, setEstado] = useState<JourneyStatus | ''>('')
   const [pagina, setPagina] = useState(1)
   const [loading, setLoading] = useState(true)
@@ -653,7 +700,7 @@ export default function JourneyPage() {
         return
       }
       const [journeys, journeyOptions] = await Promise.all([
-        listJourneys({ buscar, estado, pagina }),
+        listJourneys({ buscar: busquedaEstable, estado, pagina }),
         getJourneyOptions(),
       ])
       setList(journeys)
@@ -661,7 +708,7 @@ export default function JourneyPage() {
     } finally {
       setLoading(false)
     }
-  }, [buscar, estado, isDriver, pagina])
+  }, [busquedaEstable, estado, isDriver, pagina])
 
   useEffect(() => {
     let active = true
@@ -681,30 +728,22 @@ export default function JourneyPage() {
   const driverJourney = own?.jornadaActual ?? own?.proximaJornada ?? null
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5 p-4 md:p-6">
-      <section className="rounded-lg border border-slate-200 bg-white p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <Badge tone={isDriver ? 'emerald' : 'teal'}>
-              {isDriver ? 'Conductor' : 'Despacho operativo'}
-            </Badge>
-            <h2 className="mt-3 text-lg font-semibold text-slate-900">
-              {isDriver ? 'Mi jornada' : 'Jornadas operativas'}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Bus, conductor, ruta, horario y kilometraje unidos en una sola trazabilidad.
-            </p>
-          </div>
-          {!isDriver && (
+    <div className="page-container">
+      <PageHeader
+        actions={
+          !isDriver ? (
             <Link
-              className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-700"
+              className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               to="/flota"
             >
               Consultar flota
             </Link>
-          )}
-        </div>
-      </section>
+          ) : undefined
+        }
+        description="Bus, conductor, ruta, horario y kilometraje unidos en una sola trazabilidad."
+        eyebrow={isDriver ? 'Conductor' : 'Despacho operativo'}
+        title={isDriver ? 'Mi jornada' : 'Jornadas operativas'}
+      />
 
       {feedback && (
         <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
@@ -754,11 +793,11 @@ export default function JourneyPage() {
       )}
       {!loading && !error && !isDriver && (
         <section className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="surface flex flex-col gap-3 p-3 sm:flex-row">
             <label className="flex-1">
               <span className="sr-only">Buscar jornadas</span>
               <input
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                className="field-control mt-0"
                 onChange={(event) => {
                   setBuscar(event.target.value)
                   setPagina(1)
@@ -770,7 +809,7 @@ export default function JourneyPage() {
             </label>
             <select
               aria-label="Filtrar estado de jornada"
-              className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+              className="field-control mt-0 sm:w-52"
               onChange={(event) => {
                 setEstado(event.target.value as JourneyStatus | '')
                 setPagina(1)

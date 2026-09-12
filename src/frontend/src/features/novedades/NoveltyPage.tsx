@@ -160,7 +160,7 @@ function NoveltyDetail({ actions, novelty }: { actions?: ReactNode; novelty: Nov
         </FieldValue>
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <section className="surface p-4">
         <h3 className="text-xs font-semibold uppercase text-slate-500">Descripcion</h3>
         <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
           {novelty.descripcion}
@@ -481,7 +481,7 @@ function DriverNoveltyCard({
   onOpen: (noveltyId: number) => void
 }) {
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4">
+    <article className="surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="break-words text-sm font-semibold text-slate-900">{novelty.tipo}</p>
@@ -708,8 +708,8 @@ function DriverView() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 p-4 md:p-6">
-      <section className="rounded-lg border border-slate-200 bg-white p-5">
+    <div className="page-container">
+      <section className="surface p-4 md:p-5">
         <Badge tone="emerald">RF-02</Badge>
         <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
@@ -738,7 +738,7 @@ function DriverView() {
         <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
           <section className="space-y-4">
             {currentJourney ? (
-              <div className="rounded-lg border border-slate-200 bg-white p-5">
+              <div className="surface p-4 md:p-5">
                 <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
                   <Bus size={18} />
                 </div>
@@ -770,10 +770,7 @@ function DriverView() {
               <p>No use este dispositivo ni complete el formulario mientras conduce.</p>
             </div>
 
-            <form
-              className="rounded-lg border border-slate-200 bg-white p-5"
-              onSubmit={handleSubmit}
-            >
+            <form className="surface p-4 md:p-5" onSubmit={handleSubmit}>
               <h3 className="text-base font-semibold text-slate-900">Registrar novedad</h3>
               <p className="mt-1 text-sm leading-6 text-slate-500">
                 El autor, la jornada y el bus se obtienen de la sesion y del momento reportado.
@@ -1149,7 +1146,7 @@ function AdminView() {
           </section>
         )}
         {novelty.acciones.puedeRevisar && (
-          <section className="rounded-lg border border-slate-200 bg-white p-4">
+          <section className="surface p-4">
             <h3 className="text-xs font-semibold uppercase text-slate-500">
               Acciones administrativas
             </h3>
@@ -1196,9 +1193,9 @@ function AdminView() {
   }
 
   return (
-    <div className="relative min-h-full p-4 md:p-6">
-      <div className="mx-auto max-w-6xl space-y-5">
-        <section className="rounded-lg border border-slate-200 bg-white p-5">
+    <div className="relative min-h-full">
+      <div className="page-container">
+        <section className="surface p-4 md:p-5">
           <Badge tone="emerald">RF-02</Badge>
           <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
@@ -1237,7 +1234,7 @@ function AdminView() {
           <FieldValue label="Bloqueantes">{summary?.bloqueantes ?? '...'}</FieldValue>
         </div>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <section className="surface p-4">
           <div className="grid gap-3 lg:grid-cols-[1fr_180px_180px]">
             <label className="relative">
               <span className="sr-only">Buscar novedades</span>
@@ -1343,12 +1340,9 @@ function AdminView() {
         )}
 
         {!loading && !loadError && listData && listData.novedades.length > 0 && (
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <div className="table-shell">
             <div className="overflow-x-auto">
-              <table
-                aria-label="Novedades operativas"
-                className="w-full min-w-[980px] text-left text-sm"
-              >
+              <table aria-label="Novedades operativas" className="data-table min-w-[980px]">
                 <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500">
                   <tr>
                     <th className="px-4 py-3">Ocurrencia</th>

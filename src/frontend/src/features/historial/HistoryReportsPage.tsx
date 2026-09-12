@@ -951,7 +951,7 @@ export default function HistoryReportsPage() {
   }
 
   return (
-    <div className="space-y-5 p-4 md:p-6">
+    <div className="page-container">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
