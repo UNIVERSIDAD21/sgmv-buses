@@ -152,6 +152,15 @@ function sanitizedContext(
     ...(Object.keys(safeObjectives).length > 0 ? { objetivos: safeObjectives } : {}),
     ...(Object.keys(safeRemaining).length > 0 ? { restantes: safeRemaining } : {}),
     ...compatibilityContext,
+    ...(rawContext.origenProyeccion === 'SIMULADO_SGMV'
+      ? {
+          origenProyeccion: 'SIMULADO_SGMV',
+          estadoProyeccion: 'PROYECCION_SIMULADA',
+          jornadaId: numberValue(rawContext.jornadaId) ?? null,
+          kmProyectadosDemo: numberValue(rawContext.kmProyectadosDemo) ?? null,
+          kmEstimadoCierre: numberValue(rawContext.kmEstimadoCierre) ?? null,
+        }
+      : {}),
     schemaVersion: catalog.contextSchemaVersion,
   }
 }
@@ -323,6 +332,14 @@ async function createPreventiveAlert(
   if (classification.estado === 'VIGENTE') return
   const type =
     classification.estado === 'PROXIMO' ? 'MANTENIMIENTO_PROXIMO' : 'MANTENIMIENTO_VENCIDO'
+  const drivers = await tx.jornadaOperativa.findMany({
+    where: {
+      busId: schedule.bus.id,
+      OR: [{ estado: 'EN_CURSO' }, { estado: 'PROGRAMADA', finProgramado: { gte: evaluatedAt } }],
+    },
+    select: { conductorId: true },
+    distinct: ['conductorId'],
+  })
   await materializeInternal(
     {
       contextoEvento: {
@@ -340,11 +357,11 @@ async function createPreventiveAlert(
       },
       claveDeduplicacion: preventiveAlertKey(type, schedule),
       destinatarios: {
-        kind: 'ROLES',
-        roles:
-          type === 'MANTENIMIENTO_VENCIDO' && schedule.planMantenimientoPreventivo.bloqueaAlVencer
-            ? ['ADMINISTRADOR', 'DESPACHADOR']
-            : ['ADMINISTRADOR'],
+        kind: 'USERS',
+        userIds: [
+          ...(await recipientIdsByRoles(['ADMINISTRADOR', 'DESPACHADOR'], tx)),
+          ...drivers.map((d) => d.conductorId),
+        ],
       },
       mensaje:
         type === 'MANTENIMIENTO_PROXIMO'

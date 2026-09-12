@@ -1,4 +1,7 @@
-import { type Prisma, PrismaClient } from '@prisma/client'
+import { routeSelect, mapRouteReference } from '../amb/route-contract.js'
+import { Prisma, PrismaClient } from '@prisma/client'
+import { buildAvailability } from '../availability/availability.policy.js'
+import { classifyPreventiveCycle } from '../preventive/preventive-cycle.js'
 
 import { getAvailabilityRecords } from '../availability/availability.repository.js'
 import type { AvailabilityRecords } from '../availability/availability.types.js'
@@ -18,6 +21,7 @@ const journeyInclude = {
       estadoOperativo: true,
       id: true,
       placa: true,
+      kilometrajeActual: true,
     },
   },
   cambioPor: { select: userRefSelect },
@@ -31,15 +35,7 @@ const journeyInclude = {
     orderBy: [{ fechaLectura: 'asc' as const }, { fechaRegistro: 'asc' as const }],
   },
   programadaPor: { select: userRefSelect },
-  ruta: {
-    select: {
-      codigo: true,
-      destino: true,
-      id: true,
-      nombre: true,
-      origen: true,
-    },
-  },
+  ruta: { select: routeSelect },
 } satisfies Prisma.JornadaOperativaInclude
 
 export type JourneyRecord = Prisma.JornadaOperativaGetPayload<{ include: typeof journeyInclude }>
@@ -112,30 +108,102 @@ export class JourneyRepository {
   }
 
   async listOptions() {
-    const [buses, conductores, rutas] = await Promise.all([
-      prisma.bus.findMany({
-        orderBy: { codigoInterno: 'asc' },
-        select: {
-          codigoInterno: true,
-          estadoOperativo: true,
-          id: true,
-          kilometrajeActual: true,
-          placa: true,
-        },
-      }),
-      prisma.usuario.findMany({
-        where: { estado: 'ACTIVO', rol: { codigo: 'CONDUCTOR' } },
-        orderBy: { nombre: 'asc' },
-        select: optionUserSelect,
-      }),
-      prisma.ruta.findMany({
-        where: { activa: true },
-        orderBy: { codigo: 'asc' },
-        select: { codigo: true, destino: true, id: true, nombre: true, origen: true },
-      }),
-    ])
+    return prisma.$transaction(
+      async (tx) => {
+        const evaluatedAt = new Date()
+        const [buses, conductores, rutas] = await Promise.all([
+          tx.bus.findMany({
+            orderBy: { codigoInterno: 'asc' },
+            select: {
+              codigoInterno: true,
+              estadoOperativo: true,
+              id: true,
+              kilometrajeActual: true,
+              placa: true,
+              novedades: {
+                where: { bloqueaDisponibilidad: true, estado: 'PENDIENTE_REVISION' },
+                select: { id: true },
+                take: 1,
+              },
+              ordenesTrabajo: {
+                where: {
+                  OR: [
+                    {
+                      estado: { in: ['EN_EJECUCION', 'COMPLETADA_TECNICO', 'DEVUELTA_CORRECCION'] },
+                    },
+                    { estado: { not: 'CERRADA' }, novedad: { bloqueaDisponibilidad: true } },
+                  ],
+                },
+                select: { id: true },
+                take: 1,
+              },
+              programacionesMantenimiento: {
+                where: { activa: true },
+                select: {
+                  id: true,
+                  fechaProgramada: true,
+                  kilometrajeObjetivo: true,
+                  planMantenimientoPreventivo: {
+                    select: {
+                      anticipacionDias: true,
+                      anticipacionKm: true,
+                      bloqueaAlVencer: true,
+                      claveTarea: true,
+                    },
+                  },
+                },
+              },
+            },
+          }),
+          tx.usuario.findMany({
+            where: { estado: 'ACTIVO', rol: { codigo: 'CONDUCTOR' } },
+            orderBy: { nombre: 'asc' },
+            select: optionUserSelect,
+          }),
+          tx.ruta.findMany({
+            where: { activa: true },
+            orderBy: { codigo: 'asc' },
+            select: routeSelect,
+          }),
+        ])
 
-    return { buses, conductores, rutas }
+        return {
+          buses: buses.map(
+            ({ novedades, ordenesTrabajo, programacionesMantenimiento, ...bus }) => ({
+              ...bus,
+              disponibilidadTecnica: buildAvailability(
+                {
+                  bus,
+                  conflictingJourney: null,
+                  novelty: novedades[0] ?? null,
+                  order: ordenesTrabajo[0] ?? null,
+                  preventive: programacionesMantenimiento.flatMap((s) =>
+                    s.planMantenimientoPreventivo
+                      ? [{ ...s, plan: s.planMantenimientoPreventivo }]
+                      : [],
+                  ),
+                },
+                evaluatedAt,
+              ),
+              mantenimientos: programacionesMantenimiento.map((s) => ({
+                id: s.id,
+                fechaObjetivo: s.fechaProgramada?.toISOString().slice(0, 10) ?? null,
+                kilometrajeObjetivo: s.kilometrajeObjetivo,
+                anticipacionKm: s.planMantenimientoPreventivo?.anticipacionKm ?? 500,
+                estado: classifyPreventiveCycle(
+                  { ...s, kilometrajeActual: bus.kilometrajeActual },
+                  evaluatedAt,
+                ).estado,
+              })),
+            }),
+          ),
+          conductores,
+          rutas: rutas.map(mapRouteReference),
+          evaluadoAt: evaluatedAt.toISOString(),
+        }
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 15000 },
+    )
   }
 
   list(

@@ -1,6 +1,12 @@
+import { mapRouteReference } from '../amb/route-contract.js'
+import { buildProjectionSnapshot, mapJourneyProjection } from './journey-projection.js'
 import { Prisma, type EstadoJornada } from '@prisma/client'
 
-import { createJourneyChangeAlert } from '../alerts/alert.service.js'
+import {
+  createJourneyChangeAlert,
+  evaluatePreventiveAlertsForBus,
+} from '../alerts/alert.service.js'
+import { evaluateJourneyProjectionAlerts } from '../alerts/journey-projection-alerts.js'
 import { buildAvailability } from '../availability/availability.policy.js'
 import type { AuthenticatedUser } from '../auth/auth.types.js'
 import { AppError } from '../shared/http.js'
@@ -99,6 +105,11 @@ function mapJourney(
 
   return {
     acciones: buildActions(journey, actor, availability),
+    proyeccionDemo: mapJourneyProjection(
+      journey,
+      lecturaInicial?.kilometrajeNuevo,
+      lecturaFinal?.kilometrajeNuevo,
+    ),
     bus: journey.bus,
     cambioPor: journey.cambioPor ? mapUser(journey.cambioPor) : null,
     causasDisponibilidad: availability.causas,
@@ -118,7 +129,7 @@ function mapJourney(
     lecturaInicial: lecturaInicial ? mapReading(lecturaInicial) : null,
     motivoCambio: journey.motivoCambio,
     programadaPor: mapUser(journey.programadaPor),
-    ruta: journey.ruta,
+    ruta: journey.ruta ? mapRouteReference(journey.ruta) : null,
     updatedAt: journey.updatedAt.toISOString(),
   }
 }
@@ -154,12 +165,12 @@ export class JourneyService {
   constructor(private readonly repository = new JourneyRepository()) {}
 
   private async lockResources(busIds: number[], driverIds: number[], tx: JourneyTransaction) {
-    for (const busId of [...new Set(busIds)].sort()) {
+    for (const busId of [...new Set(busIds)].sort((a, b) => a - b)) {
       if (!(await this.repository.lockBus(busId, tx))) {
         throw new AppError(404, 'BUS_NOT_FOUND', 'Bus no encontrado')
       }
     }
-    for (const driverId of [...new Set(driverIds)].sort()) {
+    for (const driverId of [...new Set(driverIds)].sort((a, b) => a - b)) {
       if (!(await this.repository.lockDriver(driverId, tx))) {
         throw new AppError(404, 'DRIVER_NOT_FOUND', 'Conductor no encontrado')
       }
@@ -191,6 +202,20 @@ export class JourneyService {
     }
     if (rutaId && (!context.ruta || !context.ruta.activa)) {
       throw new AppError(409, 'ROUTE_INACTIVE', 'La ruta no existe o no esta activa')
+    }
+    const availability = buildAvailability(
+      await this.repository.getAvailabilityRecords(busId, conductorId, null, new Date(), tx),
+    )
+    const technicalCauses = availability.causas.filter(
+      (cause) => cause.codigo !== 'CONFLICTO_JORNADA',
+    )
+    if (technicalCauses.length) {
+      throw new AppError(
+        409,
+        'BUS_NOT_AVAILABLE',
+        'El bus tiene un bloqueo vigente y no puede asignarse a una jornada',
+        { causas: technicalCauses.map((cause) => cause.codigo) },
+      )
     }
   }
 
@@ -307,6 +332,7 @@ export class JourneyService {
           },
           tx,
         )
+        await evaluateJourneyProjectionAlerts(id, tx)
         return { jornada: await this.toDto(updated!, actor, eventDate, tx) }
       })
     } catch (error) {
@@ -325,6 +351,7 @@ export class JourneyService {
         await this.ensureContext(input.busId, input.conductorId, input.rutaId ?? null, tx)
         const journey = await this.repository.create(
           {
+            ...(await buildProjectionSnapshot(input.rutaId ?? null, input.simulacion, tx)),
             busId: input.busId,
             conductorId: input.conductorId,
             estado: 'PROGRAMADA',
@@ -346,6 +373,8 @@ export class JourneyService {
           tx,
         )
 
+        await evaluatePreventiveAlertsForBus(journey.busId, tx)
+        await evaluateJourneyProjectionAlerts(journey.id, tx)
         return { jornada: await this.toDto(journey, actor, new Date(), tx) }
       })
     } catch (error) {
@@ -404,6 +433,8 @@ export class JourneyService {
         )
 
         const updated = await this.repository.findById(id, tx)
+        await evaluateJourneyProjectionAlerts(id, tx)
+        await evaluatePreventiveAlertsForBus(journey.busId, tx)
         return { jornada: await this.toDto(updated!, actor, eventDate, tx) }
       })
     } catch (error) {
@@ -609,6 +640,7 @@ export class JourneyService {
 
         const successor = await this.repository.create(
           {
+            ...(await buildProjectionSnapshot(rutaId, input.simulacion, tx)),
             busId,
             conductorId,
             estado: 'PROGRAMADA',
@@ -632,6 +664,9 @@ export class JourneyService {
           tx,
         )
 
+        await evaluateJourneyProjectionAlerts(journey.id, tx)
+        await evaluateJourneyProjectionAlerts(successor.id, tx)
+        await evaluatePreventiveAlertsForBus(successor.busId, tx)
         return {
           jornadaAnterior: await this.toDto(previous!, actor, eventDate, tx),
           jornadaSucesora: await this.toDto(successor, actor, eventDate, tx),
@@ -694,6 +729,8 @@ export class JourneyService {
         )
 
         const updated = await this.repository.findById(id, tx)
+        await evaluateJourneyProjectionAlerts(id, tx)
+        await evaluatePreventiveAlertsForBus(journey.busId, tx)
         return { jornada: await this.toDto(updated!, actor, eventDate, tx) }
       })
     } catch (error) {

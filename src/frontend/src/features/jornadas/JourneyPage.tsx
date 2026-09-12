@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
+import JourneyProjection from './JourneyProjection'
 import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
 import StatePanel from '../../components/ui/StatePanel'
@@ -121,6 +122,7 @@ function JourneyCard({
         </div>
       </div>
 
+      <JourneyProjection journey={journey} />
       {journey.causasDisponibilidad.length > 0 && journey.estado === 'PROGRAMADA' && (
         <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
           <p className="text-xs font-semibold text-amber-800">No disponible para iniciar</p>
@@ -172,6 +174,12 @@ function ScheduleForm({
   const [busId, setBusId] = useState('')
   const [conductorId, setConductorId] = useState('')
   const [rutaId, setRutaId] = useState('')
+  const [simulate, setSimulate] = useState(false)
+  const [cycles, setCycles] = useState(6)
+  const [nonCommercial, setNonCommercial] = useState(8)
+  const selectedRoute = options.rutas.find((route) => route.id === Number(rutaId))
+  const selectedBus = options.buses.find((bus) => bus.id === Number(busId))
+  const projectedKm = (selectedRoute?.longitudKmOficial ?? 0) * cycles + nonCommercial
   const [inicio, setInicio] = useState(defaultSchedule(1))
   const [fin, setFin] = useState(defaultSchedule(9))
   const [error, setError] = useState<string | null>(null)
@@ -201,6 +209,14 @@ function ScheduleForm({
         finProgramado: toIso(fin),
         inicioProgramado: toIso(inicio),
         ...(rutaId ? { rutaId: Number(rutaId) } : {}),
+        ...(simulate && selectedRoute?.longitudKmOficial
+          ? {
+              simulacion: {
+                ciclosCompletosSimulados: cycles,
+                kmNoComercialesSimulados: nonCommercial,
+              },
+            }
+          : {}),
       })
       setBusId('')
       setConductorId('')
@@ -230,7 +246,11 @@ function ScheduleForm({
           >
             <option value="">Seleccione bus</option>
             {options.buses.map((bus) => (
-              <option key={bus.id} value={bus.id}>
+              <option
+                key={bus.id}
+                value={bus.id}
+                disabled={bus.disponibilidadTecnica?.disponible === false}
+              >
                 {bus.codigoInterno} · {bus.placa} · {BUS_STATUS_LABELS[bus.estadoOperativo]}
               </option>
             ))}
@@ -289,6 +309,88 @@ function ScheduleForm({
           />
         </label>
       </div>
+      {selectedBus && (
+        <p className="mt-3 text-sm">
+          Odómetro actual: {formatNumber(selectedBus.kilometrajeActual)} km.
+        </p>
+      )}
+      {selectedBus?.mantenimientos?.map((maintenance) => (
+        <p className="mt-1 text-sm text-slate-600" key={maintenance.id}>
+          Preventivo: {maintenance.estado} · Objetivo:{' '}
+          {maintenance.kilometrajeObjetivo === null
+            ? maintenance.fechaObjetivo
+            : `${formatNumber(maintenance.kilometrajeObjetivo)} km`}
+          {simulate &&
+          selectedRoute?.longitudKmOficial &&
+          maintenance.kilometrajeObjetivo !== null &&
+          selectedBus.kilometrajeActual + projectedKm >=
+            maintenance.kilometrajeObjetivo - maintenance.anticipacionKm
+            ? ' · La proyección simulada anticipa cercanía al objetivo.'
+            : ''}
+        </p>
+      ))}
+      {selectedRoute?.longitudKmOficial && (
+        <fieldset className="mt-3 space-y-2 rounded-lg bg-teal-50 p-3 text-sm">
+          <legend className="font-semibold">Planificación por ruta AMB</legend>
+          <p>
+            Longitud oficial: {formatNumber(selectedRoute.longitudKmOficial)} km ·{' '}
+            {selectedRoute.operador}. Semántica oficial no determinada.
+          </p>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={simulate}
+              onChange={(event) => setSimulate(event.target.checked)}
+            />{' '}
+            Usar proyección simulada SGMV
+          </label>
+          {simulate && (
+            <>
+              <p>
+                Convención demo: circuito completo. Ciclos y kilómetros no comerciales son
+                simulados.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label>
+                  Ciclos completos simulados
+                  <input
+                    aria-label="Ciclos completos simulados"
+                    className="mt-1 w-full rounded border p-2"
+                    type="number"
+                    min="1"
+                    max="100"
+                    step="1"
+                    value={cycles}
+                    onChange={(event) => setCycles(Number(event.target.value))}
+                    required
+                  />
+                </label>
+                <label>
+                  Km no comerciales simulados
+                  <input
+                    aria-label="Km no comerciales simulados"
+                    className="mt-1 w-full rounded border p-2"
+                    type="number"
+                    min="0"
+                    max="1000"
+                    step="0.001"
+                    value={nonCommercial}
+                    onChange={(event) => setNonCommercial(Number(event.target.value))}
+                    required
+                  />
+                </label>
+              </div>
+              <p>
+                Jornada proyectada: <strong>{formatNumber(projectedKm)} km</strong>
+                {selectedBus
+                  ? ` · Cierre estimado: ${formatNumber(selectedBus.kilometrajeActual + projectedKm)} km`
+                  : ''}
+                . No cambia el odómetro.
+              </p>
+            </>
+          )}
+        </fieldset>
+      )}
       {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
       <div className="mt-4 flex justify-end">
         <Button loading={submitting} type="submit">
@@ -436,6 +538,12 @@ function ActionDialog({
         )}
         {action === 'reassign' && options && (
           <div className="grid gap-3 sm:grid-cols-2">
+            {journey.proyeccionDemo && (
+              <p className="text-sm text-slate-600 sm:col-span-2">
+                La proyección de esta jornada queda en su historial. La sucesora se crea sin copiar
+                ciclos ni kilómetros simulados, porque corresponde a un tramo nuevo.
+              </p>
+            )}
             <label className="text-sm font-medium text-slate-700">
               Bus de la sucesora
               <select

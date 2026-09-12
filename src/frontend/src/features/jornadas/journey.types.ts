@@ -26,6 +26,20 @@ export interface AvailabilityCauseDto {
 }
 
 export interface JourneyDto {
+  proyeccionDemo?: {
+    origen: 'PROYECCION_SIMULADA'
+    origenSemanticaDemo: 'SIMULADO_SGMV'
+    semanticaLongitudDemo: 'CIRCUITO_COMPLETO'
+    ciclosCompletosSimulados: number
+    kmNoComercialesSimulados: number
+    longitudKmOficialSnapshot: number
+    kmComercialesProyectadosDemo: number
+    kmJornadaProyectadosDemo: number
+    kmEstimadoCierre: number
+    kmReal: number | null
+    diferenciaKm: number | null
+    conciliada: boolean
+  } | null
   acciones: {
     puedeCancelar: boolean
     puedeFinalizar: boolean
@@ -56,7 +70,7 @@ export interface JourneyDto {
   lecturaInicial: JourneyReadingDto | null
   motivoCambio: string | null
   programadaPor: JourneyUserRefDto
-  ruta: Pick<RutaDto, 'codigo' | 'destino' | 'id' | 'nombre' | 'origen'> | null
+  ruta: JourneyRouteRef | null
   updatedAt: string
 }
 
@@ -72,6 +86,14 @@ export interface JourneyListResponse {
 
 export interface JourneyOptionsResponse {
   buses: Array<{
+    disponibilidadTecnica?: { disponible: boolean; causas: AvailabilityCauseDto[] }
+    mantenimientos?: Array<{
+      id: number
+      fechaObjetivo: string | null
+      kilometrajeObjetivo: number | null
+      anticipacionKm: number
+      estado: string
+    }>
     codigoInterno: string
     estadoOperativo: BusStatus
     id: number
@@ -79,8 +101,20 @@ export interface JourneyOptionsResponse {
     placa: string
   }>
   conductores: Array<{ id: number; nombre: string }>
-  rutas: Array<Pick<RutaDto, 'codigo' | 'destino' | 'id' | 'nombre' | 'origen'>>
+  rutas: JourneyRouteRef[]
 }
+
+export type JourneyRouteRef = Pick<
+  RutaDto,
+  | 'codigo'
+  | 'destino'
+  | 'id'
+  | 'nombre'
+  | 'origen'
+  | 'longitudKmOficial'
+  | 'origenDato'
+  | 'operador'
+>
 
 export interface MyJourneyResponse {
   jornadaActual: JourneyDto | null

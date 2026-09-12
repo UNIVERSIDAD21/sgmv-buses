@@ -1,3 +1,5 @@
+import type { RouteReferenceDto } from '../amb/route-contract.js'
+import type { JourneyProjectionDto } from './journey-projection.js'
 import type { EstadoBus, EstadoJornada, RolCodigo, TipoLectura } from '@prisma/client'
 
 import type { AvailabilityCauseDto } from '../availability/availability.types.js'
@@ -17,13 +19,7 @@ export interface JourneyBusRefDto {
   placa: string
 }
 
-export interface JourneyRouteRefDto {
-  codigo: string
-  destino: string
-  id: number
-  nombre: string
-  origen: string
-}
+export type JourneyRouteRefDto = RouteReferenceDto
 
 export interface JourneyReadingDto {
   fechaLectura: string
@@ -42,6 +38,7 @@ export interface JourneyActionsDto {
 }
 
 export interface JourneyDto {
+  proyeccionDemo: JourneyProjectionDto
   acciones: JourneyActionsDto
   bus: JourneyBusRefDto
   cambioPor: JourneyUserRefDto | null

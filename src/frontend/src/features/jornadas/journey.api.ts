@@ -8,6 +8,7 @@ import type {
 } from './journey.types'
 
 export interface JourneyScheduleInput {
+  simulacion?: { ciclosCompletosSimulados: number; kmNoComercialesSimulados: number }
   busId: number
   conductorId: number
   finProgramado: string
@@ -16,6 +17,7 @@ export interface JourneyScheduleInput {
 }
 
 export interface JourneyReassignInput {
+  simulacion?: JourneyScheduleInput['simulacion']
   busId?: number
   conductorId?: number
   fechaEvento: string

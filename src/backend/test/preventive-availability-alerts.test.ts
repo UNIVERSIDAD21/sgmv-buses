@@ -300,8 +300,8 @@ describe('P6-D disponibilidad preventiva y alertas por ciclo', () => {
       expect(alerts).toHaveLength(2)
       const next = alerts.find((item) => item.tipo === 'MANTENIMIENTO_PROXIMO')!
       const expired = alerts.find((item) => item.tipo === 'MANTENIMIENTO_VENCIDO')!
-      expect(next.destinatarios.every((item) => item.usuario.rol.codigo === 'ADMINISTRADOR')).toBe(
-        true,
+      expect(new Set(next.destinatarios.map((item) => item.usuario.rol.codigo))).toEqual(
+        new Set(['ADMINISTRADOR', 'DESPACHADOR']),
       )
       expect(new Set(expired.destinatarios.map((item) => item.usuario.rol.codigo))).toEqual(
         new Set(['ADMINISTRADOR', 'DESPACHADOR']),

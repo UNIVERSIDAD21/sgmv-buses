@@ -24,17 +24,21 @@ const administrativeAndDispatch = ['ADMINISTRADOR', 'DESPACHADOR'] as const
 
 export const alertCatalog = {
   MANTENIMIENTO_PROXIMO: {
-    allowedRecipientRoles: administrators,
+    allowedRecipientRoles: ['ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR'],
     contextSchemaVersion: 1,
     deduplicationScope: 'ciclo, version y objetivos preventivos',
     defaultPriority: 'MEDIA',
     defaultTitle: 'Mantenimiento preventivo próximo',
-    internalRoutes: { ADMINISTRADOR: '/mantenimiento-preventivo' },
+    internalRoutes: {
+      ADMINISTRADOR: '/mantenimiento-preventivo',
+      DESPACHADOR: '/jornadas',
+      CONDUCTOR: '/jornadas',
+    },
     originKind: 'programacionMantenimientoId',
-    recipientStrategy: 'administradores activos',
+    recipientStrategy: 'administradores, despacho y conductores con jornada vigente del bus',
   },
   MANTENIMIENTO_VENCIDO: {
-    allowedRecipientRoles: administrativeAndDispatch,
+    allowedRecipientRoles: ['ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR'],
     contextSchemaVersion: 1,
     deduplicationScope: 'ciclo, version y objetivos preventivos',
     defaultPriority: 'ALTA',
@@ -42,9 +46,10 @@ export const alertCatalog = {
     internalRoutes: {
       ADMINISTRADOR: '/mantenimiento-preventivo',
       DESPACHADOR: '/mantenimiento-preventivo',
+      CONDUCTOR: '/jornadas',
     },
     originKind: 'programacionMantenimientoId',
-    recipientStrategy: 'administradores y despacho solo si bloquea',
+    recipientStrategy: 'administradores, despacho y conductores con jornada vigente del bus',
   },
   NOVEDAD_CRITICA: {
     allowedRecipientRoles: administrativeAndDispatch,

@@ -4,6 +4,13 @@ import { z } from 'zod'
 const eventDate = z.iso.datetime({ offset: true })
 const trimmedText = (min: number, max: number) => z.string().trim().min(min).max(max)
 
+const simulationSchema = z
+  .object({
+    ciclosCompletosSimulados: z.number().int().min(1).max(100),
+    kmNoComercialesSimulados: z.number().min(0).max(1000).multipleOf(0.001).default(0),
+  })
+  .strict()
+
 export const journeyStateValues = [
   'PROGRAMADA',
   'EN_CURSO',
@@ -48,6 +55,7 @@ export const listJourneysQuerySchema = z
 
 export const createJourneySchema = z
   .object({
+    simulacion: simulationSchema.optional(),
     busId: entityIdSchema,
     conductorId: entityIdSchema,
     finProgramado: eventDate,
@@ -77,6 +85,7 @@ export const cancelJourneySchema = z
 
 export const reassignJourneySchema = z
   .object({
+    simulacion: simulationSchema.optional(),
     busId: entityIdSchema.optional(),
     conductorId: entityIdSchema.optional(),
     fechaEvento: eventDate,

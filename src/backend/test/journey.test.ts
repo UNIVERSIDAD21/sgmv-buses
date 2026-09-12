@@ -358,9 +358,21 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
     const bus = await createBus('EN_MANTENIMIENTO')
     const journeyDriver = await createDriver('no-disponible')
     const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const rejected = await programJourney(dispatcher, {
+      busId: bus.id,
+      conductorId: journeyDriver.id,
+    })
+    expect(rejected.status).toBe(409)
+    expect(rejected.body.error.code).toBe('BUS_NOT_AVAILABLE')
+    await prisma.bus.update({ where: { id: bus.id }, data: { estadoOperativo: 'OPERATIVO' } })
     const programmed = await programJourney(dispatcher, {
       busId: bus.id,
       conductorId: journeyDriver.id,
+    })
+
+    await prisma.bus.update({
+      where: { id: bus.id },
+      data: { estadoOperativo: 'EN_MANTENIMIENTO' },
     })
 
     const response = await dispatcher
