@@ -50,7 +50,7 @@ for (const [role, paths] of Object.entries(routes)) {
     await page.getByLabel(/Contrase/).fill(password)
     await page.getByRole('button', { name: /Ingresar/ }).click()
     await expect(page.getByRole('button', { name: /Cerrar sesi/ })).toBeVisible()
-    for (const width of [390, 1024, 1440]) {
+    for (const width of [390, 768, 1024, 1440]) {
       await page.setViewportSize({ width, height: 900 })
       for (const path of paths) {
         await test.step(`${width}px ${path}`, async () => {
