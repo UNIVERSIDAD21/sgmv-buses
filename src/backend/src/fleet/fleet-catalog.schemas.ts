@@ -2,6 +2,10 @@ import { entityIdSchema } from '../shared/entity-id.js'
 import { z } from 'zod'
 
 const trimmedText = (max: number) => z.string().trim().min(1).max(max)
+const routeCode = trimmedText(50).refine(
+  (value) => value.toUpperCase().replace(/\s+/g, '').length <= 50,
+  { message: 'El código normalizado no puede superar 50 caracteres' },
+)
 
 const optionalNullableText = (max: number) =>
   z.preprocess(
@@ -58,19 +62,19 @@ export const updateModeloBusSchema = z
 
 export const createRutaSchema = z
   .object({
-    codigo: trimmedText(80),
-    destino: trimmedText(160),
-    nombre: trimmedText(160),
-    origen: trimmedText(160),
+    codigo: routeCode,
+    destino: trimmedText(120),
+    nombre: trimmedText(120),
+    origen: trimmedText(120),
   })
   .strict()
 
 export const updateRutaSchema = z
   .object({
-    codigo: trimmedText(80).optional(),
-    destino: trimmedText(160).optional(),
-    nombre: trimmedText(160).optional(),
-    origen: trimmedText(160).optional(),
+    codigo: routeCode.optional(),
+    destino: trimmedText(120).optional(),
+    nombre: trimmedText(120).optional(),
+    origen: trimmedText(120).optional(),
   })
   .strict()
   .refine((input) => Object.keys(input).length > 0, {

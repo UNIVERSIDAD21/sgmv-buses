@@ -133,6 +133,7 @@ function PlanForm({
             Clave de tarea
             <input
               aria-label="Clave de tarea"
+              maxLength={80}
               className={fieldClass}
               disabled={Boolean(initial)}
               onChange={(e) => set('claveTarea', e.target.value)}
@@ -143,6 +144,7 @@ function PlanForm({
             Componente
             <input
               aria-label="Componente"
+              maxLength={120}
               className={fieldClass}
               onChange={(e) => set('componente', e.target.value)}
               value={form.componente}

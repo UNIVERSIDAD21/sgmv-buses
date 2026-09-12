@@ -350,6 +350,7 @@ export default function BusFormPage() {
                 <input
                   className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => updateField('codigoInterno', event.target.value)}
+                  maxLength={50}
                   value={form.codigoInterno}
                 />
                 <span className="mt-1 block text-xs text-slate-400">
@@ -367,6 +368,7 @@ export default function BusFormPage() {
                 <input
                   className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => updateField('placa', event.target.value)}
+                  maxLength={15}
                   value={form.placa}
                 />
                 <span className="mt-1 block text-xs text-slate-400">

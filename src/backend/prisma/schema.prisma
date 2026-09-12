@@ -193,8 +193,8 @@ enum EstadoSolicitudIdempotente {
 model Rol {
   id          Int       @id @default(autoincrement())
   codigo      RolCodigo @unique
-  nombre      String    @db.VarChar(120)
-  descripcion String?   @db.Text
+  nombre      String    @db.VarChar(80)
+  descripcion String?   @db.VarChar(255)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -205,9 +205,9 @@ model Rol {
 
 model Usuario {
   id                    Int           @id @default(autoincrement())
-  nombre                String        @db.VarChar(160)
-  email                 String        @unique @db.VarChar(180)
-  telefono              String?       @db.VarChar(40)
+  nombre                String        @db.VarChar(120)
+  email                 String        @unique @db.VarChar(120)
+  telefono              String?       @db.VarChar(20)
   contrasenaHash        String        @map("contrasena_hash") @db.VarChar(255)
   estado                EstadoUsuario @default(ACTIVO)
   rolId                 Int           @map("rol_id")
@@ -257,8 +257,8 @@ model Usuario {
 
 model Bus {
   id                Int       @id @default(autoincrement())
-  codigoInterno     String    @unique @map("codigo_interno") @db.VarChar(60)
-  placa             String    @unique @db.VarChar(20)
+  codigoInterno     String    @unique @map("codigo_interno") @db.VarChar(50)
+  placa             String    @unique @db.VarChar(15)
   marca             String    @db.VarChar(100)
   modelo            String    @db.VarChar(100)
   anio              Int
@@ -424,7 +424,7 @@ model ProgramacionMantenimiento {
 
 model OrdenTrabajo {
   id                            Int                @id @default(autoincrement())
-  codigo                        String             @unique @db.VarChar(80)
+  codigo                        String             @unique @db.VarChar(50)
   busId                         Int                @map("bus_id")
   tipo                          TipoOrdenTrabajo
   origen                        OrigenOrdenTrabajo
@@ -702,10 +702,10 @@ model Ruta {
   operador String? @db.VarChar(160)
   procedencia Json @default("{}") @db.JsonB
   id        Int      @id @default(autoincrement())
-  codigo    String   @unique @db.VarChar(80)
-  nombre    String   @db.VarChar(160)
-  origen    String   @db.VarChar(160)
-  destino   String   @db.VarChar(160)
+  codigo    String   @unique @db.VarChar(50)
+  nombre    String   @db.VarChar(120)
+  origen    String   @db.VarChar(120)
+  destino   String   @db.VarChar(120)
   activa    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -771,10 +771,10 @@ model JornadaOperativa {
 model PlanMantenimientoPreventivo {
   id               Int                   @id @default(autoincrement())
   version          Int
-  claveTarea       String                @map("clave_tarea") @db.VarChar(120)
+  claveTarea       String                @map("clave_tarea") @db.VarChar(80)
   busId            Int?                  @map("bus_id")
   modeloBusId      Int?                  @map("modelo_bus_id")
-  componente       String                @db.VarChar(160)
+  componente       String                @db.VarChar(120)
   actividad        String                @db.Text
   criterio         CriterioMantenimiento
   intervaloDias    Int?                  @map("intervalo_dias")

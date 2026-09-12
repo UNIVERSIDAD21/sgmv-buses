@@ -14,7 +14,7 @@ const planShape = z
     anticipacionDias: nonNegativeInteger.optional(),
     anticipacionKm: nonNegativeInteger.optional(),
     bloqueaAlVencer: z.boolean(),
-    componente: trimmedText(2, 160),
+    componente: trimmedText(2, 120),
     criterio: z.enum(criterioMantenimientoValues),
     intervaloDias: positiveInteger.optional(),
     intervaloKm: positiveInteger.optional(),
@@ -70,7 +70,7 @@ export const createPreventivePlanSchema = planShape
       .string()
       .trim()
       .min(2)
-      .max(120)
+      .max(80)
       .regex(
         keyPattern,
         'La clave de tarea solo admite letras, números, punto, guion y guion bajo',
@@ -95,7 +95,7 @@ export const listPreventivePlansQuerySchema = z.object({
     .transform((value) => value === 'true')
     .optional(),
   busId: entityIdSchema.optional(),
-  claveTarea: z.string().trim().max(120).optional(),
+  claveTarea: z.string().trim().max(80).optional(),
   incluirHistoricos: z
     .enum(['true', 'false'])
     .transform((value) => value === 'true')

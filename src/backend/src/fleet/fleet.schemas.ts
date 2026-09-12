@@ -18,6 +18,10 @@ const optionalTrimmedText = (max = 500) =>
   }, z.string().trim().max(max).optional())
 
 const trimmedText = (max: number) => z.string().trim().min(1).max(max)
+const identifierText = (max: number) =>
+  trimmedText(max).refine((value) => value.toUpperCase().replace(/\s+/g, '').length <= max, {
+    message: `El identificador normalizado no puede superar ${max} caracteres`,
+  })
 
 const currentYear = new Date().getFullYear()
 
@@ -47,14 +51,14 @@ export const createBusSchema = z
       .int()
       .min(1980)
       .max(currentYear + 1),
-    codigoInterno: trimmedText(60),
+    codigoInterno: identifierText(50),
     estadoOperativo: z.enum(estadoBusValues).default('OPERATIVO'),
     kilometrajeActual: z.coerce.number().int().min(0).default(0),
     marca: trimmedText(100),
     modelo: trimmedText(100),
     modeloBusId: entityIdSchema.optional(),
     motivoEstado: optionalTrimmedText(500),
-    placa: trimmedText(20),
+    placa: identifierText(15),
   })
   .strict()
 
@@ -66,11 +70,11 @@ export const updateBusSchema = z
       .min(1980)
       .max(currentYear + 1)
       .optional(),
-    codigoInterno: trimmedText(60).optional(),
+    codigoInterno: identifierText(50).optional(),
     marca: trimmedText(100).optional(),
     modelo: trimmedText(100).optional(),
     modeloBusId: entityIdSchema.nullable().optional(),
-    placa: trimmedText(20).optional(),
+    placa: identifierText(15).optional(),
   })
   .strict()
   .refine((input) => Object.keys(input).length > 0, {

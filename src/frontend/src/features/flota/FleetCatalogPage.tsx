@@ -58,11 +58,13 @@ function getErrorMessage(error: unknown) {
 
 function Field({
   label,
+  maxLength,
   onChange,
   required = true,
   value,
 }: {
   label: string
+  maxLength?: number
   onChange: (value: string) => void
   required?: boolean
   value: string
@@ -71,6 +73,7 @@ function Field({
     <label className="block text-sm font-medium text-slate-700">
       {label}
       <input
+        maxLength={maxLength}
         className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
         onChange={(event) => onChange(event.target.value)}
         required={required}
@@ -381,21 +384,25 @@ export default function FleetCatalogPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Field
                 label="Codigo de ruta"
+                maxLength={50}
                 onChange={(codigo) => setRouteForm((state) => ({ ...state, codigo }))}
                 value={routeForm.codigo}
               />
               <Field
                 label="Nombre de ruta"
+                maxLength={120}
                 onChange={(nombre) => setRouteForm((state) => ({ ...state, nombre }))}
                 value={routeForm.nombre}
               />
               <Field
                 label="Origen"
+                maxLength={120}
                 onChange={(origen) => setRouteForm((state) => ({ ...state, origen }))}
                 value={routeForm.origen}
               />
               <Field
                 label="Destino"
+                maxLength={120}
                 onChange={(destino) => setRouteForm((state) => ({ ...state, destino }))}
                 value={routeForm.destino}
               />
