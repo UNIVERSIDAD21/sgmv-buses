@@ -56,10 +56,14 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#F7F8F6] px-4 py-10">
-      <section className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-sm">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F4F7F4] px-4 py-10">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(4,120,87,0.12),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(15,23,42,0.08),transparent_30%)]"
+      />
+      <section className="relative w-full max-w-sm">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-sm shadow-emerald-950/20">
             <Bus size={24} />
           </div>
           <h1 className="text-xl font-semibold text-slate-900">SGMV</h1>
@@ -68,7 +72,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-xl border border-white/80 bg-white/95 p-6 shadow-[0_18px_60px_-30px_rgba(15,23,42,0.35)] backdrop-blur">
           <h2 className="text-base font-semibold text-slate-900">Iniciar sesión</h2>
           <p className="mt-1 text-sm leading-6 text-slate-600">
             Acceso protegido por rol con sesión segura en cookie HttpOnly.
@@ -83,7 +87,7 @@ export default function LoginPage() {
                 aria-describedby={formError ? 'login-error' : undefined}
                 aria-invalid={Boolean(formError)}
                 autoComplete="email"
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 transition-colors placeholder:text-slate-300 hover:border-slate-300 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
+                className="field-control"
                 id="email"
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="usuario@sgmv.local"
@@ -105,7 +109,7 @@ export default function LoginPage() {
                 aria-describedby={formError ? 'login-error' : undefined}
                 aria-invalid={Boolean(formError)}
                 autoComplete="current-password"
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 transition-colors placeholder:text-slate-300 hover:border-slate-300 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
+                className="field-control"
                 id="contrasena"
                 onChange={(event) => setContrasena(event.target.value)}
                 placeholder="Ingrese su contraseña"

@@ -9,6 +9,7 @@ import {
   type RoleCode,
 } from '../../domain/labels'
 import { formatDateTime } from '../../lib/format'
+import { preloadRoute } from '../../lib/route-preload'
 import { ALERTS_UPDATED_EVENT, getUnreadAlertCount } from '../../features/alertas/alert.api'
 import Button from '../ui/Button'
 import { useDialogFocus } from '../ui/useDialogFocus'
@@ -41,10 +42,12 @@ interface AppShellProps {
 
 interface NavigationItem {
   icon: ReactNode
-  id: AppRouteId | 'inicio'
+  id: AppRouteId | 'alertas' | 'inicio'
   label: string
   path: string
   roles: RoleCode[]
+  section: 'general' | 'operacion' | 'taller' | 'trazabilidad'
+  shortLabel: string
 }
 
 const iconById: Record<RequirementRouteId, ReactNode> = {
@@ -61,6 +64,34 @@ const allRoles: RoleCode[] = ['ADMINISTRADOR', 'DESPACHADOR', 'MECANICO', 'CONDU
 const requirementsByPathLength = [...REQUIREMENT_NAV_ITEMS].sort(
   (left, right) => right.path.length - left.path.length,
 )
+const sidebarPreferenceKey = 'sgmv:sidebar-expanded'
+
+const shortLabelById: Record<RequirementRouteId, string> = {
+  flota: 'Flota vehicular',
+  historial: 'Historial e informes',
+  'mantenimiento-preventivo': 'Mantenimiento preventivo',
+  novedades: 'Novedades operativas',
+  'ordenes-trabajo': 'Órdenes de trabajo',
+  'ordenes-despacho': 'Disponibilidad técnica',
+  repuestos: 'Repuestos e inventario',
+}
+
+const sectionById: Record<RequirementRouteId, NavigationItem['section']> = {
+  flota: 'operacion',
+  historial: 'trazabilidad',
+  'mantenimiento-preventivo': 'taller',
+  novedades: 'operacion',
+  'ordenes-trabajo': 'taller',
+  'ordenes-despacho': 'operacion',
+  repuestos: 'taller',
+}
+
+const sectionLabels: Record<NavigationItem['section'], string> = {
+  general: 'General',
+  operacion: 'Operación',
+  taller: 'Gestión técnica',
+  trazabilidad: 'Seguimiento',
+}
 
 function initials(name: string) {
   return name
@@ -105,44 +136,80 @@ function getPageTitle(pathname: string) {
 function NavigationList({
   compact,
   items,
+  mobile = false,
   onNavigate,
 }: {
   compact: boolean
   items: NavigationItem[]
+  mobile?: boolean
   onNavigate: () => void
 }) {
+  const groups = items.reduce<Partial<Record<NavigationItem['section'], NavigationItem[]>>>(
+    (result, item) => ({ ...result, [item.section]: [...(result[item.section] ?? []), item] }),
+    {},
+  )
+
   return (
-    <div className="space-y-1">
-      {items.map((item) => (
-        <NavLink
-          aria-label={item.label}
-          className={({ isActive }) =>
-            `group relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${
-              isActive
-                ? 'bg-emerald-50 text-emerald-700'
-                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
-            } ${compact ? 'justify-center' : ''}`
-          }
-          end={item.path === '/ordenes-trabajo'}
-          key={item.path}
-          onClick={onNavigate}
-          to={item.path}
-        >
-          <span className="shrink-0">{item.icon}</span>
-          {!compact && <span className="whitespace-normal leading-5">{item.label}</span>}
-          {compact && (
-            <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden w-80 -translate-y-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-xs font-medium leading-5 text-slate-700 shadow-lg group-hover:block group-focus-visible:block">
-              {item.label}
-            </span>
+    <div className="space-y-4">
+      {Object.entries(groups).map(([section, groupItems]) => (
+        <div key={section}>
+          {!compact && (
+            <p
+              className={`mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 ${mobile ? '' : 'hidden xl:block'}`}
+            >
+              {sectionLabels[section as NavigationItem['section']]}
+            </p>
           )}
-        </NavLink>
+          <div className="space-y-0.5">
+            {groupItems?.map((item) => (
+              <NavLink
+                aria-label={item.label}
+                className={({ isActive }) =>
+                  `group relative flex min-h-10 items-center gap-2.5 rounded-lg px-2.5 text-sm font-semibold transition-colors ${
+                    isActive
+                      ? 'bg-emerald-50 text-emerald-800 shadow-[inset_3px_0_0_#047857]'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+                  } ${compact || !mobile ? 'md:justify-center xl:justify-start' : ''} ${compact ? 'xl:justify-center' : ''}`
+                }
+                end={item.path === '/ordenes-trabajo'}
+                key={item.path}
+                onClick={onNavigate}
+                onFocus={() => preloadRoute(item.path)}
+                onMouseEnter={() => preloadRoute(item.path)}
+                to={item.path}
+              >
+                <span className="shrink-0" aria-hidden="true">
+                  {item.icon}
+                </span>
+                <span
+                  className={
+                    mobile ? 'leading-5' : compact ? 'hidden' : 'hidden leading-5 xl:block'
+                  }
+                >
+                  {item.shortLabel}
+                </span>
+                {!mobile && (
+                  <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden w-80 -translate-y-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-xs font-medium leading-5 text-slate-700 shadow-lg group-hover:block group-focus-visible:block">
+                    {item.label}
+                  </span>
+                )}
+              </NavLink>
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   )
 }
 
 export default function AppShell({ onLogout, user }: AppShellProps) {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(() => {
+    try {
+      return window.localStorage.getItem(sidebarPreferenceKey) !== 'false'
+    } catch {
+      return true
+    }
+  })
   const [mobileOpen, setMobileOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const [unreadAlerts, setUnreadAlerts] = useState(0)
@@ -164,18 +231,29 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
   }, [])
 
   useEffect(() => {
-    const initialRefresh = window.setTimeout(() => void refreshUnreadAlerts(), 0)
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshUnreadAlerts()
+    }
+    const initialRefresh = window.setTimeout(refreshWhenVisible, 0)
+    const interval = window.setInterval(refreshWhenVisible, 60_000)
     window.addEventListener(ALERTS_UPDATED_EVENT, refreshUnreadAlerts)
+    window.addEventListener('focus', refreshWhenVisible)
+    document.addEventListener('visibilitychange', refreshWhenVisible)
     return () => {
       window.clearTimeout(initialRefresh)
+      window.clearInterval(interval)
       window.removeEventListener(ALERTS_UPDATED_EVENT, refreshUnreadAlerts)
+      window.removeEventListener('focus', refreshWhenVisible)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
     }
-  }, [location.pathname, refreshUnreadAlerts])
+  }, [refreshUnreadAlerts])
 
   const navigationItems = useMemo<NavigationItem[]>(() => {
     const requirements = REQUIREMENT_NAV_ITEMS.map((item) => ({
       ...item,
       icon: iconById[item.id],
+      section: sectionById[item.id],
+      shortLabel: shortLabelById[item.id],
     }))
 
     return [
@@ -185,6 +263,8 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
         label: 'Inicio',
         path: '/inicio',
         roles: allRoles,
+        section: 'general' as const,
+        shortLabel: 'Inicio',
       },
       {
         icon: <ClipboardList size={18} />,
@@ -192,8 +272,19 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
         label: 'Jornadas operativas',
         path: '/jornadas',
         roles: ['ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR'],
+        section: 'operacion' as const,
+        shortLabel: 'Jornadas',
       },
       ...requirements,
+      {
+        icon: <Bell size={18} />,
+        id: 'alertas' as const,
+        label: 'Alertas internas',
+        path: '/alertas',
+        roles: allRoles,
+        section: 'trazabilidad' as const,
+        shortLabel: 'Alertas',
+      },
     ]
   }, [])
 
@@ -220,6 +311,18 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
     }
   }
 
+  const toggleSidebar = () => {
+    setExpanded((value) => {
+      const next = !value
+      try {
+        window.localStorage.setItem(sidebarPreferenceKey, String(next))
+      } catch {
+        // The preference is optional; navigation remains fully usable.
+      }
+      return next
+    })
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#F7F8F6] text-slate-700">
       <a
@@ -229,18 +332,18 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
         Saltar al contenido principal
       </a>
       <aside
-        className={`relative hidden shrink-0 flex-col border-r border-slate-200 bg-white transition-all duration-200 md:flex ${
-          expanded ? 'w-96' : 'w-16'
+        className={`relative hidden shrink-0 flex-col border-r border-slate-200 bg-white transition-[width] duration-200 md:flex ${
+          expanded ? 'w-[72px] xl:w-[248px]' : 'w-[72px]'
         }`}
       >
         <div
-          className={`flex h-16 items-center gap-3 border-b border-slate-100 px-3 ${expanded ? '' : 'justify-center'}`}
+          className={`flex h-14 items-center gap-2.5 border-b border-slate-100 px-3 ${expanded ? 'md:justify-center xl:justify-start' : 'justify-center'}`}
         >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-700 text-white">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-sm">
             <Bus size={18} />
           </div>
           {expanded && (
-            <div className="min-w-0">
+            <div className="hidden min-w-0 xl:block">
               <p className="text-sm font-semibold text-slate-900">SGMV</p>
               <p className="text-xs text-slate-600">Mantenimiento vehicular</p>
             </div>
@@ -249,7 +352,7 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
 
         <nav
           aria-label="Navegación principal"
-          className="scrollbar-thin flex-1 overflow-y-auto p-2"
+          className="scrollbar-thin flex-1 overflow-y-auto px-2 py-3"
         >
           <NavigationList
             compact={!expanded}
@@ -260,13 +363,13 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
 
         <div className="border-t border-slate-100 p-2">
           <div
-            className={`mb-2 flex items-center gap-2 rounded-lg px-2 py-2 ${expanded ? '' : 'justify-center'}`}
+            className={`mb-1 flex items-center gap-2 rounded-lg px-1.5 py-2 ${expanded ? 'md:justify-center xl:justify-start' : 'justify-center'}`}
           >
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-xs font-bold text-cyan-700">
               {initials(user.nombre)}
             </div>
             {expanded && (
-              <div className="min-w-0">
+              <div className="hidden min-w-0 xl:block">
                 <p className="text-xs font-semibold text-slate-800">{user.nombre}</p>
                 <p className="text-xs leading-5 text-slate-600">{ROLE_LABELS[user.rol.codigo]}</p>
               </div>
@@ -274,19 +377,19 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
           </div>
           <Button
             aria-label="Cerrar sesión"
-            className={`w-full ${expanded ? '' : 'px-0'}`}
+            className={`w-full ${expanded ? 'md:px-0 xl:px-3' : 'px-0'}`}
             icon={<LogOut size={15} />}
             loading={loggingOut}
             onClick={handleLogout}
             variant="ghost"
           >
-            {expanded && 'Cerrar sesión'}
+            {expanded && <span className="hidden xl:inline">Cerrar sesión</span>}
           </Button>
           <button
             aria-expanded={expanded}
             aria-label={expanded ? 'Colapsar menú' : 'Expandir menú'}
-            className="mt-1 flex min-h-11 w-full items-center justify-center rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-            onClick={() => setExpanded((value) => !value)}
+            className="mt-1 hidden min-h-10 w-full items-center justify-center rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 xl:flex"
+            onClick={toggleSidebar}
             type="button"
           >
             {expanded ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
@@ -297,7 +400,7 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
       {mobileOpen && (
         <div
           aria-hidden="true"
-          className="fixed inset-0 z-40 bg-slate-950/30 md:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-[1px] md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -305,7 +408,7 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
         <aside
           aria-labelledby="menu-movil-titulo"
           aria-modal="true"
-          className="fixed inset-y-0 left-0 z-50 flex w-80 max-w-[86vw] flex-col border-r border-slate-200 bg-white md:hidden"
+          className="fixed inset-y-0 left-0 z-50 flex w-[300px] max-w-[88vw] flex-col border-r border-slate-200 bg-white shadow-2xl md:hidden"
           id="menu-movil"
           ref={mobileMenuRef}
           role="dialog"
@@ -344,6 +447,7 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
             <NavigationList
               compact={false}
               items={visibleNav}
+              mobile
               onNavigate={() => setMobileOpen(false)}
             />
           </nav>
@@ -351,7 +455,7 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 md:px-6">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-3 md:px-5">
           <button
             aria-controls="menu-movil"
             aria-expanded={mobileOpen}
@@ -363,10 +467,10 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
             <Menu aria-hidden="true" size={18} />
           </button>
           <div className="min-w-0 flex-1">
-            <h1 className="text-sm font-semibold leading-5 text-slate-900 md:text-base">
+            <h1 className="truncate text-sm font-semibold leading-5 text-slate-950 md:text-base">
               {pageTitle}
             </h1>
-            <p className="hidden text-xs text-slate-600 sm:block">{formatDateTime()}</p>
+            <p className="hidden text-[11px] text-slate-500 sm:block">{formatDateTime()}</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -401,7 +505,7 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
           <Outlet />
         </main>
 
-        <footer className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-center text-[11px] text-slate-600">
+        <footer className="border-t border-slate-100 bg-slate-50 px-4 py-1.5 text-center text-[10px] text-slate-500">
           Prototipo académico — Datos simulados
         </footer>
       </div>

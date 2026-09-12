@@ -38,7 +38,7 @@ export default function StatePanel({
     <div
       aria-busy={isLoading || undefined}
       aria-live={isError ? 'assertive' : 'polite'}
-      className="flex min-h-[260px] flex-col items-center justify-center rounded-lg border border-slate-200 bg-white px-6 py-10 text-center"
+      className="flex min-h-[210px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-9 text-center"
       role={isError ? 'alert' : 'status'}
     >
       <div

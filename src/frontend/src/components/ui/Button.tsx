@@ -20,8 +20,8 @@ const variantClasses: Record<Variant, string> = {
 
 const sizeClasses: Record<Size, string> = {
   lg: 'min-h-11 px-5 text-sm',
-  md: 'min-h-11 px-4 text-sm',
-  sm: 'min-h-11 px-3 text-xs',
+  md: 'min-h-10 px-4 text-sm',
+  sm: 'min-h-10 px-3 text-xs',
 }
 
 export default function Button({
@@ -38,7 +38,7 @@ export default function Button({
   return (
     <button
       aria-busy={loading || undefined}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg border font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg border font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
       disabled={disabled || loading}
       type={type}
       {...props}
