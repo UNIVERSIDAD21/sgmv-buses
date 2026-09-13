@@ -109,6 +109,7 @@ async function main() {
   }
 
   const contrasenaHash = await hash(demoPassword, 10)
+  const preservarContrasenasExistentes = process.env.SEED_PRESERVE_EXISTING_PASSWORDS === 'true'
   const now = new Date()
   const fechaPreventivo = new Date(Date.UTC(2026, 8, 2))
 
@@ -186,7 +187,7 @@ async function main() {
         where: { email: 'administrador.demo@sgmv.local' },
         update: {
           nombre: 'Administrador Demo',
-          contrasenaHash,
+          ...(preservarContrasenasExistentes ? {} : { contrasenaHash }),
           estado: 'ACTIVO',
           rolId: ids.roles.admin,
         },
@@ -205,7 +206,7 @@ async function main() {
         where: { email: 'despachador.demo@sgmv.local' },
         update: {
           nombre: 'Despachador Demo',
-          contrasenaHash,
+          ...(preservarContrasenasExistentes ? {} : { contrasenaHash }),
           estado: 'ACTIVO',
           rolId: ids.roles.despachador,
         },
@@ -224,7 +225,7 @@ async function main() {
         where: { email: 'mecanico.demo@sgmv.local' },
         update: {
           nombre: 'Mecanico Demo',
-          contrasenaHash,
+          ...(preservarContrasenasExistentes ? {} : { contrasenaHash }),
           estado: 'ACTIVO',
           rolId: ids.roles.mecanico,
         },
@@ -243,7 +244,7 @@ async function main() {
         where: { email: 'mecanico.apoyo.demo@sgmv.local' },
         update: {
           nombre: 'Mecanico Apoyo Demo',
-          contrasenaHash,
+          ...(preservarContrasenasExistentes ? {} : { contrasenaHash }),
           estado: 'ACTIVO',
           rolId: ids.roles.mecanico,
         },
@@ -262,7 +263,7 @@ async function main() {
         where: { email: 'conductor.demo@sgmv.local' },
         update: {
           nombre: 'Conductor Demo',
-          contrasenaHash,
+          ...(preservarContrasenasExistentes ? {} : { contrasenaHash }),
           estado: 'ACTIVO',
           rolId: ids.roles.conductor,
         },
@@ -277,6 +278,25 @@ async function main() {
         },
       })
 
+      for (const [key, email] of Object.entries({
+        admin: 'administrador.demo@sgmv.local',
+        despachador: 'despachador.demo@sgmv.local',
+        mecanico: 'mecanico.demo@sgmv.local',
+        mecanicoApoyo: 'mecanico.apoyo.demo@sgmv.local',
+        conductor: 'conductor.demo@sgmv.local',
+      } as const)) {
+        const usuario = await tx.usuario.findUniqueOrThrow({ where: { email } })
+        ids.usuarios[key as keyof typeof ids.usuarios] = usuario.id
+      }
+
+      const modeloPrincipalExistente = await tx.modeloBus.findFirst({
+        where: {
+          marca: 'SGMV-DEMO',
+          nombreModelo: 'URBANO-DUAL-A',
+          versionTecnica: 'DEMO-2026-A',
+        },
+      })
+      if (modeloPrincipalExistente) ids.modelosBus.principal = modeloPrincipalExistente.id
       await tx.modeloBus.upsert({
         where: { id: ids.modelosBus.principal },
         update: {
@@ -316,6 +336,14 @@ async function main() {
         },
       })
 
+      const modeloRespaldoExistente = await tx.modeloBus.findFirst({
+        where: {
+          marca: 'SGMV-DEMO',
+          nombreModelo: 'URBANO-DUAL-B',
+          versionTecnica: 'DEMO-2026-B',
+        },
+      })
+      if (modeloRespaldoExistente) ids.modelosBus.respaldo = modeloRespaldoExistente.id
       await tx.modeloBus.upsert({
         where: { id: ids.modelosBus.respaldo },
         update: {
@@ -435,25 +463,53 @@ async function main() {
         },
       })
 
-      await tx.asignacionConductor.upsert({
-        where: { id: ids.asignacion },
-        update: {
+      for (const [key, codigoInterno] of Object.entries({
+        principal: 'BUS-001',
+        respaldo: 'BUS-002',
+      } as const)) {
+        const bus = await tx.bus.findUniqueOrThrow({ where: { codigoInterno } })
+        ids.buses[key as keyof typeof ids.buses] = bus.id
+      }
+
+      const asignacionActivaExistente = await tx.asignacionConductor.findFirst({
+        where: {
           activa: true,
-          fechaFin: null,
-          conductorId: ids.usuarios.conductor,
-          busId: ids.buses.principal,
-          asignadoPorId: ids.usuarios.admin,
-        },
-        create: {
-          id: ids.asignacion,
-          conductorId: ids.usuarios.conductor,
-          busId: ids.buses.principal,
-          activa: true,
-          asignadoPorId: ids.usuarios.admin,
-          motivo: 'Asignacion inicial de desarrollo.',
+          OR: [{ conductorId: ids.usuarios.conductor }, { busId: ids.buses.principal }],
         },
       })
+      const asignacionDemoCompatible =
+        !asignacionActivaExistente ||
+        (asignacionActivaExistente.conductorId === ids.usuarios.conductor &&
+          asignacionActivaExistente.busId === ids.buses.principal)
+      if (asignacionDemoCompatible) {
+        if (asignacionActivaExistente) ids.asignacion = asignacionActivaExistente.id
+        await tx.asignacionConductor.upsert({
+          where: { id: ids.asignacion },
+          update: {
+            activa: true,
+            fechaFin: null,
+            conductorId: ids.usuarios.conductor,
+            busId: ids.buses.principal,
+            asignadoPorId: ids.usuarios.admin,
+          },
+          create: {
+            id: ids.asignacion,
+            conductorId: ids.usuarios.conductor,
+            busId: ids.buses.principal,
+            activa: true,
+            asignadoPorId: ids.usuarios.admin,
+            motivo: 'Asignacion inicial de desarrollo.',
+          },
+        })
+      }
 
+      const lecturaInicialExistente = await tx.lecturaKilometraje.findFirst({
+        where: {
+          busId: ids.buses.principal,
+          motivo: 'Lectura inicial de desarrollo.',
+        },
+      })
+      if (lecturaInicialExistente) ids.lecturaKilometraje = lecturaInicialExistente.id
       await tx.lecturaKilometraje.upsert({
         where: { id: ids.lecturaKilometraje },
         update: {
@@ -478,6 +534,17 @@ async function main() {
         finReal: new Date('2026-09-01T19:55:00.000Z'),
       }
 
+      const jornadaFinalizadaExistente = await tx.jornadaOperativa.findFirst({
+        where: {
+          busId: ids.buses.principal,
+          conductorId: ids.usuarios.conductor,
+          inicioProgramado: jornadaFinalizada.inicioProgramado,
+          finProgramado: jornadaFinalizada.finProgramado,
+          inicioReal: jornadaFinalizada.inicioReal,
+          finReal: jornadaFinalizada.finReal,
+        },
+      })
+      if (jornadaFinalizadaExistente) ids.jornadas.finalizada = jornadaFinalizadaExistente.id
       await tx.jornadaOperativa.upsert({
         where: { id: ids.jornadas.finalizada },
         update: {},
@@ -501,6 +568,13 @@ async function main() {
         },
       })
 
+      const lecturaInicioExistente = await tx.lecturaKilometraje.findFirst({
+        where: {
+          jornadaOperativaId: ids.jornadas.finalizada,
+          tipo: 'INICIO_JORNADA',
+        },
+      })
+      if (lecturaInicioExistente) ids.lecturasJornada.inicio = lecturaInicioExistente.id
       await tx.lecturaKilometraje.upsert({
         where: { id: ids.lecturasJornada.inicio },
         update: {
@@ -523,6 +597,13 @@ async function main() {
         },
       })
 
+      const lecturaFinExistente = await tx.lecturaKilometraje.findFirst({
+        where: {
+          jornadaOperativaId: ids.jornadas.finalizada,
+          tipo: 'FIN_JORNADA',
+        },
+      })
+      if (lecturaFinExistente) ids.lecturasJornada.fin = lecturaFinExistente.id
       await tx.lecturaKilometraje.upsert({
         where: { id: ids.lecturasJornada.fin },
         update: {
@@ -546,6 +627,14 @@ async function main() {
       })
 
       const fechaNovedad = new Date('2026-09-01T18:30:00.000Z')
+      const lecturaNovedadExistente = await tx.lecturaKilometraje.findFirst({
+        where: {
+          jornadaOperativaId: ids.jornadas.finalizada,
+          tipo: 'NOVEDAD',
+          fechaLectura: fechaNovedad,
+        },
+      })
+      if (lecturaNovedadExistente) ids.lecturasJornada.novedad = lecturaNovedadExistente.id
       await tx.lecturaKilometraje.upsert({
         where: { id: ids.lecturasJornada.novedad },
         update: {
@@ -570,6 +659,17 @@ async function main() {
         },
       })
 
+      const jornadaProgramadaExistente = await tx.jornadaOperativa.findFirst({
+        where: {
+          busId: ids.buses.principal,
+          conductorId: ids.usuarios.conductor,
+          rutaId: ids.rutas.centroNorte,
+          estado: 'PROGRAMADA',
+          ciclosCompletosSimulados: 4,
+          kmProyectadosDemo: 106,
+        },
+      })
+      if (jornadaProgramadaExistente) ids.jornadas.programada = jornadaProgramadaExistente.id
       await tx.jornadaOperativa.upsert({
         where: { id: ids.jornadas.programada },
         update: {},
@@ -589,6 +689,13 @@ async function main() {
         },
       })
 
+      const busEstadoInicialExistente = await tx.busEstadoHistorial.findFirst({
+        where: {
+          busId: ids.buses.principal,
+          motivo: 'Estado inicial de desarrollo.',
+        },
+      })
+      if (busEstadoInicialExistente) ids.busEstadoHistorial = busEstadoInicialExistente.id
       await tx.busEstadoHistorial.upsert({
         where: { id: ids.busEstadoHistorial },
         update: {
@@ -605,6 +712,10 @@ async function main() {
         },
       })
 
+      const novedadExistente = await tx.novedad.findUnique({
+        where: { lecturaKilometrajeId: ids.lecturasJornada.novedad },
+      })
+      if (novedadExistente) ids.novedad = novedadExistente.id
       await tx.novedad.upsert({
         where: { id: ids.novedad },
         update: {
@@ -637,6 +748,16 @@ async function main() {
         },
       })
 
+      const programacionExistente = await tx.programacionMantenimiento.findFirst({
+        where: {
+          busId: ids.buses.principal,
+          tipo: 'Revision preventiva',
+          actividad: 'Revision general de frenos y lubricacion.',
+          fechaProgramada: fechaPreventivo,
+          kilometrajeObjetivo: 45500,
+        },
+      })
+      if (programacionExistente) ids.programacion = programacionExistente.id
       await tx.programacionMantenimiento.upsert({
         where: { id: ids.programacion },
         update: {
@@ -658,6 +779,16 @@ async function main() {
         },
       })
 
+      const planRecurrenteExistente = await tx.planMantenimientoPreventivo.findFirst({
+        where: {
+          busId: ids.buses.respaldo,
+          claveTarea: 'MOTOR.ACEITE.RECURRENTE',
+          version: 1,
+        },
+      })
+      if (planRecurrenteExistente) {
+        ids.planPreventivoRecurrente = planRecurrenteExistente.id
+      }
       await tx.planMantenimientoPreventivo.upsert({
         where: { id: ids.planPreventivoRecurrente },
         update: { activo: true },
@@ -681,6 +812,16 @@ async function main() {
         },
       })
 
+      const programacionRecurrenteExistente = await tx.programacionMantenimiento.findFirst({
+        where: {
+          planMantenimientoPreventivoId: ids.planPreventivoRecurrente,
+          busId: ids.buses.respaldo,
+          kilometrajeObjetivo: 63750,
+        },
+      })
+      if (programacionRecurrenteExistente) {
+        ids.programacionRecurrente = programacionRecurrenteExistente.id
+      }
       await tx.programacionMantenimiento.upsert({
         where: { id: ids.programacionRecurrente },
         update: {
@@ -778,6 +919,22 @@ async function main() {
         },
       })
 
+      for (const [key, codigo] of Object.entries({
+        correctiva: 'OT-DEMO-CORR-001',
+        preventiva: 'OT-DEMO-PREV-001',
+      } as const)) {
+        const orden = await tx.ordenTrabajo.findUniqueOrThrow({ where: { codigo } })
+        ids.ordenes[key as keyof typeof ids.ordenes] = orden.id
+      }
+
+      const intervencionExistente = await tx.intervencion.findFirst({
+        where: {
+          ordenTrabajoId: ids.ordenes.correctiva,
+          tecnicoId: ids.usuarios.mecanico,
+          fechaInicio: fechaCorrectivaInicio,
+        },
+      })
+      if (intervencionExistente) ids.intervencion = intervencionExistente.id
       await tx.intervencion.upsert({
         where: { id: ids.intervencion },
         update: {
@@ -796,6 +953,13 @@ async function main() {
         },
       })
 
+      const actividadExistente = await tx.actividadOrden.findFirst({
+        where: {
+          intervencionId: ids.intervencion,
+          descripcion: 'Inspeccion, ajuste y prueba de frenado.',
+        },
+      })
+      if (actividadExistente) ids.actividad = actividadExistente.id
       await tx.actividadOrden.upsert({
         where: { id: ids.actividad },
         update: {
@@ -809,6 +973,14 @@ async function main() {
         },
       })
 
+      const lecturaIngresoExistente = await tx.lecturaKilometraje.findFirst({
+        where: {
+          ordenTrabajoId: ids.ordenes.correctiva,
+          tipo: 'INGRESO_TALLER',
+          fechaLectura: fechaCorrectivaAsignacion,
+        },
+      })
+      if (lecturaIngresoExistente) ids.lecturasTecnicas.ingreso = lecturaIngresoExistente.id
       await tx.lecturaKilometraje.upsert({
         where: { id: ids.lecturasTecnicas.ingreso },
         update: {
@@ -832,10 +1004,22 @@ async function main() {
         },
       })
 
+      const fechaRevisionTecnica = new Date(fechaCorrectivaInicio.getTime() + 500)
+      const lecturaRevisionExistente = await tx.lecturaKilometraje.findFirst({
+        where: {
+          ordenTrabajoId: ids.ordenes.correctiva,
+          intervencionId: ids.intervencion,
+          tipo: 'REVISION_TECNICA',
+          fechaLectura: fechaRevisionTecnica,
+        },
+      })
+      if (lecturaRevisionExistente) {
+        ids.lecturasTecnicas.revision = lecturaRevisionExistente.id
+      }
       await tx.lecturaKilometraje.upsert({
         where: { id: ids.lecturasTecnicas.revision },
         update: {
-          fechaLectura: new Date(fechaCorrectivaInicio.getTime() + 500),
+          fechaLectura: fechaRevisionTecnica,
           intervencionId: ids.intervencion,
           kilometrajeAnterior: 45200,
           kilometrajeNuevo: 45210,
@@ -846,7 +1030,7 @@ async function main() {
         create: {
           id: ids.lecturasTecnicas.revision,
           busId: ids.buses.principal,
-          fechaLectura: new Date(fechaCorrectivaInicio.getTime() + 500),
+          fechaLectura: fechaRevisionTecnica,
           intervencionId: ids.intervencion,
           kilometrajeAnterior: 45200,
           kilometrajeNuevo: 45210,
@@ -857,6 +1041,14 @@ async function main() {
         },
       })
 
+      const lecturaCierreExistente = await tx.lecturaKilometraje.findFirst({
+        where: {
+          ordenTrabajoId: ids.ordenes.correctiva,
+          tipo: 'CIERRE_MANTENIMIENTO',
+          fechaLectura: fechaCorrectivaCierre,
+        },
+      })
+      if (lecturaCierreExistente) ids.lecturasTecnicas.cierre = lecturaCierreExistente.id
       await tx.lecturaKilometraje.upsert({
         where: { id: ids.lecturasTecnicas.cierre },
         update: {
@@ -917,8 +1109,13 @@ async function main() {
         },
       })
 
+      ids.repuesto = (
+        await tx.repuesto.findUniqueOrThrow({ where: { codigo: 'REP-FRENO-001' } })
+      ).id
+
       const compatibilityRows = [
         {
+          key: 'modeloAnterior' as const,
           id: ids.compatibilidades.modeloAnterior,
           modeloBusId: ids.modelosBus.principal,
           permitido: false,
@@ -928,6 +1125,7 @@ async function main() {
           condicionUso: 'No usar; version historica.',
         },
         {
+          key: 'modeloVigente' as const,
           id: ids.compatibilidades.modeloVigente,
           modeloBusId: ids.modelosBus.principal,
           permitido: true,
@@ -940,6 +1138,7 @@ async function main() {
           condicionUso: 'Instalar en eje delantero y verificar desgaste.',
         },
         {
+          key: 'busAnterior' as const,
           id: ids.compatibilidades.busAnterior,
           busId: ids.buses.principal,
           permitido: false,
@@ -949,6 +1148,7 @@ async function main() {
           condicionUso: 'No usar; regla reemplazada.',
         },
         {
+          key: 'busVigente' as const,
           id: ids.compatibilidades.busVigente,
           busId: ids.buses.principal,
           permitido: true,
@@ -958,6 +1158,7 @@ async function main() {
           condicionUso: 'Compatible solo con la configuracion vigente del BUS-001.',
         },
         {
+          key: 'negativaModelo' as const,
           id: ids.compatibilidades.negativaModelo,
           modeloBusId: ids.modelosBus.respaldo,
           permitido: false,
@@ -969,20 +1170,18 @@ async function main() {
       ]
 
       for (const row of compatibilityRows) {
-        await tx.compatibilidadRepuesto.upsert({
-          where: { id: row.id },
-          update: {
-            busId: row.busId ?? null,
-            condicionUso: row.condicionUso,
-            definidaPorId: ids.usuarios.admin,
-            especificacionesValidadas: row.especificacionesValidadas,
-            fechaDefinicion: new Date('2026-08-20T12:00:00.000Z'),
-            modeloBusId: row.modeloBusId ?? null,
-            permitido: row.permitido,
+        const compatibilidadExistente = await tx.compatibilidadRepuesto.findFirst({
+          where: {
             repuestoId: ids.repuesto,
+            busId: row.busId ?? null,
+            modeloBusId: row.modeloBusId ?? null,
             version: row.version,
-            vigente: row.vigente,
           },
+        })
+        if (compatibilidadExistente) row.id = compatibilidadExistente.id
+        const compatibilidad = await tx.compatibilidadRepuesto.upsert({
+          where: { id: row.id },
+          update: { vigente: row.vigente },
           create: {
             busId: row.busId ?? null,
             condicionUso: row.condicionUso,
@@ -997,6 +1196,7 @@ async function main() {
             vigente: row.vigente,
           },
         })
+        ids.compatibilidades[row.key] = compatibilidad.id
       }
 
       await tx.repuesto.upsert({
@@ -1071,6 +1271,23 @@ async function main() {
         },
       })
 
+      for (const [key, codigo] of Object.entries({
+        bajo: 'REP-FILTRO-001',
+        agotado: 'REP-ACEITE-001',
+        inactivo: 'REP-BANDA-001',
+      } as const)) {
+        const repuesto = await tx.repuesto.findUniqueOrThrow({ where: { codigo } })
+        ids.repuestosRf05[key as keyof typeof ids.repuestosRf05] = repuesto.id
+      }
+
+      const movimientoEntradaExistente = await tx.movimientoInventario.findFirst({
+        where: {
+          repuestoId: ids.repuesto,
+          tipo: 'ENTRADA',
+          motivo: 'Entrada inicial de desarrollo.',
+        },
+      })
+      if (movimientoEntradaExistente) ids.movimientos.entrada = movimientoEntradaExistente.id
       await tx.movimientoInventario.upsert({
         where: { id: ids.movimientos.entrada },
         update: {
@@ -1089,6 +1306,16 @@ async function main() {
         },
       })
 
+      const movimientoEntradaBajoExistente = await tx.movimientoInventario.findFirst({
+        where: {
+          repuestoId: ids.repuestosRf05.bajo,
+          tipo: 'ENTRADA',
+          motivo: 'Entrada inicial RF-05 para evidencia de bajo stock.',
+        },
+      })
+      if (movimientoEntradaBajoExistente) {
+        ids.movimientos.entradaBajo = movimientoEntradaBajoExistente.id
+      }
       await tx.movimientoInventario.upsert({
         where: { id: ids.movimientos.entradaBajo },
         update: {
@@ -1107,6 +1334,16 @@ async function main() {
         },
       })
 
+      const movimientoAjusteBajoExistente = await tx.movimientoInventario.findFirst({
+        where: {
+          repuestoId: ids.repuestosRf05.bajo,
+          tipo: 'AJUSTE_SALIDA',
+          motivo: 'Ajuste de salida RF-05 por conteo fisico demo.',
+        },
+      })
+      if (movimientoAjusteBajoExistente) {
+        ids.movimientos.ajusteBajo = movimientoAjusteBajoExistente.id
+      }
       await tx.movimientoInventario.upsert({
         where: { id: ids.movimientos.ajusteBajo },
         update: {
@@ -1125,6 +1362,16 @@ async function main() {
         },
       })
 
+      const movimientoEntradaInactivoExistente = await tx.movimientoInventario.findFirst({
+        where: {
+          repuestoId: ids.repuestosRf05.inactivo,
+          tipo: 'ENTRADA',
+          motivo: 'Entrada inicial antes de desactivacion demo RF-05.',
+        },
+      })
+      if (movimientoEntradaInactivoExistente) {
+        ids.movimientos.entradaInactivo = movimientoEntradaInactivoExistente.id
+      }
       await tx.movimientoInventario.upsert({
         where: { id: ids.movimientos.entradaInactivo },
         update: {
@@ -1162,12 +1409,22 @@ async function main() {
         schemaVersion: 1,
       }
 
-      const existingSeedConsumption = await tx.consumoRepuesto.findUnique({
+      const existingSeedConsumption = await tx.consumoRepuesto.findFirst({
         select: { id: true },
-        where: { id: ids.consumo },
+        where: {
+          OR: [
+            { claveIdempotencia: '95000000-0000-4000-8000-000000000001' },
+            {
+              ordenTrabajoId: ids.ordenes.correctiva,
+              repuestoId: ids.repuesto,
+            },
+          ],
+        },
       })
 
-      if (!existingSeedConsumption) {
+      if (existingSeedConsumption) {
+        ids.consumo = existingSeedConsumption.id
+      } else {
         await tx.consumoRepuesto.create({
           data: {
             id: ids.consumo,
@@ -1188,6 +1445,18 @@ async function main() {
         })
       }
 
+      const autorizacionExcepcionExistente = await tx.autorizacionExcepcionConsumo.findFirst({
+        where: {
+          ordenTrabajoId: ids.ordenes.correctiva,
+          intervencionId: ids.intervencion,
+          repuestoId: ids.repuestosRf05.bajo,
+          motivo: 'Autorizacion demo para repuesto sin evidencia positiva.',
+          fechaAutorizacion: new Date('2026-09-02T12:00:10.000Z'),
+        },
+      })
+      if (autorizacionExcepcionExistente) {
+        ids.autorizacionExcepcion = autorizacionExcepcionExistente.id
+      }
       await tx.autorizacionExcepcionConsumo.upsert({
         where: { id: ids.autorizacionExcepcion },
         update: {
@@ -1215,6 +1484,13 @@ async function main() {
         },
       })
 
+      const movimientoConsumoExistente = await tx.movimientoInventario.findFirst({
+        select: { id: true },
+        where: { consumoRepuestoId: ids.consumo },
+      })
+      if (movimientoConsumoExistente) {
+        ids.movimientos.consumo = movimientoConsumoExistente.id
+      }
       await tx.movimientoInventario.upsert({
         where: { id: ids.movimientos.consumo },
         update: {
@@ -1280,6 +1556,15 @@ async function main() {
       ]
 
       for (const item of estadoHistorial) {
+        const estadoExistente = await tx.ordenEstadoHistorial.findFirst({
+          where: {
+            ordenTrabajoId: item.ordenTrabajoId,
+            estadoAnterior: item.estadoAnterior,
+            estadoNuevo: item.estadoNuevo,
+            observacion: item.observacion,
+          },
+        })
+        if (estadoExistente) item.id = estadoExistente.id
         await tx.ordenEstadoHistorial.upsert({
           where: { id: item.id },
           update: {
@@ -1347,7 +1632,7 @@ async function main() {
       ]
 
       for (const alerta of alertasP9) {
-        await tx.alertaInterna.upsert({
+        const alertaPersistida = await tx.alertaInterna.upsert({
           where: { claveDeduplicacion: alerta.claveDeduplicacion },
           update: {
             contextoEvento: alerta.contextoEvento,
@@ -1358,6 +1643,11 @@ async function main() {
           },
           create: alerta,
         })
+        if (alerta.tipo === 'NOVEDAD_CRITICA') {
+          ids.alertas.novedadCritica = alertaPersistida.id
+        } else {
+          ids.alertas.ordenCompletada = alertaPersistida.id
+        }
       }
 
       const destinatariosP9 = [
