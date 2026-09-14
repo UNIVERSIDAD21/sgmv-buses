@@ -6,6 +6,7 @@ import request from 'supertest'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createApp } from '../src/app.js'
+import { env } from '../src/config/env.js'
 import { UserService } from '../src/users/user.service.js'
 import { createCsrfAgent } from './http-test-client.js'
 
@@ -148,6 +149,19 @@ describe('Gestion administrativa y activacion de usuarios', () => {
     expect(detail.body.data.id).toBe(managedUserId)
     expectSanitized(detail.body)
     expect(JSON.stringify(detail.body)).not.toContain(activationToken)
+  })
+
+  it('oculta cuentas del dominio reservado de pruebas cuando ejecuta en produccion', async () => {
+    const previousNodeEnv = env.NODE_ENV
+    env.NODE_ENV = 'production'
+    try {
+      const list = await adminAgent.get(`/usuarios?busqueda=${managedEmail}`).expect(200)
+      expect(list.body.data.items).toHaveLength(0)
+      expect(list.body.data.total).toBe(0)
+      await adminAgent.get(`/usuarios/${managedUserId}`).expect(404)
+    } finally {
+      env.NODE_ENV = previousNodeEnv
+    }
   })
 
   it('permite editar solo datos administrativos basicos', async () => {

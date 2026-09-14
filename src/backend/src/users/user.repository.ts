@@ -1,7 +1,20 @@
 import type { Prisma } from '@prisma/client'
 
+import { env } from '../config/env.js'
 import { prisma } from '../prisma/client.js'
 import type { ListUsersQuery } from './user.schemas.js'
+
+export const RESERVED_TEST_ACCOUNT_DOMAIN = '@test.sgmv.local'
+
+function productionUserVisibilityWhere(): Prisma.UsuarioWhereInput {
+  return env.NODE_ENV === 'production'
+    ? {
+        NOT: {
+          email: { endsWith: RESERVED_TEST_ACCOUNT_DOMAIN, mode: 'insensitive' },
+        },
+      }
+    : {}
+}
 
 export const safeUserSelect = {
   bloqueadoHasta: true,
@@ -24,11 +37,15 @@ export const safeUserSelect = {
 
 export class UserRepository {
   findById(id: number) {
-    return prisma.usuario.findUnique({ select: safeUserSelect, where: { id } })
+    return prisma.usuario.findFirst({
+      select: safeUserSelect,
+      where: { id, ...productionUserVisibilityWhere() },
+    })
   }
 
   async list(query: ListUsersQuery) {
     const where: Prisma.UsuarioWhereInput = {
+      ...productionUserVisibilityWhere(),
       ...(query.busqueda
         ? {
             OR: [

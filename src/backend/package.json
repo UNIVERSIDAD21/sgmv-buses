@@ -23,6 +23,7 @@
     "prisma:migrate:dev:local": "dotenv -e ../../.env.local -- prisma migrate dev --schema prisma/schema.prisma",
     "prisma:seed": "dotenv -e ../../.env -- prisma db seed --schema prisma/schema.prisma",
     "prisma:seed:local": "dotenv -e ../../.env.local -- tsx prisma/seed.ts",
+    "maintenance:archive-test-accounts": "tsx scripts/archive-test-accounts.ts",
     "demo:credentials": "tsx prisma/align-demo-credentials.ts",
     "prisma:studio:local": "dotenv -e ../../.env.local -- prisma studio --schema prisma/schema.prisma",
     "prisma:validate": "dotenv -e ../../.env -- prisma validate --schema prisma/schema.prisma"
