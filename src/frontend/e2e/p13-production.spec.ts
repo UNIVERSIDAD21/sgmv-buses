@@ -162,7 +162,7 @@ test.describe('P13 production session and role smoke tests', () => {
       }
 
       await page.goto('/mi-cuenta')
-      await expect(page.getByRole('heading', { name: /^Mi cuenta$/ })).toBeVisible()
+      await expect(page.getByRole('heading', { level: 2, name: /^Mi cuenta$/ })).toBeVisible()
 
       const logoutResponsePromise = page.waitForResponse(
         (response) =>
