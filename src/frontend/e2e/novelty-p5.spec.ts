@@ -22,7 +22,7 @@ async function logout(page: Page) {
 }
 
 test.beforeAll(() => {
-  if (!demoPassword || demoPassword.length < 12) {
+  if (demoPassword !== '123456') {
     throw new Error('SEED_USER_PASSWORD es obligatoria para la prueba E2E local')
   }
 })

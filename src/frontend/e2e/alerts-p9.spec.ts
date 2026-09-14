@@ -62,7 +62,7 @@ async function csrfPost(page: Page, path: string, body: Record<string, unknown>)
 }
 
 test.beforeAll(async () => {
-  if (!demoPassword || demoPassword.length < 12) {
+  if (demoPassword !== '123456') {
     throw new Error('SEED_USER_PASSWORD es obligatoria para la prueba E2E P9')
   }
   const passwordHash = await hash(demoPassword, 10)

@@ -1,7 +1,9 @@
 import { officialAmbRoutes } from '../src/amb/routes.js'
 import { seedAmbDemo } from './seed-amb-demo.js'
 import { PrismaClient } from '@prisma/client'
-import { hash } from 'bcryptjs'
+import { compare, hash } from 'bcryptjs'
+
+import { ACADEMIC_DEMO_ACCOUNTS, ACADEMIC_DEMO_PASSWORD } from './demo-accounts.js'
 
 const prisma = new PrismaClient()
 
@@ -102,14 +104,33 @@ const ids = {
 async function main() {
   const demoPassword = process.env.SEED_USER_PASSWORD
 
-  if (!demoPassword || demoPassword.length < 12) {
+  if (demoPassword !== ACADEMIC_DEMO_PASSWORD) {
     throw new Error(
-      'SEED_USER_PASSWORD debe estar configurada con minimo 12 caracteres para ejecutar el seed.',
+      'SEED_USER_PASSWORD debe coincidir con la credencial demo del prototipo academico.',
     )
   }
 
-  const contrasenaHash = await hash(demoPassword, 10)
-  const preservarContrasenasExistentes = process.env.SEED_PRESERVE_EXISTING_PASSWORDS === 'true'
+  const contrasenaHash = await hash(demoPassword, 12)
+  const cuentasDemoExistentes = await prisma.usuario.findMany({
+    where: { email: { in: ACADEMIC_DEMO_ACCOUNTS.map((account) => account.email) } },
+    select: { email: true, contrasenaHash: true },
+  })
+  const credencialesDemoAlineadas = new Set(
+    (
+      await Promise.all(
+        cuentasDemoExistentes.map(async (account) => ({
+          email: account.email,
+          aligned:
+            account.contrasenaHash !== null &&
+            (await compare(ACADEMIC_DEMO_PASSWORD, account.contrasenaHash)),
+        })),
+      )
+    )
+      .filter((account) => account.aligned)
+      .map((account) => account.email),
+  )
+  const actualizarCredencialDemo = (email: string) =>
+    credencialesDemoAlineadas.has(email) ? {} : { contrasenaHash }
   const now = new Date()
   const fechaPreventivo = new Date(Date.UTC(2026, 8, 2))
 
@@ -187,7 +208,7 @@ async function main() {
         where: { email: 'administrador.demo@sgmv.local' },
         update: {
           nombre: 'Administrador Demo',
-          ...(preservarContrasenasExistentes ? {} : { contrasenaHash }),
+          ...actualizarCredencialDemo('administrador.demo@sgmv.local'),
           estado: 'ACTIVO',
           rolId: ids.roles.admin,
         },
@@ -206,7 +227,7 @@ async function main() {
         where: { email: 'despachador.demo@sgmv.local' },
         update: {
           nombre: 'Despachador Demo',
-          ...(preservarContrasenasExistentes ? {} : { contrasenaHash }),
+          ...actualizarCredencialDemo('despachador.demo@sgmv.local'),
           estado: 'ACTIVO',
           rolId: ids.roles.despachador,
         },
@@ -225,7 +246,7 @@ async function main() {
         where: { email: 'mecanico.demo@sgmv.local' },
         update: {
           nombre: 'Mecanico Demo',
-          ...(preservarContrasenasExistentes ? {} : { contrasenaHash }),
+          ...actualizarCredencialDemo('mecanico.demo@sgmv.local'),
           estado: 'ACTIVO',
           rolId: ids.roles.mecanico,
         },
@@ -244,7 +265,7 @@ async function main() {
         where: { email: 'mecanico.apoyo.demo@sgmv.local' },
         update: {
           nombre: 'Mecanico Apoyo Demo',
-          ...(preservarContrasenasExistentes ? {} : { contrasenaHash }),
+          ...actualizarCredencialDemo('mecanico.apoyo.demo@sgmv.local'),
           estado: 'ACTIVO',
           rolId: ids.roles.mecanico,
         },
@@ -263,7 +284,7 @@ async function main() {
         where: { email: 'conductor.demo@sgmv.local' },
         update: {
           nombre: 'Conductor Demo',
-          ...(preservarContrasenasExistentes ? {} : { contrasenaHash }),
+          ...actualizarCredencialDemo('conductor.demo@sgmv.local'),
           estado: 'ACTIVO',
           rolId: ids.roles.conductor,
         },
@@ -1687,6 +1708,7 @@ async function main() {
         driverRoleId: ids.roles.conductor,
         modelId: ids.modelosBus.principal,
         passwordHash: contrasenaHash,
+        preservePassword: credencialesDemoAlineadas.has('conductor.amb.demo@sgmv.local'),
       })
       await tx.$executeRawUnsafe(`DO $$ DECLARE item record; max_id bigint; BEGIN
         FOR item IN SELECT table_name, pg_get_serial_sequence(format('public.%I',table_name),'id') AS seq

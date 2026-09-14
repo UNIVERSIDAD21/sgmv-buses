@@ -41,6 +41,7 @@
     "prisma:migrate:dev:local": "npm --workspace @sgmv/backend run prisma:migrate:dev:local",
     "prisma:seed": "npm --workspace @sgmv/backend run prisma:seed",
     "prisma:seed:local": "npm --workspace @sgmv/backend run prisma:seed:local",
+    "demo:credentials": "npm --workspace @sgmv/backend run demo:credentials",
     "prisma:studio:local": "npm --workspace @sgmv/backend run prisma:studio:local",
     "prisma:validate": "npm --workspace @sgmv/backend run prisma:validate",
     "p12:audit": "node scripts/p12-audit.mjs",

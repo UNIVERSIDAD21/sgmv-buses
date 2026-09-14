@@ -12,7 +12,7 @@ async function login(page: Page) {
 }
 
 test.beforeAll(() => {
-  if (!demoPassword || demoPassword.length < 12) {
+  if (demoPassword !== '123456') {
     throw new Error('SEED_USER_PASSWORD es obligatoria para la prueba axe de P12')
   }
 })

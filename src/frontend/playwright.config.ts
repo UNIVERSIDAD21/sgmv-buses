@@ -3,9 +3,15 @@ import { fileURLToPath } from 'node:url'
 
 import { defineConfig } from '@playwright/test'
 
+import { assertSafeWriteE2eDatabase, assertSafeWriteE2eTarget } from './e2e/support/e2e-safety.js'
+
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const chromeExecutable = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
 const edgeExecutable = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
+const localBaseUrl = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
+
+assertSafeWriteE2eTarget(localBaseUrl)
+assertSafeWriteE2eDatabase(process.env.DATABASE_URL)
 
 export default defineConfig({
   expect: { timeout: 10_000 },
@@ -39,7 +45,7 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: localBaseUrl,
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },

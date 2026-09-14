@@ -10,11 +10,12 @@ export async function seedAmbDemo(
     driverRoleId: number
     modelId: number
     passwordHash: string
+    preservePassword: boolean
   },
 ) {
   const driver = await tx.usuario.upsert({
     where: { email: 'conductor.amb.demo@sgmv.local' },
-    update: { contrasenaHash: input.passwordHash },
+    update: input.preservePassword ? {} : { contrasenaHash: input.passwordHash },
     create: {
       nombre: 'SIM-CONDUCTOR-AMB',
       email: 'conductor.amb.demo@sgmv.local',

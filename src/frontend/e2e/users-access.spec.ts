@@ -4,9 +4,35 @@ import { join } from 'node:path'
 
 import { expect, test, type Page } from '@playwright/test'
 
+import { prisma } from '../../backend/src/prisma/client.js'
+import { assertSafeWriteE2eTarget } from './support/e2e-safety.js'
+
 const adminEmail = 'administrador.demo@sgmv.local'
 const demoPassword = process.env.SEED_USER_PASSWORD
 const newPassword = 'Cuenta-Activada-E2E-2026!'
+const fixtureName = 'Conductor Activacion E2E'
+let fixtureEmail = ''
+
+async function cleanupFixture() {
+  if (!fixtureEmail) return
+  if (!/^conductor\.e2e\.\d+@sgmv\.local$/.test(fixtureEmail)) {
+    throw new Error('Limpieza E2E rechazada: correo fuera del patron controlado')
+  }
+
+  const fixture = await prisma.usuario.findUnique({
+    select: { id: true, nombre: true },
+    where: { email: fixtureEmail },
+  })
+  if (!fixture) return
+  if (fixture.nombre !== fixtureName) {
+    throw new Error('Limpieza E2E rechazada: la identidad no coincide con el fixture creado')
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.tokenActivacionCuenta.deleteMany({ where: { usuarioId: fixture.id } })
+    await tx.usuario.delete({ where: { id: fixture.id } })
+  })
+}
 
 async function login(page: Page, email: string, password: string) {
   await page.context().clearCookies()
@@ -17,43 +43,84 @@ async function login(page: Page, email: string, password: string) {
   await expect(page.getByRole('button', { name: /Cerrar sesi/ })).toBeVisible({ timeout: 30_000 })
 }
 
-test.beforeAll(() => {
-  if (!demoPassword || demoPassword.length < 12) {
-    throw new Error('SEED_USER_PASSWORD es obligatoria para E2E de usuarios')
+test.beforeAll(({ baseURL }) => {
+  assertSafeWriteE2eTarget(baseURL)
+  if (demoPassword !== '123456') {
+    throw new Error('SEED_USER_PASSWORD debe corresponder a la credencial demo academica')
   }
+})
+
+test.afterEach(async () => {
+  await cleanupFixture()
+})
+
+test.afterAll(async () => {
+  await prisma.$disconnect()
 })
 
 test('Administrador crea, usuario activa y Conductor queda fuera de administracion', async ({
   page,
 }) => {
   test.setTimeout(120_000)
-  const email = `conductor.e2e.${Date.now()}@sgmv.local`
-  const evidenceDir = join(tmpdir(), 'sgmv-usuarios-accesos')
+  fixtureEmail = `conductor.e2e.${Date.now()}@sgmv.local`
+  const evidenceDir = process.env.RC2_EVIDENCE_DIR ?? join(tmpdir(), 'sgmv-usuarios-accesos')
   await mkdir(evidenceDir, { recursive: true })
 
   await login(page, adminEmail, demoPassword!)
   await page.goto('/usuarios')
   await expect(page.getByRole('heading', { name: /^Usuarios$/ })).toBeVisible()
-  await page.screenshot({ path: join(evidenceDir, 'after-usuarios-desktop.png'), fullPage: true })
 
-  await page.setViewportSize({ width: 390, height: 844 })
-  await page.screenshot({ path: join(evidenceDir, 'after-usuarios-mobile.png'), fullPage: true })
-  const overflow = await page.evaluate(() => {
-    const pageDocument = (
-      globalThis as unknown as {
-        document: { documentElement: { clientWidth: number; scrollWidth: number } }
+  for (const viewport of [
+    { height: 844, width: 390 },
+    { height: 1024, width: 768 },
+    { height: 768, width: 1024 },
+    { height: 900, width: 1440 },
+  ]) {
+    await page.setViewportSize(viewport)
+    await expect(page.getByPlaceholder(/Buscar por nombre o correo/)).toBeVisible()
+    await expect(page.getByRole('combobox', { name: /Filtrar por rol/ })).toBeVisible()
+    await expect(page.getByRole('combobox', { name: /Filtrar por estado/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Nuevo usuario/ })).toBeVisible()
+
+    if (viewport.width < 1024) {
+      await expect(page.getByTestId('user-card-list')).toBeVisible()
+      await expect(page.getByTestId('user-table')).toBeHidden()
+    } else {
+      await expect(page.getByTestId('user-card-list')).toBeHidden()
+      await expect(page.getByTestId('user-table')).toBeVisible()
+    }
+
+    const overflow = await page.evaluate(() => {
+      const pageDocument = (
+        globalThis as unknown as {
+          document: {
+            documentElement: { clientWidth: number; scrollWidth: number }
+            querySelector: (selector: string) => { clientWidth: number; scrollWidth: number } | null
+          }
+        }
+      ).document
+      const root = pageDocument.documentElement
+      const main = pageDocument.querySelector('main')
+      return {
+        document: root.scrollWidth - root.clientWidth,
+        main: main ? main.scrollWidth - main.clientWidth : 0,
       }
-    ).document
+    })
+    expect(overflow.document).toBeLessThanOrEqual(1)
+    expect(overflow.main).toBeLessThanOrEqual(1)
 
-    return pageDocument.documentElement.scrollWidth - pageDocument.documentElement.clientWidth
-  })
-  expect(overflow).toBeLessThanOrEqual(1)
-  await page.setViewportSize({ width: 1440, height: 900 })
+    if (viewport.width === 390 || viewport.width === 1440) {
+      await page.screenshot({
+        fullPage: true,
+        path: join(evidenceDir, `after-local-usuarios-${viewport.width}.png`),
+      })
+    }
+  }
 
   await page.getByRole('button', { name: /Nuevo usuario/ }).click()
   const createDialog = page.getByRole('dialog', { name: /Nuevo usuario/ })
-  await createDialog.getByLabel(/^Nombre$/).fill('Conductor Activacion E2E')
-  await createDialog.getByLabel(/Correo de acceso/).fill(email)
+  await createDialog.getByLabel(/^Nombre$/).fill(fixtureName)
+  await createDialog.getByLabel(/Correo de acceso/).fill(fixtureEmail)
   await createDialog.getByLabel(/Rol inicial/).selectOption('CONDUCTOR')
   const createdResponsePromise = page.waitForResponse(
     (response) =>
@@ -80,7 +147,7 @@ test('Administrador crea, usuario activa y Conductor queda fuera de administraci
   await page.getByRole('button', { name: /Establecer contrase.a y activar/ }).click()
   await expect(page.getByRole('heading', { name: /Cuenta activada/ })).toBeVisible()
 
-  await login(page, email, newPassword)
+  await login(page, fixtureEmail, newPassword)
   await expect(page.getByRole('link', { name: /Administraci.n de usuarios/ })).toHaveCount(0)
   const backendDenied = await page.evaluate(async () => {
     const response = await fetch('http://localhost:4000/usuarios', { credentials: 'include' })
@@ -93,10 +160,12 @@ test('Administrador crea, usuario activa y Conductor queda fuera de administraci
 
   await login(page, adminEmail, demoPassword!)
   await page.goto('/usuarios')
-  await page.getByPlaceholder(/Buscar por nombre o correo/).fill(email)
-  const createdUserRow = page.getByRole('row').filter({ hasText: email })
-  await expect(createdUserRow).toBeVisible()
-  await createdUserRow.getByRole('button', { name: /Gestionar/ }).click()
+  await page.getByPlaceholder(/Buscar por nombre o correo/).fill(fixtureEmail)
+  const createdUserCard = page.getByTestId('user-table').getByRole('row').filter({
+    hasText: fixtureEmail,
+  })
+  await expect(createdUserCard).toBeVisible()
+  await createdUserCard.getByRole('button', { name: /Gestionar/ }).click()
   const manageDialog = page.getByRole('dialog', { name: /Gestionar usuario/ })
   const stateSelect = manageDialog.getByLabel(/^Estado$/)
   await stateSelect.selectOption('INACTIVO')
