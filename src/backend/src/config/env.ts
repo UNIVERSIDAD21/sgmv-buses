@@ -48,6 +48,7 @@ const envSchema = z.object({
   LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   LOGIN_RATE_LIMIT_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
   LOGIN_IP_RATE_LIMIT_MAX_ATTEMPTS: z.coerce.number().int().positive().default(100),
+  ACTIVATION_TOKEN_TTL_MINUTES: z.coerce.number().int().positive().max(10_080).default(1_440),
   TRUST_PROXY_HOPS: z.coerce.number().int().nonnegative().default(0),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   IDEMPOTENCY_IN_PROGRESS_TTL_MS: z.coerce.number().int().positive().default(120_000),

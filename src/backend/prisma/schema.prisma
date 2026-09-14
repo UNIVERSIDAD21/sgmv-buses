@@ -17,7 +17,9 @@ enum RolCodigo {
 }
 
 enum EstadoUsuario {
+  PENDIENTE_ACTIVACION
   ACTIVO
+  BLOQUEADO
   INACTIVO
 
   @@map("estado_usuario")
@@ -208,7 +210,7 @@ model Usuario {
   nombre                String        @db.VarChar(120)
   email                 String        @unique @db.VarChar(120)
   telefono              String?       @db.VarChar(20)
-  contrasenaHash        String        @map("contrasena_hash") @db.VarChar(255)
+  contrasenaHash        String?       @map("contrasena_hash") @db.VarChar(255)
   estado                EstadoUsuario @default(ACTIVO)
   rolId                 Int           @map("rol_id")
   intentosFallidosLogin Int           @default(0) @map("intentos_fallidos_login")
@@ -249,10 +251,30 @@ model Usuario {
   alertasRecibidas                  AlertaDestinatario[]
   eventosAuditoria                  EventoAuditoria[]
   solicitudesIdempotentes           SolicitudIdempotente[]
+  tokensActivacion                  TokenActivacionCuenta[]        @relation("TokenActivacionUsuario")
+  tokensActivacionCreados           TokenActivacionCuenta[]        @relation("TokenActivacionCreadoPor")
 
   @@index([rolId])
   @@index([estado])
   @@map("usuarios")
+}
+
+model TokenActivacionCuenta {
+  id          Int       @id @default(autoincrement())
+  usuarioId   Int       @map("usuario_id")
+  tokenHash   String    @unique @map("token_hash") @db.Char(64)
+  expiraAt    DateTime  @map("expira_at") @db.Timestamptz(6)
+  usadoAt     DateTime? @map("usado_at") @db.Timestamptz(6)
+  creadoPorId Int       @map("creado_por_id")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  usuario   Usuario @relation("TokenActivacionUsuario", fields: [usuarioId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  creadoPor Usuario @relation("TokenActivacionCreadoPor", fields: [creadoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([usuarioId, createdAt])
+  @@index([expiraAt])
+  @@index([creadoPorId])
+  @@map("tokens_activacion_cuenta")
 }
 
 model Bus {
