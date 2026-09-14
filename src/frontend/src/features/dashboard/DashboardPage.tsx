@@ -173,7 +173,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="surface-muted px-3 py-2 text-xs text-slate-600">
-            <span className="block text-xs font-medium text-slate-400">Fecha del sistema</span>
+            <span className="block text-xs font-medium text-slate-600">Fecha del sistema</span>
             {formatDateTime()}
           </div>
         </div>
