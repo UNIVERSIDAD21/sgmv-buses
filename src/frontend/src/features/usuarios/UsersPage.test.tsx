@@ -43,7 +43,10 @@ describe('Administracion de usuarios y activacion', () => {
     render(<App />)
 
     expect(await screen.findByRole('heading', { name: /^Usuarios$/i })).toBeInTheDocument()
-    expect(await screen.findByText('Nuevo Conductor')).toBeInTheDocument()
+    expect(await screen.findAllByText('Nuevo Conductor')).toHaveLength(2)
+    expect(screen.getByTestId('user-card-list')).toBeInTheDocument()
+    expect(screen.getByTestId('user-table')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /Gestionar/i })).toHaveLength(2)
     fireEvent.change(screen.getByPlaceholderText(/Buscar por nombre o correo/i), {
       target: { value: 'conductor' },
     })

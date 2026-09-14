@@ -477,8 +477,8 @@ export default function UserManagementPage() {
       />
 
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_220px]">
-          <label className="relative block">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_180px_180px] xl:grid-cols-[minmax(0,1fr)_220px_220px]">
+          <label className="relative block sm:col-span-2 lg:col-span-1">
             <span className="sr-only">Buscar usuarios</span>
             <Search
               className="pointer-events-none absolute left-3 top-3 text-slate-400"
@@ -560,8 +560,58 @@ export default function UserManagementPage() {
         />
       ) : (
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px] text-left text-sm">
+          <ul className="divide-y divide-slate-100 lg:hidden" data-testid="user-card-list">
+            {items.map((item) => (
+              <li className="p-4" key={item.id}>
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-cyan-700">
+                    <User size={18} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words font-semibold text-slate-900">{item.nombre}</p>
+                    <p className="break-all text-xs leading-5 text-slate-600">{item.email}</p>
+                  </div>
+                </div>
+
+                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Rol
+                    </dt>
+                    <dd className="mt-1 text-slate-900">{ROLE_LABELS[item.rol.codigo]}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Estado
+                    </dt>
+                    <dd className="mt-1">
+                      <Badge tone={stateTones[item.estado]}>{stateLabels[item.estado]}</Badge>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Último acceso
+                    </dt>
+                    <dd className="mt-1 break-words text-slate-700">
+                      {shortDate(item.ultimoAccesoAt)}
+                    </dd>
+                  </div>
+                </dl>
+
+                <Button
+                  className="mt-4 w-full sm:w-auto"
+                  onClick={() => setSelected(item)}
+                  size="sm"
+                  variant="outline"
+                >
+                  Gestionar
+                </Button>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden lg:block" data-testid="user-table">
+            <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
                 <tr>
                   <th className="px-4 py-3">Usuario</th>
@@ -600,7 +650,7 @@ export default function UserManagementPage() {
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-sm text-slate-600">
+          <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
             <span>
               Página {page} de {pages}
             </span>
