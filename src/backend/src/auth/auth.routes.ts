@@ -9,6 +9,7 @@ const authController = new AuthController()
 const authRoutes = Router()
 
 authRoutes.get('/csrf', authController.csrf)
+authRoutes.post('/activar', enforceAllowedOrigin, asyncHandler(authController.activate))
 authRoutes.post(
   '/login',
   enforceAllowedOrigin,
@@ -17,5 +18,11 @@ authRoutes.post(
 )
 authRoutes.get('/me', authenticate, asyncHandler(authController.me))
 authRoutes.post('/logout', enforceAllowedOrigin, authenticate, asyncHandler(authController.logout))
+authRoutes.post(
+  '/cambiar-contrasena',
+  enforceAllowedOrigin,
+  authenticate,
+  asyncHandler(authController.changeOwnPassword),
+)
 
 export { authRoutes }

@@ -18,6 +18,7 @@ import { reportRoutes } from './reports/report.routes.js'
 import { errorHandler, notFoundHandler } from './shared/http.js'
 import { inventoryRoutes, sparePartRoutes } from './spare-parts/spare-part.routes.js'
 import { workOrderRoutes } from './work-orders/work-order.routes.js'
+import { userRoutes } from './users/user.routes.js'
 
 export function createApp(configureRoutes?: (app: Express) => void) {
   const app = express()
@@ -59,6 +60,7 @@ export function createApp(configureRoutes?: (app: Express) => void) {
   app.use('/repuestos', sparePartRoutes)
   app.use('/inventario', inventoryRoutes)
   app.use('/historial', reportRoutes)
+  app.use('/usuarios', userRoutes)
   configureRoutes?.(app)
   app.use(notFoundHandler)
   app.use(errorHandler)

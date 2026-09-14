@@ -57,8 +57,8 @@ export class AuthService {
       )
     }
 
-    if (user.estado !== 'ACTIVO') {
-      throw new AppError(403, 'FORBIDDEN', 'La cuenta esta inactiva')
+    if (user.estado !== 'ACTIVO' || !user.contrasenaHash) {
+      throw new AppError(403, 'FORBIDDEN', 'La cuenta no esta disponible para iniciar sesion')
     }
 
     const passwordMatches = await compare(contrasena, user.contrasenaHash)
