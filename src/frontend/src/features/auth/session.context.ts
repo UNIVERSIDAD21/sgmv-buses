@@ -4,7 +4,7 @@ import type { RoleCode } from '../../domain/labels'
 
 export interface SessionUser {
   email: string
-  estado: 'ACTIVO' | 'INACTIVO'
+  estado: 'PENDIENTE_ACTIVACION' | 'ACTIVO' | 'BLOQUEADO' | 'INACTIVO'
   id: number
   nombre: string
   rol: {

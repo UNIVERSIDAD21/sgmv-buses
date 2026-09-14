@@ -14,6 +14,8 @@ const budgets = {
 
 const expectedRouteSources = [
   'src/features/alertas/AlertsPage.tsx',
+  'src/features/auth/AccountSecurityPage.tsx',
+  'src/features/auth/ActivationPage.tsx',
   'src/features/dashboard/DashboardPage.tsx',
   'src/features/flota/BusFormPage.tsx',
   'src/features/flota/FleetCatalogPage.tsx',
@@ -25,6 +27,7 @@ const expectedRouteSources = [
   'src/features/ordenes-trabajo/WorkOrderPage.tsx',
   'src/features/preventivo/PreventivePage.tsx',
   'src/features/repuestos/SparePartsPage.tsx',
+  'src/features/usuarios/UserManagementPage.tsx',
 ]
 
 function fail(message) {

@@ -10,6 +10,8 @@ import { useSession } from './features/auth/session.context'
 import { SessionProvider } from './features/auth/session'
 
 const AlertsPage = lazy(() => import('./features/alertas/AlertsPage'))
+const ActivationPage = lazy(() => import('./features/auth/ActivationPage'))
+const AccountSecurityPage = lazy(() => import('./features/auth/AccountSecurityPage'))
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'))
 const BusFormPage = lazy(() => import('./features/flota/BusFormPage'))
 const FleetCatalogPage = lazy(() => import('./features/flota/FleetCatalogPage'))
@@ -23,6 +25,7 @@ const DispatchWorkOrdersPage = lazy(
 const WorkOrderPage = lazy(() => import('./features/ordenes-trabajo/WorkOrderPage'))
 const PreventivePage = lazy(() => import('./features/preventivo/PreventivePage'))
 const SparePartsPage = lazy(() => import('./features/repuestos/SparePartsPage'))
+const UserManagementPage = lazy(() => import('./features/usuarios/UserManagementPage'))
 
 function ShellRoute() {
   const { logout, user } = useSession()
@@ -40,12 +43,40 @@ function AppRoutes() {
       <Route element={<LoginPage />} path="/login" />
       <Route
         element={
+          <LazyRoute>
+            <ActivationPage />
+          </LazyRoute>
+        }
+        path="/activar-cuenta"
+      />
+      <Route
+        element={
           <ProtectedRoute>
             <ShellRoute />
           </ProtectedRoute>
         }
       >
         <Route element={<Navigate replace to="/inicio" />} index />
+        <Route
+          element={
+            <ProtectedRoute roles={['ADMINISTRADOR', 'DESPACHADOR', 'MECANICO', 'CONDUCTOR']}>
+              <LazyRoute>
+                <AccountSecurityPage />
+              </LazyRoute>
+            </ProtectedRoute>
+          }
+          path="/mi-cuenta"
+        />
+        <Route
+          element={
+            <ProtectedRoute roles={['ADMINISTRADOR']}>
+              <LazyRoute>
+                <UserManagementPage />
+              </LazyRoute>
+            </ProtectedRoute>
+          }
+          path="/usuarios"
+        />
         <Route
           element={
             <LazyRoute>

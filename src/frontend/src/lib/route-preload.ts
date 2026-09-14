@@ -2,6 +2,7 @@ const loadedRoutes = new Set<string>()
 
 const loaders: Record<string, () => Promise<unknown>> = {
   '/alertas': () => import('../features/alertas/AlertsPage'),
+  '/mi-cuenta': () => import('../features/auth/AccountSecurityPage'),
   '/flota': () => import('../features/flota/FleetPage'),
   '/historial': () => import('../features/historial/HistoryReportsPage'),
   '/inicio': () => import('../features/dashboard/DashboardPage'),
@@ -11,6 +12,7 @@ const loaders: Record<string, () => Promise<unknown>> = {
   '/ordenes-trabajo': () => import('../features/ordenes-trabajo/WorkOrderPage'),
   '/ordenes-trabajo/despacho': () => import('../features/ordenes-trabajo/DispatchWorkOrdersPage'),
   '/repuestos': () => import('../features/repuestos/SparePartsPage'),
+  '/usuarios': () => import('../features/usuarios/UserManagementPage'),
 }
 
 export function preloadRoute(path: string) {

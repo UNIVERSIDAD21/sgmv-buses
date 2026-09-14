@@ -10,8 +10,13 @@ export type AppRouteId =
   | 'ordenes-despacho'
   | 'repuestos'
   | 'historial'
+  | 'mi-cuenta'
+  | 'usuarios'
 
-export type RequirementRouteId = Exclude<AppRouteId, 'inicio' | 'jornadas'>
+export type RequirementRouteId = Exclude<
+  AppRouteId,
+  'inicio' | 'jornadas' | 'mi-cuenta' | 'usuarios'
+>
 
 export interface RequirementNavItem {
   description: string

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { getDefaultPathForRole } from '../../domain/labels'
 import Button from '../../components/ui/Button'
@@ -135,6 +135,14 @@ export default function LoginPage() {
             <Button className="w-full" loading={status === 'loading'} size="lg" type="submit">
               Ingresar
             </Button>
+            <div className="border-t border-slate-100 pt-4 text-center">
+              <Link
+                className="text-sm font-semibold text-emerald-700 hover:text-emerald-800"
+                to="/activar-cuenta"
+              >
+                Activar una cuenta creada por el Administrador
+              </Link>
+            </div>
           </form>
         </div>
 

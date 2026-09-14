@@ -26,6 +26,7 @@ import {
   Menu,
   Package,
   Shield,
+  User,
   X,
 } from '../ui/Icons'
 
@@ -46,7 +47,7 @@ interface NavigationItem {
   label: string
   path: string
   roles: RoleCode[]
-  section: 'general' | 'operacion' | 'taller' | 'trazabilidad'
+  section: 'administracion' | 'general' | 'operacion' | 'taller' | 'trazabilidad'
   shortLabel: string
 }
 
@@ -87,6 +88,7 @@ const sectionById: Record<RequirementRouteId, NavigationItem['section']> = {
 }
 
 const sectionLabels: Record<NavigationItem['section'], string> = {
+  administracion: 'Administración',
   general: 'General',
   operacion: 'Operación',
   taller: 'Gestión técnica',
@@ -121,6 +123,14 @@ function getPageTitle(pathname: string) {
 
   if (pathname.startsWith('/alertas')) {
     return 'Alertas internas'
+  }
+
+  if (pathname.startsWith('/usuarios')) {
+    return 'Administración de usuarios'
+  }
+
+  if (pathname.startsWith('/mi-cuenta')) {
+    return 'Mi cuenta'
   }
 
   if (pathname.includes('/editar')) {
@@ -267,6 +277,15 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
         shortLabel: 'Inicio',
       },
       {
+        icon: <User size={18} />,
+        id: 'mi-cuenta' as const,
+        label: 'Seguridad de mi cuenta',
+        path: '/mi-cuenta',
+        roles: allRoles,
+        section: 'general' as const,
+        shortLabel: 'Mi cuenta',
+      },
+      {
         icon: <ClipboardList size={18} />,
         id: 'jornadas',
         label: 'Jornadas operativas',
@@ -284,6 +303,15 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
         roles: allRoles,
         section: 'trazabilidad' as const,
         shortLabel: 'Alertas',
+      },
+      {
+        icon: <Shield size={18} />,
+        id: 'usuarios' as const,
+        label: 'Administración de usuarios',
+        path: '/usuarios',
+        roles: ['ADMINISTRADOR'],
+        section: 'administracion' as const,
+        shortLabel: 'Usuarios',
       },
     ]
   }, [])
