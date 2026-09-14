@@ -17,6 +17,8 @@ const routes = {
     '/repuestos',
     '/historial',
     '/alertas',
+    '/mi-cuenta',
+    '/usuarios',
   ],
   despachador: [
     '/inicio',
@@ -28,9 +30,10 @@ const routes = {
     '/ordenes-trabajo/despacho',
     '/historial',
     '/alertas',
+    '/mi-cuenta',
   ],
-  mecanico: ['/inicio', '/ordenes-trabajo', '/historial', '/alertas'],
-  conductor: ['/inicio', '/jornadas', '/novedades', '/historial', '/alertas'],
+  mecanico: ['/inicio', '/ordenes-trabajo', '/historial', '/alertas', '/mi-cuenta'],
+  conductor: ['/inicio', '/jornadas', '/novedades', '/historial', '/alertas', '/mi-cuenta'],
 } as const
 
 for (const [role, paths] of Object.entries(routes)) {
