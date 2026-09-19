@@ -17,7 +17,6 @@ export interface PreventivePlanInput {
   anticipacionKm?: number
   bloqueaAlVencer: boolean
   busId?: number
-  claveTarea?: string
   componente: string
   criterio: PreventiveCriterion
   intervaloDias?: number
@@ -125,7 +124,7 @@ export function createPreventivePlan(input: PreventivePlanInput) {
 
 export function createPreventivePlanVersion(
   planId: number,
-  input: Omit<PreventivePlanInput, 'busId' | 'claveTarea' | 'modeloBusId'>,
+  input: Omit<PreventivePlanInput, 'busId' | 'modeloBusId'>,
 ) {
   return apiRequest<{ plan: PreventivePlanDto }>(
     `/mantenimiento-preventivo/planes/${planId}/versiones`,

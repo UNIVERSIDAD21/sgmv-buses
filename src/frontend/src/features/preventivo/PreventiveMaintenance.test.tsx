@@ -280,14 +280,17 @@ describe('RF-03 preventive maintenance frontend', () => {
     expect(await screen.findByText('FRENOS.001')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^Crear rutina$/i }))
     const dialog = await screen.findByRole('dialog')
-    fireEvent.change(within(dialog).getByLabelText(/Clave de tarea/i), {
-      target: { value: 'ACEITE.001' },
+    expect(within(dialog).getByText(/identificador interno.*generar\u00e1/i)).toBeInTheDocument()
+    expect(within(dialog).queryByLabelText(/Clave de tarea/i)).not.toBeInTheDocument()
+    fireEvent.change(within(dialog).getByLabelText(/Componente del veh\u00edculo/i), {
+      target: { value: 'Motor' },
     })
-    fireEvent.change(within(dialog).getByLabelText(/Componente/i), { target: { value: 'Motor' } })
-    fireEvent.change(within(dialog).getByLabelText(/Actividad/i), {
+    fireEvent.change(within(dialog).getByLabelText(/Actividad que se realizar\u00e1/i), {
       target: { value: 'Cambio preventivo de aceite del motor.' },
     })
-    fireEvent.change(within(dialog).getByLabelText(/Intervalo dias/i), { target: { value: '30' } })
+    fireEvent.change(within(dialog).getByLabelText(/Repetir cada \(d\u00edas\)/i), {
+      target: { value: '30' },
+    })
     fireEvent.change(within(dialog).getByLabelText(/Bus destino/i), { target: { value: '2006' } })
     fireEvent.click(within(dialog).getByRole('button', { name: /^Crear rutina$/i }))
     expect(await screen.findByText(/Rutina de mantenimiento registrada/i)).toBeInTheDocument()
@@ -297,6 +300,7 @@ describe('RF-03 preventive maintenance frontend', () => {
     )
     expect(String(createCall?.[1]?.body)).toContain('2006')
     expect(String(createCall?.[1]?.body)).not.toContain('modeloBusId')
+    expect(String(createCall?.[1]?.body)).not.toContain('claveTarea')
 
     fireEvent.click(screen.getByRole('button', { name: /^Asignar a buses$/i }))
     const applyDialog = await screen.findByRole('dialog', { name: /Asignar rutina a un bus/i })

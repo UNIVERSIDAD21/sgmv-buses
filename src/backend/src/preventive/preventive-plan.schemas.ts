@@ -3,7 +3,6 @@ import { z } from 'zod'
 
 import { criterioMantenimientoValues, prioridadOrdenValues } from './preventive.schemas.js'
 
-const keyPattern = /^[A-Za-z0-9._-]+$/
 const trimmedText = (min: number, max: number) => z.string().trim().min(min).max(max)
 const positiveInteger = z.coerce.number().int().positive()
 const nonNegativeInteger = z.coerce.number().int().min(0)
@@ -66,15 +65,6 @@ export const planIdParamSchema = z.object({ planId: entityIdSchema })
 export const createPreventivePlanSchema = planShape
   .extend({
     busId: entityIdSchema.optional(),
-    claveTarea: z
-      .string()
-      .trim()
-      .min(2)
-      .max(80)
-      .regex(
-        keyPattern,
-        'La clave de tarea solo admite letras, números, punto, guion y guion bajo',
-      ),
     modeloBusId: entityIdSchema.optional(),
   })
   .superRefine((input, context) => {

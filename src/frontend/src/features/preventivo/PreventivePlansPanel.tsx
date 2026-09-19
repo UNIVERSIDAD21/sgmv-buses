@@ -61,7 +61,6 @@ function PlanForm({
     anticipacionKm: initial?.anticipacionKm?.toString() ?? '',
     bloqueaAlVencer: initial?.bloqueaAlVencer ?? false,
     busId: initial?.destino.tipo === 'BUS' ? initial.destino.busId : '',
-    claveTarea: initial?.claveTarea ?? '',
     componente: initial?.componente ?? '',
     intervaloDias: initial?.intervaloDias?.toString() ?? '',
     intervaloKm: initial?.intervaloKm?.toString() ?? '',
@@ -86,11 +85,6 @@ function PlanForm({
     const earlyKm = form.anticipacionKm === '' ? undefined : Number(form.anticipacionKm)
     if (form.actividad.trim().length < 10 || form.componente.trim().length < 2)
       return setError('Complete actividad (10 caracteres) y componente.')
-    if (
-      !initial &&
-      (form.claveTarea.trim().length < 2 || !/^[A-Za-z0-9._-]+$/.test(form.claveTarea.trim()))
-    )
-      return setError('La clave de tarea solo admite letras, numeros, punto, guion y guion bajo.')
     if (!initial && !(destination === 'BUS' ? form.busId : form.modeloBusId))
       return setError('Seleccione un unico destino: bus o modelo.')
     if ((needsDays && days === null) || (!needsDays && form.intervaloDias))
@@ -113,7 +107,6 @@ function PlanForm({
         : destination === 'BUS'
           ? { busId: Number(form.busId) }
           : { modeloBusId: Number(form.modeloBusId) }),
-      ...(initial ? {} : { claveTarea: form.claveTarea.trim() }),
       componente: form.componente.trim(),
       criterio: criterion,
       intervaloDias: days ?? undefined,
@@ -130,22 +123,18 @@ function PlanForm({
       }
     >
       <form className="space-y-3 p-5" onSubmit={(event) => void submit(event)}>
+        {!initial && (
+          <p className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-900">
+            {
+              'El identificador interno de esta rutina se generar\u00e1 al guardarla. Solo debe describir el mantenimiento que necesita la flota.'
+            }
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <label>
-            Clave de tarea
+            {'Componente del veh\u00edculo'}
             <input
-              aria-label="Clave de tarea"
-              maxLength={80}
-              className={fieldClass}
-              disabled={Boolean(initial)}
-              onChange={(e) => set('claveTarea', e.target.value)}
-              value={form.claveTarea}
-            />
-          </label>
-          <label>
-            Componente
-            <input
-              aria-label="Componente"
+              aria-label="Componente del veh\u00edculo"
               maxLength={120}
               className={fieldClass}
               onChange={(e) => set('componente', e.target.value)}
@@ -153,18 +142,18 @@ function PlanForm({
             />
           </label>
           <label className="sm:col-span-2">
-            Actividad
+            {'Actividad que se realizar\u00e1'}
             <textarea
-              aria-label="Actividad"
+              aria-label="Actividad que se realizar\u00e1"
               className={`${fieldClass} h-auto min-h-20 py-2`}
               onChange={(e) => set('actividad', e.target.value)}
               value={form.actividad}
             />
           </label>
           <label>
-            Criterio
+            {'\u00bfCu\u00e1ndo se programa?'}
             <select
-              aria-label="Criterio de plan"
+              aria-label="Cu\u00e1ndo se programa"
               className={fieldClass}
               onChange={(e) => setCriterion(e.target.value as PreventiveCriterion)}
               value={criterion}
@@ -191,9 +180,9 @@ function PlanForm({
           </label>
           {needsDays && (
             <label>
-              Intervalo dias
+              {'Repetir cada (d\u00edas)'}
               <input
-                aria-label="Intervalo dias"
+                aria-label="Repetir cada (d\u00edas)"
                 className={fieldClass}
                 min="1"
                 onChange={(e) => set('intervaloDias', e.target.value)}
@@ -204,9 +193,9 @@ function PlanForm({
           )}
           {needsKm && (
             <label>
-              Intervalo km
+              Repetir cada (km)
               <input
-                aria-label="Intervalo kilometraje"
+                aria-label="Repetir cada (km)"
                 className={fieldClass}
                 min="1"
                 onChange={(e) => set('intervaloKm', e.target.value)}
@@ -215,28 +204,32 @@ function PlanForm({
               />
             </label>
           )}
-          <label>
-            Anticipacion dias
-            <input
-              aria-label="Anticipacion dias"
-              className={fieldClass}
-              min="0"
-              onChange={(e) => set('anticipacionDias', e.target.value)}
-              type="number"
-              value={form.anticipacionDias}
-            />
-          </label>
-          <label>
-            Anticipacion km
-            <input
-              aria-label="Anticipacion kilometraje"
-              className={fieldClass}
-              min="0"
-              onChange={(e) => set('anticipacionKm', e.target.value)}
-              type="number"
-              value={form.anticipacionKm}
-            />
-          </label>
+          {needsDays && (
+            <label>
+              {'Avisar con (d\u00edas)'}
+              <input
+                aria-label="Avisar con (d\u00edas)"
+                className={fieldClass}
+                min="0"
+                onChange={(e) => set('anticipacionDias', e.target.value)}
+                type="number"
+                value={form.anticipacionDias}
+              />
+            </label>
+          )}
+          {needsKm && (
+            <label>
+              Avisar con (km)
+              <input
+                aria-label="Avisar con (km)"
+                className={fieldClass}
+                min="0"
+                onChange={(e) => set('anticipacionKm', e.target.value)}
+                type="number"
+                value={form.anticipacionKm}
+              />
+            </label>
+          )}
         </div>
         {!initial && (
           <fieldset>
@@ -298,8 +291,24 @@ function PlanForm({
             onChange={(e) => set('bloqueaAlVencer', e.target.checked)}
             type="checkbox"
           />{' '}
-          Bloquear operacion al vencer
+          Impedir nuevas jornadas si se vence
         </label>
+        <section className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+          <h4 className="font-semibold text-slate-900">Resumen de la rutina</h4>
+          <p className="mt-1">
+            {form.componente.trim() || 'Componente por definir'}:{' '}
+            {form.actividad.trim() || 'actividad por definir'}.
+          </p>
+          <p className="mt-1 text-slate-500">
+            {PREVENTIVE_CRITERION_LABELS[criterion]}.{' '}
+            {destination === 'BUS'
+              ? 'Se aplicar\u00e1 a un bus espec\u00edfico.'
+              : 'Se aplicar\u00e1 a los buses de un modelo.'}{' '}
+            {form.bloqueaAlVencer
+              ? 'Al vencer, impedir\u00e1 nuevas jornadas hasta atenderse.'
+              : 'Al vencer, avisar\u00e1 sin bloquear nuevas jornadas.'}
+          </p>
+        </section>
         {error && (
           <p className="text-sm text-red-600" role="alert">
             {error}

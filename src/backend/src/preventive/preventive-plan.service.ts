@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+
 import { Prisma, type CriterioMantenimiento, type PrioridadOrden } from '@prisma/client'
 
 import type { AuthenticatedUser } from '../auth/auth.types.js'
@@ -26,6 +28,23 @@ function normalizeText(value: string) {
 
 export function normalizeTaskKey(value: string) {
   return value.trim().toUpperCase()
+}
+
+function generateTaskKey(componente: string, actividad: string) {
+  const normalizedComponent = normalizeText(componente)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .toUpperCase()
+    .slice(0, 32)
+  const fingerprint = createHash('sha256')
+    .update(`${normalizedComponent}\n${normalizeText(actividad).toUpperCase()}`)
+    .digest('hex')
+    .slice(0, 12)
+    .toUpperCase()
+
+  return `RUTINA.${normalizedComponent || 'GENERAL'}.${fingerprint}`
 }
 
 function isDuplicate(error: unknown) {
@@ -170,9 +189,7 @@ export class PreventivePlanService {
       anticipacionKm: input.anticipacionKm ?? null,
       bloqueaAlVencer: input.bloqueaAlVencer,
       busId: current ? current.busId : ((input as CreatePreventivePlanInput).busId ?? null),
-      claveTarea: current
-        ? current.claveTarea
-        : normalizeTaskKey((input as CreatePreventivePlanInput).claveTarea),
+      claveTarea: current ? current.claveTarea : generateTaskKey(input.componente, input.actividad),
       componente: normalizeText(input.componente),
       criterio: input.criterio as CriterioMantenimiento,
       intervaloDias: input.intervaloDias ?? null,
