@@ -9,6 +9,7 @@ import {
   type RoleCode,
 } from '../../domain/labels'
 import { formatDateTime } from '../../lib/format'
+import { clientEnvironment } from '../../lib/environment'
 import { preloadRoute } from '../../lib/route-preload'
 import { ALERTS_UPDATED_EVENT, getUnreadAlertCount } from '../../features/alertas/alert.api'
 import Button from '../ui/Button'
@@ -495,9 +496,19 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
             <Menu aria-hidden="true" size={18} />
           </button>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-sm font-semibold leading-5 text-slate-950 md:text-base">
-              {pageTitle}
-            </h1>
+            <div className="flex min-w-0 items-center gap-2">
+              <h1 className="truncate text-sm font-semibold leading-5 text-slate-950 md:text-base">
+                {pageTitle}
+              </h1>
+              {clientEnvironment && (
+                <span
+                  className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900"
+                  title={clientEnvironment.description}
+                >
+                  {clientEnvironment.label}
+                </span>
+              )}
+            </div>
             <p className="hidden text-[11px] text-slate-500 sm:block">{formatDateTime()}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -530,6 +541,27 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
           ref={mainRef}
           tabIndex={-1}
         >
+          {clientEnvironment && (
+            <aside
+              aria-label={`Entorno ${clientEnvironment.label.toLowerCase()}`}
+              className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950 md:px-6"
+            >
+              <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-1">
+                <p className="font-semibold">Entorno {clientEnvironment.label}</p>
+                <p>{clientEnvironment.description}</p>
+                <details className="text-amber-900">
+                  <summary className="cursor-pointer font-medium">
+                    Ayuda al comparar entornos
+                  </summary>
+                  <p className="mt-1 max-w-3xl leading-5">
+                    Recargar actualiza esta aplicación con los datos de este entorno. Los cambios
+                    llegan a producción solo mediante un despliegue autorizado; nunca copie datos ni
+                    enlaces sensibles entre entornos.
+                  </p>
+                </details>
+              </div>
+            </aside>
+          )}
           {new URLSearchParams(location.search).get('desde') === 'alertas' && (
             <div className="page-container pb-0 pt-4">
               <Link

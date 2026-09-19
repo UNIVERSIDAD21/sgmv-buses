@@ -36,6 +36,15 @@ beforeEach(() => {
 })
 
 describe('AppShell final UX', () => {
+  it('identifies the isolated local or test environment without sensitive configuration', () => {
+    renderShell()
+
+    expect(screen.getByLabelText(/Entorno (local|pruebas)/i)).toHaveTextContent(
+      /datos de prueba aislados|No se sincronizan automáticamente con producción/i,
+    )
+    expect(screen.queryByText(/DATABASE_URL|localhost:55432/i)).not.toBeInTheDocument()
+  })
+
   it('persists the compact preference while keeping every link accessible by name', async () => {
     const view = renderShell()
 
