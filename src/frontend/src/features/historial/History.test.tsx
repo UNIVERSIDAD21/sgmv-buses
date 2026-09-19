@@ -105,7 +105,9 @@ describe('RF-06 history and reports frontend', () => {
     expect(
       await screen.findByRole('heading', { name: /Historial e informes/i }, { timeout: 5_000 }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/Toda la flota y los informes administrativos/i)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/Consulta cronológica derivada de registros validados/i),
+    ).toBeInTheDocument()
     expect((await screen.findAllByText('BUS-RF06-001')).length).toBeGreaterThan(0)
     expect(screen.getByRole('heading', { name: /^Informes administrativos$/i })).toBeInTheDocument()
     expect(screen.getByText(/Repuestos utilizados/i)).toBeInTheDocument()

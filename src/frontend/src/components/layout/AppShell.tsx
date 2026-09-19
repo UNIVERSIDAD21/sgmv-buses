@@ -73,7 +73,7 @@ const shortLabelById: Record<RequirementRouteId, string> = {
   'mantenimiento-preventivo': 'Mantenimiento preventivo',
   novedades: 'Novedades operativas',
   'ordenes-trabajo': 'Órdenes de trabajo',
-  'ordenes-despacho': 'Disponibilidad técnica',
+  'ordenes-despacho': 'Disponibilidad para despacho',
   repuestos: 'Repuestos e inventario',
 }
 

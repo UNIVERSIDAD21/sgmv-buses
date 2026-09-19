@@ -348,7 +348,7 @@ function PartCards({
                   size="sm"
                   variant="secondary"
                 >
-                  Ajuste
+                  Corregir existencias
                 </Button>
               </>
             )}
@@ -447,7 +447,7 @@ function PartTable({
                         size="sm"
                         variant="secondary"
                       >
-                        Ajuste
+                        Corregir existencias
                       </Button>
                     </>
                   )}
@@ -1318,7 +1318,7 @@ export default function SparePartsPage() {
     await runAction(async () => {
       const result = await registerStockAdjustment(part.id, input)
       return { id: result.repuesto.id }
-    }, 'Ajuste registrado.')
+    }, 'Corrección de existencias registrada.')
   }
 
   async function handleStatus(part: SparePartDto, nextStatus: SparePartStatus) {
@@ -1713,7 +1713,7 @@ export default function SparePartsPage() {
                     size="sm"
                     variant="secondary"
                   >
-                    Ajuste
+                    Corregir existencias
                   </Button>
                   <Button
                     icon={<AlertTriangle size={14} />}

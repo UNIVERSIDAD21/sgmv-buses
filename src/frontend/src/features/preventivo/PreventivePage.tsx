@@ -839,14 +839,14 @@ export default function PreventivePage() {
               size="sm"
               variant={adminView === 'planes' ? 'secondary' : 'outline'}
             >
-              Planes recurrentes
+              Rutinas de mantenimiento
             </Button>
             <Button
               onClick={() => setAdminView('restricciones')}
               size="sm"
               variant={adminView === 'restricciones' ? 'secondary' : 'outline'}
             >
-              Restricciones
+              Motivos que impiden operar
             </Button>
           </div>
         </section>

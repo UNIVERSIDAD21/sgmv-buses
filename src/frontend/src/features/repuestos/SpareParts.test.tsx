@@ -332,7 +332,9 @@ describe('RF-05 spare parts frontend', () => {
 
     const emptyRow = screen.getAllByText('REP-ACEITE-001')[0].closest('tr')
     expect(emptyRow).toBeTruthy()
-    fireEvent.click(within(emptyRow as HTMLElement).getByRole('button', { name: /^Ajuste$/i }))
+    fireEvent.click(
+      within(emptyRow as HTMLElement).getByRole('button', { name: /^Corregir existencias$/i }),
+    )
 
     const adjustmentDialog = await screen.findByRole('dialog', { name: /Registrar ajuste/i })
     fireEvent.change(within(adjustmentDialog).getByLabelText(/^Direccion$/i), {
@@ -361,7 +363,7 @@ describe('RF-05 spare parts frontend', () => {
     })
     fireEvent.click(within(adjustmentDialog).getByRole('button', { name: /Registrar ajuste/i }))
 
-    expect(await screen.findByText(/Ajuste registrado/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Corrección de existencias registrada/i)).toBeInTheDocument()
     const adjustmentCalls = fetchMock.mock.calls.filter(
       ([input, init]) =>
         String(input).includes('/repuestos/2049/ajustes') && init?.method === 'POST',

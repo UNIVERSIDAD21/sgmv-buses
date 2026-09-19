@@ -153,7 +153,7 @@ function JourneyCard({
         )}
         {journey.acciones.puedeReasignar && (
           <Button onClick={() => onAction('reassign', journey)} size="sm" variant="outline">
-            Crear sucesora
+            Cambiar bus o conductor
           </Button>
         )}
         {journey.acciones.puedeCancelar && (

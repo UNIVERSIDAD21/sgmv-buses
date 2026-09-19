@@ -91,7 +91,7 @@ function BusHistory({ bus, showAssignments }: { bus: BusDetailDto; showAssignmen
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
-                  Responsable: {lectura.registradoPor.nombre}
+                  Registrado por: {lectura.registradoPor.nombre}
                 </p>
                 {lectura.motivo && <p className="mt-1 text-xs text-slate-500">{lectura.motivo}</p>}
               </div>
@@ -154,7 +154,7 @@ function BusHistory({ bus, showAssignments }: { bus: BusDetailDto; showAssignmen
                       : ''}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Responsable: {assignment.asignadoPor.nombre}
+                    Asignado por: {assignment.asignadoPor.nombre}
                   </p>
                   {assignment.motivo && (
                     <p className="mt-1 text-xs text-slate-500">{assignment.motivo}</p>

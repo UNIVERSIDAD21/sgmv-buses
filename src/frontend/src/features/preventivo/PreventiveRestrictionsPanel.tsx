@@ -65,14 +65,19 @@ export default function PreventiveRestrictionsPanel() {
     <div className="mx-auto max-w-5xl space-y-5 p-4 md:p-6">
       <section className="rounded-lg border border-slate-200 bg-white p-5">
         <Badge tone="emerald">RF-03</Badge>
-        <h2 className="mt-3 text-lg font-semibold text-slate-900">Restricciones preventivas</h2>
+        <h2 className="mt-3 text-lg font-semibold text-slate-900">
+          Motivos preventivos que impiden operar
+        </h2>
         <p className="mt-1 text-sm leading-6 text-slate-500">
           Proyeccion operacional para despacho. No incluye diagnosticos, costos ni administracion de
           planes.
         </p>
       </section>
       <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <table aria-label="Restricciones preventivas" className="w-full text-left text-sm">
+        <table
+          aria-label="Motivos preventivos que impiden operar"
+          className="w-full text-left text-sm"
+        >
           <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
             <tr>
               <th className="px-4 py-3">Bus</th>

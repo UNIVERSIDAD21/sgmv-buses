@@ -186,39 +186,60 @@ export default function DashboardPage() {
             className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5"
           >
             <StatCard
+              actionLabel="Ver flota"
+              description="Buses registrados"
               icon={<Bus size={16} />}
-              label="Flota"
-              note={fleetError ?? 'Buses registrados'}
+              label="Total de buses"
+              note={fleetError ?? undefined}
+              to="/flota"
               value={fleetSummary?.totalBuses ?? null}
             />
             <StatCard
+              actionLabel="Ver buses operativos"
+              description="Estado operativo actual"
               icon={<Shield size={16} />}
-              label="Operativos"
-              note="Estado actual"
+              label="Buses operativos"
+              note="Listos para operar si no tienen otras restricciones"
+              to="/flota"
               value={fleetSummary?.porEstado.OPERATIVO ?? null}
             />
             <StatCard
+              actionLabel="Ver buses en mantenimiento"
+              description="Estado operativo actual"
               icon={<ClipboardList size={16} />}
-              label="En mantenimiento"
-              note="Estado actual"
+              label="Buses en mantenimiento"
+              note="No disponibles para una nueva jornada"
+              priority="attention"
+              to="/flota"
               value={fleetSummary?.porEstado.EN_MANTENIMIENTO ?? null}
             />
             <StatCard
+              actionLabel="Revisar asignaciones"
+              description="Sin una asignación activa"
               icon={<Package size={16} />}
-              label="Sin conductor"
-              note="Asignacion activa"
+              label="Buses sin conductor"
+              note="Revise la asignación antes de programar una jornada"
+              to="/flota"
               value={fleetSummary?.sinConductor ?? null}
             />
             <StatCard
+              actionLabel="Revisar novedades"
+              description="Esperan decisión administrativa"
               icon={<AlertTriangle size={16} />}
-              label="Novedades"
-              note="Pendientes de revision"
+              label="Novedades pendientes de revisión"
+              note="Clasifique, resuelva o genere una orden"
+              priority="attention"
+              to="/novedades"
               value={noveltySummary?.pendientes ?? null}
             />
             <StatCard
+              actionLabel="Revisar mantenimientos"
+              description="Próximos o vencidos"
               icon={<Shield size={16} />}
-              label="Preventivos"
-              note="Proximos o vencidos"
+              label="Mantenimientos que requieren atención"
+              note="Programaciones preventivas próximas o vencidas"
+              priority="attention"
+              to="/mantenimiento-preventivo"
               value={
                 preventiveSummary
                   ? preventiveSummary.estados.PROXIMO + preventiveSummary.estados.VENCIDO
@@ -226,27 +247,42 @@ export default function DashboardPage() {
               }
             />
             <StatCard
+              actionLabel="Asignar mecánico"
+              description="Esperan un responsable técnico"
               icon={<ClipboardList size={16} />}
-              label="Por asignar"
-              note="Ordenes RF-04"
+              label="Órdenes pendientes de asignación"
+              note="Asigne un mecánico para iniciar el trabajo"
+              priority="attention"
+              to="/ordenes-trabajo"
               value={workOrderSummary?.pendientesAsignacion ?? null}
             />
             <StatCard
+              actionLabel="Ver órdenes en ejecución"
+              description="Trabajo técnico en curso"
               icon={<Wrench size={16} />}
-              label="En ejecucion"
-              note="Ordenes RF-04"
+              label="Órdenes en ejecución"
+              note="Siga el avance de cada intervención"
+              to="/ordenes-trabajo"
               value={workOrderSummary?.porEstado.EN_EJECUCION ?? null}
             />
             <StatCard
+              actionLabel="Validar órdenes"
+              description="Completadas por el mecánico"
               icon={<CheckCircle size={16} />}
-              label="Revision"
-              note="Completadas tecnico"
+              label="Órdenes esperando validación"
+              note="Revise la evidencia antes de cerrar"
+              priority="attention"
+              to="/ordenes-trabajo"
               value={workOrderSummary?.pendientesRevision ?? null}
             />
             <StatCard
+              actionLabel="Revisar inventario"
+              description="Bajo stock o agotados"
               icon={<Package size={16} />}
-              label="Repuestos"
-              note="Bajo stock o agotados"
+              label="Repuestos que requieren reposición"
+              note="Verifique existencias antes de una intervención"
+              priority="attention"
+              to="/repuestos"
               value={
                 sparePartSummary ? sparePartSummary.bajoStock + sparePartSummary.agotados : null
               }
@@ -264,21 +300,31 @@ export default function DashboardPage() {
           </section>
           <div className="space-y-3">
             <StatCard
+              actionLabel="Ver flota"
+              description="Buses registrados"
               icon={<Bus size={16} />}
-              label="Flota"
-              note={fleetError ?? 'Buses registrados'}
+              label="Total de buses"
+              note={fleetError ?? undefined}
+              to="/flota"
               value={fleetSummary?.totalBuses ?? null}
             />
             <StatCard
+              actionLabel="Ver disponibilidad"
+              description="Estado operativo actual"
               icon={<Shield size={16} />}
-              label="Operativos"
-              note="Disponibles para despacho"
+              label="Buses operativos"
+              note="Confirme restricciones antes de programar"
+              to="/flota"
               value={fleetSummary?.porEstado.OPERATIVO ?? null}
             />
             <StatCard
+              actionLabel="Ver buses restringidos"
+              description="Mantenimiento o fuera de servicio"
               icon={<AlertTriangle size={16} />}
-              label="Bloqueados"
-              note="Mantenimiento o fuera de servicio"
+              label="Buses restringidos"
+              note="No se pueden usar para una nueva jornada"
+              priority="attention"
+              to="/ordenes-trabajo/despacho"
               value={
                 fleetSummary
                   ? fleetSummary.porEstado.EN_MANTENIMIENTO +
@@ -287,9 +333,13 @@ export default function DashboardPage() {
               }
             />
             <StatCard
+              actionLabel="Coordinar novedades"
+              description="Requieren seguimiento operativo"
               icon={<ClipboardList size={16} />}
-              label="Novedades"
-              note="Pendientes de atencion"
+              label="Novedades pendientes de atención"
+              note="Revise si requiere cambiar recursos de una jornada"
+              priority="attention"
+              to="/novedades"
               value={noveltySummary?.pendientes ?? null}
             />
           </div>

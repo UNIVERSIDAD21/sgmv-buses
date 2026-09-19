@@ -125,7 +125,9 @@ function PlanForm({
   return (
     <Modal
       onClose={onCancel}
-      title={initial ? `Versionar ${initial.claveTarea}` : 'Crear plan preventivo'}
+      title={
+        initial ? `Crear nueva versión de ${initial.claveTarea}` : 'Crear rutina de mantenimiento'
+      }
     >
       <form className="space-y-3 p-5" onSubmit={(event) => void submit(event)}>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -308,7 +310,7 @@ function PlanForm({
             Cancelar
           </Button>
           <Button loading={saving} type="submit">
-            {initial ? 'Crear version' : 'Crear plan'}
+            {initial ? 'Guardar nueva versión' : 'Crear rutina'}
           </Button>
         </div>
       </form>
@@ -339,10 +341,10 @@ function ApplyPlanDialog({
   const [busId, setBusId] = useState(String(eligibleBuses[0]?.id ?? ''))
 
   return (
-    <Modal onClose={onCancel} subtitle={plan.claveTarea} title="Aplicar plan preventivo">
+    <Modal onClose={onCancel} subtitle={plan.claveTarea} title="Asignar rutina a un bus">
       <div className="p-5">
         <p className="text-sm text-slate-500">
-          El sistema derivara los objetivos desde la fecha y kilometraje actuales.
+          Se creará un mantenimiento programado usando la fecha y el kilometraje actuales.
         </p>
         <label className="mt-4 block text-sm font-medium">
           Bus elegible
@@ -370,7 +372,7 @@ function ApplyPlanDialog({
             onClick={() => void onApply(Number(busId))}
             type="button"
           >
-            Aplicar plan
+            Asignar rutina
           </Button>
         </div>
       </div>
@@ -450,7 +452,9 @@ export default function PreventivePlansPanel() {
     try {
       if (editing) await createPreventivePlanVersion(editing.id, input)
       else await createPreventivePlan(input)
-      setFeedback(editing ? 'Nueva version registrada.' : 'Plan preventivo registrado.')
+      setFeedback(
+        editing ? 'Nueva versión de la rutina registrada.' : 'Rutina de mantenimiento registrada.',
+      )
       setShowForm(false)
       setEditing(undefined)
       await load()
@@ -464,7 +468,7 @@ export default function PreventivePlansPanel() {
     setSaving(true)
     try {
       await deactivatePreventivePlan(plan.id)
-      setFeedback(`Plan ${plan.claveTarea} inactivado.`)
+      setFeedback(`La rutina ${plan.claveTarea} dejó de usarse para nuevas asignaciones.`)
       await load()
     } catch (operationError) {
       setError(messageFrom(operationError))
@@ -519,8 +523,10 @@ export default function PreventivePlansPanel() {
     <section className="space-y-4">
       <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="font-semibold">Planes preventivos recurrentes</h3>
-          <p className="mt-1 text-sm text-slate-500">Versiones y alcance por bus o modelo.</p>
+          <h3 className="font-semibold">Rutinas de mantenimiento</h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Defina cada cuánto se realiza una tarea por bus o modelo.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-sm text-slate-600">
@@ -537,7 +543,7 @@ export default function PreventivePlansPanel() {
               setShowForm(true)
             }}
           >
-            Crear plan
+            Crear rutina
           </Button>
         </div>
       </div>
@@ -547,8 +553,8 @@ export default function PreventivePlansPanel() {
       {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {plans?.length === 0 ? (
         <StatePanel
-          description="Cree el primer plan preventivo para comenzar."
-          title="Sin planes preventivos"
+          description="Cree la primera rutina de mantenimiento para comenzar."
+          title="Sin rutinas de mantenimiento"
           tone="empty"
         />
       ) : (
@@ -589,7 +595,7 @@ export default function PreventivePlansPanel() {
                         size="sm"
                         variant="secondary"
                       >
-                        Aplicar
+                        Asignar a buses
                       </Button>
                       <Button onClick={() => void showVersions(plan)} size="sm" variant="outline">
                         Versiones
@@ -603,7 +609,7 @@ export default function PreventivePlansPanel() {
                         size="sm"
                         variant="outline"
                       >
-                        Versionar
+                        Nueva versión
                       </Button>
                       <Button
                         disabled={!plan.activa || saving}
@@ -611,7 +617,7 @@ export default function PreventivePlansPanel() {
                         size="sm"
                         variant="outline"
                       >
-                        Inactivar
+                        Dejar de usar
                       </Button>
                     </div>
                   </td>

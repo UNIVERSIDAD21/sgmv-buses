@@ -255,9 +255,9 @@ describe('RF-03 preventive maintenance frontend', () => {
     const fetchMock = mockApi(preventiveHandler('ADMINISTRADOR'))
     render(<App />)
 
-    fireEvent.click(await screen.findByRole('button', { name: /Planes recurrentes/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Rutinas de mantenimiento/i }))
     expect(await screen.findByText('FRENOS.001')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /^Crear plan$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Crear rutina$/i }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.change(within(dialog).getByLabelText(/Clave de tarea/i), {
       target: { value: 'ACEITE.001' },
@@ -268,8 +268,8 @@ describe('RF-03 preventive maintenance frontend', () => {
     })
     fireEvent.change(within(dialog).getByLabelText(/Intervalo dias/i), { target: { value: '30' } })
     fireEvent.change(within(dialog).getByLabelText(/Bus destino/i), { target: { value: '2006' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: /^Crear plan$/i }))
-    expect(await screen.findByText(/Plan preventivo registrado/i)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Crear rutina$/i }))
+    expect(await screen.findByText(/Rutina de mantenimiento registrada/i)).toBeInTheDocument()
     const createCall = fetchMock.mock.calls.find(
       ([input, init]) =>
         String(input).endsWith('/mantenimiento-preventivo/planes') && init?.method === 'POST',
@@ -277,9 +277,9 @@ describe('RF-03 preventive maintenance frontend', () => {
     expect(String(createCall?.[1]?.body)).toContain('2006')
     expect(String(createCall?.[1]?.body)).not.toContain('modeloBusId')
 
-    fireEvent.click(screen.getByRole('button', { name: /^Aplicar$/i }))
-    const applyDialog = await screen.findByRole('dialog', { name: /Aplicar plan preventivo/i })
-    fireEvent.click(within(applyDialog).getByRole('button', { name: /^Aplicar plan$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Asignar a buses$/i }))
+    const applyDialog = await screen.findByRole('dialog', { name: /Asignar rutina a un bus/i })
+    fireEvent.click(within(applyDialog).getByRole('button', { name: /^Asignar rutina$/i }))
     expect(await screen.findByText(/objetivos derivados correctamente/i)).toBeInTheDocument()
     expect(
       fetchMock.mock.calls.some(
@@ -296,16 +296,18 @@ describe('RF-03 preventive maintenance frontend', () => {
     ).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^Cerrar diálogo$/i }))
 
-    fireEvent.click(screen.getByRole('button', { name: /^Versionar$/i }))
-    expect(await screen.findByText(/Versionar FRENOS.001/i)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /^Crear version$/i }))
-    expect(await screen.findByText(/Nueva version registrada/i)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /^Inactivar$/i }))
-    expect(await screen.findByText(/Plan FRENOS.001 inactivado/i)).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: /^Restricciones$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Nueva versión$/i }))
+    expect(await screen.findByText(/Crear nueva versión de FRENOS.001/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Guardar nueva versión$/i }))
+    expect(await screen.findByText(/Nueva versión de la rutina registrada/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Dejar de usar$/i }))
     expect(
-      await screen.findByRole('heading', { name: /Restricciones preventivas/i }),
+      await screen.findByText(/La rutina FRENOS.001 dejó de usarse para nuevas asignaciones/i),
+    ).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Motivos que impiden operar/i }))
+    expect(
+      await screen.findByRole('heading', { name: /Motivos preventivos que impiden operar/i }),
     ).toBeInTheDocument()
   })
 
@@ -314,11 +316,11 @@ describe('RF-03 preventive maintenance frontend', () => {
     mockApi(preventiveHandler('DESPACHADOR'))
     render(<App />)
     expect(
-      await screen.findByRole('heading', { name: /Restricciones preventivas/i }),
+      await screen.findByRole('heading', { name: /Motivos preventivos que impiden operar/i }),
     ).toBeInTheDocument()
     expect(screen.getByText(/Bloquea despacho/i)).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /Crear plan|Versionar|Inactivar/i }),
+      screen.queryByRole('button', { name: /Crear rutina|Nueva versión|Dejar de usar/i }),
     ).not.toBeInTheDocument()
   })
 })

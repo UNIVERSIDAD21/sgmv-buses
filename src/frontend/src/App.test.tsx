@@ -118,7 +118,7 @@ describe('App authentication and role navigation', () => {
     expect(
       screen.queryByText(/Administrador\s*\/|Conductor\s*\/|Personal T[eé]cnico/i),
     ).not.toBeInTheDocument()
-    expect(screen.getAllByText(/RF-03/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Mantenimiento preventivo/i).length).toBeGreaterThan(0)
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/auth/login'),
       expect.objectContaining({
@@ -173,9 +173,9 @@ describe('App authentication and role navigation', () => {
     render(<App />)
 
     expect(await screen.findByText(/Panel t.cnico/i)).toBeInTheDocument()
-    expect(screen.getAllByText(/RF-04/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/RF-06/i).length).toBeGreaterThan(0)
-    expect(screen.queryByText(/RF-05/i)).not.toBeInTheDocument()
+    expect(screen.getAllByText(/Órdenes de trabajo/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Historial e informes/i).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Repuestos e inventario/i)).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Central de repuestos/i })).not.toBeInTheDocument()
     expect(screen.queryByText(/RF-01/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/RF-02/i)).not.toBeInTheDocument()
@@ -196,11 +196,11 @@ describe('App authentication and role navigation', () => {
 
     expect(await screen.findByText(/Panel del conductor/i)).toBeInTheDocument()
     expect(screen.getAllByText(/Jornadas operativas/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/RF-02/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/RF-06/i).length).toBeGreaterThan(0)
-    expect(screen.queryByText(/RF-03/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/RF-04/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/RF-05/i)).not.toBeInTheDocument()
+    expect(screen.getAllByText(/Novedades operativas/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Historial e informes/i).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Mantenimiento preventivo/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Órdenes de trabajo/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Repuestos e inventario/i)).not.toBeInTheDocument()
   })
 
   it('redirects unauthorized roles to the access denied screen', async () => {
