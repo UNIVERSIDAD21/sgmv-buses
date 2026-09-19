@@ -1,6 +1,7 @@
 import { type EstadoBus, Prisma } from '@prisma/client'
 
 import type { AuthenticatedUser } from '../auth/auth.types.js'
+import { classifyPreventiveCycle } from '../preventive/preventive-cycle.js'
 import { AppError } from '../shared/http.js'
 import { type BusDetailRecord, type BusSummaryRecord, FleetRepository } from './fleet.repository.js'
 import type {
@@ -51,12 +52,20 @@ interface AssignmentRecord {
 }
 
 interface MileageReadingRecord {
+  fechaLectura: Date | null
   fechaRegistro: Date
   id: number
+  intervencionId: number | null
+  jornadaOperativaId: number | null
   kilometrajeAnterior: number
   kilometrajeNuevo: number
   motivo: string | null
+  ordenTrabajoId: number | null
+  ordenTrabajo: {
+    codigo: string
+  } | null
   registradoPor: ResponsibleRecord
+  tipo: string | null
 }
 
 interface StateHistoryRecord {
@@ -106,12 +115,18 @@ function mapAssignment(assignment: AssignmentRecord): ActiveAssignmentDto {
 
 function mapMileageReading(reading: MileageReadingRecord): MileageReadingDto {
   return {
+    fechaLectura: reading.fechaLectura?.toISOString() ?? null,
     fechaRegistro: reading.fechaRegistro.toISOString(),
     id: reading.id,
+    intervencionId: reading.intervencionId,
+    jornadaOperativaId: reading.jornadaOperativaId,
     kilometrajeAnterior: reading.kilometrajeAnterior,
     kilometrajeNuevo: reading.kilometrajeNuevo,
     motivo: reading.motivo,
+    ordenTrabajoId: reading.ordenTrabajoId,
+    ordenTrabajoCodigo: reading.ordenTrabajo?.codigo ?? null,
     registradoPor: mapResponsible(reading.registradoPor),
+    tipo: reading.tipo,
   }
 }
 
@@ -153,11 +168,82 @@ function mapBusSummary(bus: BusSummaryRecord | BusDetailRecord): BusSummaryDto {
 }
 
 function mapBusDetail(bus: BusDetailRecord): BusDetailDto {
+  const lastClosedOrder = bus.ordenesTrabajo
+    .filter((order) => order.estado === 'CERRADA' && order.fechaCierre)
+    .sort((first, second) => second.fechaCierre!.getTime() - first.fechaCierre!.getTime())[0]
+  const classifiedSchedules = bus.programacionesMantenimiento.map((schedule) => ({
+    ...schedule,
+    classification: classifyPreventiveCycle({
+      fechaProgramada: schedule.fechaProgramada,
+      kilometrajeActual: bus.kilometrajeActual,
+      kilometrajeObjetivo: schedule.kilometrajeObjetivo,
+      planMantenimientoPreventivo: schedule.planMantenimientoPreventivo,
+    }),
+  }))
+  const overdueSchedule = classifiedSchedules.find(
+    ({ classification }) => classification.estado === 'VENCIDO',
+  )
+  const upcomingSchedule = classifiedSchedules.find(
+    ({ classification }) => classification.estado === 'PROXIMO',
+  )
+  const scheduleRequiringAttention = overdueSchedule
+    ? { estado: 'VENCIDO' as const, schedule: overdueSchedule }
+    : upcomingSchedule
+      ? { estado: 'PROXIMO' as const, schedule: upcomingSchedule }
+      : null
+  const nextScheduled = classifiedSchedules
+    .filter(({ classification }) => classification.estado !== 'VENCIDO')
+    .sort((first, second) => {
+      const firstDate = first.fechaProgramada?.getTime() ?? Number.MAX_SAFE_INTEGER
+      const secondDate = second.fechaProgramada?.getTime() ?? Number.MAX_SAFE_INTEGER
+      if (firstDate !== secondDate) return firstDate - secondDate
+
+      const firstMileage = first.kilometrajeObjetivo ?? Number.MAX_SAFE_INTEGER
+      const secondMileage = second.kilometrajeObjetivo ?? Number.MAX_SAFE_INTEGER
+      return firstMileage - secondMileage
+    })[0]
+  const closingReading = lastClosedOrder
+    ? bus.lecturasKilometraje.find(
+        (reading) =>
+          reading.ordenTrabajoId === lastClosedOrder.id && reading.tipo === 'CIERRE_MANTENIMIENTO',
+      )
+    : null
+
   return {
     ...mapBusSummary(bus),
     asignacionesHistorial: bus.asignaciones.map(mapAssignment),
     estadosHistorial: bus.estadosHistorial.map(mapStateHistory),
     lecturasKilometraje: bus.lecturasKilometraje.map(mapMileageReading),
+    mantenimiento: {
+      ordenesTecnicasActivas: bus.ordenesTrabajo.filter((order) => order.estado !== 'CERRADA')
+        .length,
+      requiereAtencion: scheduleRequiringAttention
+        ? {
+            actividad: scheduleRequiringAttention.schedule.actividad,
+            criterio: scheduleRequiringAttention.schedule.criterio,
+            estado: scheduleRequiringAttention.estado,
+            fechaProgramada:
+              scheduleRequiringAttention.schedule.fechaProgramada?.toISOString() ?? null,
+            kilometrajeObjetivo: scheduleRequiringAttention.schedule.kilometrajeObjetivo,
+          }
+        : null,
+      proximoProgramado: nextScheduled
+        ? {
+            actividad: nextScheduled.actividad,
+            criterio: nextScheduled.criterio,
+            fechaProgramada: nextScheduled.fechaProgramada?.toISOString() ?? null,
+            kilometrajeObjetivo: nextScheduled.kilometrajeObjetivo,
+          }
+        : null,
+      ultimoCerrado: lastClosedOrder
+        ? {
+            codigo: lastClosedOrder.codigo,
+            fechaCierre: lastClosedOrder.fechaCierre!.toISOString(),
+            kilometrajeCierre: closingReading?.kilometrajeNuevo ?? null,
+            tipo: lastClosedOrder.tipo,
+          }
+        : null,
+    },
   }
 }
 
@@ -250,7 +336,6 @@ export class FleetService {
       const bus = await this.fleetRepository.createBusWithInitialState(
         {
           anio: input.anio,
-          codigoInterno: normalizeIdentifier(input.codigoInterno),
           estadoOperativo: input.estadoOperativo,
           kilometrajeActual: input.kilometrajeActual,
           marca: normalizeText(input.marca),
@@ -508,10 +593,6 @@ export class FleetService {
 
     if (input.anio !== undefined) {
       data.anio = input.anio
-    }
-
-    if (input.codigoInterno !== undefined) {
-      data.codigoInterno = normalizeIdentifier(input.codigoInterno)
     }
 
     if (input.marca !== undefined) {

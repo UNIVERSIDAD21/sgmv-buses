@@ -55,7 +55,6 @@ export const createBusSchema = z
       .int()
       .min(1980)
       .max(currentYear + 1),
-    codigoInterno: identifierText(50),
     estadoOperativo: z.enum(estadoBusValues).default('OPERATIVO'),
     kilometrajeActual: z.coerce.number().int().min(0).default(0),
     marca: trimmedText(100),
@@ -74,7 +73,6 @@ export const updateBusSchema = z
       .min(1980)
       .max(currentYear + 1)
       .optional(),
-    codigoInterno: identifierText(50).optional(),
     marca: trimmedText(100).optional(),
     modelo: trimmedText(100).optional(),
     modeloBusId: entityIdSchema.nullable().optional(),

@@ -272,13 +272,11 @@ describe('P3 - catalogos operativos de flota', () => {
     await despachador.get(`/flota/rutas/${inactiveRoute.id}`).expect(404)
   }, 60000)
 
-  it('gestiona rutas basicas con codigo normalizado y ciclo activar/inactivar', async () => {
+  it('genera el codigo de una ruta propia y conserva el ciclo activar/inactivar', async () => {
     const admin = await loginAgent(fixture.adminEmail)
-    const code = uniqueCode('OP')
     const createResponse = await admin
       .post('/flota/rutas')
       .send({
-        codigo: code.toLowerCase(),
         destino: '  Terminal   Norte ',
         nombre: '  Circular  Norte ',
         origen: '  Patio  Central ',
@@ -287,13 +285,13 @@ describe('P3 - catalogos operativos de flota', () => {
 
     const routeId = createResponse.body.data.ruta.id as string
     created.rutas.push(routeId)
-    expect(createResponse.body.data.ruta.codigo).toBe(code)
+    expect(createResponse.body.data.ruta.codigo).toMatch(/^RUTA-\d{6}$/)
     expect(createResponse.body.data.ruta.origen).toBe('Patio Central')
 
     await admin
       .post('/flota/rutas')
-      .send({ codigo: code.toLowerCase(), destino: 'B', nombre: 'Duplicada', origen: 'A' })
-      .expect(409)
+      .send({ codigo: 'RUTA-MANUAL', destino: 'B', nombre: 'Duplicada', origen: 'A' })
+      .expect(400)
 
     await admin.patch(`/flota/rutas/${routeId}`).send({ destino: 'Terminal Sur' }).expect(200)
     await admin.post(`/flota/rutas/${routeId}/desactivar`).send({}).expect(200)
@@ -309,14 +307,12 @@ describe('P3 - catalogos operativos de flota', () => {
     const admin = await loginAgent(fixture.adminEmail)
     const activeModel = await createModelDirect(true)
     const inactiveModel = await createModelDirect(false)
-    const code = uniqueCode('BUS-API')
     const plate = uniqueCode('PL').replaceAll('-', '').slice(0, 10)
 
     const response = await admin
       .post('/flota/buses')
       .send({
         anio: 2024,
-        codigoInterno: code,
         marca: 'Marca historica',
         modelo: 'Modelo historico',
         modeloBusId: activeModel.id,
@@ -381,7 +377,10 @@ describe('P3 - catalogos operativos de flota', () => {
     const route = await createRouteDirect(true)
 
     await admin.post('/flota/modelos-bus').send({ marca: '', nombreModelo: '' }).expect(400)
-    await admin.post('/flota/rutas').send({ codigo: 'R-1' }).expect(400)
+    await admin
+      .post('/flota/rutas')
+      .send({ codigo: 'R-1', nombre: 'Ruta', origen: 'A' })
+      .expect(400)
     await admin.patch(`/flota/modelos-bus/${model.id}`).send({}).expect(400)
     await admin.patch(`/flota/rutas/${route.id}`).send({}).expect(400)
     await admin.delete(`/flota/modelos-bus/${model.id}`).expect(404)

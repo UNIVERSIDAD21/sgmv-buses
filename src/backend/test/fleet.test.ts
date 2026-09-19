@@ -235,15 +235,13 @@ describe('RF-01 Fleet API', () => {
     await mecanico.get('/flota/mi-bus').expect(403)
   }, 60000)
 
-  it('registers a valid bus with normalized identifiers and initial state history', async () => {
+  it('registers a valid bus with generated internal code and initial state history', async () => {
     const admin = await loginAgent(fixture.adminEmail)
     const placa = uniquePlate('A')
-    const codigoInterno = uniqueBusCode('rf01')
     const response = await admin
       .post('/flota/buses')
       .send({
         anio: 2023,
-        codigoInterno: codigoInterno.toLowerCase(),
         kilometrajeActual: 1500,
         marca: '  Mercedes  Benz ',
         modelo: '  Padron  ',
@@ -254,12 +252,12 @@ describe('RF-01 Fleet API', () => {
     const busId = response.body.data.bus.id as string
     created.buses.push(busId)
 
-    expect(response.body.data.bus.codigoInterno).toBe(codigoInterno.toUpperCase())
+    expect(response.body.data.bus.codigoInterno).toMatch(/^BUS-\d{6}$/)
     expect(response.body.data.bus.placa).toBe(placa.toUpperCase())
     expect(response.body.data.bus.estadosHistorial[0].estadoNuevo).toBe('OPERATIVO')
   }, 60000)
 
-  it('rejects duplicate plate and internal code, including case-only differences', async () => {
+  it('rejects duplicate plates and does not accept a manually supplied internal code', async () => {
     const admin = await loginAgent(fixture.adminEmail)
     const existing = await createBus({
       codigoInterno: uniqueBusCode('DUP'),
@@ -270,7 +268,6 @@ describe('RF-01 Fleet API', () => {
       .post('/flota/buses')
       .send({
         anio: 2021,
-        codigoInterno: uniqueBusCode('NEW'),
         marca: 'Marca Test',
         modelo: 'Modelo Test',
         placa: existing.placa.toLowerCase(),
@@ -286,7 +283,7 @@ describe('RF-01 Fleet API', () => {
         modelo: 'Modelo Test',
         placa: uniquePlate('E'),
       })
-      .expect(409)
+      .expect(400)
   }, 60000)
 
   it('lists buses with search, status filter and pagination', async () => {

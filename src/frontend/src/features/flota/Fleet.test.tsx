@@ -64,6 +64,11 @@ describe('RF-01 fleet frontend', () => {
     expect(
       await screen.findByText(/Vista de consulta para preparar el despacho/i),
     ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Ver jornadas/i })).toHaveAttribute('href', '/jornadas')
+    expect(screen.getByRole('link', { name: /Revisar disponibilidad/i })).toHaveAttribute(
+      'href',
+      '/ordenes-trabajo/despacho',
+    )
   })
 
   it('loads fleet list with search, filter and pagination', async () => {
@@ -115,6 +120,10 @@ describe('RF-01 fleet frontend', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Detalle/i }))
     expect(await screen.findByText(/Detalle de bus/i)).toBeInTheDocument()
     expect(screen.getByText(/Ultimas lecturas/i)).toBeInTheDocument()
+    expect(screen.getByText(/Resumen de mantenimiento/i)).toBeInTheDocument()
+    expect(screen.getByText(/Cambio de aceite/i)).toBeInTheDocument()
+    expect(screen.getByText(/Revisión técnica durante la intervención/i)).toBeInTheDocument()
+    expect(screen.getByText(/\+1\.000 km/i)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /Kilometraje/i }))
     fireEvent.change(screen.getByLabelText(/Nueva lectura/i), { target: { value: '12000' } })
@@ -228,13 +237,12 @@ describe('RF-01 fleet frontend', () => {
     render(<App />)
 
     fireEvent.click(await screen.findByRole('button', { name: /Guardar/i }))
-    expect(await screen.findByText(/El codigo interno es obligatorio/i)).toBeInTheDocument()
+    expect(await screen.findByText(/La placa es obligatoria/i)).toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText(/Codigo interno/i), { target: { value: 'bus-001' } })
     fireEvent.change(screen.getByLabelText(/Placa/i), { target: { value: 'abc123' } })
     fireEvent.change(screen.getByLabelText(/^Marca$/i), { target: { value: 'Mercedes' } })
     fireEvent.change(screen.getByLabelText(/^Modelo$/i), { target: { value: 'Padron' } })
-    fireEvent.change(await screen.findByLabelText(/Modelo tecnico normalizado/i), {
+    fireEvent.change(await screen.findByLabelText(/Configuración técnica del vehículo/i), {
       target: { value: '2033' },
     })
     fireEvent.change(screen.getByLabelText(/Anio/i), { target: { value: '2022' } })

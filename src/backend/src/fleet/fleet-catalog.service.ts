@@ -29,10 +29,6 @@ function ensureAdminOrDispatcher(actor: AuthenticatedUser) {
   }
 }
 
-function normalizeIdentifier(value: string) {
-  return value.trim().toUpperCase().replace(/\s+/g, '')
-}
-
 function normalizeText(value: string) {
   return value.trim().replace(/\s+/g, ' ')
 }
@@ -46,9 +42,11 @@ function mapModeloBusSummary(modelo: ModeloBusRecord): ModeloBusSummaryDto {
   return {
     activo: modelo.activo,
     busesAsociados: modelo._count.buses,
+    compatibilidadesAsociadas: modelo._count.compatibilidadesRepuesto,
     id: modelo.id,
     marca: modelo.marca,
     nombreModelo: modelo.nombreModelo,
+    rutinasAsociadas: modelo._count.planesPreventivos,
     updatedAt: modelo.updatedAt.toISOString(),
     versionTecnica: modelo.versionTecnica,
   }
@@ -138,7 +136,6 @@ export class FleetCatalogService {
     try {
       const ruta = await this.repository.createRuta({
         activa: true,
-        codigo: normalizeIdentifier(input.codigo),
         destino: normalizeText(input.destino),
         nombre: normalizeText(input.nombre),
         origen: normalizeText(input.origen),
@@ -282,7 +279,6 @@ export class FleetCatalogService {
     }
     const data: Prisma.RutaUpdateInput = {}
 
-    if (input.codigo !== undefined) data.codigo = normalizeIdentifier(input.codigo)
     if (input.destino !== undefined) data.destino = normalizeText(input.destino)
     if (input.nombre !== undefined) data.nombre = normalizeText(input.nombre)
     if (input.origen !== undefined) data.origen = normalizeText(input.origen)

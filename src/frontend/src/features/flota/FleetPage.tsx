@@ -53,8 +53,25 @@ function formatDateTimeValue(value: string) {
   }).format(new Date(value))
 }
 
+function formatDateValue(value: string) {
+  return new Intl.DateTimeFormat('es-CO', {
+    dateStyle: 'medium',
+  }).format(new Date(value))
+}
+
 function StatusBadge({ status }: { status: BusStatus }) {
   return <Badge tone={statusTone[status]}>{BUS_STATUS_LABELS[status]}</Badge>
+}
+
+const mileageReadingLabels: Record<string, string> = {
+  CIERRE_MANTENIMIENTO: 'Lectura de cierre de mantenimiento',
+  FIN_JORNADA: 'Lectura al finalizar jornada',
+  INICIO_JORNADA: 'Lectura al iniciar jornada',
+  REVISION_TECNICA: 'Revisión técnica durante la intervención',
+}
+
+function mileageReadingLabel(tipo: string | null) {
+  return tipo ? (mileageReadingLabels[tipo] ?? 'Lectura registrada') : 'Lectura registrada'
 }
 
 function FieldValue({ label, value }: { label: string; value: string }) {
@@ -74,11 +91,121 @@ function TimelineEmpty({ text }: { text: string }) {
   )
 }
 
-function BusHistory({ bus, showAssignments }: { bus: BusDetailDto; showAssignments: boolean }) {
+function MaintenanceOverview({ bus }: { bus: BusDetailDto }) {
+  const { mantenimiento } = bus
+
+  return (
+    <section aria-labelledby="maintenance-summary-title">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h3
+          className="text-xs font-semibold uppercase text-slate-500"
+          id="maintenance-summary-title"
+        >
+          Resumen de mantenimiento
+        </h3>
+        <Link
+          className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
+          to="/historial"
+        >
+          Consultar historial completo
+        </Link>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-slate-200 bg-white p-3">
+          <p className="text-xs font-medium uppercase text-slate-400">Último mantenimiento</p>
+          {mantenimiento.ultimoCerrado ? (
+            <>
+              <p className="mt-1 text-sm font-semibold text-slate-800">
+                {mantenimiento.ultimoCerrado.tipo === 'PREVENTIVA'
+                  ? 'Mantenimiento preventivo'
+                  : 'Mantenimiento correctivo'}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {mantenimiento.ultimoCerrado.codigo} ·{' '}
+                {formatDateValue(mantenimiento.ultimoCerrado.fechaCierre)}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {mantenimiento.ultimoCerrado.kilometrajeCierre === null
+                  ? 'Sin lectura de cierre registrada.'
+                  : `Cierre registrado en ${formatNumber(mantenimiento.ultimoCerrado.kilometrajeCierre)} km.`}
+              </p>
+            </>
+          ) : (
+            <p className="mt-1 text-sm text-slate-500">Sin mantenimiento cerrado registrado.</p>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-white p-3">
+          <p className="text-xs font-medium uppercase text-slate-400">
+            Mantenimiento que requiere atención
+          </p>
+          {mantenimiento.requiereAtencion ? (
+            <>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold text-slate-800">
+                  {mantenimiento.requiereAtencion.actividad}
+                </p>
+                <Badge tone={mantenimiento.requiereAtencion.estado === 'VENCIDO' ? 'red' : 'amber'}>
+                  {mantenimiento.requiereAtencion.estado === 'VENCIDO' ? 'Vencido' : 'Próximo'}
+                </Badge>
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                {mantenimiento.requiereAtencion.fechaProgramada
+                  ? `Fecha objetivo: ${formatDateValue(mantenimiento.requiereAtencion.fechaProgramada)}.`
+                  : ''}
+                {mantenimiento.requiereAtencion.fechaProgramada &&
+                mantenimiento.requiereAtencion.kilometrajeObjetivo
+                  ? ' '
+                  : ''}
+                {mantenimiento.requiereAtencion.kilometrajeObjetivo
+                  ? `Objetivo: ${formatNumber(mantenimiento.requiereAtencion.kilometrajeObjetivo)} km.`
+                  : ''}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mt-1 text-sm text-slate-500">
+                No hay mantenimientos próximos o vencidos.
+              </p>
+              {mantenimiento.proximoProgramado && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Próximo programado: <strong>{mantenimiento.proximoProgramado.actividad}</strong>
+                  {mantenimiento.proximoProgramado.fechaProgramada
+                    ? ` · ${formatDateValue(mantenimiento.proximoProgramado.fechaProgramada)}`
+                    : ''}
+                  {mantenimiento.proximoProgramado.kilometrajeObjetivo
+                    ? ` · ${formatNumber(mantenimiento.proximoProgramado.kilometrajeObjetivo)} km`
+                    : ''}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-slate-500">
+        Órdenes técnicas activas: {mantenimiento.ordenesTecnicasActivas}.
+      </p>
+    </section>
+  )
+}
+
+function BusHistory({
+  bus,
+  showAssignments,
+  showOperationalContext,
+}: {
+  bus: BusDetailDto
+  showAssignments: boolean
+  showOperationalContext: boolean
+}) {
   return (
     <div className="space-y-5">
       <section>
         <h3 className="mb-2 text-xs font-semibold uppercase text-slate-500">Ultimas lecturas</h3>
+        <p className="mb-2 text-xs leading-5 text-slate-500">
+          Una revisión técnica puede ser registrada durante una intervención; una lectura de cierre
+          confirma el kilometraje al finalizar el mantenimiento, incluso si no hubo recorrido.
+        </p>
         <div className="space-y-2">
           {bus.lecturasKilometraje.length === 0 ? (
             <TimelineEmpty text="Sin lecturas registradas." />
@@ -87,8 +214,13 @@ function BusHistory({ bus, showAssignments }: { bus: BusDetailDto; showAssignmen
               <div className="rounded-lg border border-slate-200 bg-white p-3" key={lectura.id}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-slate-800">
-                    {formatNumber(lectura.kilometrajeAnterior)} km a{' '}
-                    {formatNumber(lectura.kilometrajeNuevo)} km
+                    {lectura.kilometrajeAnterior === lectura.kilometrajeNuevo
+                      ? 'Sin cambio de kilometraje'
+                      : `${formatNumber(lectura.kilometrajeAnterior)} km → ${formatNumber(
+                          lectura.kilometrajeNuevo,
+                        )} km (+${formatNumber(
+                          lectura.kilometrajeNuevo - lectura.kilometrajeAnterior,
+                        )} km)`}
                   </p>
                   <span className="text-xs text-slate-400">
                     {formatDateTimeValue(lectura.fechaRegistro)}
@@ -97,6 +229,24 @@ function BusHistory({ bus, showAssignments }: { bus: BusDetailDto; showAssignmen
                 <p className="mt-1 text-xs text-slate-500">
                   Registrado por: {lectura.registradoPor.nombre}
                 </p>
+                <p className="mt-1 text-xs text-slate-500">{mileageReadingLabel(lectura.tipo)}</p>
+                {showOperationalContext &&
+                  (lectura.ordenTrabajoCodigo ||
+                    lectura.jornadaOperativaId ||
+                    lectura.intervencionId) && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Asociada a:{' '}
+                      {[
+                        lectura.ordenTrabajoCodigo ? `orden ${lectura.ordenTrabajoCodigo}` : null,
+                        lectura.jornadaOperativaId
+                          ? `jornada #${lectura.jornadaOperativaId}`
+                          : null,
+                        lectura.intervencionId ? `intervención #${lectura.intervencionId}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                  )}
                 {lectura.motivo && <p className="mt-1 text-xs text-slate-500">{lectura.motivo}</p>}
               </div>
             ))
@@ -502,6 +652,22 @@ export default function FleetPage() {
               )}
             </div>
             <div className="flex flex-wrap gap-2">
+              {user?.rol.codigo === 'DESPACHADOR' && (
+                <>
+                  <Link
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    to="/jornadas"
+                  >
+                    Ver jornadas
+                  </Link>
+                  <Link
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    to="/ordenes-trabajo/despacho"
+                  >
+                    Revisar disponibilidad
+                  </Link>
+                </>
+              )}
               <Link
                 className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
                 to="/flota/catalogos"
@@ -724,7 +890,7 @@ export default function FleetPage() {
                 <FieldValue label="Marca" value={selectedBus.marca} />
                 <FieldValue label="Modelo" value={selectedBus.modelo} />
                 <FieldValue
-                  label="Modelo tecnico"
+                  label="Configuración técnica"
                   value={
                     selectedBus.modeloBus
                       ? `${selectedBus.modeloBus.marca} ${selectedBus.modeloBus.nombreModelo}${
@@ -747,12 +913,24 @@ export default function FleetPage() {
                   <div className="mt-2">
                     <StatusBadge status={selectedBus.estadoOperativo} />
                   </div>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    Este es el estado registrado del bus. La disponibilidad para una jornada también
+                    considera órdenes, novedades y mantenimientos activos.
+                  </p>
+                  <Link
+                    className="mt-2 inline-block text-xs font-semibold text-emerald-700 hover:underline"
+                    to="/ordenes-trabajo/despacho"
+                  >
+                    Revisar disponibilidad para despacho
+                  </Link>
                 </div>
                 <FieldValue
                   label="Conductor"
                   value={selectedBus.conductorAsignado?.nombre ?? 'Sin asignar'}
                 />
               </div>
+
+              <MaintenanceOverview bus={selectedBus} />
 
               <div className="grid gap-2 sm:grid-cols-2">
                 <Button
@@ -775,7 +953,13 @@ export default function FleetPage() {
                 )}
               </div>
 
-              <BusHistory bus={selectedBus} showAssignments />
+              <BusHistory
+                bus={selectedBus}
+                showAssignments={user?.rol.codigo !== 'CONDUCTOR'}
+                showOperationalContext={
+                  user?.rol.codigo === 'ADMINISTRADOR' || user?.rol.codigo === 'DESPACHADOR'
+                }
+              />
             </div>
           )}
         </Drawer>

@@ -10,6 +10,7 @@ import KeyValueFields, {
   type KeyValueEntry,
 } from '../../components/ui/KeyValueFields'
 import StatePanel from '../../components/ui/StatePanel'
+import Modal from '../../components/ui/Modal'
 import { ApiError } from '../../lib/api'
 import { useSession } from '../auth/session.context'
 import {
@@ -34,7 +35,6 @@ interface ModelFormState {
 }
 
 interface RouteFormState {
-  codigo: string
   destino: string
   id: number | null
   nombre: string
@@ -50,12 +50,14 @@ const emptyModelForm: ModelFormState = {
 }
 
 const emptyRouteForm: RouteFormState = {
-  codigo: '',
   destino: '',
   id: null,
   nombre: '',
   origen: '',
 }
+
+type ActivationChange =
+  { kind: 'model'; model: ModeloBusSummaryDto } | { kind: 'route'; route: RutaDto }
 
 function getErrorMessage(error: unknown) {
   return error instanceof ApiError ? error.message : 'No se pudo completar la operacion'
@@ -110,6 +112,7 @@ export default function FleetCatalogPage() {
   const [error, setError] = useState<string | null>(null)
   const [operationError, setOperationError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [activationChange, setActivationChange] = useState<ActivationChange | null>(null)
 
   const loadCatalogs = useCallback(async () => {
     setLoading(true)
@@ -191,7 +194,6 @@ export default function FleetCatalogPage() {
 
     try {
       const input = {
-        codigo: routeForm.codigo,
         destino: routeForm.destino,
         nombre: routeForm.nombre,
         origen: routeForm.origen,
@@ -247,6 +249,17 @@ export default function FleetCatalogPage() {
     }
   }
 
+  async function confirmActivationChange() {
+    if (!activationChange) return
+
+    if (activationChange.kind === 'model') {
+      await toggleModel(activationChange.model)
+    } else {
+      await toggleRoute(activationChange.route)
+    }
+    setActivationChange(null)
+  }
+
   if (loading) {
     return (
       <div className="mx-auto max-w-6xl p-4 md:p-6">
@@ -278,9 +291,9 @@ export default function FleetCatalogPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Badge tone="emerald">Catálogos operativos</Badge>
-            <h2 className="mt-3 text-lg font-semibold text-slate-900">Catalogos de operacion</h2>
+            <h2 className="mt-3 text-lg font-semibold text-slate-900">Modelos y configuraciones</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Modelos tecnicos de bus y rutas basicas disponibles para la operacion.
+              Configuraciones técnicas de bus y rutas disponibles para planificar la operación.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -327,7 +340,7 @@ export default function FleetCatalogPage() {
             <div className="mb-4 flex items-center gap-2">
               <PlusCircle size={17} />
               <h3 className="font-semibold text-slate-900">
-                {modelForm.id ? 'Editar modelo de bus' : 'Registrar modelo de bus'}
+                {modelForm.id ? 'Editar configuración de bus' : 'Registrar configuración de bus'}
               </h3>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -367,7 +380,7 @@ export default function FleetCatalogPage() {
                 </Button>
               )}
               <Button loading={saving === 'model'} type="submit">
-                Guardar modelo
+                Guardar configuración
               </Button>
             </div>
           </form>
@@ -379,16 +392,10 @@ export default function FleetCatalogPage() {
             <div className="mb-4 flex items-center gap-2">
               <PlusCircle size={17} />
               <h3 className="font-semibold text-slate-900">
-                {routeForm.id ? 'Editar ruta' : 'Registrar ruta'}
+                {routeForm.id ? 'Editar ruta propia' : 'Registrar ruta propia'}
               </h3>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field
-                label="Codigo de ruta"
-                maxLength={50}
-                onChange={(codigo) => setRouteForm((state) => ({ ...state, codigo }))}
-                value={routeForm.codigo}
-              />
               <Field
                 label="Nombre de ruta"
                 maxLength={120}
@@ -449,8 +456,12 @@ export default function FleetCatalogPage() {
                         </Badge>
                       </div>
                       <p className="mt-1 text-sm text-slate-500">
-                        Version: {model.versionTecnica ?? 'Sin version'} · {model.busesAsociados}{' '}
-                        bus(es)
+                        Versión técnica: {model.versionTecnica ?? 'Sin versión'} ·{' '}
+                        {model.busesAsociados} bus(es) asociados
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Impacto actual: {model.rutinasAsociadas ?? 0} rutina(s) y{' '}
+                        {model.compatibilidadesAsociadas ?? 0} compatibilidad(es) asociada(s).
                       </p>
                     </div>
                     {canEdit && (
@@ -459,7 +470,7 @@ export default function FleetCatalogPage() {
                           Editar
                         </Button>
                         <Button
-                          onClick={() => void toggleModel(model)}
+                          onClick={() => setActivationChange({ kind: 'model', model })}
                           size="sm"
                           variant={model.activo ? 'danger' : 'secondary'}
                         >
@@ -476,7 +487,7 @@ export default function FleetCatalogPage() {
 
         <section className="rounded-lg border border-slate-200 bg-white p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h3 className="font-semibold text-slate-900">Rutas basicas</h3>
+            <h3 className="font-semibold text-slate-900">Rutas de operación</h3>
             <Badge tone="teal">{String(rutas.length)}</Badge>
           </div>
           {rutas.length === 0 ? (
@@ -491,9 +502,7 @@ export default function FleetCatalogPage() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold text-slate-800">
-                          {route.codigo} · {route.nombre}
-                        </p>
+                        <p className="font-semibold text-slate-800">{route.nombre}</p>
                         <Badge tone={route.activa ? 'emerald' : 'slate'}>
                           {route.activa ? 'Activa' : 'Inactiva'}
                         </Badge>
@@ -502,7 +511,10 @@ export default function FleetCatalogPage() {
                         {route.origen} → {route.destino}
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
-                        {route.jornadasAsociadas} jornada(s) asociada(s)
+                        {route.origenDato === 'OFICIAL'
+                          ? `Código oficial AMB: ${route.codigo}`
+                          : `Identificador interno: ${route.codigo}`}{' '}
+                        · {route.jornadasAsociadas} jornada(s) asociada(s)
                       </p>
                       {route.origenDato === 'OFICIAL' && (
                         <div className="mt-2 text-sm text-teal-800">
@@ -517,16 +529,35 @@ export default function FleetCatalogPage() {
                           <p className="text-xs">
                             Referencia documental; vigencia operativa parcialmente confirmada.
                           </p>
+                          <p className="mt-1 text-xs">
+                            Los datos de esta ruta se conservan como fueron publicados. Puede crear
+                            una ruta propia si necesita una variante operativa.
+                          </p>
                         </div>
                       )}
                     </div>
                     {canEdit && (
                       <div className="flex gap-2">
+                        {route.origenDato === 'OFICIAL' && (
+                          <Button
+                            onClick={() =>
+                              setRouteForm({
+                                destino: route.destino,
+                                id: null,
+                                nombre: `${route.nombre} (variante)`,
+                                origen: route.origen,
+                              })
+                            }
+                            size="sm"
+                            variant="outline"
+                          >
+                            Crear variante
+                          </Button>
+                        )}
                         <Button
                           disabled={route.origenDato === 'OFICIAL'}
                           onClick={() =>
                             setRouteForm({
-                              codigo: route.codigo,
                               destino: route.destino,
                               id: route.id,
                               nombre: route.nombre,
@@ -539,7 +570,7 @@ export default function FleetCatalogPage() {
                           Editar
                         </Button>
                         <Button
-                          onClick={() => void toggleRoute(route)}
+                          onClick={() => setActivationChange({ kind: 'route', route })}
                           size="sm"
                           variant={route.activa ? 'danger' : 'secondary'}
                         >
@@ -554,6 +585,58 @@ export default function FleetCatalogPage() {
           )}
         </section>
       </div>
+
+      {activationChange && (
+        <Modal
+          onClose={() => setActivationChange(null)}
+          subtitle={
+            activationChange.kind === 'model'
+              ? `${activationChange.model.marca} ${activationChange.model.nombreModelo}`
+              : activationChange.route.nombre
+          }
+          title={
+            activationChange.kind === 'model'
+              ? activationChange.model.activo
+                ? '¿Dejar de usar esta configuración?'
+                : '¿Volver a usar esta configuración?'
+              : activationChange.route.activa
+                ? '¿Dejar de usar esta ruta?'
+                : '¿Volver a usar esta ruta?'
+          }
+        >
+          <div className="space-y-5 p-5">
+            <p className="text-sm leading-6 text-slate-600">
+              {activationChange.kind === 'model'
+                ? activationChange.model.activo
+                  ? `Los ${activationChange.model.busesAsociados} bus(es) ya asociados conservarán su historial. Esta configuración dejará de estar disponible para nuevos registros.`
+                  : 'La configuración volverá a estar disponible para nuevos registros.'
+                : activationChange.route.activa
+                  ? 'Las jornadas existentes conservarán esta ruta. Dejará de estar disponible para nuevas jornadas.'
+                  : 'La ruta volverá a estar disponible para nuevas jornadas.'}
+            </p>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button onClick={() => setActivationChange(null)} variant="outline">
+                Cancelar
+              </Button>
+              <Button
+                loading={saving !== null}
+                onClick={() => void confirmActivationChange()}
+                variant={
+                  (
+                    activationChange.kind === 'model'
+                      ? activationChange.model.activo
+                      : activationChange.route.activa
+                  )
+                    ? 'danger'
+                    : 'secondary'
+                }
+              >
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

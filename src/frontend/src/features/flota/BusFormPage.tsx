@@ -17,7 +17,6 @@ import type {
 
 interface FormState {
   anio: string
-  codigoInterno: string
   estadoOperativo: BusStatus
   kilometrajeActual: string
   marca: string
@@ -33,7 +32,6 @@ const currentYear = new Date().getFullYear()
 function emptyForm(): FormState {
   return {
     anio: String(currentYear),
-    codigoInterno: '',
     estadoOperativo: 'OPERATIVO',
     kilometrajeActual: '0',
     marca: '',
@@ -63,7 +61,6 @@ function getErrorMessage(error: unknown) {
 function formFromBus(bus: BusDetailDto): FormState {
   return {
     anio: String(bus.anio),
-    codigoInterno: bus.codigoInterno,
     estadoOperativo: bus.estadoOperativo,
     kilometrajeActual: String(bus.kilometrajeActual),
     marca: bus.marca,
@@ -144,12 +141,11 @@ export default function BusFormPage() {
 
   const normalized = useMemo(
     () => ({
-      codigoInterno: normalizeIdentifier(form.codigoInterno),
       marca: normalizeText(form.marca),
       modelo: normalizeText(form.modelo),
       placa: normalizeIdentifier(form.placa),
     }),
-    [form.codigoInterno, form.marca, form.modelo, form.placa],
+    [form.marca, form.modelo, form.placa],
   )
 
   function updateField(field: keyof FormState, value: string) {
@@ -168,10 +164,6 @@ export default function BusFormPage() {
     const errors: Record<string, string> = {}
     const anio = Number(form.anio)
     const kilometrajeActual = Number(form.kilometrajeActual)
-
-    if (!normalized.codigoInterno) {
-      errors.codigoInterno = 'El codigo interno es obligatorio.'
-    }
 
     if (!normalized.placa) {
       errors.placa = 'La placa es obligatoria.'
@@ -213,7 +205,6 @@ export default function BusFormPage() {
 
     const baseInput = {
       anio: Number(form.anio),
-      codigoInterno: normalized.codigoInterno,
       marca: normalized.marca,
       modelo: normalized.modelo,
       ...(form.modeloBusId
@@ -284,7 +275,7 @@ export default function BusFormPage() {
             <p className="mt-1 text-sm text-slate-500">
               {isEditing
                 ? 'Kilometraje y estado se actualizan desde el detalle trazado.'
-                : 'Los identificadores se normalizan antes de guardar.'}
+                : 'El código interno se genera automáticamente al registrar el vehículo.'}
             </p>
           </div>
           <Link
@@ -315,9 +306,9 @@ export default function BusFormPage() {
             </legend>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
-                Modelo tecnico normalizado
+                Configuración técnica del vehículo
                 <select
-                  aria-label="Modelo tecnico normalizado"
+                  aria-label="Configuración técnica del vehículo"
                   className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => updateField('modeloBusId', event.target.value)}
                   value={form.modeloBusId}
@@ -336,29 +327,21 @@ export default function BusFormPage() {
                   ))}
                 </select>
                 <span className="mt-1 block text-xs text-slate-400">
-                  La marca y el modelo legados se conservan como fueron registrados.
+                  Permite aplicar rutinas de mantenimiento y repuestos compatibles. La marca y el
+                  modelo legados se conservan como fueron registrados.
                 </span>
+                <span className="mt-1 block text-xs text-slate-400">
+                  {modelosBus.length} configuración(es) activa(s) disponible(s).
+                </span>
+                <Link
+                  className="mt-1 inline-block text-xs font-semibold text-emerald-700 hover:underline"
+                  to="/flota/catalogos"
+                >
+                  Administrar modelos y configuraciones
+                </Link>
                 {modelsError && (
                   <span className="mt-1 block text-xs text-amber-700">
                     No fue posible cargar los modelos: {modelsError}
-                  </span>
-                )}
-              </label>
-
-              <label className="block text-sm font-medium text-slate-700">
-                Codigo interno
-                <input
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  onChange={(event) => updateField('codigoInterno', event.target.value)}
-                  maxLength={50}
-                  value={form.codigoInterno}
-                />
-                <span className="mt-1 block text-xs text-slate-400">
-                  Se guardara como {normalized.codigoInterno || '...'}
-                </span>
-                {fieldErrors.codigoInterno && (
-                  <span className="mt-1 block text-xs text-red-600">
-                    {fieldErrors.codigoInterno}
                   </span>
                 )}
               </label>

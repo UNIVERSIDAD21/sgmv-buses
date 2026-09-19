@@ -23,12 +23,18 @@ export interface ActiveAssignmentDto {
 }
 
 export interface MileageReadingDto {
+  fechaLectura: string | null
   fechaRegistro: string
   id: number
+  intervencionId?: number | null
+  jornadaOperativaId?: number | null
   kilometrajeAnterior: number
   kilometrajeNuevo: number
   motivo: string | null
+  ordenTrabajoId: number | null
+  ordenTrabajoCodigo?: string | null
   registradoPor: ResponsibleDto
+  tipo: string | null
 }
 
 export interface StateHistoryDto {
@@ -50,6 +56,8 @@ export interface BusModelReferenceDto {
 
 export interface ModeloBusSummaryDto extends BusModelReferenceDto {
   busesAsociados: number
+  compatibilidadesAsociadas?: number
+  rutinasAsociadas?: number
   updatedAt: string
 }
 
@@ -95,6 +103,28 @@ export interface BusDetailDto extends BusSummaryDto {
   asignacionesHistorial: ActiveAssignmentDto[]
   estadosHistorial: StateHistoryDto[]
   lecturasKilometraje: MileageReadingDto[]
+  mantenimiento: {
+    ordenesTecnicasActivas: number
+    requiereAtencion: {
+      actividad: string
+      criterio: string
+      estado: 'PROXIMO' | 'VENCIDO'
+      fechaProgramada: string | null
+      kilometrajeObjetivo: number | null
+    } | null
+    proximoProgramado?: {
+      actividad: string
+      criterio: string
+      fechaProgramada: string | null
+      kilometrajeObjetivo: number | null
+    } | null
+    ultimoCerrado: {
+      codigo: string
+      fechaCierre: string
+      kilometrajeCierre: number | null
+      tipo: string
+    } | null
+  }
 }
 
 export interface DriverOptionDto extends ResponsibleDto {

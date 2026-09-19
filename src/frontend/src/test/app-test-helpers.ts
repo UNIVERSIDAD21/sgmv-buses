@@ -125,19 +125,38 @@ export const fleetBus = {
   ],
   id: 2006,
   kilometrajeActual: 11000,
+  mantenimiento: {
+    ordenesTecnicasActivas: 0,
+    requiereAtencion: {
+      actividad: 'Cambio de aceite',
+      criterio: 'KILOMETRAJE',
+      estado: 'PROXIMO',
+      fechaProgramada: null,
+      kilometrajeObjetivo: 11500,
+    },
+    ultimoCerrado: {
+      codigo: 'OT-001',
+      fechaCierre: '2026-08-20T11:00:00.000Z',
+      kilometrajeCierre: 10500,
+      tipo: 'PREVENTIVA',
+    },
+  },
   lecturasKilometraje: [
     {
+      fechaLectura: '2026-08-27T11:00:00.000Z',
       fechaRegistro: '2026-08-27T11:00:00.000Z',
       id: 2032,
       kilometrajeAnterior: 10000,
       kilometrajeNuevo: 11000,
       motivo: 'Lectura de prueba',
+      ordenTrabajoId: null,
       registradoPor: {
         email: 'admin@sgmv.local',
         id: 2002,
         nombre: 'Administrador Uno',
         telefono: null,
       },
+      tipo: 'REVISION_TECNICA',
     },
   ],
   marca: 'Mercedes',

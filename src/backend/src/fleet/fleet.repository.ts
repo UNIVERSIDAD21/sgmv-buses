@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import { type EstadoBus, Prisma } from '@prisma/client'
 
 import { evaluatePreventiveAlertsForBus } from '../alerts/alert.service.js'
@@ -65,6 +67,11 @@ export const busDetailInclude = {
   },
   lecturasKilometraje: {
     include: {
+      ordenTrabajo: {
+        select: {
+          codigo: true,
+        },
+      },
       registradoPor: {
         select: responsibleSelect,
       },
@@ -74,6 +81,40 @@ export const busDetailInclude = {
     },
     take: 20,
   },
+  ordenesTrabajo: {
+    orderBy: {
+      createdAt: 'desc',
+    },
+    select: {
+      codigo: true,
+      createdAt: true,
+      estado: true,
+      fechaCierre: true,
+      id: true,
+      tipo: true,
+    },
+    take: 20,
+  },
+  programacionesMantenimiento: {
+    select: {
+      actividad: true,
+      activa: true,
+      criterio: true,
+      fechaProgramada: true,
+      id: true,
+      kilometrajeObjetivo: true,
+      planMantenimientoPreventivo: {
+        select: {
+          anticipacionDias: true,
+          anticipacionKm: true,
+        },
+      },
+    },
+    take: 20,
+    where: {
+      activa: true,
+    },
+  },
   modeloBus: {
     select: modeloBusSelect,
   },
@@ -81,6 +122,10 @@ export const busDetailInclude = {
 
 export type BusDetailRecord = Prisma.BusGetPayload<{ include: typeof busDetailInclude }>
 export type BusSummaryRecord = Prisma.BusGetPayload<{ include: typeof busSummaryInclude }>
+
+function generatedBusCode(busId: number) {
+  return `BUS-${String(busId).padStart(6, '0')}`
+}
 
 export class FleetRepository {
   countActiveAssignments() {
@@ -117,15 +162,30 @@ export class FleetRepository {
   }
 
   createBusWithInitialState(
-    data: Prisma.BusCreateInput,
+    data: Omit<Prisma.BusCreateInput, 'codigoInterno'>,
     actorId: number,
     motivoEstado: string | null,
   ) {
     return prisma.$transaction(
       async (tx) => {
         const bus = await tx.bus.create({
-          data,
-          include: busDetailInclude,
+          data: {
+            ...data,
+            codigoInterno: `PENDIENTE-${randomUUID().toUpperCase()}`,
+          },
+        })
+        const preferredCode = generatedBusCode(bus.id)
+        const existingBus = await tx.bus.findUnique({
+          select: { id: true },
+          where: { codigoInterno: preferredCode },
+        })
+        const codigoInterno = existingBus
+          ? `${preferredCode}-${randomUUID().slice(0, 6).toUpperCase()}`
+          : preferredCode
+
+        await tx.bus.update({
+          data: { codigoInterno },
+          where: { id: bus.id },
         })
 
         await tx.busEstadoHistorial.create({
@@ -270,6 +330,11 @@ export class FleetRepository {
     return prisma.lecturaKilometraje.findMany({
       where: { busId },
       include: {
+        ordenTrabajo: {
+          select: {
+            codigo: true,
+          },
+        },
         registradoPor: {
           select: responsibleSelect,
         },
@@ -350,6 +415,11 @@ export class FleetRepository {
             registradoPorId: actorId,
           },
           include: {
+            ordenTrabajo: {
+              select: {
+                codigo: true,
+              },
+            },
             registradoPor: {
               select: responsibleSelect,
             },

@@ -20,7 +20,6 @@ interface ListBusesParams {
 
 export interface BusFormInput {
   anio: number
-  codigoInterno: string
   estadoOperativo?: BusStatus
   kilometrajeActual?: number
   marca: string
@@ -38,7 +37,6 @@ export interface ModeloBusFormInput {
 }
 
 export interface RutaFormInput {
-  codigo: string
   destino: string
   nombre: string
   origen: string

@@ -30,7 +30,7 @@ describe('P3 fleet catalogs frontend', () => {
     fireEvent.change(screen.getByLabelText(/Nombre del modelo/i), {
       target: { value: 'OF-1722' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /Guardar modelo/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Guardar configuración/i }))
     expect(await screen.findByText(/Modelo de bus actualizado/i)).toBeInTheDocument()
 
     const routeArticle = screen.getByText(/RUTA-CENTRO-NORTE/i).closest('article')!
@@ -56,7 +56,7 @@ describe('P3 fleet catalogs frontend', () => {
     render(<App />)
 
     expect(await screen.findByText(/Mercedes-Benz OF-1721/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Guardar modelo/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Guardar configuración/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Inactivar/i })).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/Mostrar inactivos/i)).not.toBeInTheDocument()
   })

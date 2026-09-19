@@ -15,16 +15,14 @@ const prisma = new PrismaClient()
 afterAll(() => prisma.$disconnect())
 
 describe('C-01: mapeado semántico sin pérdida de información', () => {
-  it('acepta el límite físico y rechaza antes de persistir códigos y nombres excesivos', () => {
-    const route = { codigo: 'R'.repeat(50), nombre: 'N'.repeat(120), origen: 'A', destino: 'B' }
+  it('acepta el límite físico y reserva los códigos internos para la generación automática', () => {
+    const route = { nombre: 'N'.repeat(120), origen: 'A', destino: 'B' }
     expect(createRutaSchema.safeParse(route).success).toBe(true)
-    expect(createRutaSchema.safeParse({ ...route, codigo: 'R'.repeat(51) }).success).toBe(false)
-    expect(createRutaSchema.safeParse({ ...route, codigo: 'ß'.repeat(26) }).success).toBe(false)
+    expect(createRutaSchema.safeParse({ ...route, codigo: 'R'.repeat(50) }).success).toBe(false)
     for (const key of ['nombre', 'origen', 'destino']) {
       expect(createRutaSchema.safeParse({ ...route, [key]: 'N'.repeat(121) }).success).toBe(false)
     }
     const bus = {
-      codigoInterno: 'B'.repeat(50),
       placa: 'P'.repeat(15),
       marca: 'SGMV-DEMO',
       modelo: 'A',
@@ -32,7 +30,7 @@ describe('C-01: mapeado semántico sin pérdida de información', () => {
       kilometrajeActual: 0,
     }
     expect(createBusSchema.safeParse(bus).success).toBe(true)
-    expect(createBusSchema.safeParse({ ...bus, codigoInterno: 'B'.repeat(51) }).success).toBe(false)
+    expect(createBusSchema.safeParse({ ...bus, codigoInterno: 'B'.repeat(50) }).success).toBe(false)
     expect(createBusSchema.safeParse({ ...bus, placa: 'P'.repeat(16) }).success).toBe(false)
     expect(createBusSchema.safeParse({ ...bus, placa: 'ß'.repeat(8) }).success).toBe(false)
   })
@@ -74,7 +72,6 @@ describe('C-01: mapeado semántico sin pérdida de información', () => {
     expect(createModeloBusSchema.safeParse({ marca, nombreModelo: modelo }).success).toBe(true)
     expect(
       createBusSchema.safeParse({
-        codigoInterno: 'SIM-LONG',
         placa: 'SIM123',
         marca,
         modelo,
