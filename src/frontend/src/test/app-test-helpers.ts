@@ -1989,7 +1989,12 @@ export function noveltyHandler(
 
 export function preventiveHandler(
   role: RoleCode = 'ADMINISTRADOR',
-  options: Partial<{ empty: boolean; failList: boolean; orderAlreadyExists: boolean }> = {},
+  options: Partial<{
+    empty: boolean
+    failList: boolean
+    orderAlreadyExists: boolean
+    planAlreadyExists: boolean
+  }> = {},
 ) {
   let generated = false
   let updated = false
@@ -2132,7 +2137,7 @@ export function preventiveHandler(
     if (path === '/mantenimiento-preventivo/programaciones' && init?.method === 'POST') {
       const body = JSON.parse(String(init.body)) as { planId?: number }
       return body.planId
-        ? ok({ programacion: preventiveVencida, yaExistia: false })
+        ? ok({ programacion: preventiveOne, yaExistia: Boolean(options.planAlreadyExists) })
         : ok({ programacion: preventiveVigente })
     }
 

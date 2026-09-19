@@ -347,6 +347,23 @@ describe('RF-03 preventive maintenance frontend', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows the target and opens an existing scheduled maintenance without duplication', async () => {
+    window.history.pushState({}, '', '/mantenimiento-preventivo')
+    mockApi(preventiveHandler('ADMINISTRADOR', { planAlreadyExists: true }))
+    render(<App />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Rutinas de mantenimiento/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Asignar a buses$/i }))
+    const dialog = await screen.findByRole('dialog', { name: /Asignar rutina a un bus/i })
+    expect(within(dialog).getByText(/Objetivo que se programara/i)).toBeInTheDocument()
+    expect(within(dialog).getByText(/Buses no elegibles \(0\)/i)).toBeInTheDocument()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Asignar rutina$/i }))
+    expect(await screen.findByText(/Esta rutina ya estaba asignada a ese bus/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Abrir mantenimiento programado/i }))
+    expect(await screen.findByRole('heading', { name: /Detalle preventivo/i })).toBeInTheDocument()
+  })
+
   it('shows only the operational restriction projection to dispatchers', async () => {
     window.history.pushState({}, '', '/mantenimiento-preventivo')
     mockApi(preventiveHandler('DESPACHADOR'))

@@ -5,6 +5,7 @@ import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
 import StatePanel from '../../components/ui/StatePanel'
 import { PREVENTIVE_CRITERION_LABELS } from '../../domain/labels'
+import { formatNumber } from '../../lib/format'
 import { ApiError } from '../../lib/api'
 import { listBuses, listModelosBus } from '../flota/fleet.api'
 import type { BusSummaryDto, ModeloBusSummaryDto } from '../flota/fleet.types'
@@ -21,6 +22,7 @@ import type {
   PreventiveCriterion,
   PreventivePlanDetailDto,
   PreventivePlanDto,
+  PreventiveScheduleDto,
 } from './preventive.types'
 
 const criteria: PreventiveCriterion[] = ['FECHA', 'KILOMETRAJE', 'FECHA_KILOMETRAJE']
@@ -340,14 +342,33 @@ function ApplyPlanDialog({
   plan: PreventivePlanDto
   saving: boolean
 }) {
+  const belongsToPlan = (bus: BusSummaryDto) =>
+    plan.destino.tipo === 'BUS'
+      ? bus.id === plan.destino.busId
+      : bus.modeloBus?.id === plan.destino.modeloBusId
   const eligibleBuses = buses.filter(
-    (bus) =>
-      bus.estadoOperativo !== 'INACTIVO' &&
-      (plan.destino.tipo === 'BUS'
-        ? bus.id === plan.destino.busId
-        : bus.modeloBus?.id === plan.destino.modeloBusId),
+    (bus) => bus.estadoOperativo !== 'INACTIVO' && belongsToPlan(bus),
   )
+  const ineligibleBuses = buses.filter((bus) => !eligibleBuses.includes(bus))
   const [busId, setBusId] = useState(String(eligibleBuses[0]?.id ?? ''))
+  const [openedAt] = useState(() => new Date())
+  const selectedBus = eligibleBuses.find((bus) => bus.id === Number(busId))
+  const estimatedDate =
+    plan.intervaloDias === null
+      ? null
+      : new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' }).format(
+          new Date(openedAt.getTime() + plan.intervaloDias * 24 * 60 * 60 * 1000),
+        )
+  const estimatedMileage =
+    selectedBus && plan.intervaloKm !== null
+      ? `${formatNumber(selectedBus.kilometrajeActual + plan.intervaloKm)} km`
+      : null
+
+  function ineligibleReason(bus: BusSummaryDto) {
+    if (bus.estadoOperativo === 'INACTIVO') return 'El bus esta inactivo.'
+    if (plan.destino.tipo === 'BUS') return 'Esta rutina es exclusiva de otro bus.'
+    return 'Su modelo no coincide con el alcance de esta rutina.'
+  }
 
   return (
     <Modal onClose={onCancel} subtitle={plan.claveTarea} title="Asignar rutina a un bus">
@@ -371,6 +392,33 @@ function ApplyPlanDialog({
             ))}
           </select>
         </label>
+        {selectedBus && (
+          <section className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+            <h4 className="font-semibold text-slate-900">Objetivo que se programara</h4>
+            <p className="mt-1 text-slate-600">
+              {estimatedDate ? `Fecha: ${estimatedDate}.` : 'Sin objetivo por fecha.'}{' '}
+              {estimatedMileage
+                ? `Kilometraje: ${estimatedMileage}.`
+                : 'Sin objetivo por kilometraje.'}
+            </p>
+          </section>
+        )}
+        <details className="mt-4 rounded-lg border border-slate-200 p-3 text-sm">
+          <summary className="cursor-pointer font-medium text-slate-800">
+            Buses no elegibles ({ineligibleBuses.length})
+          </summary>
+          {ineligibleBuses.length === 0 ? (
+            <p className="mt-2 text-slate-500">Todos los buses cargados pueden usar esta rutina.</p>
+          ) : (
+            <ul className="mt-2 space-y-2 text-slate-600">
+              {ineligibleBuses.map((bus) => (
+                <li key={bus.id}>
+                  <b>{bus.codigoInterno}</b>: {ineligibleReason(bus)}
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
         <div className="mt-5 flex justify-end gap-2">
           <Button onClick={onCancel} type="button" variant="outline">
             Cancelar
@@ -472,7 +520,11 @@ function DeactivatePlanDialog({
   )
 }
 
-export default function PreventivePlansPanel() {
+export default function PreventivePlansPanel({
+  onOpenSchedule,
+}: {
+  onOpenSchedule: (programacionId: number) => void
+}) {
   const [plans, setPlans] = useState<PreventivePlanDto[] | null>(null)
   const [buses, setBuses] = useState<BusSummaryDto[]>([])
   const [models, setModels] = useState<ModeloBusSummaryDto[]>([])
@@ -485,6 +537,7 @@ export default function PreventivePlansPanel() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [existingSchedule, setExistingSchedule] = useState<PreventiveScheduleDto | null>(null)
   const load = useCallback(async () => {
     setError(null)
     try {
@@ -507,6 +560,7 @@ export default function PreventivePlansPanel() {
   async function save(input: PreventivePlanInput) {
     setSaving(true)
     setError(null)
+    setExistingSchedule(null)
     try {
       if (editing) await createPreventivePlanVersion(editing.id, input)
       else await createPreventivePlan(input)
@@ -524,6 +578,7 @@ export default function PreventivePlansPanel() {
   }
   async function deactivate(plan: PreventivePlanDto) {
     setSaving(true)
+    setExistingSchedule(null)
     try {
       await deactivatePreventivePlan(plan.id)
       setFeedback(`La rutina ${plan.claveTarea} dejó de usarse para nuevas asignaciones.`)
@@ -539,6 +594,7 @@ export default function PreventivePlansPanel() {
     setError(null)
     try {
       const result = await applyPreventivePlan({ busId, planId: plan.id })
+      setExistingSchedule(result.yaExistia ? result.programacion : null)
       setFeedback(
         result.yaExistia
           ? `Esta rutina ya estaba asignada a ese bus.`
@@ -606,7 +662,14 @@ export default function PreventivePlansPanel() {
         </div>
       </div>
       {feedback && (
-        <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{feedback}</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+          <p>{feedback}</p>
+          {existingSchedule && (
+            <Button onClick={() => onOpenSchedule(existingSchedule.id)} size="sm" variant="outline">
+              Abrir mantenimiento programado
+            </Button>
+          )}
+        </div>
       )}
       {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {plans?.length === 0 ? (
