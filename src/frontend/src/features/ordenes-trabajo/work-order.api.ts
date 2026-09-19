@@ -31,7 +31,6 @@ export interface CreateManualWorkOrderInput {
   busId: number
   descripcion: string
   prioridad: OrderPriority
-  tipo: WorkOrderType
 }
 
 export interface AssignWorkOrderInput {

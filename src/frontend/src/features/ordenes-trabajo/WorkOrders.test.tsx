@@ -91,7 +91,14 @@ describe('RF-04 work order frontend', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: /^Crear orden$/i }))
-    const createDialog = await screen.findByRole('dialog', { name: /Crear orden manual/i })
+    const createDialog = await screen.findByRole('dialog', {
+      name: /Nueva orden correctiva directa/i,
+    })
+    expect(
+      within(createDialog).getByText(
+        /falla detectada fuera de una novedad o mantenimiento programado/i,
+      ),
+    ).toBeInTheDocument()
 
     fireEvent.click(within(createDialog).getByRole('button', { name: /^Crear orden$/i }))
     expect(await screen.findByText(/Seleccione un bus/i)).toBeInTheDocument()
@@ -116,6 +123,7 @@ describe('RF-04 work order frontend', () => {
     expect(createCalls).toHaveLength(1)
     expect(String(createCalls[0][1]?.body)).not.toContain('estado')
     expect(String(createCalls[0][1]?.body)).not.toContain('novedadId')
+    expect(String(createCalls[0][1]?.body)).not.toContain('tipo')
 
     fireEvent.click(await screen.findByRole('button', { name: /^Asignar$/i }))
     const assignDialog = await screen.findByRole('dialog', { name: /Asignar mecanico/i })

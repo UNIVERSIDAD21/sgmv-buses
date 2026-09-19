@@ -650,7 +650,6 @@ describe('RF-04 Work order tracking API', () => {
           busId: bus.id,
           descripcion: 'Orden correctiva directa creada por el Administrador',
           prioridad: 'ALTA',
-          tipo: 'CORRECTIVA',
         })
         .expect(201)
       const orderId = createdOrder.body.data.orden.id as string
@@ -667,7 +666,7 @@ describe('RF-04 Work order tracking API', () => {
         .post('/ordenes-trabajo')
         .send({
           busId: bus.id,
-          descripcion: 'Orden preventiva manual no soportada por el modelo actual',
+          descripcion: 'Intento de fabricar una orden preventiva desde el formulario directo',
           tipo: 'PREVENTIVA',
         })
         .expect(400)

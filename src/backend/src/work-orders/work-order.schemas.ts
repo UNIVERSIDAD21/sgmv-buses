@@ -82,7 +82,6 @@ export const createManualWorkOrderSchema = z
     busId: entityIdSchema,
     descripcion: trimmedText(10, 2000),
     prioridad: z.enum(workOrderPriorityValues).default('MEDIA'),
-    tipo: z.enum(workOrderTypeValues).default('CORRECTIVA'),
   })
   .strict()
 

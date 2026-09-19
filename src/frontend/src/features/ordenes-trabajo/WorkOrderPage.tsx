@@ -312,13 +312,24 @@ function ManualOrderDialog({
       busId: Number(busId),
       descripcion: normalizedDescription,
       prioridad,
-      tipo: 'CORRECTIVA',
     })
   }
 
   return (
-    <ModalFrame onClose={onClose} title="Crear orden manual">
+    <ModalFrame onClose={onClose} title="Nueva orden correctiva directa">
       <form className="space-y-4 p-5" onSubmit={handleSubmit}>
+        <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-950">
+          Use este formulario para una falla detectada fuera de una novedad o mantenimiento
+          programado. Si parte de una novedad, cree la orden desde{' '}
+          <a className="font-semibold underline" href="/novedades">
+            Novedades
+          </a>
+          . Si corresponde a una rutina, use{' '}
+          <a className="font-semibold underline" href="/mantenimiento-preventivo">
+            Mantenimiento preventivo
+          </a>
+          .
+        </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-sm font-medium text-slate-700">
             Bus
@@ -367,17 +378,6 @@ function ManualOrderDialog({
             </span>
           </div>
         )}
-
-        <label className="block text-sm font-medium text-slate-700">
-          Tipo
-          <select
-            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600"
-            disabled
-            value="CORRECTIVA"
-          >
-            <option value="CORRECTIVA">Correctiva directa</option>
-          </select>
-        </label>
 
         <label className="block text-sm font-medium text-slate-700">
           Descripcion

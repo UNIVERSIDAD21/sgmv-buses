@@ -709,14 +709,6 @@ export class WorkOrderService {
   async createManual(input: CreateManualWorkOrderInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
-    if (input.tipo === 'PREVENTIVA') {
-      throw new AppError(
-        400,
-        'MANUAL_PREVENTIVE_NOT_SUPPORTED',
-        'La orden preventiva manual no esta soportada por el modelo actual; debe originarse desde RF-03',
-      )
-    }
-
     try {
       const result = await this.workOrderRepository.createManualOrder(actor.id, {
         busId: input.busId,
