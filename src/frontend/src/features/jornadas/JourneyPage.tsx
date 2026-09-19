@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import Badge from '../../components/ui/Badge'
 import JourneyProjection from './JourneyProjection'
 import Button from '../../components/ui/Button'
+import ContextHint from '../../components/ui/ContextHint'
 import Modal from '../../components/ui/Modal'
 import PageHeader from '../../components/ui/PageHeader'
 import StatePanel from '../../components/ui/StatePanel'
@@ -510,7 +511,7 @@ function ActionDialog({
         await onCompleted('Jornada cancelada sin borrar su historial')
       } else {
         if (!busId || !conductorId || new Date(inicioProgramado) >= new Date(finProgramado)) {
-          setError('La sucesora requiere bus, conductor y un horario valido.')
+          setError('Seleccione bus, conductor y un horario válido para el nuevo tramo.')
           return
         }
         await reassignJourney(journey.id, {
@@ -523,7 +524,7 @@ function ActionDialog({
           motivo: motivo.trim(),
           rutaId: rutaId ? Number(rutaId) : null,
         })
-        await onCompleted('Cambio registrado mediante una jornada sucesora')
+        await onCompleted('Cambio de bus o conductor registrado sin perder el historial')
       }
       onClose()
     } catch (submitError) {
@@ -536,7 +537,7 @@ function ActionDialog({
   const title = {
     cancel: 'Cancelar jornada',
     finish: 'Finalizar jornada',
-    reassign: 'Crear jornada sucesora',
+    reassign: 'Cambiar bus o conductor',
     start: 'Iniciar jornada',
   }[action]
 
@@ -584,14 +585,20 @@ function ActionDialog({
         )}
         {action === 'reassign' && options && (
           <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <ContextHint title="¿Para qué sirve este cambio?">
+                Use esta opción cuando la jornada debe continuar con otro bus o conductor. La
+                jornada original conserva su historial y el sistema crea un nuevo tramo vinculado.
+              </ContextHint>
+            </div>
             {journey.proyeccionDemo && (
               <p className="text-sm text-slate-600 sm:col-span-2">
-                La proyección de esta jornada queda en su historial. La sucesora se crea sin copiar
-                ciclos ni kilómetros simulados, porque corresponde a un tramo nuevo.
+                La proyección académica queda en el historial del tramo original. El nuevo tramo no
+                copia kilómetros simulados porque debe calcularse por separado.
               </p>
             )}
             <label className="text-sm font-medium text-slate-700">
-              Bus de la sucesora
+              Nuevo bus
               <select
                 className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
                 onChange={(event) => setBusId(event.target.value)}
@@ -605,7 +612,7 @@ function ActionDialog({
               </select>
             </label>
             <label className="text-sm font-medium text-slate-700">
-              Conductor de la sucesora
+              Nuevo conductor
               <select
                 className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
                 onChange={(event) => setConductorId(event.target.value)}
@@ -634,7 +641,7 @@ function ActionDialog({
               </select>
             </label>
             <label className="text-sm font-medium text-slate-700">
-              Inicio de la sucesora
+              Inicio del nuevo tramo
               <input
                 className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
                 onChange={(event) => setInicioProgramado(event.target.value)}
@@ -643,7 +650,7 @@ function ActionDialog({
               />
             </label>
             <label className="text-sm font-medium text-slate-700">
-              Fin de la sucesora
+              Fin del nuevo tramo
               <input
                 className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
                 onChange={(event) => setFinProgramado(event.target.value)}
