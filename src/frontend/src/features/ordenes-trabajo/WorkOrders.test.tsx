@@ -43,6 +43,19 @@ describe('RF-04 work order frontend', () => {
     expect(screen.queryByText(/120\.000/)).not.toBeInTheDocument()
   })
 
+  it('opens the exact authorized work order received through a deep link', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo?detalle=2045')
+    const fetchMock = mockApi(workOrderHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Detalle de orden/i)).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/ordenes-trabajo/2045'),
+      expect.any(Object),
+    )
+  })
+
   it('loads administrative summary, filters, manual creation, assignment and reassignment', async () => {
     window.history.pushState({}, '', '/ordenes-trabajo')
     const fetchMock = mockApi(workOrderHandler('ADMINISTRADOR'))

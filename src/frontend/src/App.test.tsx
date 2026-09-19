@@ -2,7 +2,15 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { testCsrfToken, userForRole, ok, apiError, getPath, mockApi } from './test/app-test-helpers'
+import {
+  testCsrfToken,
+  userForRole,
+  ok,
+  apiError,
+  fleetHandler,
+  getPath,
+  mockApi,
+} from './test/app-test-helpers'
 import App from './App'
 
 beforeEach(() => {
@@ -14,6 +22,26 @@ afterEach(() => {
 })
 
 describe('App authentication and role navigation', () => {
+  it('conecta cada indicador de flota con el filtro que representa', async () => {
+    window.history.pushState({}, '', '/inicio')
+    mockApi(fleetHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect(await screen.findByRole('link', { name: /Total de buses/i })).toHaveAttribute(
+      'href',
+      '/flota',
+    )
+    expect(screen.getByRole('link', { name: /Buses operativos/i })).toHaveAttribute(
+      'href',
+      '/flota?estado=OPERATIVO',
+    )
+    expect(screen.getByRole('link', { name: /Buses en mantenimiento/i })).toHaveAttribute(
+      'href',
+      '/flota?estado=EN_MANTENIMIENTO',
+    )
+  })
+
   it('shows a loading state while the session is being recovered', async () => {
     window.history.pushState({}, '', '/inicio')
     const admin = userForRole('ADMINISTRADOR')

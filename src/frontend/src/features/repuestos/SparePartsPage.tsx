@@ -14,6 +14,11 @@ import {
   Wrench,
 } from '../../components/ui/Icons'
 import StatePanel from '../../components/ui/StatePanel'
+import KeyValueFields, {
+  keyValueEntriesToRecord,
+  recordToKeyValueEntries,
+  type KeyValueEntry,
+} from '../../components/ui/KeyValueFields'
 import { ApiError } from '../../lib/api'
 import { formatCurrency, formatNumber } from '../../lib/format'
 import { useSession } from '../auth/session.context'
@@ -113,18 +118,6 @@ function getErrorMessage(error: unknown) {
 
 function normalizeText(value: string) {
   return value.trim().replace(/\s+/g, ' ')
-}
-
-function parseJsonObjectInput(value: string) {
-  if (!value.trim()) return undefined
-  try {
-    const parsed: unknown = JSON.parse(value)
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : null
-  } catch {
-    return null
-  }
 }
 
 function idempotencyKey() {
@@ -500,8 +493,8 @@ function CreateForm({
   const [categoria, setCategoria] = useState('')
   const [codigo, setCodigo] = useState('')
   const [costoUnitario, setCostoUnitario] = useState('0')
-  const [dimensiones, setDimensiones] = useState('')
-  const [especificaciones, setEspecificaciones] = useState('')
+  const [dimensiones, setDimensiones] = useState<KeyValueEntry[]>([])
+  const [especificaciones, setEspecificaciones] = useState<KeyValueEntry[]>([])
   const [fabricante, setFabricante] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
   const [motivoStockInicial, setMotivoStockInicial] = useState('')
@@ -529,10 +522,12 @@ function CreateForm({
       return
     }
 
-    const parsedDimensions = parseJsonObjectInput(dimensiones)
-    const parsedSpecifications = parseJsonObjectInput(especificaciones)
-    if (parsedDimensions === null || parsedSpecifications === null) {
-      setLocalError('Dimensiones y especificaciones deben ser JSON objeto valido.')
+    const dimensionsResult = keyValueEntriesToRecord(dimensiones)
+    const specificationsResult = keyValueEntriesToRecord(especificaciones)
+    if (dimensionsResult.error || specificationsResult.error) {
+      setLocalError(
+        dimensionsResult.error ?? specificationsResult.error ?? 'Revise los datos técnicos.',
+      )
       return
     }
 
@@ -546,8 +541,8 @@ function CreateForm({
           ? normalizeText(motivoStockInicial) || 'Existencia inicial autorizada'
           : undefined,
       nombre: normalizeText(nombre),
-      ...(parsedDimensions ? { dimensiones: parsedDimensions } : {}),
-      ...(parsedSpecifications ? { especificaciones: parsedSpecifications } : {}),
+      ...(dimensionsResult.value ? { dimensiones: dimensionsResult.value } : {}),
+      ...(specificationsResult.value ? { especificaciones: specificationsResult.value } : {}),
       ...(normalizeText(fabricante) ? { fabricante: normalizeText(fabricante) } : {}),
       ...(normalizeText(numeroParte) ? { numeroParte: normalizeText(numeroParte) } : {}),
       stockInicial: initial,
@@ -568,24 +563,18 @@ function CreateForm({
       <TextInput label="Categoria" onChange={setCategoria} value={categoria} />
       <TextInput label="Fabricante" onChange={setFabricante} value={fabricante} />
       <TextInput label="Numero de parte" onChange={setNumeroParte} value={numeroParte} />
-      <label className="block text-sm font-medium text-slate-700">
-        Especificaciones (JSON)
-        <textarea
-          className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-          onChange={(event) => setEspecificaciones(event.target.value)}
-          placeholder='{"voltaje":"24V"}'
-          value={especificaciones}
-        />
-      </label>
-      <label className="block text-sm font-medium text-slate-700">
-        Dimensiones (JSON)
-        <textarea
-          className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-          onChange={(event) => setDimensiones(event.target.value)}
-          placeholder='{"largoMm":100}'
-          value={dimensiones}
-        />
-      </label>
+      <KeyValueFields
+        entries={especificaciones}
+        help="Agregue únicamente los datos relevantes, por ejemplo voltaje, viscosidad o material."
+        label="Especificaciones técnicas"
+        onChange={setEspecificaciones}
+      />
+      <KeyValueFields
+        entries={dimensiones}
+        help="Agregue medidas solo cuando ayuden a identificar el repuesto, por ejemplo largo o diámetro."
+        label="Dimensiones"
+        onChange={setDimensiones}
+      />
       <TextInput
         label="Unidad de medida"
         onChange={setUnidadMedida}
@@ -633,11 +622,9 @@ function EditForm({
   const [categoria, setCategoria] = useState(part.categoria ?? '')
   const [codigo, setCodigo] = useState(part.codigo)
   const [costoUnitario, setCostoUnitario] = useState(part.costoUnitario)
-  const [dimensiones, setDimensiones] = useState(
-    part.dimensiones ? JSON.stringify(part.dimensiones, null, 2) : '',
-  )
-  const [especificaciones, setEspecificaciones] = useState(
-    part.especificaciones ? JSON.stringify(part.especificaciones, null, 2) : '',
+  const [dimensiones, setDimensiones] = useState(() => recordToKeyValueEntries(part.dimensiones))
+  const [especificaciones, setEspecificaciones] = useState(() =>
+    recordToKeyValueEntries(part.especificaciones),
   )
   const [fabricante, setFabricante] = useState(part.fabricante ?? '')
   const [localError, setLocalError] = useState<string | null>(null)
@@ -658,10 +645,12 @@ function EditForm({
       return
     }
 
-    const parsedDimensions = parseJsonObjectInput(dimensiones)
-    const parsedSpecifications = parseJsonObjectInput(especificaciones)
-    if (parsedDimensions === null || parsedSpecifications === null) {
-      setLocalError('Dimensiones y especificaciones deben ser JSON objeto valido.')
+    const dimensionsResult = keyValueEntriesToRecord(dimensiones)
+    const specificationsResult = keyValueEntriesToRecord(especificaciones)
+    if (dimensionsResult.error || specificationsResult.error) {
+      setLocalError(
+        dimensionsResult.error ?? specificationsResult.error ?? 'Revise los datos técnicos.',
+      )
       return
     }
 
@@ -670,8 +659,8 @@ function EditForm({
       codigo: normalizeText(codigo),
       costoUnitario: cost,
       nombre: normalizeText(nombre),
-      dimensiones: parsedDimensions,
-      especificaciones: parsedSpecifications,
+      dimensiones: dimensionsResult.value,
+      especificaciones: specificationsResult.value,
       fabricante: normalizeText(fabricante),
       numeroParte: normalizeText(numeroParte),
       stockMinimo: minimum,
@@ -691,22 +680,12 @@ function EditForm({
       <TextInput label="Categoria" onChange={setCategoria} value={categoria} />
       <TextInput label="Fabricante" onChange={setFabricante} value={fabricante} />
       <TextInput label="Numero de parte" onChange={setNumeroParte} value={numeroParte} />
-      <label className="block text-sm font-medium text-slate-700">
-        Especificaciones (JSON)
-        <textarea
-          className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-          onChange={(event) => setEspecificaciones(event.target.value)}
-          value={especificaciones}
-        />
-      </label>
-      <label className="block text-sm font-medium text-slate-700">
-        Dimensiones (JSON)
-        <textarea
-          className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-          onChange={(event) => setDimensiones(event.target.value)}
-          value={dimensiones}
-        />
-      </label>
+      <KeyValueFields
+        entries={especificaciones}
+        label="Especificaciones técnicas"
+        onChange={setEspecificaciones}
+      />
+      <KeyValueFields entries={dimensiones} label="Dimensiones" onChange={setDimensiones} />
       <TextInput
         label="Unidad de medida"
         onChange={setUnidadMedida}
@@ -815,6 +794,7 @@ function AdjustmentForm({
   submitting: boolean
 }) {
   const [cantidad, setCantidad] = useState('')
+  const [confirmAtypical, setConfirmAtypical] = useState(false)
   const [confirmDecrease, setConfirmDecrease] = useState(false)
   const [direccion, setDireccion] = useState<'DISMINUCION' | 'INCREMENTO'>('INCREMENTO')
   const [localError, setLocalError] = useState<string | null>(null)
@@ -825,6 +805,8 @@ function AdjustmentForm({
     direccion === 'INCREMENTO'
       ? current + (Number.isFinite(quantity) ? quantity : 0)
       : current - (Number.isFinite(quantity) ? quantity : 0)
+  const atypicalThreshold = Math.max(1000, current * 5)
+  const isAtypical = Number.isFinite(quantity) && quantity > atypicalThreshold
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -839,6 +821,11 @@ function AdjustmentForm({
 
     if (direccion === 'DISMINUCION' && !confirmDecrease) {
       setLocalError('Confirme la disminucion antes de registrar el ajuste.')
+      return
+    }
+
+    if (isAtypical && !confirmAtypical) {
+      setLocalError('Confirme que revisó el ajuste inusual antes de registrarlo.')
       return
     }
 
@@ -872,6 +859,7 @@ function AdjustmentForm({
           onChange={(event) => {
             setDireccion(event.target.value as 'DISMINUCION' | 'INCREMENTO')
             setConfirmDecrease(false)
+            setConfirmAtypical(false)
           }}
           value={direccion}
         >
@@ -879,7 +867,15 @@ function AdjustmentForm({
           <option value="DISMINUCION">Disminucion</option>
         </select>
       </label>
-      <TextInput label="Cantidad" onChange={setCantidad} required value={cantidad} />
+      <TextInput
+        label="Cantidad"
+        onChange={(value) => {
+          setCantidad(value)
+          setConfirmAtypical(false)
+        }}
+        required
+        value={cantidad}
+      />
       <FieldValue label="Resultado estimado">
         {Number.isFinite(estimated) ? estimated.toFixed(2) : part.stockActual}
       </FieldValue>
@@ -901,6 +897,18 @@ function AdjustmentForm({
             type="checkbox"
           />
           Confirmo la disminucion de existencia.
+        </label>
+      )}
+      {isAtypical && (
+        <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <input
+            checked={confirmAtypical}
+            className="mt-1"
+            onChange={(event) => setConfirmAtypical(event.target.checked)}
+            type="checkbox"
+          />
+          Este ajuste supera el rango habitual de revisión ({atypicalThreshold.toFixed(0)}{' '}
+          {part.unidadMedida}). Confirmo que verifiqué la cantidad y el motivo.
         </label>
       )}
       <Button icon={<Wrench size={14} />} loading={submitting} type="submit" variant="secondary">
@@ -970,18 +978,20 @@ function CompatibilityRuleForm({
   const [destinationId, setDestinationId] = useState('')
   const [allowed, setAllowed] = useState(true)
   const [condition, setCondition] = useState('')
-  const [validatedSpecs, setValidatedSpecs] = useState('{"revision":"P8"}')
+  const [validatedSpecs, setValidatedSpecs] = useState<KeyValueEntry[]>([
+    { campo: 'Revisión', valor: 'P8' },
+  ])
   const [localError, setLocalError] = useState<string | null>(null)
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const specifications = parseJsonObjectInput(validatedSpecs)
+    const specificationsResult = keyValueEntriesToRecord(validatedSpecs)
     if (!destinationId) {
       setLocalError('Seleccione un bus o modelo.')
       return
     }
-    if (!specifications || Object.keys(specifications).length === 0) {
-      setLocalError('Ingrese especificaciones validadas como JSON no vacio.')
+    if (!specificationsResult.value || specificationsResult.error) {
+      setLocalError(specificationsResult.error ?? 'Registre al menos un dato técnico validado.')
       return
     }
     setLocalError(null)
@@ -990,7 +1000,7 @@ function CompatibilityRuleForm({
         ? { busId: Number(destinationId) }
         : { modeloBusId: Number(destinationId) }),
       condicionUso: normalizeText(condition) || undefined,
-      especificacionesValidadas: specifications,
+      especificacionesValidadas: specificationsResult.value,
       permitido: allowed,
     })
   }
@@ -1063,15 +1073,12 @@ function CompatibilityRuleForm({
           value={condition}
         />
       </label>
-      <label className="block text-sm font-medium text-slate-700">
-        Especificaciones validadas (JSON)
-        <textarea
-          className="mt-1.5 min-h-28 w-full rounded-lg border border-slate-200 p-3 font-mono text-sm"
-          onChange={(event) => setValidatedSpecs(event.target.value)}
-          required
-          value={validatedSpecs}
-        />
-      </label>
+      <KeyValueFields
+        entries={validatedSpecs}
+        help="Registre la evidencia técnica con la que se validó esta compatibilidad."
+        label="Datos técnicos validados"
+        onChange={setValidatedSpecs}
+      />
       <Button icon={<PlusCircle size={14} />} loading={submitting} type="submit">
         Crear nueva version
       </Button>
@@ -1347,7 +1354,7 @@ export default function SparePartsPage() {
     return (
       <div className="mx-auto max-w-2xl p-4 md:p-6">
         <StatePanel
-          description="Su rol no participa en la administracion de RF-05."
+          description="Su rol no participa en la administración de repuestos e inventario."
           title="Acceso denegado"
           tone="error"
         />
@@ -1359,7 +1366,7 @@ export default function SparePartsPage() {
     <div className="relative min-h-full">
       <div className="page-container">
         <section className="surface p-4 md:p-5">
-          <Badge tone="emerald">RF-05</Badge>
+          <Badge tone="emerald">Repuestos e inventario</Badge>
           <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">Central de repuestos</h2>

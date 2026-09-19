@@ -191,7 +191,7 @@ export default function DashboardPage() {
               icon={<Bus size={16} />}
               label="Total de buses"
               note={fleetError ?? undefined}
-              to="/flota?estado=OPERATIVO"
+              to="/flota"
               value={fleetSummary?.totalBuses ?? null}
             />
             <StatCard
@@ -200,7 +200,7 @@ export default function DashboardPage() {
               icon={<Shield size={16} />}
               label="Buses operativos"
               note="Listos para operar si no tienen otras restricciones"
-              to="/flota?estado=EN_MANTENIMIENTO"
+              to="/flota?estado=OPERATIVO"
               value={fleetSummary?.porEstado.OPERATIVO ?? null}
             />
             <StatCard
@@ -210,7 +210,7 @@ export default function DashboardPage() {
               label="Buses en mantenimiento"
               note="No disponibles para una nueva jornada"
               priority="attention"
-              to="/flota"
+              to="/flota?estado=EN_MANTENIMIENTO"
               value={fleetSummary?.porEstado.EN_MANTENIMIENTO ?? null}
             />
             <StatCard
@@ -305,7 +305,7 @@ export default function DashboardPage() {
               icon={<Bus size={16} />}
               label="Total de buses"
               note={fleetError ?? undefined}
-              to="/flota?estado=OPERATIVO"
+              to="/flota"
               value={fleetSummary?.totalBuses ?? null}
             />
             <StatCard
@@ -314,7 +314,7 @@ export default function DashboardPage() {
               icon={<Shield size={16} />}
               label="Buses operativos"
               note="Confirme restricciones antes de programar"
-              to="/flota"
+              to="/flota?estado=OPERATIVO"
               value={fleetSummary?.porEstado.OPERATIVO ?? null}
             />
             <StatCard

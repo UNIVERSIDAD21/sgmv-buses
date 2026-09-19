@@ -697,6 +697,20 @@ function mapRecipientAlert(record: AlertRecipientRecord, actor: AuthenticatedUse
     contextoEvento,
     destinatarioId: record.id,
     enlaceInterno: catalog.internalRoutes[actor.rol.codigo as AlertRecipientRole] ?? null,
+    origen: {
+      ...(record.alertaInterna.busId ? { busId: record.alertaInterna.busId } : {}),
+      ...(record.alertaInterna.jornadaOperativaId
+        ? { jornadaId: record.alertaInterna.jornadaOperativaId }
+        : {}),
+      ...(record.alertaInterna.novedadId ? { novedadId: record.alertaInterna.novedadId } : {}),
+      ...(record.alertaInterna.ordenTrabajoId
+        ? { ordenId: record.alertaInterna.ordenTrabajoId }
+        : {}),
+      ...(record.alertaInterna.programacionMantenimientoId
+        ? { programacionMantenimientoId: record.alertaInterna.programacionMantenimientoId }
+        : {}),
+      ...(record.alertaInterna.repuestoId ? { repuestoId: record.alertaInterna.repuestoId } : {}),
+    },
     estado: record.estado,
     fechaAtencion: record.fechaAtencion?.toISOString() ?? null,
     fechaGeneracion: record.alertaInterna.fechaGeneracion.toISOString(),

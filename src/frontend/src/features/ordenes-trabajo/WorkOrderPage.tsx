@@ -126,6 +126,11 @@ const statusOptions = Object.entries(statusLabels) as Array<[WorkOrderStatus, st
 function getWorkOrderStatusFromSearch(value: string | null): WorkOrderStatus | '' {
   return statusOptions.some(([status]) => status === value) ? (value as WorkOrderStatus) : ''
 }
+
+function getDetailIdFromSearch(value: string | null) {
+  const id = Number(value)
+  return Number.isSafeInteger(id) && id > 0 ? id : null
+}
 const typeOptions = Object.entries(typeLabels) as Array<[WorkOrderType, string]>
 const originOptions = Object.entries(originLabels) as Array<[WorkOrderOrigin, string]>
 const priorityOptions = Object.entries(priorityLabels) as Array<[OrderPriority, string]>
@@ -1741,7 +1746,7 @@ function SummaryMetrics({
 
 export default function WorkOrderPage() {
   const { user } = useSession()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [assignmentAction, setAssignmentAction] = useState<AssignmentAction | null>(null)
   const [buses, setBuses] = useState<BusSummaryDto[]>([])
   const [busId, setBusId] = useState('')
@@ -1770,8 +1775,12 @@ export default function WorkOrderPage() {
   const [tipo, setTipo] = useState<WorkOrderType | ''>('')
 
   useEffect(() => {
-    setEstado(getWorkOrderStatusFromSearch(searchParams.get('estado')))
-    setPagina(1)
+    const timer = window.setTimeout(() => {
+      setEstado(getWorkOrderStatusFromSearch(searchParams.get('estado')))
+      setPagina(1)
+    }, 0)
+
+    return () => window.clearTimeout(timer)
   }, [searchParams])
 
   const isAdmin = user?.rol.codigo === 'ADMINISTRADOR'
@@ -1870,6 +1879,24 @@ export default function WorkOrderPage() {
     }
   }
 
+  function closeDetail() {
+    setSelectedOrder(null)
+    if (!searchParams.has('detalle')) return
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('detalle')
+    setSearchParams(nextParams)
+  }
+
+  const detailIdFromQuery = searchParams.get('detalle')
+
+  useEffect(() => {
+    const detailId = getDetailIdFromSearch(detailIdFromQuery)
+    if (!detailId) return
+
+    const timer = window.setTimeout(() => void openDetail(detailId), 0)
+    return () => window.clearTimeout(timer)
+  }, [detailIdFromQuery])
+
   async function refreshSelected(orderId: number) {
     const result = await getWorkOrder(orderId)
 
@@ -1954,7 +1981,7 @@ export default function WorkOrderPage() {
     return (
       <div className="mx-auto max-w-2xl p-4 md:p-6">
         <StatePanel
-          description="Su rol no participa directamente en RF-04."
+          description="Su rol no participa directamente en la gestión de órdenes de trabajo."
           title="Acceso denegado"
           tone="error"
         />
@@ -1966,7 +1993,7 @@ export default function WorkOrderPage() {
     <div className="relative min-h-full">
       <div className="page-container">
         <section className="surface p-4 md:p-5">
-          <Badge tone="emerald">RF-04</Badge>
+          <Badge tone="emerald">Órdenes de trabajo</Badge>
           <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
@@ -2266,7 +2293,7 @@ export default function WorkOrderPage() {
         )}
 
         <Drawer
-          onClose={() => setSelectedOrder(null)}
+          onClose={closeDetail}
           open={Boolean(selectedOrder)}
           subtitle={
             selectedOrder

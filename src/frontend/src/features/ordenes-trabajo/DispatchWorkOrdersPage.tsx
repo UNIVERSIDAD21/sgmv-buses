@@ -71,7 +71,7 @@ export default function DispatchWorkOrdersPage() {
     <div className="space-y-5">
       <section>
         <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
-          RF-04 operativo
+          Órdenes técnicas activas
         </p>
         <h1 className="mt-1 text-2xl font-bold text-slate-900">Disponibilidad por orden tecnica</h1>
         <p className="mt-2 text-sm text-slate-600">

@@ -943,7 +943,7 @@ export default function HistoryReportsPage() {
         <StatePanel
           action={<Button onClick={() => void load()}>Reintentar</Button>}
           description={error}
-          title="No se pudo cargar RF-06"
+          title="No se pudo cargar el historial"
           tone="error"
         />
       </div>

@@ -277,7 +277,7 @@ export default function BusFormPage() {
       <section className="rounded-lg border border-slate-200 bg-white p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <Badge tone="emerald">RF-01</Badge>
+            <Badge tone="emerald">Gestión de buses</Badge>
             <h2 className="mt-3 text-lg font-semibold text-slate-900">
               {isEditing ? 'Editar bus' : 'Registrar bus'}
             </h2>

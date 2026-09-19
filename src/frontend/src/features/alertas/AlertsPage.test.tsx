@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BrowserRouter, MemoryRouter } from 'react-router-dom'
 
 import App from '../../App'
+import { SessionProvider } from '../auth/session'
 import AlertsPage from './AlertsPage'
 
 const csrfToken = 'csrf-token-alertas-p9'
@@ -39,6 +40,7 @@ function alertItem(overrides: Partial<Record<string, unknown>> = {}) {
     contextoEvento: { busId: 2006, enlaceInterno: '/novedades', schemaVersion: 1 },
     destinatarioId: 2063,
     enlaceInterno: '/novedades',
+    origen: { novedadId: 2006 },
     estado: 'NO_LEIDA',
     fechaAtencion: null,
     fechaGeneracion: '2026-09-07T12:00:00.000Z',
@@ -120,7 +122,9 @@ function callsFor(calls: Array<{ input: RequestInfo | URL; init?: RequestInit }>
 function renderAlertsPage() {
   return render(
     <MemoryRouter initialEntries={['/alertas']}>
-      <AlertsPage />
+      <SessionProvider>
+        <AlertsPage />
+      </SessionProvider>
     </MemoryRouter>,
   )
 }
@@ -224,7 +228,9 @@ describe('P9 AlertsPage', () => {
     window.history.pushState({}, '', '/alertas')
     render(
       <BrowserRouter>
-        <AlertsPage />
+        <SessionProvider>
+          <AlertsPage />
+        </SessionProvider>
       </BrowserRouter>,
     )
 
@@ -233,7 +239,10 @@ describe('P9 AlertsPage', () => {
     )
     expect(safeArticle).not.toBeNull()
     fireEvent.click(within(safeArticle!).getByRole('button', { name: 'Ver origen' }))
-    expect(window.location.pathname).toBe('/novedades')
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/novedades')
+      expect(window.location.search).toBe('?detalle=2006')
+    })
     expect(screen.getAllByRole('button', { name: 'Ver origen' })).toHaveLength(1)
   })
 

@@ -6,6 +6,7 @@ import Button from '../../components/ui/Button'
 import PageHeader from '../../components/ui/PageHeader'
 import StatePanel from '../../components/ui/StatePanel'
 import { ApiError } from '../../lib/api'
+import { useSession } from '../auth/session.context'
 import { announceAlertsUpdated, listAlerts, markAlertAttended, markAlertRead } from './alert.api'
 import type {
   AlertFilters,
@@ -57,6 +58,39 @@ const initialFilters: AlertFilters = {
   tipo: '',
 }
 
+const TYPES_BY_ROLE = {
+  ADMINISTRADOR: [
+    'BAJO_INVENTARIO',
+    'CONFLICTO_JORNADA',
+    'CONSUMO_INCOMPATIBLE',
+    'MANTENIMIENTO_PROXIMO',
+    'MANTENIMIENTO_VENCIDO',
+    'NOVEDAD_CRITICA',
+    'ORDEN_COMPLETADA_TECNICO',
+    'ORDEN_PENDIENTE_ASIGNACION',
+  ],
+  CONDUCTOR: [
+    'BUS_BLOQUEADO',
+    'CAMBIO_ESTADO_NOVEDAD',
+    'CAMBIO_JORNADA',
+    'JORNADA_SIN_KILOMETRAJE_FINAL',
+    'JORNADA_SIN_KILOMETRAJE_INICIAL',
+    'MANTENIMIENTO_PROXIMO',
+    'MANTENIMIENTO_VENCIDO',
+  ],
+  DESPACHADOR: [
+    'BUS_BLOQUEADO',
+    'CAMBIO_JORNADA',
+    'CONFLICTO_JORNADA',
+    'JORNADA_SIN_KILOMETRAJE_FINAL',
+    'JORNADA_SIN_KILOMETRAJE_INICIAL',
+    'MANTENIMIENTO_PROXIMO',
+    'MANTENIMIENTO_VENCIDO',
+    'NOVEDAD_CRITICA',
+  ],
+  MECANICO: ['CONSUMO_INCOMPATIBLE', 'ORDEN_ASIGNADA', 'ORDEN_DEVUELTA'],
+} as const satisfies Record<string, readonly AlertType[]>
+
 function priorityTone(priority: AlertPriority): 'amber' | 'red' | 'slate' | 'teal' {
   if (priority === 'CRITICA') return 'red'
   if (priority === 'ALTA') return 'amber'
@@ -72,6 +106,19 @@ function statusTone(status: AlertRecipientStatus): 'emerald' | 'slate' | 'teal' 
 
 function isSafeInternalLink(value: string | null): value is string {
   return Boolean(value && value.startsWith('/') && !value.startsWith('//'))
+}
+
+function originLink(item: AlertItemDto) {
+  if (!isSafeInternalLink(item.enlaceInterno)) return null
+
+  const detailId =
+    item.enlaceInterno === '/novedades'
+      ? item.origen.novedadId
+      : item.enlaceInterno === '/ordenes-trabajo'
+        ? item.origen.ordenId
+        : undefined
+
+  return detailId ? `${item.enlaceInterno}?detalle=${detailId}` : item.enlaceInterno
 }
 
 function formatAlertDate(value: string) {
@@ -96,6 +143,7 @@ function contextEntries(context: Record<string, unknown>) {
 }
 
 export default function AlertsPage() {
+  const { user } = useSession()
   const [filters, setFilters] = useState<AlertFilters>(initialFilters)
   const [inbox, setInbox] = useState<AlertInboxDto | null>(null)
   const [loading, setLoading] = useState(true)
@@ -103,6 +151,7 @@ export default function AlertsPage() {
   const [mutatingId, setMutatingId] = useState<number | null>(null)
   const requestIdRef = useRef(0)
   const navigate = useNavigate()
+  const visibleTypes = TYPES_BY_ROLE[user?.rol.codigo as keyof typeof TYPES_BY_ROLE] ?? []
 
   const load = useCallback(async () => {
     const requestId = ++requestIdRef.current
@@ -129,7 +178,7 @@ export default function AlertsPage() {
   }, [load])
 
   async function mutate(item: AlertItemDto, action: 'read' | 'attend') {
-    if (mutatingId) return
+    if (mutatingId) return false
     setMutatingId(item.destinatarioId)
     setError(null)
     try {
@@ -137,22 +186,31 @@ export default function AlertsPage() {
       else await markAlertAttended(item.destinatarioId)
       announceAlertsUpdated()
       await load()
+      return true
     } catch (requestError) {
       setError(
         requestError instanceof ApiError
           ? requestError.message
           : 'No se pudo actualizar la alerta.',
       )
+      return false
     } finally {
       setMutatingId(null)
     }
+  }
+
+  async function openOrigin(item: AlertItemDto) {
+    const target = originLink(item)
+    if (!target) return
+    if (item.estado === 'NO_LEIDA' && !(await mutate(item, 'read'))) return
+    navigate(target)
   }
 
   return (
     <section className="page-container">
       <PageHeader
         description="Eventos operativos y técnicos dirigidos exclusivamente a tu usuario."
-        eyebrow="RNF-05 · Bandeja personal"
+        eyebrow="Bandeja personal"
         title="Alertas internas"
       />
 
@@ -217,9 +275,9 @@ export default function AlertsPage() {
             value={filters.tipo}
           >
             <option value="">Todos</option>
-            {Object.entries(TYPE_LABELS).map(([value, label]) => (
+            {visibleTypes.map((value) => (
               <option key={value} value={value}>
-                {label}
+                {TYPE_LABELS[value]}
               </option>
             ))}
           </select>
@@ -349,8 +407,8 @@ export default function AlertsPage() {
                         Marcar atendida
                       </Button>
                     )}
-                    {isSafeInternalLink(item.enlaceInterno) && (
-                      <Button onClick={() => navigate(item.enlaceInterno!)} size="sm">
+                    {originLink(item) && (
+                      <Button onClick={() => void openOrigin(item)} size="sm">
                         Ver origen
                       </Button>
                     )}

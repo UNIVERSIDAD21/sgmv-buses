@@ -64,7 +64,7 @@ export default function PreventiveRestrictionsPanel() {
   return (
     <div className="mx-auto max-w-5xl space-y-5 p-4 md:p-6">
       <section className="rounded-lg border border-slate-200 bg-white p-5">
-        <Badge tone="emerald">RF-03</Badge>
+        <Badge tone="emerald">Seguimiento preventivo</Badge>
         <h2 className="mt-3 text-lg font-semibold text-slate-900">
           Motivos preventivos que impiden operar
         </h2>

@@ -191,7 +191,7 @@ describe('RF-03 preventive maintenance frontend', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Generar orden/i }))
     const orderDialog = await screen.findByRole('dialog', { name: /Generar orden preventiva/i })
-    expect(within(orderDialog).getByText(/RF-04/i)).toBeInTheDocument()
+    expect(within(orderDialog).getByText(/orden técnica activa/i)).toBeInTheDocument()
     fireEvent.change(within(orderDialog).getByLabelText(/^Prioridad$/i), {
       target: { value: 'MEDIA' },
     })
@@ -280,7 +280,9 @@ describe('RF-03 preventive maintenance frontend', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Asignar a buses$/i }))
     const applyDialog = await screen.findByRole('dialog', { name: /Asignar rutina a un bus/i })
     fireEvent.click(within(applyDialog).getByRole('button', { name: /^Asignar rutina$/i }))
-    expect(await screen.findByText(/objetivos derivados correctamente/i)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/mantenimiento programado ya tiene sus objetivos/i),
+    ).toBeInTheDocument()
     expect(
       fetchMock.mock.calls.some(
         ([input, init]) =>
@@ -301,6 +303,15 @@ describe('RF-03 preventive maintenance frontend', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Guardar nueva versión$/i }))
     expect(await screen.findByText(/Nueva versión de la rutina registrada/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^Dejar de usar$/i }))
+    const deactivateDialog = await screen.findByRole('dialog', {
+      name: /Dejar de usar esta rutina/i,
+    })
+    fireEvent.click(
+      within(deactivateDialog).getByRole('checkbox', {
+        name: /Confirmo que deseo dejar de usar/i,
+      }),
+    )
+    fireEvent.click(within(deactivateDialog).getByRole('button', { name: /Dejar de usar rutina/i }))
     expect(
       await screen.findByText(/La rutina FRENOS.001 dejó de usarse para nuevas asignaciones/i),
     ).toBeInTheDocument()

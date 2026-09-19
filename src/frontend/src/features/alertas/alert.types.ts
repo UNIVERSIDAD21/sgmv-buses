@@ -23,6 +23,14 @@ export interface AlertItemDto {
   contextoEvento: Record<string, unknown>
   destinatarioId: number
   enlaceInterno: string | null
+  origen: {
+    busId?: number
+    jornadaId?: number
+    novedadId?: number
+    ordenId?: number
+    programacionMantenimientoId?: number
+    repuestoId?: number
+  }
   estado: AlertRecipientStatus
   fechaAtencion: string | null
   fechaGeneracion: string

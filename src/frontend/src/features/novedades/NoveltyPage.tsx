@@ -57,6 +57,11 @@ const statusOptions = Object.entries(NOVELTY_STATUS_LABELS) as Array<[NoveltySta
 function getNoveltyStatusFromSearch(value: string | null): NoveltyStatus | '' {
   return statusOptions.some(([status]) => status === value) ? (value as NoveltyStatus) : ''
 }
+
+function getDetailIdFromSearch(value: string | null) {
+  const id = Number(value)
+  return Number.isSafeInteger(id) && id > 0 ? id : null
+}
 const priorityOptions: Array<[OrderPriority, string]> = [
   ['BAJA', 'Baja'],
   ['MEDIA', 'Media'],
@@ -413,7 +418,7 @@ function AdminActionDialog({
           <>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
               Se creara una orden correctiva asociada al mismo bus. La asignacion tecnica queda
-              pendiente para RF-04.
+              pendiente para generar una orden correctiva.
             </div>
             <label className="block text-sm font-medium text-slate-700">
               Prioridad de la orden
@@ -552,6 +557,7 @@ function Pagination({
 }
 
 function DriverView() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [journeyData, setJourneyData] = useState<MyJourneyResponse | null>(null)
   const [descripcion, setDescripcion] = useState('')
   const [detailLoading, setDetailLoading] = useState(false)
@@ -711,10 +717,28 @@ function DriverView() {
     }
   }
 
+  function closeDetail() {
+    setSelectedNovelty(null)
+    if (!searchParams.has('detalle')) return
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('detalle')
+    setSearchParams(nextParams)
+  }
+
+  const detailIdFromQuery = searchParams.get('detalle')
+
+  useEffect(() => {
+    const detailId = getDetailIdFromSearch(detailIdFromQuery)
+    if (!detailId) return
+
+    const timer = window.setTimeout(() => void openDetail(detailId), 0)
+    return () => window.clearTimeout(timer)
+  }, [detailIdFromQuery])
+
   return (
     <div className="page-container">
       <section className="surface p-4 md:p-5">
-        <Badge tone="emerald">RF-02</Badge>
+        <Badge tone="emerald">Novedades operativas</Badge>
         <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Mis novedades operativas</h2>
@@ -967,7 +991,7 @@ function DriverView() {
       )}
 
       <Drawer
-        onClose={() => setSelectedNovelty(null)}
+        onClose={closeDetail}
         open={Boolean(selectedNovelty)}
         subtitle={selectedNovelty ? selectedNovelty.tipo : undefined}
         title="Detalle de novedad"
@@ -983,7 +1007,7 @@ function DriverView() {
 
 function AdminView() {
   const { user } = useSession()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const isAdmin = user?.rol.codigo === 'ADMINISTRADOR'
   const [action, setAction] = useState<AdminAction | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -1004,8 +1028,12 @@ function AdminView() {
   const [summary, setSummary] = useState<NoveltySummaryDto | null>(null)
 
   useEffect(() => {
-    setEstado(getNoveltyStatusFromSearch(searchParams.get('estado')))
-    setPagina(1)
+    const timer = window.setTimeout(() => {
+      setEstado(getNoveltyStatusFromSearch(searchParams.get('estado')))
+      setPagina(1)
+    }, 0)
+
+    return () => window.clearTimeout(timer)
   }, [searchParams])
 
   const refreshAdminData = useCallback(async () => {
@@ -1091,6 +1119,24 @@ function AdminView() {
       setDetailLoading(false)
     }
   }
+
+  function closeDetail() {
+    setSelectedNovelty(null)
+    if (!searchParams.has('detalle')) return
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('detalle')
+    setSearchParams(nextParams)
+  }
+
+  const detailIdFromQuery = searchParams.get('detalle')
+
+  useEffect(() => {
+    const detailId = getDetailIdFromSearch(detailIdFromQuery)
+    if (!detailId) return
+
+    const timer = window.setTimeout(() => void openDetail(detailId), 0)
+    return () => window.clearTimeout(timer)
+  }, [detailIdFromQuery])
 
   async function refreshSelected(novedadId: number) {
     const data = await getAdminNovelty(novedadId)
@@ -1208,7 +1254,7 @@ function AdminView() {
     <div className="relative min-h-full">
       <div className="page-container">
         <section className="surface p-4 md:p-5">
-          <Badge tone="emerald">RF-02</Badge>
+          <Badge tone="emerald">Novedades operativas</Badge>
           <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
@@ -1419,7 +1465,7 @@ function AdminView() {
         )}
 
         <Drawer
-          onClose={() => setSelectedNovelty(null)}
+          onClose={closeDetail}
           open={Boolean(selectedNovelty)}
           subtitle={selectedNovelty ? selectedNovelty.tipo : undefined}
           title="Detalle de novedad"
@@ -1465,7 +1511,7 @@ export default function NoveltyPage() {
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
       <StatePanel
-        description="Su rol no participa directamente en RF-02."
+        description="Su rol no participa directamente en la gestión de novedades operativas."
         title="Acceso denegado"
         tone="error"
       />

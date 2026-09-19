@@ -4,6 +4,11 @@ import { Link } from 'react-router-dom'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import { Bus, PlusCircle } from '../../components/ui/Icons'
+import KeyValueFields, {
+  keyValueEntriesToRecord,
+  recordToKeyValueEntries,
+  type KeyValueEntry,
+} from '../../components/ui/KeyValueFields'
 import StatePanel from '../../components/ui/StatePanel'
 import { ApiError } from '../../lib/api'
 import { useSession } from '../auth/session.context'
@@ -21,7 +26,7 @@ import {
 import type { ModeloBusSummaryDto, RutaDto } from './fleet.types'
 
 interface ModelFormState {
-  especificaciones: string
+  especificaciones: KeyValueEntry[]
   id: number | null
   marca: string
   nombreModelo: string
@@ -37,7 +42,7 @@ interface RouteFormState {
 }
 
 const emptyModelForm: ModelFormState = {
-  especificaciones: '{}',
+  especificaciones: [],
   id: null,
   marca: '',
   nombreModelo: '',
@@ -151,20 +156,16 @@ export default function FleetCatalogPage() {
     setOperationError(null)
     setFeedback(null)
 
-    let specifications: Record<string, unknown>
-    try {
-      const parsed = JSON.parse(modelForm.especificaciones) as unknown
-      if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') throw new Error()
-      specifications = parsed as Record<string, unknown>
-    } catch {
-      setOperationError('Las especificaciones deben ser un objeto JSON valido.')
+    const specificationsResult = keyValueEntriesToRecord(modelForm.especificaciones)
+    if (specificationsResult.error) {
+      setOperationError(specificationsResult.error)
       return
     }
 
     setSaving('model')
     try {
       const input = {
-        especificaciones: specifications,
+        especificaciones: specificationsResult.value ?? {},
         marca: modelForm.marca,
         nombreModelo: modelForm.nombreModelo,
         versionTecnica: modelForm.versionTecnica || null,
@@ -213,7 +214,7 @@ export default function FleetCatalogPage() {
     try {
       const response = await getModeloBus(model.id)
       setModelForm({
-        especificaciones: JSON.stringify(response.modeloBus.especificaciones ?? {}, null, 2),
+        especificaciones: recordToKeyValueEntries(response.modeloBus.especificaciones),
         id: model.id,
         marca: response.modeloBus.marca,
         nombreModelo: response.modeloBus.nombreModelo,
@@ -276,7 +277,7 @@ export default function FleetCatalogPage() {
       <section className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <Badge tone="emerald">RF-01</Badge>
+            <Badge tone="emerald">Catálogos operativos</Badge>
             <h2 className="mt-3 text-lg font-semibold text-slate-900">Catalogos de operacion</h2>
             <p className="mt-1 text-sm text-slate-500">
               Modelos tecnicos de bus y rutas basicas disponibles para la operacion.
@@ -348,16 +349,16 @@ export default function FleetCatalogPage() {
                 required={false}
                 value={modelForm.versionTecnica}
               />
-              <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
-                Especificaciones JSON
-                <textarea
-                  className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  onChange={(event) =>
-                    setModelForm((state) => ({ ...state, especificaciones: event.target.value }))
+              <div className="sm:col-span-2">
+                <KeyValueFields
+                  entries={modelForm.especificaciones}
+                  help="Registre los datos técnicos que ayudan a relacionar este modelo con rutinas y repuestos compatibles."
+                  label="Datos técnicos del modelo"
+                  onChange={(especificaciones) =>
+                    setModelForm((state) => ({ ...state, especificaciones }))
                   }
-                  value={modelForm.especificaciones}
                 />
-              </label>
+              </div>
             </div>
             <div className="mt-4 flex justify-end gap-2">
               {modelForm.id && (

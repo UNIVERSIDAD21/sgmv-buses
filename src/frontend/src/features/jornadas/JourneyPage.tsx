@@ -178,11 +178,15 @@ function ScheduleForm({
   const [conductorId, setConductorId] = useState('')
   const [rutaId, setRutaId] = useState('')
   const [simulate, setSimulate] = useState(false)
-  const [cycles, setCycles] = useState(6)
-  const [nonCommercial, setNonCommercial] = useState(8)
+  const [cycles, setCycles] = useState('6')
+  const [nonCommercial, setNonCommercial] = useState('8')
   const selectedRoute = options.rutas.find((route) => route.id === Number(rutaId))
   const selectedBus = options.buses.find((bus) => bus.id === Number(busId))
-  const projectedKm = (selectedRoute?.longitudKmOficial ?? 0) * cycles + nonCommercial
+  const cyclesNumber = Number(cycles)
+  const nonCommercialNumber = Number(nonCommercial)
+  const projectedKm =
+    (selectedRoute?.longitudKmOficial ?? 0) * (Number.isFinite(cyclesNumber) ? cyclesNumber : 0) +
+    (Number.isFinite(nonCommercialNumber) ? nonCommercialNumber : 0)
   const nextMaintenance = selectedBus?.mantenimientos?.[0]
   const [inicio, setInicio] = useState(defaultSchedule(1))
   const [fin, setFin] = useState(defaultSchedule(9))
@@ -204,6 +208,18 @@ function ScheduleForm({
       setError('El inicio debe ser anterior al fin programado.')
       return
     }
+    if (
+      simulate &&
+      (!Number.isInteger(cyclesNumber) ||
+        cyclesNumber < 1 ||
+        cyclesNumber > 100 ||
+        !Number.isFinite(nonCommercialNumber) ||
+        nonCommercialNumber < 0 ||
+        nonCommercialNumber > 1000)
+    ) {
+      setError('Ingrese entre 1 y 100 ciclos y entre 0 y 1.000 km no comerciales.')
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -216,8 +232,8 @@ function ScheduleForm({
         ...(simulate && selectedRoute?.longitudKmOficial
           ? {
               simulacion: {
-                ciclosCompletosSimulados: cycles,
-                kmNoComercialesSimulados: nonCommercial,
+                ciclosCompletosSimulados: cyclesNumber,
+                kmNoComercialesSimulados: nonCommercialNumber,
               },
             }
           : {}),
@@ -407,7 +423,7 @@ function ScheduleForm({
                       max="100"
                       step="1"
                       value={cycles}
-                      onChange={(event) => setCycles(Number(event.target.value))}
+                      onChange={(event) => setCycles(event.target.value)}
                       required
                     />
                   </label>
@@ -421,7 +437,7 @@ function ScheduleForm({
                       max="1000"
                       step="0.001"
                       value={nonCommercial}
-                      onChange={(event) => setNonCommercial(Number(event.target.value))}
+                      onChange={(event) => setNonCommercial(event.target.value)}
                       required
                     />
                   </label>

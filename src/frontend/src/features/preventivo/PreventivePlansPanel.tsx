@@ -415,6 +415,54 @@ function PlanVersionsDialog({
   )
 }
 
+function DeactivatePlanDialog({
+  onCancel,
+  onConfirm,
+  plan,
+  saving,
+}: {
+  onCancel: () => void
+  onConfirm: () => Promise<void>
+  plan: PreventivePlanDto
+  saving: boolean
+}) {
+  const [confirmed, setConfirmed] = useState(false)
+
+  return (
+    <Modal onClose={onCancel} subtitle={plan.claveTarea} title="Dejar de usar esta rutina">
+      <div className="space-y-4 p-5">
+        <p className="text-sm leading-6 text-slate-600">
+          La rutina dejará de estar disponible para nuevas asignaciones. Los mantenimientos ya
+          programados y su historial no se eliminan.
+        </p>
+        <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <input
+            checked={confirmed}
+            className="mt-1"
+            onChange={(event) => setConfirmed(event.target.checked)}
+            type="checkbox"
+          />
+          Confirmo que deseo dejar de usar esta rutina para futuras asignaciones.
+        </label>
+        <div className="flex justify-end gap-2">
+          <Button onClick={onCancel} type="button" variant="outline">
+            Cancelar
+          </Button>
+          <Button
+            disabled={!confirmed}
+            loading={saving}
+            onClick={() => void onConfirm()}
+            type="button"
+            variant="danger"
+          >
+            Dejar de usar rutina
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export default function PreventivePlansPanel() {
   const [plans, setPlans] = useState<PreventivePlanDto[] | null>(null)
   const [buses, setBuses] = useState<BusSummaryDto[]>([])
@@ -422,6 +470,7 @@ export default function PreventivePlansPanel() {
   const [error, setError] = useState<string | null>(null)
   const [applying, setApplying] = useState<PreventivePlanDto | null>(null)
   const [detail, setDetail] = useState<PreventivePlanDetailDto | null>(null)
+  const [pendingDeactivate, setPendingDeactivate] = useState<PreventivePlanDto | null>(null)
   const [editing, setEditing] = useState<PreventivePlanDto | undefined>()
   const [includeHistorical, setIncludeHistorical] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -483,8 +532,8 @@ export default function PreventivePlansPanel() {
       const result = await applyPreventivePlan({ busId, planId: plan.id })
       setFeedback(
         result.yaExistia
-          ? `La obligacion ${plan.claveTarea} ya estaba activa para el bus.`
-          : `Plan ${plan.claveTarea} aplicado; objetivos derivados correctamente.`,
+          ? `Esta rutina ya estaba asignada a ese bus.`
+          : `Rutina asignada: el mantenimiento programado ya tiene sus objetivos.`,
       )
       setApplying(null)
       await load()
@@ -613,7 +662,7 @@ export default function PreventivePlansPanel() {
                       </Button>
                       <Button
                         disabled={!plan.activa || saving}
-                        onClick={() => void deactivate(plan)}
+                        onClick={() => setPendingDeactivate(plan)}
                         size="sm"
                         variant="outline"
                       >
@@ -650,6 +699,17 @@ export default function PreventivePlansPanel() {
         />
       )}
       {detail && <PlanVersionsDialog detail={detail} onClose={() => setDetail(null)} />}
+      {pendingDeactivate && (
+        <DeactivatePlanDialog
+          onCancel={() => setPendingDeactivate(null)}
+          onConfirm={async () => {
+            await deactivate(pendingDeactivate)
+            setPendingDeactivate(null)
+          }}
+          plan={pendingDeactivate}
+          saving={saving}
+        />
+      )}
     </section>
   )
 }

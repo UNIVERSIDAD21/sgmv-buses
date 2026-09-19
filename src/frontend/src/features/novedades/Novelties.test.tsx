@@ -96,6 +96,19 @@ describe('RF-02 novelty frontend', () => {
     expect(screen.queryByText(/Acciones administrativas/i)).not.toBeInTheDocument()
   })
 
+  it('opens the exact authorized novelty received through a deep link', async () => {
+    window.history.pushState({}, '', '/novedades?detalle=2040')
+    const fetchMock = mockApi(noveltyHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Detalle de novedad/i)).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/novedades/2040'),
+      expect.any(Object),
+    )
+  })
+
   it('loads the administrative list with search, status, priority and pagination', async () => {
     window.history.pushState({}, '', '/novedades')
     const fetchMock = mockApi(noveltyHandler('ADMINISTRADOR'))

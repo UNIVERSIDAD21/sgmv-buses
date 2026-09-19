@@ -398,8 +398,8 @@ function GenerateOrderDialog({
     >
       <form className="space-y-4 p-5" onSubmit={handleSubmit}>
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          La orden queda pendiente de asignacion. La asignacion y ejecucion tecnica pertenecen a
-          RF-04.
+          La orden queda pendiente de asignacion. La asignacion y ejecucion tecnica pertenecen a una
+          orden técnica activa.
         </div>
         <label className="block text-sm font-medium text-slate-700">
           Prioridad
@@ -798,7 +798,7 @@ export default function PreventivePage() {
     return (
       <div className="mx-auto max-w-2xl p-4 md:p-6">
         <StatePanel
-          description="Su rol no participa directamente en RF-03."
+          description="Su rol no participa directamente en el mantenimiento preventivo."
           title="Acceso denegado"
           tone="error"
         />
@@ -810,7 +810,7 @@ export default function PreventivePage() {
     <div className="relative min-h-full">
       <div className="page-container">
         <section className="surface p-4 md:p-5">
-          <Badge tone="emerald">RF-03</Badge>
+          <Badge tone="emerald">Mantenimiento preventivo</Badge>
           <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
