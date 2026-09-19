@@ -230,6 +230,21 @@ function sparePartWhere(query: ListSparePartsQuery): Prisma.RepuestoWhereInput {
     })
   }
 
+  if (query.requiereReposicion) {
+    filters.push({
+      estado: 'ACTIVO',
+      OR: [
+        { stockActual: new Prisma.Decimal(0) },
+        {
+          stockActual: {
+            gt: new Prisma.Decimal(0),
+            lte: prisma.repuesto.fields.stockMinimo,
+          },
+        },
+      ],
+    })
+  }
+
   return filters.length > 0 ? { AND: filters } : {}
 }
 

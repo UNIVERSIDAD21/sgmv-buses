@@ -37,6 +37,7 @@ export interface ListPreventiveParams {
   ordenarPor?:
     'actividad' | 'bus' | 'createdAt' | 'estado' | 'fechaProgramada' | 'kilometrajeObjetivo'
   pagina: number
+  requiereAtencion?: boolean
 }
 
 export interface PreventiveScheduleInput {
@@ -88,6 +89,10 @@ function buildPreventiveQuery(params: ListPreventiveParams) {
 
   if (params.estado) {
     searchParams.set('estado', params.estado)
+  }
+
+  if (params.requiereAtencion) {
+    searchParams.set('requiereAtencion', 'true')
   }
 
   if (params.ordenarPor) {

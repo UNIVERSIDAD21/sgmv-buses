@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -552,6 +553,8 @@ function PreventiveDetail({
 
 export default function PreventivePage() {
   const { user } = useSession()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requiereAtencion = searchParams.get('requiereAtencion') === 'true'
   const [buses, setBuses] = useState<BusSummaryDto[]>([])
   const [busId, setBusId] = useState('')
   const [busqueda, setBusqueda] = useState('')
@@ -594,6 +597,7 @@ export default function PreventivePage() {
         limite: 8,
         ordenarPor,
         pagina,
+        requiereAtencion,
       }),
       listBuses({
         limite: 100,
@@ -604,7 +608,7 @@ export default function PreventivePage() {
     setSummary(summaryData)
     setListData(schedules)
     setBuses(busData.buses)
-  }, [busId, busqueda, criterio, direccion, estado, isAdmin, ordenarPor, pagina])
+  }, [busId, busqueda, criterio, direccion, estado, isAdmin, ordenarPor, pagina, requiereAtencion])
 
   useEffect(() => {
     let active = true
@@ -629,6 +633,7 @@ export default function PreventivePage() {
             limite: 8,
             ordenarPor,
             pagina,
+            requiereAtencion,
           }),
           listBuses({
             limite: 100,
@@ -657,7 +662,7 @@ export default function PreventivePage() {
     return () => {
       active = false
     }
-  }, [busId, busqueda, criterio, direccion, estado, isAdmin, ordenarPor, pagina])
+  }, [busId, busqueda, criterio, direccion, estado, isAdmin, ordenarPor, pagina, requiereAtencion])
 
   const totalLabel = useMemo(() => {
     if (!listData) {
@@ -850,6 +855,23 @@ export default function PreventivePage() {
             </Button>
           </div>
         </section>
+
+        {requiereAtencion && adminView === 'programaciones' && (
+          <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <p>Mostrando mantenimientos próximos o vencidos que requieren seguimiento.</p>
+            <Button
+              onClick={() => {
+                const nextParams = new URLSearchParams(searchParams)
+                nextParams.delete('requiereAtencion')
+                setSearchParams(nextParams)
+              }}
+              size="sm"
+              variant="outline"
+            >
+              Quitar filtro
+            </Button>
+          </section>
+        )}
 
         {adminView === 'planes' ? (
           <PreventivePlansPanel />

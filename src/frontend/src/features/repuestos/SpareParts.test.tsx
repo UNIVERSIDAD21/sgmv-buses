@@ -69,6 +69,23 @@ describe('RF-05 spare parts frontend', () => {
     })
   })
 
+  it('applies the dashboard filter for spare parts that require replenishment', async () => {
+    window.history.pushState({}, '', '/repuestos?requiereReposicion=true')
+    const fetchMock = mockApi(sparePartHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect(
+      await screen.findByText(/Mostrando repuestos agotados o con existencias bajas/i),
+    ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('requiereReposicion=true'),
+        expect.any(Object),
+      )
+    })
+  })
+
   it.each(['MECANICO', 'CONDUCTOR'] as RoleCode[])(
     'keeps %s out of the RF-05 administrative route and navigation',
     async (role) => {

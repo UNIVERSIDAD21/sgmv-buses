@@ -347,9 +347,11 @@ export class PreventiveService {
 
     const records = await this.preventiveRepository.listSchedules(this.createWhere(query))
     const mapped = records.map((schedule) => this.mapSchedule(schedule))
-    const filtered = query.estado
-      ? mapped.filter((schedule) => schedule.clasificacion.estado === query.estado)
-      : mapped
+    const filtered = mapped.filter(
+      (schedule) =>
+        (!query.estado || schedule.clasificacion.estado === query.estado) &&
+        (!query.requiereAtencion || schedule.clasificacion.estado !== 'VIGENTE'),
+    )
     const sorted = this.sortSchedules(filtered, query)
     const total = sorted.length
     const start = (query.pagina - 1) * query.limite

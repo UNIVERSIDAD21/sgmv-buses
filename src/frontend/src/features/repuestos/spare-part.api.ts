@@ -28,6 +28,7 @@ export interface ListSparePartsParams {
     | 'stockMinimo'
     | 'updatedAt'
   pagina: number
+  requiereReposicion?: boolean
 }
 
 export interface ListMovementsParams {
@@ -113,6 +114,10 @@ function buildSparePartQuery(params: ListSparePartsParams) {
 
   if (params.disponibilidad) {
     searchParams.set('disponibilidad', params.disponibilidad)
+  }
+
+  if (params.requiereReposicion) {
+    searchParams.set('requiereReposicion', 'true')
   }
 
   if (params.estado) {

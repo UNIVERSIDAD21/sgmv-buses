@@ -32,6 +32,10 @@ export const busIdParamSchema = z.object({
 export const listBusesQuerySchema = z.object({
   busqueda: optionalTrimmedText(80),
   estado: z.enum(estadoBusValues).optional(),
+  sinConductor: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
   limite: z.coerce.number().int().min(1).max(100).default(10),
   pagina: z.coerce.number().int().min(1).default(1),
 })

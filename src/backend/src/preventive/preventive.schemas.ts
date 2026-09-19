@@ -104,6 +104,10 @@ export const listPreventiveSchedulesQuerySchema = z.object({
   criterio: z.enum(criterioMantenimientoValues).optional(),
   direccion: z.enum(['asc', 'desc']).default('desc'),
   estado: z.enum(preventiveClassificationValues).optional(),
+  requiereAtencion: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
   limite: z.coerce.number().int().min(1).max(100).default(10),
   ordenarPor: z
     .enum(['actividad', 'bus', 'createdAt', 'estado', 'fechaProgramada', 'kilometrajeObjetivo'])

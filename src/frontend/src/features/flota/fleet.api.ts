@@ -15,6 +15,7 @@ interface ListBusesParams {
   estado?: BusStatus | ''
   limite: number
   pagina: number
+  sinConductor?: boolean
 }
 
 export interface BusFormInput {
@@ -63,6 +64,10 @@ export function listBuses(params: ListBusesParams) {
 
   if (params.estado) {
     searchParams.set('estado', params.estado)
+  }
+
+  if (params.sinConductor) {
+    searchParams.set('sinConductor', 'true')
   }
 
   return apiRequest<ListBusesResponse>(`/flota/buses?${searchParams.toString()}`)

@@ -14,12 +14,7 @@ import {
   Wrench,
 } from '../../components/ui/Icons'
 import StatCard from '../../components/ui/StatCard'
-import {
-  NOVELTY_STATUS_LABELS,
-  REQUIREMENT_NAV_ITEMS,
-  ROLE_LABELS,
-  type RequirementNavItem,
-} from '../../domain/labels'
+import { NOVELTY_STATUS_LABELS, REQUIREMENT_NAV_ITEMS, ROLE_LABELS } from '../../domain/labels'
 import { formatDateTime } from '../../lib/format'
 import { useSession } from '../auth/session.context'
 import { getFleetSummary } from '../flota/fleet.api'
@@ -35,13 +30,19 @@ import type { PreventiveSummaryDto } from '../preventivo/preventive.types'
 import { getSparePartSummary } from '../repuestos/spare-part.api'
 import type { SparePartSummaryDto } from '../repuestos/spare-part.types'
 
-function ModuleList({ items }: { items: RequirementNavItem[] }) {
+interface NavigationItem {
+  description: string
+  label: string
+  path: string
+}
+
+function ModuleList({ items }: { items: NavigationItem[] }) {
   return (
     <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
       {items.map((item) => (
         <Link
           className="group rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition hover:border-emerald-700/40 hover:shadow-sm"
-          key={item.id}
+          key={item.path}
           to={item.path}
         >
           <div className="flex items-start justify-between gap-4">
@@ -57,6 +58,68 @@ function ModuleList({ items }: { items: RequirementNavItem[] }) {
         </Link>
       ))}
     </div>
+  )
+}
+
+interface AttentionItem {
+  actionLabel: string
+  count: number | null
+  description: string
+  to: string
+  title: string
+}
+
+function AttentionPanel({ items }: { items: AttentionItem[] }) {
+  const pendingItems = items.filter((item) => item.count === null)
+  const actionableItems = items.filter((item) => (item.count ?? 0) > 0)
+
+  return (
+    <section className="surface p-4 md:p-5" aria-label="Requiere tu atención">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-base font-semibold text-slate-950">Requiere tu atención</h2>
+        <p className="text-sm leading-5 text-slate-600">
+          Situaciones con registros pendientes. Cada acceso abre el listado ya preparado para
+          actuar.
+        </p>
+      </div>
+
+      {pendingItems.length > 0 ? (
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {pendingItems.map((item) => (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3" key={item.title}>
+              <p className="text-sm font-medium text-slate-800">{item.title}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Cargando prioridad operativa.</p>
+            </div>
+          ))}
+        </div>
+      ) : actionableItems.length > 0 ? (
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {actionableItems.map((item) => (
+            <Link
+              className="group rounded-lg border border-amber-200 bg-amber-50 p-3 transition hover:border-amber-400 hover:bg-amber-100"
+              key={item.title}
+              to={item.to}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-lg font-semibold tabular-nums text-amber-950">{item.count}</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{item.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">{item.description}</p>
+                  <p className="mt-2 text-xs font-semibold text-emerald-800 group-hover:underline">
+                    {item.actionLabel}
+                  </p>
+                </div>
+                <ArrowRight className="mt-1 shrink-0 text-amber-700" size={16} />
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900">
+          No hay registros pendientes en los indicadores de atención.
+        </p>
+      )}
+    </section>
   )
 }
 
@@ -78,6 +141,72 @@ export default function DashboardPage() {
   const isDispatcher = user?.rol.codigo === 'DESPACHADOR'
   const isMechanic = user?.rol.codigo === 'MECANICO'
   const isDriver = user?.rol.codigo === 'CONDUCTOR'
+  const dispatcherTaskItems: NavigationItem[] = [
+    {
+      description: 'Consulte buses, kilometraje y restricciones antes de preparar el despacho.',
+      label: 'Consultar flota disponible',
+      path: '/flota',
+    },
+    {
+      description: 'Programe, inicie y supervise las jornadas operativas asignadas.',
+      label: 'Programar y supervisar jornadas',
+      path: '/jornadas',
+    },
+    {
+      description: 'Revise los reportes que pueden exigir coordinación de recursos.',
+      label: 'Atender novedades operativas',
+      path: '/novedades',
+    },
+    {
+      description: 'Identifique qué buses no pueden salir y consulte la causa permitida.',
+      label: 'Revisar buses restringidos',
+      path: '/ordenes-trabajo/despacho',
+    },
+    {
+      description: 'Consulte jornadas, kilometraje y novedades de la operación.',
+      label: 'Consultar historial operacional',
+      path: '/historial',
+    },
+  ]
+  const adminAttentionItems: AttentionItem[] = [
+    {
+      actionLabel: 'Revisar novedades',
+      count: noveltySummary?.pendientes ?? null,
+      description: 'Clasifique, resuelva o convierta en una orden cuando corresponda.',
+      title: 'Novedades pendientes de revisión',
+      to: '/novedades?estado=PENDIENTE_REVISION',
+    },
+    {
+      actionLabel: 'Revisar mantenimientos',
+      count: preventiveSummary
+        ? preventiveSummary.estados.PROXIMO + preventiveSummary.estados.VENCIDO
+        : null,
+      description: 'Programaciones próximas o vencidas que requieren seguimiento.',
+      title: 'Mantenimientos que requieren atención',
+      to: '/mantenimiento-preventivo?requiereAtencion=true',
+    },
+    {
+      actionLabel: 'Asignar mecánico',
+      count: workOrderSummary?.pendientesAsignacion ?? null,
+      description: 'Órdenes que todavía no tienen responsable técnico.',
+      title: 'Órdenes pendientes de asignación',
+      to: '/ordenes-trabajo?estado=PENDIENTE_ASIGNACION',
+    },
+    {
+      actionLabel: 'Validar órdenes',
+      count: workOrderSummary?.pendientesRevision ?? null,
+      description: 'Órdenes completadas por el mecánico que esperan revisión.',
+      title: 'Órdenes esperando validación',
+      to: '/ordenes-trabajo?estado=COMPLETADA_TECNICO',
+    },
+    {
+      actionLabel: 'Revisar inventario',
+      count: sparePartSummary ? sparePartSummary.bajoStock + sparePartSummary.agotados : null,
+      description: 'Repuestos agotados o con existencias bajas.',
+      title: 'Repuestos que requieren reposición',
+      to: '/repuestos?requiereReposicion=true',
+    },
+  ]
 
   useEffect(() => {
     let active = true
@@ -219,7 +348,7 @@ export default function DashboardPage() {
               icon={<Package size={16} />}
               label="Buses sin conductor"
               note="Revise la asignación antes de programar una jornada"
-              to="/flota"
+              to="/flota?sinConductor=true"
               value={fleetSummary?.sinConductor ?? null}
             />
             <StatCard
@@ -239,7 +368,7 @@ export default function DashboardPage() {
               label="Mantenimientos que requieren atención"
               note="Programaciones preventivas próximas o vencidas"
               priority="attention"
-              to="/mantenimiento-preventivo"
+              to="/mantenimiento-preventivo?requiereAtencion=true"
               value={
                 preventiveSummary
                   ? preventiveSummary.estados.PROXIMO + preventiveSummary.estados.VENCIDO
@@ -282,12 +411,13 @@ export default function DashboardPage() {
               label="Repuestos que requieren reposición"
               note="Verifique existencias antes de una intervención"
               priority="attention"
-              to="/repuestos"
+              to="/repuestos?requiereReposicion=true"
               value={
                 sparePartSummary ? sparePartSummary.bajoStock + sparePartSummary.agotados : null
               }
             />
           </div>
+          <AttentionPanel items={adminAttentionItems} />
           <ModuleList items={visibleItems} />
         </>
       )}
@@ -296,7 +426,7 @@ export default function DashboardPage() {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
           <section>
             <h2 className="mb-3 text-xs font-semibold uppercase text-slate-500">Panel operativo</h2>
-            <ModuleList items={visibleItems} />
+            <ModuleList items={dispatcherTaskItems} />
           </section>
           <div className="space-y-3">
             <StatCard

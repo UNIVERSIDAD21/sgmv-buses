@@ -546,6 +546,16 @@ export class FleetService {
       })
     }
 
+    if (query.sinConductor) {
+      filters.push({
+        asignaciones: {
+          none: {
+            activa: true,
+          },
+        },
+      })
+    }
+
     if (query.busqueda) {
       const search = normalizeIdentifier(query.busqueda)
 

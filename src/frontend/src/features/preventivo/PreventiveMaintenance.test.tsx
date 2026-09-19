@@ -76,6 +76,25 @@ describe('RF-03 preventive maintenance frontend', () => {
     })
   })
 
+  it('applies the dashboard filter for maintenance that requires attention', async () => {
+    window.history.pushState({}, '', '/mantenimiento-preventivo?requiereAtencion=true')
+    const fetchMock = mockApi(preventiveHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect(
+      await screen.findByText(
+        /Mostrando mantenimientos próximos o vencidos que requieren seguimiento/i,
+      ),
+    ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('requiereAtencion=true'),
+        expect.any(Object),
+      )
+    })
+  })
+
   it('creates preventive schedules by date, mileage and combined criteria with validation', async () => {
     window.history.pushState({}, '', '/mantenimiento-preventivo')
     const fetchMock = mockApi(preventiveHandler('ADMINISTRADOR'))

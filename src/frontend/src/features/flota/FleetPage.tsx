@@ -328,9 +328,10 @@ function ActionDialog({
 
 export default function FleetPage() {
   const { user } = useSession()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const canEditMasterData = user?.rol.codigo === 'ADMINISTRADOR'
   const canManage = user?.rol.codigo === 'ADMINISTRADOR' || user?.rol.codigo === 'DESPACHADOR'
+  const sinConductor = searchParams.get('sinConductor') === 'true'
   const [busqueda, setBusqueda] = useState('')
   const busquedaEstable = useDebouncedValue(busqueda)
   const [estado, setEstado] = useState<BusStatus | ''>(() =>
@@ -348,8 +349,12 @@ export default function FleetPage() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    setEstado(getStatusFromSearch(searchParams.get('estado')))
-    setPagina(1)
+    const timer = window.setTimeout(() => {
+      setEstado(getStatusFromSearch(searchParams.get('estado')))
+      setPagina(1)
+    }, 0)
+
+    return () => window.clearTimeout(timer)
   }, [searchParams])
 
   const refreshAdminList = useCallback(async () => {
@@ -362,10 +367,11 @@ export default function FleetPage() {
       estado,
       limite: 8,
       pagina,
+      sinConductor,
     })
 
     setListData(data)
-  }, [busquedaEstable, canManage, estado, pagina])
+  }, [busquedaEstable, canManage, estado, pagina, sinConductor])
 
   useEffect(() => {
     let active = true
@@ -381,6 +387,7 @@ export default function FleetPage() {
             estado,
             limite: 8,
             pagina,
+            sinConductor,
           })
 
           if (active) {
@@ -403,7 +410,7 @@ export default function FleetPage() {
     return () => {
       active = false
     }
-  }, [busquedaEstable, canManage, estado, pagina])
+  }, [busquedaEstable, canManage, estado, pagina, sinConductor])
 
   const totalLabel = useMemo(() => {
     if (!listData) {
@@ -487,6 +494,12 @@ export default function FleetPage() {
                 Gestion de la flota vehicular
               </h2>
               <p className="mt-1 text-sm leading-6 text-slate-500">{totalLabel} en PostgreSQL</p>
+              {user?.rol.codigo === 'DESPACHADOR' && (
+                <p className="mt-2 text-xs leading-5 text-slate-600">
+                  Vista de consulta para preparar el despacho: revise disponibilidad y jornada antes
+                  de coordinar recursos.
+                </p>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
@@ -507,6 +520,26 @@ export default function FleetPage() {
             </div>
           </div>
         </section>
+
+        {sinConductor && (
+          <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <p>
+              Mostrando buses sin conductor asignado. Revise la asignación antes de programar una
+              jornada.
+            </p>
+            <Button
+              onClick={() => {
+                const nextParams = new URLSearchParams(searchParams)
+                nextParams.delete('sinConductor')
+                setSearchParams(nextParams)
+              }}
+              size="sm"
+              variant="outline"
+            >
+              Quitar filtro
+            </Button>
+          </section>
+        )}
 
         {feedback && (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">

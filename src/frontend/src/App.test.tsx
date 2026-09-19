@@ -40,6 +40,40 @@ describe('App authentication and role navigation', () => {
       'href',
       '/flota?estado=EN_MANTENIMIENTO',
     )
+    expect(screen.getByRole('link', { name: /Buses sin conductor/i })).toHaveAttribute(
+      'href',
+      '/flota?sinConductor=true',
+    )
+    expect(
+      screen.getByRole('link', { name: /Mantenimientos que requieren atención/i }),
+    ).toHaveAttribute('href', '/mantenimiento-preventivo?requiereAtencion=true')
+    expect(
+      screen.getByRole('link', { name: /Repuestos que requieren reposición/i }),
+    ).toHaveAttribute('href', '/repuestos?requiereReposicion=true')
+  })
+
+  it('presenta al despachador tareas operativas en lugar de requisitos técnicos', async () => {
+    window.history.pushState({}, '', '/inicio')
+    mockApi(fleetHandler('DESPACHADOR'))
+
+    render(<App />)
+
+    expect(
+      await screen.findByRole('link', { name: /Consultar flota disponible/i }),
+    ).toHaveAttribute('href', '/flota')
+    expect(screen.getByRole('link', { name: /Programar y supervisar jornadas/i })).toHaveAttribute(
+      'href',
+      '/jornadas',
+    )
+    expect(screen.getByRole('link', { name: /Atender novedades operativas/i })).toHaveAttribute(
+      'href',
+      '/novedades',
+    )
+    expect(screen.getByRole('link', { name: /Revisar buses restringidos/i })).toHaveAttribute(
+      'href',
+      '/ordenes-trabajo/despacho',
+    )
+    expect(screen.queryByText(/RF-0[1-6]/i)).not.toBeInTheDocument()
   })
 
   it('shows a loading state while the session is being recovered', async () => {

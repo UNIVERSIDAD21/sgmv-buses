@@ -40,6 +40,32 @@ describe('RF-01 fleet frontend', () => {
     })
   })
 
+  it('applies the buses without driver filter received from a dashboard route', async () => {
+    window.history.pushState({}, '', '/flota?sinConductor=true')
+    const fetchMock = mockApi(fleetHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Mostrando buses sin conductor asignado/i)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('sinConductor=true'),
+        expect.any(Object),
+      )
+    })
+  })
+
+  it('explains the dispatcher consultation scope before operational coordination', async () => {
+    window.history.pushState({}, '', '/flota')
+    mockApi(fleetHandler('DESPACHADOR'))
+
+    render(<App />)
+
+    expect(
+      await screen.findByText(/Vista de consulta para preparar el despacho/i),
+    ).toBeInTheDocument()
+  })
+
   it('loads fleet list with search, filter and pagination', async () => {
     window.history.pushState({}, '', '/flota')
     const fetchMock = mockApi(fleetHandler())

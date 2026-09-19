@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -1088,6 +1089,8 @@ function CompatibilityRuleForm({
 
 export default function SparePartsPage() {
   const { user } = useSession()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requiereReposicion = searchParams.get('requiereReposicion') === 'true'
   const [action, setAction] = useState<ActionState | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [categoria, setCategoria] = useState('')
@@ -1127,8 +1130,18 @@ export default function SparePartsPage() {
       limite: 8,
       ordenarPor,
       pagina,
+      requiereReposicion,
     }),
-    [busqueda, categoria, direccion, disponibilidad, estado, ordenarPor, pagina],
+    [
+      busqueda,
+      categoria,
+      direccion,
+      disponibilidad,
+      estado,
+      ordenarPor,
+      pagina,
+      requiereReposicion,
+    ],
   )
 
   const movementParams = useMemo(
@@ -1379,6 +1392,25 @@ export default function SparePartsPage() {
             </Button>
           </div>
         </section>
+
+        {requiereReposicion && (
+          <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <p>
+              Mostrando repuestos agotados o con existencias bajas para priorizar su reposición.
+            </p>
+            <Button
+              onClick={() => {
+                const nextParams = new URLSearchParams(searchParams)
+                nextParams.delete('requiereReposicion')
+                setSearchParams(nextParams)
+              }}
+              size="sm"
+              variant="outline"
+            >
+              Quitar filtro
+            </Button>
+          </section>
+        )}
 
         {feedback && (
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">

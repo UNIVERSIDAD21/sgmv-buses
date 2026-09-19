@@ -120,6 +120,10 @@ export const listSparePartsQuerySchema = z.object({
   categoria: optionalTrimmedText(120),
   direccion: z.enum(['asc', 'desc']).default('asc'),
   disponibilidad: z.enum(['AGOTADO', 'BAJO', 'DISPONIBLE', 'INACTIVO']).optional(),
+  requiereReposicion: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
   estado: z.enum(['ACTIVO', 'INACTIVO']).optional(),
   limite: z.coerce.number().int().min(1).max(100).default(10),
   ordenarPor: z
