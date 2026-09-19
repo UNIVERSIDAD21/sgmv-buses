@@ -95,6 +95,23 @@ describe('RF-03 preventive maintenance frontend', () => {
     })
   })
 
+  it('highlights the exact preventive restriction linked from an alert for dispatch', async () => {
+    window.history.pushState({}, '', '/mantenimiento-preventivo?detalle=2056&desde=alertas')
+    mockApi(preventiveHandler('DESPACHADOR'))
+
+    render(<App />)
+
+    expect(
+      await screen.findByRole('article', {
+        name: /Mantenimiento preventivo 2056, origen de la alerta/i,
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Volver a alertas/i })).toHaveAttribute(
+      'href',
+      '/alertas',
+    )
+  })
+
   it('opens the exact preventive schedule received through an operational deep link', async () => {
     window.history.pushState({}, '', '/mantenimiento-preventivo?detalle=2056')
     const fetchMock = mockApi(preventiveHandler('ADMINISTRADOR'))

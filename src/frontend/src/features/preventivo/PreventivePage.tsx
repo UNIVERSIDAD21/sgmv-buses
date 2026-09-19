@@ -560,6 +560,7 @@ function PreventiveDetail({
 export default function PreventivePage() {
   const { user } = useSession()
   const [searchParams, setSearchParams] = useSearchParams()
+  const detailIdFromQuery = getDetailIdFromSearch(searchParams.get('detalle'))
   const requiereAtencion = searchParams.get('requiereAtencion') === 'true'
   const [buses, setBuses] = useState<BusSummaryDto[]>([])
   const [busId, setBusId] = useState('')
@@ -819,7 +820,7 @@ export default function PreventivePage() {
   }
 
   if (user?.rol.codigo === 'DESPACHADOR') {
-    return <PreventiveRestrictionsPanel />
+    return <PreventiveRestrictionsPanel focusProgramacionId={detailIdFromQuery} />
   }
 
   if (!isAdmin) {

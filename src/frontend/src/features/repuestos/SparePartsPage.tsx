@@ -109,6 +109,12 @@ const movementSortOptions: Array<[MovementSortField, string]> = [
   ['cantidad', 'Cantidad'],
 ]
 
+function getDetailIdFromSearch(value: string | null) {
+  const id = Number(value)
+
+  return Number.isSafeInteger(id) && id > 0 ? id : null
+}
+
 function getErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
     return error.message
@@ -1328,21 +1334,22 @@ export default function SparePartsPage() {
     }
   }, [isAdmin, refreshData])
 
-  async function openDetail(part: SparePartDto) {
-    setSelectedPart(part)
+  const openDetail = useCallback(async (part: SparePartDto | number) => {
+    const partId = typeof part === 'number' ? part : part.id
+    if (typeof part !== 'number') setSelectedPart(part)
     setLoadError(null)
 
     try {
       const [detail, movements] = await Promise.all([
-        getSparePart(part.id),
-        listSparePartMovements(part.id, {
+        getSparePart(partId),
+        listSparePartMovements(partId, {
           direccion: 'desc',
           limite: 6,
           ordenarPor: 'fechaMovimiento',
           pagina: 1,
         }),
       ])
-      const compatibility = await listCompatibilityRules(part.id)
+      const compatibility = await listCompatibilityRules(partId)
 
       setSelectedPart(detail.repuesto)
       setDetailMovements(movements)
@@ -1350,7 +1357,24 @@ export default function SparePartsPage() {
     } catch (error) {
       setLoadError(getErrorMessage(error))
     }
+  }, [])
+
+  function closeDetail() {
+    setSelectedPart(null)
+    if (!searchParams.has('detalle')) return
+
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('detalle')
+    setSearchParams(nextParams)
   }
+
+  useEffect(() => {
+    const detailId = getDetailIdFromSearch(searchParams.get('detalle'))
+    if (!detailId) return
+
+    const request = window.setTimeout(() => void openDetail(detailId), 0)
+    return () => window.clearTimeout(request)
+  }, [openDetail, searchParams])
 
   async function refreshSelected(partId: number) {
     const [detail, movements] = await Promise.all([
@@ -1774,7 +1798,7 @@ export default function SparePartsPage() {
       </div>
 
       <Drawer
-        onClose={() => setSelectedPart(null)}
+        onClose={closeDetail}
         open={Boolean(selectedPart)}
         subtitle={selectedPart ? `${selectedPart.codigo} - ${selectedPart.nombre}` : undefined}
         title="Detalle de repuesto"

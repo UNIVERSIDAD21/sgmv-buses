@@ -86,6 +86,23 @@ describe('RF-05 spare parts frontend', () => {
     })
   })
 
+  it('opens the exact spare part received through an alert deep link', async () => {
+    window.history.pushState({}, '', '/repuestos?detalle=2047&desde=alertas')
+    const fetchMock = mockApi(sparePartHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Detalle de repuesto/i)).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/repuestos/2047'),
+      expect.any(Object),
+    )
+    expect(screen.getByRole('link', { name: /Volver a alertas/i })).toHaveAttribute(
+      'href',
+      '/alertas',
+    )
+  })
+
   it.each(['MECANICO', 'CONDUCTOR'] as RoleCode[])(
     'keeps %s out of the RF-05 administrative route and navigation',
     async (role) => {

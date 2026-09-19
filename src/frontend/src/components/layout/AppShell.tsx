@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import {
   REQUIREMENT_NAV_ITEMS,
@@ -530,6 +530,16 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
           ref={mainRef}
           tabIndex={-1}
         >
+          {new URLSearchParams(location.search).get('desde') === 'alertas' && (
+            <div className="page-container pb-0 pt-4">
+              <Link
+                className="inline-flex min-h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                to="/alertas"
+              >
+                Volver a alertas
+              </Link>
+            </div>
+          )}
           <Outlet />
         </main>
 

@@ -42,8 +42,10 @@ function distanceSummary(item: PreventiveRestrictionDto) {
 }
 
 export default function PreventiveRestrictionsPanel({
+  focusProgramacionId,
   onOpenSchedule,
 }: {
+  focusProgramacionId?: number | null
   onOpenSchedule?: (programacionId: number) => void
 }) {
   const [items, setItems] = useState<PreventiveRestrictionDto[] | null>(null)
@@ -116,56 +118,71 @@ export default function PreventiveRestrictionsPanel({
         )}
       </section>
       <section className="grid gap-3">
-        {items?.map((item) => (
-          <article
-            className="rounded-lg border border-slate-200 bg-white p-4"
-            key={item.programacionId}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="font-semibold text-slate-900">{item.bus.codigoInterno}</p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {item.actividad ?? 'Mantenimiento preventivo programado'}
+        {items?.map((item) => {
+          const isFocused = item.programacionId === focusProgramacionId
+
+          return (
+            <article
+              aria-label={
+                isFocused
+                  ? `Mantenimiento preventivo ${item.programacionId}, origen de la alerta`
+                  : `Mantenimiento preventivo ${item.programacionId}`
+              }
+              className={`rounded-lg border bg-white p-4 ${isFocused ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200'}`}
+              id={`preventivo-${item.programacionId}`}
+              key={item.programacionId}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-slate-900">{item.bus.codigoInterno}</p>
+                  {isFocused && (
+                    <p className="mt-1 text-xs font-semibold text-emerald-700">
+                      Este mantenimiento originó la alerta.
+                    </p>
+                  )}
+                  <p className="mt-1 text-sm text-slate-600">
+                    {item.actividad ?? 'Mantenimiento preventivo programado'}
+                  </p>
+                </div>
+                <Badge tone={item.estado === 'VENCIDO' ? 'red' : 'amber'}>
+                  {PREVENTIVE_STATUS_LABELS[item.estado]}
+                </Badge>
+              </div>
+              <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+                <div>
+                  <dt className="text-xs font-medium uppercase text-slate-500">Objetivo</dt>
+                  <dd className="mt-1 text-slate-700">{targetSummary(item)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium uppercase text-slate-500">
+                    {item.estado === 'VENCIDO' ? 'Exceso' : 'Falta para vencer'}
+                  </dt>
+                  <dd className="mt-1 text-slate-700">{distanceSummary(item)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium uppercase text-slate-500">Causa</dt>
+                  <dd className="mt-1 text-slate-700">{item.causa}</dd>
+                </div>
+              </dl>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                <p className="text-sm text-slate-600">
+                  {item.bloqueaDespacho
+                    ? 'Accion recomendada: atender el mantenimiento antes de iniciar otra jornada.'
+                    : 'Accion recomendada: coordinar el mantenimiento antes del vencimiento.'}
                 </p>
+                {onOpenSchedule && (
+                  <Button
+                    onClick={() => onOpenSchedule(item.programacionId)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Abrir mantenimiento programado
+                  </Button>
+                )}
               </div>
-              <Badge tone={item.estado === 'VENCIDO' ? 'red' : 'amber'}>
-                {PREVENTIVE_STATUS_LABELS[item.estado]}
-              </Badge>
-            </div>
-            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-              <div>
-                <dt className="text-xs font-medium uppercase text-slate-500">Objetivo</dt>
-                <dd className="mt-1 text-slate-700">{targetSummary(item)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium uppercase text-slate-500">
-                  {item.estado === 'VENCIDO' ? 'Exceso' : 'Falta para vencer'}
-                </dt>
-                <dd className="mt-1 text-slate-700">{distanceSummary(item)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium uppercase text-slate-500">Causa</dt>
-                <dd className="mt-1 text-slate-700">{item.causa}</dd>
-              </div>
-            </dl>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
-              <p className="text-sm text-slate-600">
-                {item.bloqueaDespacho
-                  ? 'Accion recomendada: atender el mantenimiento antes de iniciar otra jornada.'
-                  : 'Accion recomendada: coordinar el mantenimiento antes del vencimiento.'}
-              </p>
-              {onOpenSchedule && (
-                <Button
-                  onClick={() => onOpenSchedule(item.programacionId)}
-                  size="sm"
-                  variant="outline"
-                >
-                  Abrir mantenimiento programado
-                </Button>
-              )}
-            </div>
-          </article>
-        ))}
+            </article>
+          )
+        })}
       </section>
     </div>
   )

@@ -241,9 +241,39 @@ describe('P9 AlertsPage', () => {
     fireEvent.click(within(safeArticle!).getByRole('button', { name: 'Ver origen' }))
     await waitFor(() => {
       expect(window.location.pathname).toBe('/novedades')
-      expect(window.location.search).toBe('?detalle=2006')
+      expect(window.location.search).toBe('?detalle=2006&desde=alertas')
     })
     expect(screen.getAllByRole('button', { name: 'Ver origen' })).toHaveLength(1)
+  })
+
+  it('opens the exact journey origin and marks it read without attending it', async () => {
+    const { calls, state } = mockAlertApi({
+      initialItems: [
+        alertItem({
+          enlaceInterno: '/jornadas',
+          origen: { jornadaId: 2029 },
+          tipo: 'CAMBIO_JORNADA',
+        }),
+      ],
+    })
+    window.history.pushState({}, '', '/alertas')
+    render(
+      <BrowserRouter>
+        <SessionProvider>
+          <AlertsPage />
+        </SessionProvider>
+      </BrowserRouter>,
+    )
+
+    fireEvent.click((await screen.findByRole('article')).querySelector('button:last-child')!)
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/jornadas')
+      expect(window.location.search).toBe('?detalle=2029&desde=alertas')
+    })
+    expect(callsFor(calls, '/alertas/2063/leida')).toHaveLength(1)
+    expect(callsFor(calls, '/alertas/2063/atendida')).toHaveLength(0)
+    expect(state.items[0]?.estado).toBe('LEIDA')
   })
 
   it('does not send duplicate mutations when the same action is clicked twice', async () => {

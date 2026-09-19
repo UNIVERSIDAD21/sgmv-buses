@@ -111,14 +111,18 @@ function isSafeInternalLink(value: string | null): value is string {
 function originLink(item: AlertItemDto) {
   if (!isSafeInternalLink(item.enlaceInterno)) return null
 
-  const detailId =
-    item.enlaceInterno === '/novedades'
-      ? item.origen.novedadId
-      : item.enlaceInterno === '/ordenes-trabajo'
-        ? item.origen.ordenId
-        : undefined
+  const detailIdByRoute: Record<string, number | undefined> = {
+    '/flota': item.origen.busId,
+    '/jornadas': item.origen.jornadaId,
+    '/mantenimiento-preventivo': item.origen.programacionMantenimientoId,
+    '/novedades': item.origen.novedadId,
+    '/ordenes-trabajo': item.origen.ordenId,
+    '/repuestos': item.origen.repuestoId,
+  }
+  const detailId = detailIdByRoute[item.enlaceInterno]
+  if (!detailId) return item.enlaceInterno
 
-  return detailId ? `${item.enlaceInterno}?detalle=${detailId}` : item.enlaceInterno
+  return `${item.enlaceInterno}?detalle=${detailId}&desde=alertas`
 }
 
 function formatAlertDate(value: string) {

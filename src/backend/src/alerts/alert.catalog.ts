@@ -80,7 +80,7 @@ export const alertCatalog = {
     deduplicationScope: 'bus y solicitud idempotente rechazada',
     defaultPriority: 'ALTA',
     defaultTitle: 'Conflicto de jornada rechazado',
-    internalRoutes: { ADMINISTRADOR: '/jornadas', DESPACHADOR: '/jornadas' },
+    internalRoutes: { ADMINISTRADOR: '/flota', DESPACHADOR: '/flota' },
     originKind: 'busId',
     recipientStrategy: 'administradores y despachadores activos',
   },
