@@ -173,7 +173,7 @@ export class PreventivePlanService {
       intervaloDias: plan.intervaloDias,
       intervaloKm: plan.intervaloKm,
       prioridad: plan.prioridad,
-      programacionesAsociadas: plan._count.programacionesMantenimiento,
+      programacionesActivas: plan._count.programacionesMantenimiento,
       updatedAt: plan.updatedAt.toISOString(),
       version: plan.version,
     }

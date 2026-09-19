@@ -347,6 +347,27 @@ describe('RF-03 preventive maintenance frontend', () => {
     ).toBeInTheDocument()
   })
 
+  it('explains version history and the impact of leaving a routine unused', async () => {
+    window.history.pushState({}, '', '/mantenimiento-preventivo')
+    mockApi(preventiveHandler('ADMINISTRADOR'))
+    render(<App />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Rutinas de mantenimiento/i }))
+    await screen.findByText('FRENOS.001')
+    fireEvent.click(screen.getByRole('button', { name: /Nueva versi.n/i }))
+    expect(await screen.findByText(/Nueva version sin perder historial/i)).toBeInTheDocument()
+    expect(screen.getByText(/Comparacion antes y despues/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Cerrar di.log/i }))
+
+    fireEvent.click(screen.getByRole('button', { name: /^Dejar de usar$/i }))
+    const deactivateDialog = await screen.findByRole('dialog', {
+      name: /Dejar de usar esta rutina/i,
+    })
+    expect(
+      within(deactivateDialog).getByText(/Actualmente hay 1 mantenimiento programado activo/i),
+    ).toBeInTheDocument()
+  })
+
   it('shows the target and opens an existing scheduled maintenance without duplication', async () => {
     window.history.pushState({}, '', '/mantenimiento-preventivo')
     mockApi(preventiveHandler('ADMINISTRADOR', { planAlreadyExists: true }))

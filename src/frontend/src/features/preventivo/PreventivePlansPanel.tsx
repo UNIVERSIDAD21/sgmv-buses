@@ -39,6 +39,13 @@ function optionalPositive(value: string) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null
 }
 
+function describeIntervals(days: string, kilometers: string) {
+  const values = []
+  if (days) values.push(`cada ${days} dias`)
+  if (kilometers) values.push(`cada ${kilometers} km`)
+  return values.length > 0 ? values.join(' y ') : 'sin intervalo definido'
+}
+
 function PlanForm({
   buses,
   initial,
@@ -71,6 +78,13 @@ function PlanForm({
   })
   const needsDays = criterion !== 'KILOMETRAJE'
   const needsKm = criterion !== 'FECHA'
+  const affectedBusCount = initial
+    ? buses.filter((bus) =>
+        initial.destino.tipo === 'BUS'
+          ? bus.id === initial.destino.busId
+          : bus.modeloBus?.id === initial.destino.modeloBusId,
+      ).length
+    : 0
   const set = (key: keyof typeof form, value: string | boolean) =>
     setForm((current) => ({ ...current, [key]: value }))
 
@@ -131,6 +145,16 @@ function PlanForm({
               'El identificador interno de esta rutina se generar\u00e1 al guardarla. Solo debe describir el mantenimiento que necesita la flota.'
             }
           </p>
+        )}
+        {initial && (
+          <section className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm leading-6 text-violet-950">
+            <h4 className="font-semibold">Nueva version sin perder historial</h4>
+            <p className="mt-1">
+              Las ordenes y mantenimientos ya registrados conservan el snapshot de la version{' '}
+              {initial.version}. Esta propuesta se usara para futuras programaciones de{' '}
+              {affectedBusCount} bus{affectedBusCount === 1 ? '' : 'es'} dentro de su alcance.
+            </p>
+          </section>
         )}
         <div className="grid gap-3 sm:grid-cols-2">
           <label>
@@ -311,6 +335,30 @@ function PlanForm({
               : 'Al vencer, avisar\u00e1 sin bloquear nuevas jornadas.'}
           </p>
         </section>
+        {initial && (
+          <section className="rounded-lg border border-slate-200 p-3 text-sm text-slate-700">
+            <h4 className="font-semibold text-slate-900">Comparacion antes y despues</h4>
+            <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs font-medium uppercase text-slate-500">Version actual</dt>
+                <dd>
+                  {initial.componente} -{' '}
+                  {describeIntervals(
+                    initial.intervaloDias?.toString() ?? '',
+                    initial.intervaloKm?.toString() ?? '',
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium uppercase text-slate-500">Nueva version</dt>
+                <dd>
+                  {form.componente.trim() || 'Componente por definir'} -{' '}
+                  {describeIntervals(form.intervaloDias, form.intervaloKm)}
+                </dd>
+              </div>
+            </dl>
+          </section>
+        )}
         {error && (
           <p className="text-sm text-red-600" role="alert">
             {error}
@@ -491,6 +539,14 @@ function DeactivatePlanDialog({
         <p className="text-sm leading-6 text-slate-600">
           La rutina dejará de estar disponible para nuevas asignaciones. Los mantenimientos ya
           programados y su historial no se eliminan.
+        </p>
+        <p className="rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-700">
+          Actualmente hay {plan.programacionesActivas} mantenimiento
+          {plan.programacionesActivas === 1 ? '' : 's'} programado
+          {plan.programacionesActivas === 1 ? '' : 's'} activo
+          {plan.programacionesActivas === 1 ? '' : 's'} relacionado
+          {plan.programacionesActivas === 1 ? '' : 's'}. Si se desactiva por error, puede crear una
+          nueva version desde el historial de esta rutina; nada previo se sobrescribe.
         </p>
         <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           <input
@@ -688,7 +744,7 @@ export default function PreventivePlansPanel({
                 <th className="px-4 py-3">Destino</th>
                 <th className="px-4 py-3">Version</th>
                 <th className="px-4 py-3">Bloqueo</th>
-                <th className="px-4 py-3">Programaciones/orden</th>
+                <th className="px-4 py-3">Programaciones activas</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -707,7 +763,7 @@ export default function PreventivePlansPanel({
                   <td className="px-4 py-3">
                     {plan.bloqueaAlVencer ? <Badge tone="red">Al vencer</Badge> : 'No bloquea'}
                   </td>
-                  <td className="px-4 py-3">{plan.programacionesAsociadas}</td>
+                  <td className="px-4 py-3">{plan.programacionesActivas}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <Button
@@ -722,7 +778,7 @@ export default function PreventivePlansPanel({
                         Versiones
                       </Button>
                       <Button
-                        disabled={!plan.activa || saving}
+                        disabled={saving}
                         onClick={() => {
                           setEditing(plan)
                           setShowForm(true)

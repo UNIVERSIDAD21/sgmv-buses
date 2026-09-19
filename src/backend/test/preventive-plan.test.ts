@@ -269,7 +269,23 @@ describe('P6-B planes preventivos versionados', () => {
 
     const detail = await agent.get(`/mantenimiento-preventivo/planes/${busPlanId}`).expect(200)
     expect(detail.body.data.plan.activa).toBe(false)
-    expect(detail.body.data.plan.programacionesAsociadas).toBe(0)
+    expect(detail.body.data.plan.programacionesActivas).toBe(0)
+
+    const restored = await agent
+      .post(`/mantenimiento-preventivo/planes/${busPlanId}/versiones`)
+      .send({
+        actividad: 'Inspeccion restaurada de sistema de frenos',
+        anticipacionKm: 250,
+        bloqueaAlVencer: true,
+        componente: 'Sistema de frenos',
+        criterio: 'KILOMETRAJE',
+        intervaloKm: 5500,
+        prioridad: 'ALTA',
+      })
+      .expect(201)
+    created.plans.push(restored.body.data.plan.id)
+    expect(restored.body.data.plan.activa).toBe(true)
+    expect(restored.body.data.plan.version).toBe(2)
   }, 60000)
 
   it('serializes concurrent first versions into one active identity', async () => {
@@ -280,8 +296,9 @@ describe('P6-B planes preventivos versionados', () => {
       second.post('/mantenimiento-preventivo/planes').send(planPayload({ busId: bus.id })),
     ])
     expect([a.status, b.status].sort()).toEqual([201, 409])
+    const createdPlan = [a, b].find((response) => response.status === 201)!
     const plans = await prisma.planMantenimientoPreventivo.findMany({
-      where: { busId: bus.id, claveTarea: a.body.data.plan.claveTarea },
+      where: { busId: bus.id, claveTarea: createdPlan.body.data.plan.claveTarea },
     })
     created.plans.push(...plans.map((plan) => plan.id))
     expect(plans.filter((plan) => plan.activo)).toHaveLength(1)

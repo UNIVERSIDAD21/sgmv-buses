@@ -18,7 +18,7 @@ export interface PreventivePlanDto {
   intervaloDias: number | null
   intervaloKm: number | null
   prioridad: PrioridadOrden
-  programacionesAsociadas: number
+  programacionesActivas: number
   updatedAt: string
   version: number
 }

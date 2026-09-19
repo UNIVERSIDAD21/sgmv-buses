@@ -9,7 +9,9 @@ const userSelect = { email: true, id: true, nombre: true } as const
 
 export const preventivePlanInclude = {
   creadoPor: { select: userSelect },
-  _count: { select: { programacionesMantenimiento: true } },
+  _count: {
+    select: { programacionesMantenimiento: { where: { activa: true } } },
+  },
 } as const
 
 export type PreventivePlanRecord = Prisma.PlanMantenimientoPreventivoGetPayload<{
@@ -115,6 +117,22 @@ export class PreventivePlanRepository {
         },
         include: preventivePlanInclude,
       })
+      const affectedSchedules = await tx.programacionMantenimiento.findMany({
+        where: {
+          activa: true,
+          planMantenimientoPreventivo: { claveTarea: current.claveTarea },
+        },
+        select: { busId: true },
+      })
+      for (const busId of [
+        ...new Set(affectedSchedules.map((schedule) => schedule.busId)),
+      ].sort()) {
+        await reconcilePreventiveObligationForTask(tx, {
+          actorId,
+          busId,
+          claveTarea: current.claveTarea,
+        })
+      }
       return { conflict: false as const, plan }
     })
   }
