@@ -24,7 +24,7 @@ describe('RF-03 preventive maintenance frontend', () => {
       await screen.findByRole(
         'heading',
         {
-          name: /^Administracion del mantenimiento preventivo$/i,
+          name: /^Gestión del mantenimiento preventivo$/i,
         },
         { timeout: 5_000 },
       ),
@@ -101,7 +101,7 @@ describe('RF-03 preventive maintenance frontend', () => {
 
     render(<App />)
 
-    fireEvent.click(await screen.findByRole('button', { name: /Crear programacion/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Programar mantenimiento/i }))
     const dateDialog = await screen.findByRole('dialog', {
       name: /Crear programacion preventiva/i,
     })
@@ -123,7 +123,7 @@ describe('RF-03 preventive maintenance frontend', () => {
     fireEvent.click(within(dateDialog).getByRole('button', { name: /Registrar programacion/i }))
     expect(await screen.findByText(/Programacion preventiva registrada/i)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /Crear programacion/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Programar mantenimiento/i }))
     const mileageDialog = await screen.findByRole('dialog', {
       name: /Crear programacion preventiva/i,
     })
@@ -146,7 +146,7 @@ describe('RF-03 preventive maintenance frontend', () => {
 
     expect(await screen.findByText(/Programacion preventiva registrada/i)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /Crear programacion/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Programar mantenimiento/i }))
     const combinedDialog = await screen.findByRole('dialog', {
       name: /Crear programacion preventiva/i,
     })
@@ -258,7 +258,9 @@ describe('RF-03 preventive maintenance frontend', () => {
     render(<App />)
 
     expect(await screen.findByText(/Acceso denegado/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Crear programacion/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Programar mantenimiento/i }),
+    ).not.toBeInTheDocument()
 
     vi.restoreAllMocks()
     window.history.pushState({}, '', '/mantenimiento-preventivo')

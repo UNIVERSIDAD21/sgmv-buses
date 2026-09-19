@@ -819,7 +819,7 @@ export default function PreventivePage() {
           <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
-                Administracion del mantenimiento preventivo
+                Gestión del mantenimiento preventivo
               </h2>
               <p className="mt-1 text-sm leading-6 text-slate-500">
                 {totalLabel} por fecha, kilometraje o criterio combinado.
@@ -827,17 +827,29 @@ export default function PreventivePage() {
             </div>
             {adminView === 'programaciones' && (
               <Button icon={<PlusCircle size={16} />} onClick={() => setShowCreateForm(true)}>
-                Crear programacion
+                Programar mantenimiento
               </Button>
             )}
           </div>
+          <ol
+            className="mt-4 grid gap-2 text-xs text-slate-700 sm:grid-cols-5"
+            aria-label="Ciclo preventivo"
+          >
+            {['Rutina', 'Mantenimiento programado', 'Orden', 'Intervención', 'Siguiente ciclo'].map(
+              (step, index) => (
+                <li className="rounded-lg bg-slate-50 px-3 py-2 font-medium" key={step}>
+                  {index + 1}. {step}
+                </li>
+              ),
+            )}
+          </ol>
           <div className="mt-4 flex gap-2">
             <Button
               onClick={() => setAdminView('programaciones')}
               size="sm"
               variant={adminView === 'programaciones' ? 'secondary' : 'outline'}
             >
-              Programaciones
+              Mantenimientos programados
             </Button>
             <Button
               onClick={() => setAdminView('planes')}
