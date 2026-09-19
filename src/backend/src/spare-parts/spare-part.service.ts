@@ -1,4 +1,5 @@
 import { Prisma, type TipoMovimientoInventario } from '@prisma/client'
+import { randomUUID } from 'node:crypto'
 
 import type { AuthenticatedUser } from '../auth/auth.types.js'
 import { AppError } from '../shared/http.js'
@@ -43,6 +44,10 @@ function normalizeOptionalText(value: string | undefined) {
 
 function normalizeCode(value: string) {
   return normalizeText(value).toUpperCase()
+}
+
+function generateInternalCode() {
+  return `REP-${randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()}`
 }
 
 function decimalToString(value: Prisma.Decimal.Value) {
@@ -208,7 +213,6 @@ export class SparePartService {
     const normalized: CreateSparePartInput = {
       ...input,
       categoria: normalizeOptionalText(input.categoria),
-      codigo: normalizeCode(input.codigo),
       motivoStockInicial: normalizeOptionalText(input.motivoStockInicial),
       nombre: normalizeText(input.nombre),
       fabricante: normalizeOptionalText(input.fabricante),
@@ -216,56 +220,68 @@ export class SparePartService {
       unidadMedida: normalizeText(input.unidadMedida),
     }
 
-    try {
-      const result = await this.sparePartRepository.createSparePart(actor.id, normalized)
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const code = generateInternalCode()
 
-      if (result.status === 'IDEMPOTENCY_CONFLICT') {
-        throw new AppError(
-          409,
-          'IDEMPOTENCY_CONFLICT',
-          'La clave de idempotencia ya fue usada en otra operacion',
-        )
-      }
+      try {
+        const result = await this.sparePartRepository.createSparePart(actor.id, {
+          ...normalized,
+          codigo: code,
+        })
 
-      if (!result.repuesto) {
-        throw new AppError(500, 'SPARE_PART_NOT_CREATED', 'No fue posible crear el repuesto')
-      }
+        if (result.status === 'IDEMPOTENCY_CONFLICT') {
+          throw new AppError(
+            409,
+            'IDEMPOTENCY_CONFLICT',
+            'La clave de idempotencia ya fue usada en otra operacion',
+          )
+        }
 
-      return {
-        movimientoInicial: result.movimiento ? mapMovement(result.movimiento) : null,
-        repuesto: mapSparePart(result.repuesto),
-        yaExistia: result.status === 'ALREADY_APPLIED',
-      }
-    } catch (error) {
-      if (isMovementIdempotencyDuplicate(error) && normalized.claveIdempotencia) {
-        const existing = await this.sparePartRepository.findMovementByIdempotencyKey(
-          normalized.claveIdempotencia,
-        )
+        if (!result.repuesto) {
+          throw new AppError(500, 'SPARE_PART_NOT_CREATED', 'No fue posible crear el repuesto')
+        }
 
-        if (
-          existing &&
-          existing.tipo === 'ENTRADA' &&
-          existing.responsableId === actor.id &&
-          existing.repuesto.codigo === normalized.codigo
-        ) {
-          return {
-            movimientoInicial: mapMovement(existing),
-            repuesto: mapSparePart(existing.repuesto),
-            yaExistia: true,
+        return {
+          movimientoInicial: result.movimiento ? mapMovement(result.movimiento) : null,
+          repuesto: mapSparePart(result.repuesto),
+          yaExistia: result.status === 'ALREADY_APPLIED',
+        }
+      } catch (error) {
+        if (isMovementIdempotencyDuplicate(error) && normalized.claveIdempotencia) {
+          const existing = await this.sparePartRepository.findMovementByIdempotencyKey(
+            normalized.claveIdempotencia,
+          )
+
+          if (existing && existing.tipo === 'ENTRADA' && existing.responsableId === actor.id) {
+            return {
+              movimientoInicial: mapMovement(existing),
+              repuesto: mapSparePart(existing.repuesto),
+              yaExistia: true,
+            }
           }
         }
-      }
 
-      if (isSparePartCodeDuplicate(error)) {
-        throw new AppError(409, 'DUPLICATE_SPARE_PART_CODE', 'Ya existe un repuesto con ese codigo')
-      }
+        if (isSparePartCodeDuplicate(error) && attempt < 2) {
+          continue
+        }
 
-      if (isUniqueError(error)) {
-        throw new AppError(409, 'DUPLICATE_VALUE', 'Ya existe un registro con esos datos')
-      }
+        if (isSparePartCodeDuplicate(error)) {
+          throw new AppError(
+            500,
+            'SPARE_PART_CODE_GENERATION_FAILED',
+            'No fue posible asignar el identificador interno del repuesto',
+          )
+        }
 
-      throw error
+        if (isUniqueError(error)) {
+          throw new AppError(409, 'DUPLICATE_VALUE', 'Ya existe un registro con esos datos')
+        }
+
+        throw error
+      }
     }
+
+    throw new AppError(500, 'SPARE_PART_CODE_GENERATION_FAILED', 'No fue posible crear el repuesto')
   }
 
   async update(repuestoId: number, input: UpdateSparePartInput, actor: AuthenticatedUser) {

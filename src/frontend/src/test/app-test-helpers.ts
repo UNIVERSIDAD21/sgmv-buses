@@ -1521,18 +1521,13 @@ export function sparePartHandler(
 
       const body = parseRequestBody<{
         categoria?: string
-        codigo: string
         costoUnitario: string
         nombre: string
         stockInicial: string
         stockMinimo: string
         unidadMedida: string
       }>(init)
-      const code = body.codigo.trim().toUpperCase()
-
-      if (parts.some((part) => part.codigo === code)) {
-        return apiError(409, 'DUPLICATE_SPARE_PART_CODE', 'El codigo ya existe')
-      }
+      const code = `REP-AUTO-${String(parts.length + 1).padStart(4, '0')}`
 
       const part = decorateSparePart({
         categoria: body.categoria ?? null,

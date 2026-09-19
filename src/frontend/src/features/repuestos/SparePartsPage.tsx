@@ -492,7 +492,6 @@ function CreateForm({
   submitting: boolean
 }) {
   const [categoria, setCategoria] = useState('')
-  const [codigo, setCodigo] = useState('')
   const [costoUnitario, setCostoUnitario] = useState('0')
   const [dimensiones, setDimensiones] = useState<KeyValueEntry[]>([])
   const [especificaciones, setEspecificaciones] = useState<KeyValueEntry[]>([])
@@ -513,8 +512,8 @@ function CreateForm({
     const minimum = parseNonNegative(stockMinimo)
     const cost = parseNonNegative(costoUnitario)
 
-    if (!normalizeText(codigo) || !normalizeText(nombre) || !normalizeText(unidadMedida)) {
-      setLocalError('Codigo, nombre y unidad son obligatorios.')
+    if (!normalizeText(nombre) || !normalizeText(unidadMedida)) {
+      setLocalError('Nombre y unidad son obligatorios.')
       return
     }
 
@@ -535,7 +534,6 @@ function CreateForm({
     await onSubmit({
       categoria: normalizeText(categoria) || undefined,
       claveIdempotencia: Number(initial) > 0 ? idempotencyKey() : undefined,
-      codigo: normalizeText(codigo),
       costoUnitario: cost,
       motivoStockInicial:
         Number(initial) > 0
@@ -559,7 +557,9 @@ function CreateForm({
           {error ?? localError}
         </p>
       )}
-      <TextInput label="Codigo" onChange={setCodigo} required value={codigo} />
+      <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+        El sistema asignará un código interno único al guardar el repuesto.
+      </p>
       <TextInput label="Nombre" onChange={setNombre} required value={nombre} />
       <TextInput label="Categoria" onChange={setCategoria} value={categoria} />
       <TextInput label="Fabricante" onChange={setFabricante} value={fabricante} />

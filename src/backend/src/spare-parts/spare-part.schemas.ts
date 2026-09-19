@@ -56,7 +56,6 @@ export const createSparePartSchema = z
   .object({
     categoria: optionalTrimmedText(120),
     claveIdempotencia: z.uuid().optional(),
-    codigo: trimmedText(1, 80),
     costoUnitario: decimalText({ allowZero: true }).default('0'),
     motivoStockInicial: optionalTrimmedText(1000),
     nombre: trimmedText(2, 160),

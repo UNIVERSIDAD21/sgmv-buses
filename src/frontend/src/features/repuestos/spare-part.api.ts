@@ -46,7 +46,6 @@ export interface ListMovementsParams {
 export interface CreateSparePartInput {
   categoria?: string
   claveIdempotencia?: string
-  codigo: string
   dimensiones?: Record<string, unknown>
   costoUnitario: string
   motivoStockInicial?: string

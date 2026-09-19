@@ -899,12 +899,10 @@ describe('RF-05 spare parts inventory API', () => {
   it(
     'creates a spare part with zero stock and rejects direct stock patching',
     async () => {
-      const codigo = code('rep-zero').toLowerCase()
       const response = await adminAgent
         .post('/repuestos')
         .send({
           categoria: ' Motor ',
-          codigo,
           costoUnitario: '1200.50',
           nombre: ' Filtro principal ',
           stockInicial: '0',
@@ -915,7 +913,7 @@ describe('RF-05 spare parts inventory API', () => {
 
       created.repuestos.push(response.body.data.repuesto.id)
 
-      expect(response.body.data.repuesto.codigo).toBe(codigo.toUpperCase())
+      expect(response.body.data.repuesto.codigo).toMatch(/^REP-[0-9A-F]{12}$/)
       expect(response.body.data.repuesto.disponibilidad).toBe('AGOTADO')
       expect(response.body.data.movimientoInicial).toBeNull()
 
@@ -928,15 +926,13 @@ describe('RF-05 spare parts inventory API', () => {
   )
 
   it(
-    'creates initial stock with a movement and blocks duplicate codes',
+    'creates initial stock idempotently and rejects manual codes',
     async () => {
-      const codigo = code('REP-INIT')
       const key = randomUUID()
       const response = await adminAgent
         .post('/repuestos')
         .send({
           claveIdempotencia: key,
-          codigo,
           costoUnitario: '500.00',
           motivoStockInicial: 'Registro inicial RF-05',
           nombre: 'Repuesto con inicial',
@@ -956,7 +952,6 @@ describe('RF-05 spare parts inventory API', () => {
         .post('/repuestos')
         .send({
           claveIdempotencia: key,
-          codigo,
           costoUnitario: '500.00',
           motivoStockInicial: 'Registro inicial RF-05',
           nombre: 'Repuesto con inicial',
@@ -972,14 +967,14 @@ describe('RF-05 spare parts inventory API', () => {
       await adminAgent
         .post('/repuestos')
         .send({
-          codigo: codigo.toLowerCase(),
+          codigo: code('REP-MANUAL'),
           costoUnitario: '500.00',
           nombre: 'Duplicado',
           stockInicial: '0',
           stockMinimo: '2',
           unidadMedida: 'unidad',
         })
-        .expect(409)
+        .expect(400)
     },
     rf05TestTimeout,
   )
@@ -1287,12 +1282,10 @@ describe('RF-05 spare parts inventory API', () => {
   )
 
   it(
-    'creates a single spare part for concurrent duplicate code attempts',
+    'creates distinct spare parts during concurrent requests without manual codes',
     async () => {
-      const codigo = code('REP-DUP')
       const responses = await Promise.all([
         adminAgent.post('/repuestos').send({
-          codigo,
           costoUnitario: '10',
           nombre: 'Duplicado concurrente A',
           stockInicial: '0',
@@ -1300,7 +1293,6 @@ describe('RF-05 spare parts inventory API', () => {
           unidadMedida: 'unidad',
         }),
         adminAgent.post('/repuestos').send({
-          codigo: codigo.toLowerCase(),
           costoUnitario: '10',
           nombre: 'Duplicado concurrente B',
           stockInicial: '0',
@@ -1309,14 +1301,9 @@ describe('RF-05 spare parts inventory API', () => {
         }),
       ])
 
-      expect(responses.map((response) => response.status).sort()).toEqual([201, 409])
-
-      const createdResponse = responses.find((response) => response.status === 201)
-      created.repuestos.push(createdResponse!.body.data.repuesto.id)
-
-      const count = await prisma.repuesto.count({ where: { codigo } })
-
-      expect(count).toBe(1)
+      expect(responses.map((response) => response.status).sort()).toEqual([201, 201])
+      responses.forEach((response) => created.repuestos.push(response.body.data.repuesto.id))
+      expect(new Set(responses.map((response) => response.body.data.repuesto.codigo)).size).toBe(2)
     },
     rf05TestTimeout,
   )

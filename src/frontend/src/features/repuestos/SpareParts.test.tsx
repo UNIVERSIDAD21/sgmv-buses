@@ -127,9 +127,8 @@ describe('RF-05 spare parts frontend', () => {
     fireEvent.click(screen.getByRole('button', { name: /Nuevo repuesto/i }))
 
     const dialog = await screen.findByRole('dialog', { name: /Nuevo repuesto/i })
-    fireEvent.change(within(dialog).getByLabelText(/^Codigo$/i), {
-      target: { value: ' rf05-demo ' },
-    })
+    expect(within(dialog).queryByLabelText(/^Codigo$/i)).not.toBeInTheDocument()
+    expect(within(dialog).getByText(/asignará un código interno único/i)).toBeInTheDocument()
     fireEvent.change(within(dialog).getByLabelText(/^Nombre$/i), {
       target: { value: ' Kit de filtros ' },
     })
@@ -166,7 +165,7 @@ describe('RF-05 spare parts frontend', () => {
     fireEvent.click(submit)
 
     expect(await screen.findByText(/Repuesto creado/i)).toBeInTheDocument()
-    expect((await screen.findAllByText('RF05-DEMO')).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/REP-AUTO-\d{4}/i)).length).toBeGreaterThan(0)
 
     const createCalls = fetchMock.mock.calls.filter(
       ([input, init]) => String(input).endsWith('/repuestos') && init?.method === 'POST',
@@ -174,33 +173,11 @@ describe('RF-05 spare parts frontend', () => {
     expect(createCalls).toHaveLength(1)
     const body = JSON.parse(String(createCalls[0][1]?.body)) as {
       claveIdempotencia?: string
-      codigo: string
       stockInicial: string
     }
-    expect(body.codigo).toBe('rf05-demo')
+    expect(body).not.toHaveProperty('codigo')
     expect(body.stockInicial).toBe('5')
     expect(body.claveIdempotencia).toEqual(expect.any(String))
-  })
-
-  it('shows controlled duplicate-code errors during creation', async () => {
-    window.history.pushState({}, '', '/repuestos')
-    mockApi(sparePartHandler('ADMINISTRADOR'))
-
-    render(<App />)
-
-    expect((await screen.findAllByText('REP-FRENO-001')).length).toBeGreaterThan(0)
-    fireEvent.click(screen.getByRole('button', { name: /Nuevo repuesto/i }))
-
-    const dialog = await screen.findByRole('dialog', { name: /Nuevo repuesto/i })
-    fireEvent.change(within(dialog).getByLabelText(/^Codigo$/i), {
-      target: { value: 'rep-freno-001' },
-    })
-    fireEvent.change(within(dialog).getByLabelText(/^Nombre$/i), {
-      target: { value: 'Repuesto duplicado' },
-    })
-    fireEvent.click(within(dialog).getByRole('button', { name: /Crear repuesto/i }))
-
-    expect(await within(dialog).findByText(/El codigo ya existe/i)).toBeInTheDocument()
   })
 
   it('opens detail, keeps movements immutable, edits only master data and confirms deactivation', async () => {

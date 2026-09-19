@@ -424,18 +424,14 @@ export class SparePartRepository {
     }
   }
 
-  async createSparePart(actorId: number, input: CreateSparePartInput) {
+  async createSparePart(actorId: number, input: CreateSparePartInput & { codigo: string }) {
     return prisma.$transaction(
       async (tx) => {
         if (input.claveIdempotencia) {
           const existing = await this.findMovementByIdempotencyKey(input.claveIdempotencia, tx)
 
           if (existing) {
-            if (
-              existing.tipo !== 'ENTRADA' ||
-              existing.responsableId !== actorId ||
-              existing.repuesto.codigo !== input.codigo
-            ) {
+            if (existing.tipo !== 'ENTRADA' || existing.responsableId !== actorId) {
               return {
                 movimiento: existing,
                 repuesto: existing.repuesto,
