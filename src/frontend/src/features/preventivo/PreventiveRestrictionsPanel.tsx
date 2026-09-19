@@ -4,8 +4,8 @@ import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import StatePanel from '../../components/ui/StatePanel'
 import { PREVENTIVE_STATUS_LABELS } from '../../domain/labels'
-import { formatNumber } from '../../lib/format'
 import { ApiError } from '../../lib/api'
+import { formatNumber } from '../../lib/format'
 import { listPreventiveRestrictions } from './preventive.api'
 import type { PreventiveRestrictionDto } from './preventive.types'
 
@@ -13,8 +13,41 @@ function messageFrom(error: unknown) {
   return error instanceof ApiError ? error.message : 'No se pudo consultar la proyeccion operativa.'
 }
 
-export default function PreventiveRestrictionsPanel() {
+function targetSummary(item: PreventiveRestrictionDto) {
+  const values = []
+  if (item.objetivos.fecha) values.push(`Fecha objetivo: ${item.objetivos.fecha}.`)
+  if (item.objetivos.kilometraje !== null) {
+    values.push(`Objetivo: ${formatNumber(item.objetivos.kilometraje)} km.`)
+  }
+  return values.join(' ') || 'Sin objetivo pendiente.'
+}
+
+function distanceSummary(item: PreventiveRestrictionDto) {
+  const values = []
+  if (item.restantes.dias !== null) {
+    values.push(
+      item.restantes.dias < 0
+        ? `${Math.abs(item.restantes.dias)} dias de retraso`
+        : `${item.restantes.dias} dias restantes`,
+    )
+  }
+  if (item.restantes.kilometros !== null) {
+    values.push(
+      item.restantes.kilometros < 0
+        ? `${formatNumber(Math.abs(item.restantes.kilometros))} km excedidos`
+        : `${formatNumber(item.restantes.kilometros)} km restantes`,
+    )
+  }
+  return values.join(' · ') || 'Pendiente de evaluacion.'
+}
+
+export default function PreventiveRestrictionsPanel({
+  onOpenSchedule,
+}: {
+  onOpenSchedule?: (programacionId: number) => void
+}) {
   const [items, setItems] = useState<PreventiveRestrictionDto[] | null>(null)
+  const [evaluatedAt, setEvaluatedAt] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -22,6 +55,7 @@ export default function PreventiveRestrictionsPanel() {
     try {
       const response = await listPreventiveRestrictions()
       setItems(response.restricciones)
+      setEvaluatedAt(response.evaluadoAt)
     } catch (loadError) {
       setError(messageFrom(loadError))
     }
@@ -69,46 +103,69 @@ export default function PreventiveRestrictionsPanel() {
           Motivos preventivos que impiden operar
         </h2>
         <p className="mt-1 text-sm leading-6 text-slate-500">
-          Proyeccion operacional para despacho. No incluye diagnosticos, costos ni administracion de
-          planes.
+          Cada bus indica la causa, el objetivo y la siguiente accion. No incluye diagnosticos ni
+          costos.
         </p>
+        {evaluatedAt && (
+          <p className="mt-2 text-xs text-slate-500">
+            Evaluado:{' '}
+            {new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' }).format(
+              new Date(evaluatedAt),
+            )}
+          </p>
+        )}
       </section>
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <table
-          aria-label="Motivos preventivos que impiden operar"
-          className="w-full text-left text-sm"
-        >
-          <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Bus</th>
-              <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3">Restante</th>
-              <th className="px-4 py-3">Operacion</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {items?.map((item) => (
-              <tr key={item.programacionId}>
-                <td className="px-4 py-3 font-semibold text-slate-900">{item.bus.codigoInterno}</td>
-                <td className="px-4 py-3">
-                  <Badge tone={item.estado === 'VENCIDO' ? 'red' : 'amber'}>
-                    {PREVENTIVE_STATUS_LABELS[item.estado]}
-                  </Badge>
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {item.restantes.dias !== null ? `${item.restantes.dias} dias` : ''}
-                  {item.restantes.dias !== null && item.restantes.kilometros !== null ? ' · ' : ''}
-                  {item.restantes.kilometros !== null
-                    ? `${formatNumber(item.restantes.kilometros)} km`
-                    : ''}
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {item.bloqueaDespacho ? 'Bloquea despacho' : 'Sin bloqueo preventivo'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <section className="grid gap-3">
+        {items?.map((item) => (
+          <article
+            className="rounded-lg border border-slate-200 bg-white p-4"
+            key={item.programacionId}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold text-slate-900">{item.bus.codigoInterno}</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {item.actividad ?? 'Mantenimiento preventivo programado'}
+                </p>
+              </div>
+              <Badge tone={item.estado === 'VENCIDO' ? 'red' : 'amber'}>
+                {PREVENTIVE_STATUS_LABELS[item.estado]}
+              </Badge>
+            </div>
+            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-xs font-medium uppercase text-slate-500">Objetivo</dt>
+                <dd className="mt-1 text-slate-700">{targetSummary(item)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium uppercase text-slate-500">
+                  {item.estado === 'VENCIDO' ? 'Exceso' : 'Falta para vencer'}
+                </dt>
+                <dd className="mt-1 text-slate-700">{distanceSummary(item)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium uppercase text-slate-500">Causa</dt>
+                <dd className="mt-1 text-slate-700">{item.causa}</dd>
+              </div>
+            </dl>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+              <p className="text-sm text-slate-600">
+                {item.bloqueaDespacho
+                  ? 'Accion recomendada: atender el mantenimiento antes de iniciar otra jornada.'
+                  : 'Accion recomendada: coordinar el mantenimiento antes del vencimiento.'}
+              </p>
+              {onOpenSchedule && (
+                <Button
+                  onClick={() => onOpenSchedule(item.programacionId)}
+                  size="sm"
+                  variant="outline"
+                >
+                  Abrir mantenimiento programado
+                </Button>
+              )}
+            </div>
+          </article>
+        ))}
       </section>
     </div>
   )

@@ -893,7 +893,12 @@ export default function PreventivePage() {
             }}
           />
         ) : adminView === 'restricciones' ? (
-          <PreventiveRestrictionsPanel />
+          <PreventiveRestrictionsPanel
+            onOpenSchedule={(programacionId) => {
+              setAdminView('programaciones')
+              void openDetail(programacionId)
+            }}
+          />
         ) : (
           <>
             {feedback && (

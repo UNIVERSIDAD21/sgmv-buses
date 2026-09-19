@@ -122,8 +122,10 @@ export interface PreventivePlanDetailDto {
 }
 
 export interface PreventiveRestrictionDto {
+  actividad?: string
   bloqueaDespacho: boolean
   bus: { codigoInterno: string; id: number }
+  causa: string
   estado: Exclude<PreventiveStatus, 'VIGENTE'>
   objetivos: { fecha: string | null; kilometraje: number | null }
   programacionId: number

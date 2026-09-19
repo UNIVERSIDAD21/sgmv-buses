@@ -59,6 +59,11 @@ export class PreventiveRestrictionsService {
             classification.estado === 'VENCIDO' &&
             schedule.planMantenimientoPreventivo.bloqueaAlVencer,
           bus: { codigoInterno: schedule.bus.codigoInterno, id: schedule.bus.id },
+          causa:
+            classification.estado === 'VENCIDO' &&
+            schedule.planMantenimientoPreventivo.bloqueaAlVencer
+              ? 'El mantenimiento vencido impide nuevas jornadas.'
+              : 'El mantenimiento requiere seguimiento antes de su vencimiento.',
           estado: classification.estado,
           objetivos: {
             fecha: schedule.fechaProgramada?.toISOString().slice(0, 10) ?? null,
@@ -79,6 +84,7 @@ export class PreventiveRestrictionsService {
           actor.rol.codigo === 'ADMINISTRADOR'
             ? {
                 ...operational,
+                actividad: schedule.actividad,
                 disponibilidad: {
                   causaPrincipal: availability.causaPrincipal,
                   disponible: availability.disponible,

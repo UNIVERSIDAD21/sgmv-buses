@@ -2100,8 +2100,10 @@ export function preventiveHandler(
         evaluadoAt: '2026-09-06T00:00:00.000Z',
         restricciones: [
           {
+            ...(role === 'ADMINISTRADOR' ? { actividad: 'Revision preventiva de frenos.' } : {}),
             bloqueaDespacho: true,
             bus: { codigoInterno: 'ABC123', id: 2006 },
+            causa: 'El mantenimiento vencido impide nuevas jornadas.',
             estado: 'VENCIDO',
             objetivos: { fecha: '2026-09-01', kilometraje: null },
             programacionId: 2056,

@@ -392,9 +392,25 @@ describe('RF-03 preventive maintenance frontend', () => {
     expect(
       await screen.findByRole('heading', { name: /Motivos preventivos que impiden operar/i }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/Bloquea despacho/i)).toBeInTheDocument()
+    expect(screen.getByText(/impide nuevas jornadas/i)).toBeInTheDocument()
+    expect(screen.getByText(/Mantenimiento preventivo programado/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Revision preventiva de frenos/i)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Abrir mantenimiento programado/i }),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /Crear rutina|Nueva versión|Dejar de usar/i }),
     ).not.toBeInTheDocument()
+  })
+
+  it('lets administrators open the scheduled maintenance behind an operational restriction', async () => {
+    window.history.pushState({}, '', '/mantenimiento-preventivo')
+    mockApi(preventiveHandler('ADMINISTRADOR'))
+    render(<App />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Motivos que impiden operar/i }))
+    expect(await screen.findByText(/Revision preventiva de frenos/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Abrir mantenimiento programado/i }))
+    expect(await screen.findByRole('heading', { name: /Detalle preventivo/i })).toBeInTheDocument()
   })
 })
