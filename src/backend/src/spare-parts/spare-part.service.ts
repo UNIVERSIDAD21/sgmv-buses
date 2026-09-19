@@ -104,6 +104,9 @@ function mapMovement(movement: SparePartMovementRecord): SparePartMovementDto {
     consumo: movement.consumoRepuesto
       ? {
           id: movement.consumoRepuesto.id,
+          intervencion: movement.consumoRepuesto.intervencion
+            ? { id: movement.consumoRepuesto.intervencion.id }
+            : null,
           orden: movement.consumoRepuesto.ordenTrabajo,
         }
       : null,

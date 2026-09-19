@@ -1198,6 +1198,9 @@ describe('RF-05 spare parts inventory API', () => {
       })
       const order = await createExecutingOrder(fixture)
       const orderBus = await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: order.id } })
+      const intervention = await prisma.intervencion.findFirstOrThrow({
+        where: { fechaFin: null, ordenTrabajoId: order.id },
+      })
       await allowPartForBus(part.id, orderBus.busId, fixture.adminId)
 
       const consumption = await mecanicoAgent
@@ -1238,6 +1241,7 @@ describe('RF-05 spare parts inventory API', () => {
 
       expect(movement).toBeTruthy()
       expect(movement.consumo.orden.id).toBe(order.id)
+      expect(movement.consumo.intervencion.id).toBe(intervention.id)
       expect(reloadedConsumption.costoUnitario.toFixed(2)).toBe('75.00')
       expect(reloadedPart.costoUnitario.toFixed(2)).toBe('125.00')
       expect(reloadedPart.stockActual.toFixed(2)).toBe('1.00')

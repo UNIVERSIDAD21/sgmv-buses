@@ -203,6 +203,7 @@ describe('RF-05 spare parts frontend', () => {
     const detailDialog = await screen.findByRole('dialog', { name: /Detalle de repuesto/i })
     expect(within(detailDialog).getByText('OT-RF04-001')).toBeInTheDocument()
     expect(within(detailDialog).getByText(/Consumo de orden/i)).toBeInTheDocument()
+    expect(within(detailDialog).getByText(/Intervención 1011/i)).toBeInTheDocument()
     expect(
       within(detailDialog).queryByRole('button', { name: /Eliminar movimiento/i }),
     ).not.toBeInTheDocument()
@@ -314,6 +315,7 @@ describe('RF-05 spare parts frontend', () => {
     fireEvent.click(within(availableRow as HTMLElement).getByRole('button', { name: /^Entrada$/i }))
 
     const entryDialog = await screen.findByRole('dialog', { name: /Registrar entrada/i })
+    expect(within(entryDialog).getByText(/reposición o una entrada física/i)).toBeInTheDocument()
     fireEvent.change(within(entryDialog).getByLabelText(/^Cantidad de entrada$/i), {
       target: { value: '2' },
     })
@@ -351,8 +353,11 @@ describe('RF-05 spare parts frontend', () => {
       within(emptyRow as HTMLElement).getByRole('button', { name: /^Corregir existencias$/i }),
     )
 
-    const adjustmentDialog = await screen.findByRole('dialog', { name: /Registrar ajuste/i })
-    fireEvent.change(within(adjustmentDialog).getByLabelText(/^Direccion$/i), {
+    const adjustmentDialog = await screen.findByRole('dialog', { name: /Corregir existencias/i })
+    expect(
+      within(adjustmentDialog).getByText(/se registra automáticamente como consumo/i),
+    ).toBeInTheDocument()
+    fireEvent.change(within(adjustmentDialog).getByLabelText(/^Cómo cambia la existencia$/i), {
       target: { value: 'DISMINUCION' },
     })
     fireEvent.change(within(adjustmentDialog).getByLabelText(/^Cantidad$/i), {
@@ -361,22 +366,22 @@ describe('RF-05 spare parts frontend', () => {
     fireEvent.change(within(adjustmentDialog).getByLabelText(/^Motivo$/i), {
       target: { value: 'Conteo fisico' },
     })
-    fireEvent.click(within(adjustmentDialog).getByRole('button', { name: /Registrar ajuste/i }))
+    fireEvent.click(within(adjustmentDialog).getByRole('button', { name: /Registrar corrección/i }))
     expect(
       await within(adjustmentDialog).findByText(/Confirme la disminucion/i),
     ).toBeInTheDocument()
 
     fireEvent.click(within(adjustmentDialog).getByRole('checkbox'))
-    fireEvent.click(within(adjustmentDialog).getByRole('button', { name: /Registrar ajuste/i }))
+    fireEvent.click(within(adjustmentDialog).getByRole('button', { name: /Registrar corrección/i }))
     expect(await within(adjustmentDialog).findByText(/Stock insuficiente/i)).toBeInTheDocument()
 
-    fireEvent.change(within(adjustmentDialog).getByLabelText(/^Direccion$/i), {
+    fireEvent.change(within(adjustmentDialog).getByLabelText(/^Cómo cambia la existencia$/i), {
       target: { value: 'INCREMENTO' },
     })
     fireEvent.change(within(adjustmentDialog).getByLabelText(/^Cantidad$/i), {
       target: { value: '2' },
     })
-    fireEvent.click(within(adjustmentDialog).getByRole('button', { name: /Registrar ajuste/i }))
+    fireEvent.click(within(adjustmentDialog).getByRole('button', { name: /Registrar corrección/i }))
 
     expect(await screen.findByText(/Corrección de existencias registrada/i)).toBeInTheDocument()
     const adjustmentCalls = fetchMock.mock.calls.filter(

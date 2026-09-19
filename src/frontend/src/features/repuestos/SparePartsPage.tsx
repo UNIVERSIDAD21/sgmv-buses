@@ -86,10 +86,10 @@ const availabilityTone: Record<SparePartAvailability, BadgeTone> = {
 }
 
 const movementLabels: Record<InventoryMovementType, string> = {
-  AJUSTE_ENTRADA: 'Ajuste incremento',
-  AJUSTE_SALIDA: 'Ajuste disminucion',
+  AJUSTE_ENTRADA: 'Corrección: aumento',
+  AJUSTE_SALIDA: 'Corrección: disminución',
   CONSUMO: 'Consumo de orden',
-  ENTRADA: 'Entrada',
+  ENTRADA: 'Entrada de inventario',
 }
 
 const sortOptions: Array<[SortField, string]> = [
@@ -279,6 +279,11 @@ function MovementReference({ movement }: { movement: SparePartMovementDto }) {
     <span>
       {movement.consumo.orden.codigo}
       <span className="block text-xs text-slate-400">Consumo {String(movement.consumo.id)}</span>
+      {movement.consumo.intervencion && (
+        <span className="block text-xs text-slate-400">
+          Intervención {String(movement.consumo.intervencion.id)}
+        </span>
+      )}
     </span>
   )
 }
@@ -830,6 +835,10 @@ function EntryForm({
       <FieldValue label="Existencia actual">
         {part.stockActual} {part.unidadMedida}
       </FieldValue>
+      <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+        Use esta acción para registrar una reposición o una entrada física. No registra consumo en
+        una orden de trabajo.
+      </p>
       <TextInput label="Cantidad de entrada" onChange={setCantidad} required value={cantidad} />
       <TextInput label="Costo unitario futuro" onChange={setCostoUnitario} value={costoUnitario} />
       <label className="block text-sm font-medium text-slate-700">
@@ -918,8 +927,12 @@ function AdjustmentForm({
       <FieldValue label="Existencia actual">
         {part.stockActual} {part.unidadMedida}
       </FieldValue>
+      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        Use una corrección solo después de verificar el inventario físico. El uso del repuesto en
+        una orden se registra automáticamente como consumo.
+      </p>
       <label className="block text-sm font-medium text-slate-700">
-        Direccion
+        Cómo cambia la existencia
         <select
           className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
           onChange={(event) => {
@@ -929,8 +942,8 @@ function AdjustmentForm({
           }}
           value={direccion}
         >
-          <option value="INCREMENTO">Incremento</option>
-          <option value="DISMINUCION">Disminucion</option>
+          <option value="INCREMENTO">Aumentar existencia</option>
+          <option value="DISMINUCION">Disminuir existencia</option>
         </select>
       </label>
       <TextInput
@@ -942,8 +955,8 @@ function AdjustmentForm({
         required
         value={cantidad}
       />
-      <FieldValue label="Resultado estimado">
-        {Number.isFinite(estimated) ? estimated.toFixed(2) : part.stockActual}
+      <FieldValue label="Existencia estimada después de la corrección">
+        {Number.isFinite(estimated) ? estimated.toFixed(2) : part.stockActual} {part.unidadMedida}
       </FieldValue>
       <label className="block text-sm font-medium text-slate-700">
         Motivo
@@ -978,7 +991,7 @@ function AdjustmentForm({
         </label>
       )}
       <Button icon={<Wrench size={14} />} loading={submitting} type="submit" variant="secondary">
-        Registrar ajuste
+        Registrar corrección
       </Button>
     </form>
   )
@@ -1500,13 +1513,28 @@ export default function SparePartsPage() {
             <div>
               <h2 className="text-lg font-semibold text-slate-900">Central de repuestos</h2>
               <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-                Catalogo, existencias, entradas, ajustes y movimientos trazables del taller.
+                Catálogo, existencias y movimientos trazables del taller.
               </p>
             </div>
             <Button icon={<PlusCircle size={16} />} onClick={() => setAction({ type: 'create' })}>
               Nuevo repuesto
             </Button>
           </div>
+        </section>
+
+        <section
+          aria-label="Guía de movimientos de inventario"
+          className="grid gap-3 sm:grid-cols-3"
+        >
+          <FieldValue label="Registrar entrada">
+            Repone existencias o registra una entrada física al inventario.
+          </FieldValue>
+          <FieldValue label="Corregir existencias">
+            Ajusta un conteo verificado y exige un motivo; no representa uso en una orden.
+          </FieldValue>
+          <FieldValue label="Consumo en orden">
+            Se registra automáticamente al usar un repuesto compatible durante una intervención.
+          </FieldValue>
         </section>
 
         {requiereReposicion && (
@@ -1933,7 +1961,7 @@ export default function SparePartsPage() {
                   : action?.type === 'entry'
                     ? 'Registrar entrada'
                     : action?.type === 'adjustment'
-                      ? 'Registrar ajuste'
+                      ? 'Corregir existencias'
                       : 'Confirmar estado'
         }
       >

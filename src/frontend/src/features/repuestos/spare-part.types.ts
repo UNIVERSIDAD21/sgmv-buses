@@ -65,6 +65,9 @@ export interface SparePartMovementDto {
   cantidad: string
   consumo: {
     id: number
+    intervencion: {
+      id: number
+    } | null
     orden: SparePartOrderDto
   } | null
   costoUnitario: string | null

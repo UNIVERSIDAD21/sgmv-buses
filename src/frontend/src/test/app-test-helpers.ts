@@ -1231,6 +1231,7 @@ export type TestMovement = {
   cantidad: string
   consumo: {
     id: number
+    intervencion: { id: number } | null
     orden: {
       codigo: string
       estado: string
@@ -1410,6 +1411,7 @@ export function sparePartHandler(
           cantidad: '2.00',
           consumo: {
             id: 2009,
+            intervencion: { id: 1011 },
             orden: {
               codigo: 'OT-RF04-001',
               estado: 'EN_EJECUCION',

@@ -50,6 +50,11 @@ const movementInclude = {
   consumoRepuesto: {
     select: {
       id: true,
+      intervencion: {
+        select: {
+          id: true,
+        },
+      },
       ordenTrabajo: {
         select: orderSelect,
       },
