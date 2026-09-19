@@ -564,6 +564,12 @@ function ActionDialog({
       title={title}
     >
       <form className="space-y-4 p-5" onSubmit={handleSubmit}>
+        {(action === 'start' || action === 'finish') && (
+          <ContextHint title="Lectura real de la jornada">
+            El Conductor registra la lectura observada al iniciar o finalizar. El Despachador solo
+            actúa como respaldo y el horario programado no prueba que el recorrido ocurrió.
+          </ContextHint>
+        )}
         <label className="block text-sm font-medium text-slate-700">
           Fecha real del evento
           <input
@@ -577,7 +583,7 @@ function ActionDialog({
         </label>
         {needsMileage && (
           <label className="block text-sm font-medium text-slate-700">
-            Kilometraje {journey.estado === 'EN_CURSO' ? 'final' : ''}
+            Lectura observada del odómetro {journey.estado === 'EN_CURSO' ? 'al finalizar' : ''}
             <input
               className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
               min={journey.lecturaInicial?.kilometraje ?? 0}
@@ -586,6 +592,9 @@ function ActionDialog({
               type="number"
               value={kilometraje}
             />
+            <span className="mt-1 block text-xs font-normal text-slate-500">
+              Se registrará como lectura real de este evento y no como proyección académica.
+            </span>
           </label>
         )}
         {(action === 'cancel' || action === 'reassign') && (

@@ -55,7 +55,9 @@ describe('P4 journey frontend', () => {
     render(<App />)
 
     fireEvent.click(await screen.findByRole('button', { name: /Iniciar jornada/i }))
-    fireEvent.change(screen.getByLabelText(/^Kilometraje/i), { target: { value: '45000' } })
+    fireEvent.change(screen.getByLabelText(/Lectura observada del odómetro/i), {
+      target: { value: '45000' },
+    })
     fireEvent.click(screen.getByRole('button', { name: /Confirmar/i }))
 
     expect(await screen.findByText(/Jornada iniciada con lectura inicial/i)).toBeInTheDocument()

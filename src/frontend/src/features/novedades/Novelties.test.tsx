@@ -193,7 +193,7 @@ describe('RF-02 novelty frontend', () => {
     expect(
       await screen.findByText(/Orden OT-NOV-001 generada en estado pendiente de asignacion/i),
     ).toBeInTheDocument()
-    expect(await screen.findByText(/Orden generada/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Resultado técnico/i)).toBeInTheDocument()
 
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/novedades/2040/revision'),

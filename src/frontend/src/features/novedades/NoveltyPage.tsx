@@ -146,8 +146,29 @@ function TimelineEmpty({ text }: { text: string }) {
 }
 
 function NoveltyDetail({ actions, novelty }: { actions?: ReactNode; novelty: NoveltyDto }) {
+  const nextAction =
+    novelty.estado === 'PENDIENTE_REVISION'
+      ? 'Pendiente de clasificación administrativa.'
+      : novelty.ordenTrabajo
+        ? `Seguimiento técnico en la orden ${novelty.ordenTrabajo.codigo}.`
+        : 'No requiere una orden correctiva adicional.'
+
   return (
     <div className="space-y-5">
+      <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <p className="text-xs font-semibold uppercase text-amber-800">Situación actual</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <StatusBadge status={novelty.estado} />
+          {novelty.criticidad && (
+            <Badge tone={novelty.criticidad === 'CRITICA' ? 'red' : 'amber'}>
+              {novelty.criticidad}
+            </Badge>
+          )}
+          {novelty.bloqueaDisponibilidad === true && <Badge tone="red">Bloquea el despacho</Badge>}
+        </div>
+        <p className="mt-2 text-sm font-medium text-amber-900">{nextAction}</p>
+      </section>
+
       <div className="grid gap-3 sm:grid-cols-2">
         <FieldValue label="Bus">
           {novelty.bus.codigoInterno} - {novelty.bus.placa}
@@ -170,57 +191,62 @@ function NoveltyDetail({ actions, novelty }: { actions?: ReactNode; novelty: Nov
       </div>
 
       <section className="surface p-4">
-        <h3 className="text-xs font-semibold uppercase text-slate-500">Descripcion</h3>
+        <h3 className="text-xs font-semibold uppercase text-slate-500">Qué ocurrió</h3>
         <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
           {novelty.descripcion}
         </p>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2">
-        <FieldValue label="Clasificacion">
-          {novelty.clasificacion ?? 'Pendiente de clasificar'}
-        </FieldValue>
-        <FieldValue label="Criticidad">{novelty.criticidad ?? 'Sin clasificar'}</FieldValue>
-        <FieldValue label="Impacto operativo">
-          {novelty.afectaOperacion === null
-            ? 'Sin evaluar'
-            : novelty.afectaOperacion
-              ? 'Si afecta'
-              : 'No afecta'}
-        </FieldValue>
-        <FieldValue label="Disponibilidad">
-          {novelty.bloqueaDisponibilidad === null
-            ? 'Sin evaluar'
-            : novelty.bloqueaDisponibilidad
-              ? 'Bus bloqueado'
-              : 'No bloquea'}
-        </FieldValue>
-        <FieldValue label="Jornada">
-          {novelty.jornada
-            ? `${novelty.jornada.ruta?.codigo ?? 'Sin ruta'} - ${novelty.jornada.estado}`
-            : 'Novedad historica sin jornada'}
-        </FieldValue>
-        <FieldValue label="Kilometraje">
-          {novelty.lecturaKilometraje
-            ? `${formatNumber(novelty.lecturaKilometraje.kilometraje)} km`
-            : 'Sin lectura asociada'}
-        </FieldValue>
-        <FieldValue label="Responsable revision">
-          {novelty.revisadaPor?.nombre ?? 'Sin revision'}
-        </FieldValue>
-        <FieldValue label="Fecha revision">
-          {novelty.fechaRevision ? formatDateTimeValue(novelty.fechaRevision) : 'Sin revision'}
-        </FieldValue>
-        <FieldValue label="Observacion">
-          {novelty.observacionRevision ?? 'Sin observacion'}
-        </FieldValue>
+      <section>
+        <h3 className="mb-2 text-xs font-semibold uppercase text-slate-500">
+          Decisión administrativa
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FieldValue label="Clasificacion">
+            {novelty.clasificacion ?? 'Pendiente de clasificar'}
+          </FieldValue>
+          <FieldValue label="Criticidad">{novelty.criticidad ?? 'Sin clasificar'}</FieldValue>
+          <FieldValue label="Impacto operativo">
+            {novelty.afectaOperacion === null
+              ? 'Sin evaluar'
+              : novelty.afectaOperacion
+                ? 'Si afecta'
+                : 'No afecta'}
+          </FieldValue>
+          <FieldValue label="Disponibilidad">
+            {novelty.bloqueaDisponibilidad === null
+              ? 'Sin evaluar'
+              : novelty.bloqueaDisponibilidad
+                ? 'Bus bloqueado'
+                : 'No bloquea'}
+          </FieldValue>
+          <FieldValue label="Jornada">
+            {novelty.jornada
+              ? `${novelty.jornada.ruta?.codigo ?? 'Sin ruta'} - ${novelty.jornada.estado}`
+              : 'Novedad historica sin jornada'}
+          </FieldValue>
+          <FieldValue label="Kilometraje">
+            {novelty.lecturaKilometraje
+              ? `${formatNumber(novelty.lecturaKilometraje.kilometraje)} km`
+              : 'Sin lectura asociada'}
+          </FieldValue>
+          <FieldValue label="Responsable revision">
+            {novelty.revisadaPor?.nombre ?? 'Sin revision'}
+          </FieldValue>
+          <FieldValue label="Fecha revision">
+            {novelty.fechaRevision ? formatDateTimeValue(novelty.fechaRevision) : 'Sin revision'}
+          </FieldValue>
+          <FieldValue label="Observacion">
+            {novelty.observacionRevision ?? 'Sin observacion'}
+          </FieldValue>
+        </div>
       </section>
 
       {novelty.ordenTrabajo ? (
         <section className="rounded-lg border border-cyan-200 bg-cyan-50 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">Orden generada</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Resultado técnico</h3>
               <p className="mt-1 text-sm text-slate-600">{novelty.ordenTrabajo.codigo}</p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -238,7 +264,7 @@ function NoveltyDetail({ actions, novelty }: { actions?: ReactNode; novelty: Nov
           )}
         </section>
       ) : (
-        <TimelineEmpty text="Esta novedad todavia no tiene una orden correctiva asociada." />
+        <TimelineEmpty text="Resultado técnico pendiente: esta novedad todavía no tiene una orden correctiva asociada." />
       )}
 
       {actions}
