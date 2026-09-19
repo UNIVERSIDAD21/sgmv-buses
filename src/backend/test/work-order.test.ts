@@ -1495,6 +1495,13 @@ describe('RF-04 Work order tracking API', () => {
           }),
         }),
       )
+      expect(projection.disponibilidad.causas).toContainEqual(
+        expect.objectContaining({
+          codigo: 'ORDEN_TECNICA_ACTIVA',
+          origenId: context.order.id,
+          origenTipo: 'ORDEN',
+        }),
+      )
       const serialized = JSON.stringify(projection)
       expect(serialized).not.toMatch(
         /diagnostico|actividad|intervencion|consumo|costo|planAplicado/i,

@@ -95,6 +95,19 @@ describe('RF-03 preventive maintenance frontend', () => {
     })
   })
 
+  it('opens the exact preventive schedule received through an operational deep link', async () => {
+    window.history.pushState({}, '', '/mantenimiento-preventivo?detalle=2056')
+    const fetchMock = mockApi(preventiveHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Detalle preventivo/i)).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/mantenimiento-preventivo/programaciones/2056'),
+      expect.any(Object),
+    )
+  })
+
   it('creates preventive schedules by date, mileage and combined criteria with validation', async () => {
     window.history.pushState({}, '', '/mantenimiento-preventivo')
     const fetchMock = mockApi(preventiveHandler('ADMINISTRADOR'))

@@ -166,7 +166,12 @@ export interface WorkOrderTechnicalReadingDto {
 export interface DispatchWorkOrderProjectionDto {
   disponibilidad: {
     causaPrincipal: string | null
-    causas: Array<{ codigo: string; mensaje: string }>
+    causas: Array<{
+      codigo: string
+      mensaje: string
+      origenId: number
+      origenTipo: 'BUS' | 'JORNADA' | 'NOVEDAD' | 'ORDEN' | 'PREVENTIVO'
+    }>
     disponible: boolean
     evaluadoAt: string
   }

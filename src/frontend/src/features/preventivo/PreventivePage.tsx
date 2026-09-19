@@ -81,6 +81,12 @@ const sortOptions: Array<[SortField, string]> = [
   ['actividad', 'Actividad'],
 ]
 
+function getDetailIdFromSearch(value: string | null) {
+  const id = Number(value)
+
+  return Number.isSafeInteger(id) && id > 0 ? id : null
+}
+
 function getErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
     return error.message
@@ -674,7 +680,7 @@ export default function PreventivePage() {
     }`
   }, [listData])
 
-  async function openDetail(programacionId: number) {
+  const openDetail = useCallback(async (programacionId: number) => {
     setLoadError(null)
 
     try {
@@ -684,7 +690,24 @@ export default function PreventivePage() {
     } catch (error) {
       setLoadError(getErrorMessage(error))
     }
+  }, [])
+
+  function closeDetail() {
+    setSelectedSchedule(null)
+    if (!searchParams.has('detalle')) return
+
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('detalle')
+    setSearchParams(nextParams)
   }
+
+  useEffect(() => {
+    const detailId = getDetailIdFromSearch(searchParams.get('detalle'))
+    if (!detailId) return
+
+    const request = window.setTimeout(() => void openDetail(detailId), 0)
+    return () => window.clearTimeout(request)
+  }, [openDetail, searchParams])
 
   async function refreshSelected(programacionId: number) {
     const data = await getPreventiveSchedule(programacionId)
@@ -1238,7 +1261,7 @@ export default function PreventivePage() {
             )}
 
             <Drawer
-              onClose={() => setSelectedSchedule(null)}
+              onClose={closeDetail}
               open={Boolean(selectedSchedule)}
               subtitle={
                 selectedSchedule

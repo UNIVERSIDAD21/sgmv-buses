@@ -35,12 +35,28 @@ describe('RF-04 work order frontend', () => {
     render(<App />)
 
     expect(
-      await screen.findByRole('heading', { name: /Disponibilidad por orden tecnica/i }),
+      await screen.findByRole('heading', { name: /Disponibilidad de buses/i }),
     ).toBeInTheDocument()
-    expect(screen.getByText('OT-RF04-001')).toBeInTheDocument()
-    expect(screen.getByText(/Orden tecnica activa/i)).toBeInTheDocument()
+    expect(screen.getByText(/BUS-001.*ABC123/i)).toBeInTheDocument()
+    expect(screen.getByText(/Hay una orden de mantenimiento en seguimiento/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Coordine con mantenimiento antes de asignar el bus/i),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Abrir orden/i })).not.toBeInTheDocument()
     expect(screen.queryByText(/Desgaste en sistema de frenos confirmado/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/120\.000/)).not.toBeInTheDocument()
+  })
+
+  it('links administrators to the exact authorized source of an operational restriction', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo/despacho')
+    mockApi(workOrderHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    expect(await screen.findByRole('link', { name: /Abrir orden/i })).toHaveAttribute(
+      'href',
+      '/ordenes-trabajo?detalle=2045',
+    )
   })
 
   it('opens the exact authorized work order received through a deep link', async () => {

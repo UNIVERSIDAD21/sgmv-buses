@@ -766,7 +766,15 @@ export class WorkOrderService {
     const orders = await this.workOrderRepository.listDispatchProjections()
     return {
       ordenes: orders.map((item) => ({
-        disponibilidad: item.disponibilidad,
+        disponibilidad: {
+          ...item.disponibilidad,
+          causas: item.disponibilidad.causas.map((cause) => ({
+            codigo: cause.codigo,
+            mensaje: cause.mensaje,
+            origenId: cause.origenId,
+            origenTipo: cause.origenTipo,
+          })),
+        },
         orden: {
           ...item.orden,
           fechaCierre: item.orden.fechaCierre?.toISOString() ?? null,

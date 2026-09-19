@@ -879,7 +879,14 @@ export function workOrderHandler(
               causas:
                 order.estado === 'CERRADA'
                   ? []
-                  : [{ codigo: 'ORDEN_TRABAJO_ACTIVA', mensaje: 'Orden tecnica activa' }],
+                  : [
+                      {
+                        codigo: 'ORDEN_TECNICA_ACTIVA',
+                        mensaje: 'El bus tiene una orden tecnica activa',
+                        origenId: order.id,
+                        origenTipo: 'ORDEN',
+                      },
+                    ],
               disponible: order.estado === 'CERRADA',
               evaluadoAt: '2026-08-28T12:51:00.000Z',
             },

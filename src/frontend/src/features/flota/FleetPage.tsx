@@ -29,6 +29,12 @@ function getStatusFromSearch(value: string | null): BusStatus | '' {
   return statusOptions.some(([status]) => status === value) ? (value as BusStatus) : ''
 }
 
+function getDetailIdFromSearch(value: string | null) {
+  const id = Number(value)
+
+  return Number.isSafeInteger(id) && id > 0 ? id : null
+}
+
 const statusTone: Record<BusStatus, 'amber' | 'emerald' | 'red' | 'slate' | 'teal'> = {
   EN_MANTENIMIENTO: 'amber',
   FUERA_DE_SERVICIO: 'red',
@@ -572,7 +578,7 @@ export default function FleetPage() {
     }`
   }, [listData])
 
-  async function openDetail(busId: number) {
+  const openDetail = useCallback(async (busId: number) => {
     setDetailLoading(true)
     setError(null)
 
@@ -585,7 +591,24 @@ export default function FleetPage() {
     } finally {
       setDetailLoading(false)
     }
+  }, [])
+
+  function closeDetail() {
+    setSelectedBus(null)
+    if (!searchParams.has('detalle')) return
+
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('detalle')
+    setSearchParams(nextParams)
   }
+
+  useEffect(() => {
+    const detailId = getDetailIdFromSearch(searchParams.get('detalle'))
+    if (!detailId) return
+
+    const request = window.setTimeout(() => void openDetail(detailId), 0)
+    return () => window.clearTimeout(request)
+  }, [openDetail, searchParams])
 
   function openAction(type: FleetAction['type'], bus: BusDetailDto) {
     setOperationError(null)
@@ -875,7 +898,7 @@ export default function FleetPage() {
         )}
 
         <Drawer
-          onClose={() => setSelectedBus(null)}
+          onClose={closeDetail}
           open={Boolean(selectedBus)}
           subtitle={selectedBus ? `${selectedBus.codigoInterno} - ${selectedBus.placa}` : undefined}
           title="Detalle de bus"

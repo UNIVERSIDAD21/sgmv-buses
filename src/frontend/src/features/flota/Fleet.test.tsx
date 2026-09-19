@@ -71,6 +71,19 @@ describe('RF-01 fleet frontend', () => {
     )
   })
 
+  it('opens the exact bus received through an operational deep link', async () => {
+    window.history.pushState({}, '', '/flota?detalle=2006')
+    const fetchMock = mockApi(fleetHandler('DESPACHADOR'))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Detalle de bus/i)).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/flota/buses/2006'),
+      expect.any(Object),
+    )
+  })
+
   it('loads fleet list with search, filter and pagination', async () => {
     window.history.pushState({}, '', '/flota')
     const fetchMock = mockApi(fleetHandler())

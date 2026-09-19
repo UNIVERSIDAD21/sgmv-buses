@@ -163,7 +163,11 @@ export interface WorkOrderTechnicalReadingDto {
 }
 
 export interface DispatchWorkOrderProjectionDto {
-  disponibilidad: Pick<AvailabilityDto, 'causaPrincipal' | 'causas' | 'disponible' | 'evaluadoAt'>
+  disponibilidad: Omit<AvailabilityDto, 'causas'> & {
+    causas: Array<
+      Pick<AvailabilityDto['causas'][number], 'codigo' | 'mensaje' | 'origenId' | 'origenTipo'>
+    >
+  }
   orden: {
     bus: { codigoInterno: string; id: number; placa: string }
     codigo: string
