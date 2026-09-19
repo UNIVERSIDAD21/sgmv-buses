@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -68,6 +69,12 @@ function formatDate(value: string | null) {
   }
 
   return new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' }).format(new Date(value))
+}
+
+function getDetailIdFromSearch(value: string | null) {
+  const id = Number(value)
+
+  return Number.isSafeInteger(id) && id > 0 ? id : null
 }
 
 function Section({ children, title }: { children: ReactNode; title: string }) {
@@ -592,16 +599,23 @@ function AlertHistory({ alerts }: { alerts: HistoryDetailDto['alertas'] }) {
 function HistoryDetail({
   detail,
   isAdmin,
+  onClose,
   showOperationalAudit = isAdmin,
   title = 'Detalle histórico del bus',
 }: {
   detail: HistoryDetailDto
   isAdmin: boolean
+  onClose?: () => void
   showOperationalAudit?: boolean
   title?: string
 }) {
   return (
     <div className="space-y-4" data-testid="history-detail">
+      {onClose && (
+        <Button onClick={onClose} size="sm" variant="outline">
+          Volver a resultados
+        </Button>
+      )}
       <Section title={title}>
         <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
@@ -801,6 +815,7 @@ function AdminReports({
 
 export default function HistoryReportsPage() {
   const { user } = useSession()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [draft, setDraft] = useState<HistoryFilters>(initialFilters)
   const [filters, setFilters] = useState<HistoryFilters>(initialFilters)
   const [summary, setSummary] = useState<HistorySummaryDto | null>(null)
@@ -817,6 +832,7 @@ export default function HistoryReportsPage() {
   const role = user?.rol.codigo
   const isAdmin = role === 'ADMINISTRADOR'
   const isDispatcher = role === 'DESPACHADOR'
+  const detailIdFromQuery = getDetailIdFromSearch(searchParams.get('detalle'))
 
   const load = useCallback(async () => {
     if (!role) {
@@ -885,19 +901,48 @@ export default function HistoryReportsPage() {
     }
   }, [load])
 
-  const openDetail = async (busId: number) => {
-    const version = ++detailVersion.current
-    setLoadingId(busId)
-    setError(null)
+  const openDetail = useCallback(
+    async (busId: number) => {
+      const version = ++detailVersion.current
+      setLoadingId(busId)
+      setError(null)
 
-    try {
-      const result = await getBusHistory(busId, filters)
-      if (version === detailVersion.current) setDetail(result)
-    } catch (requestError) {
-      if (version === detailVersion.current) setError(errorMessage(requestError))
-    } finally {
-      if (version === detailVersion.current) setLoadingId(null)
-    }
+      try {
+        const result = await getBusHistory(busId, filters)
+        if (version === detailVersion.current) setDetail(result)
+      } catch (requestError) {
+        if (version === detailVersion.current) setError(errorMessage(requestError))
+      } finally {
+        if (version === detailVersion.current) setLoadingId(null)
+      }
+    },
+    [filters],
+  )
+
+  useEffect(() => {
+    if (role === 'CONDUCTOR' || !detailIdFromQuery) return
+
+    const request = window.setTimeout(() => void openDetail(detailIdFromQuery), 0)
+    return () => window.clearTimeout(request)
+  }, [detailIdFromQuery, openDetail, role])
+
+  function selectDetail(busId: number) {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('detalle', String(busId))
+    setSearchParams(nextParams)
+  }
+
+  function closeDetail() {
+    setDetail(null)
+    clearDetailSearch()
+  }
+
+  function clearDetailSearch() {
+    if (!searchParams.has('detalle')) return
+
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('detalle')
+    setSearchParams(nextParams)
   }
 
   const applyFilters = (event: FormEvent) => {
@@ -912,6 +957,7 @@ export default function HistoryReportsPage() {
     detailVersion.current += 1
     setLoadingId(null)
     setDetail(role === 'CONDUCTOR' ? detail : null)
+    if (role !== 'CONDUCTOR') clearDetailSearch()
     setFilters({ ...draft, pagina: 1 })
   }
 
@@ -922,6 +968,7 @@ export default function HistoryReportsPage() {
     setDraft(initialFilters)
     setFilters({ ...initialFilters })
     setDetail(role === 'CONDUCTOR' ? detail : null)
+    if (role !== 'CONDUCTOR') clearDetailSearch()
     setError(null)
   }
 
@@ -1019,11 +1066,7 @@ export default function HistoryReportsPage() {
                 : 'Historial técnico autorizado'
           }
         >
-          <BusCards
-            buses={buses}
-            loadingId={loadingId}
-            onDetail={(busId) => void openDetail(busId)}
-          />
+          <BusCards buses={buses} loadingId={loadingId} onDetail={selectDetail} />
         </Section>
       )}
 
@@ -1040,6 +1083,7 @@ export default function HistoryReportsPage() {
         <HistoryDetail
           detail={detail}
           isAdmin={isAdmin}
+          onClose={role === 'CONDUCTOR' ? undefined : closeDetail}
           showOperationalAudit={isAdmin || isDispatcher}
           title={
             role === 'CONDUCTOR'

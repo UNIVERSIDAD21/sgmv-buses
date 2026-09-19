@@ -21,6 +21,22 @@ afterEach(() => {
 })
 
 describe('RF-06 history and reports frontend', () => {
+  it('opens an exact bus history received through a deep link and returns to the results', async () => {
+    window.history.pushState({}, '', '/historial?detalle=2015')
+    const fetchMock = mockApi(historyHandler('DESPACHADOR'))
+
+    render(<App />)
+
+    expect(await screen.findByTestId('history-detail')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/historial/buses/2015'),
+      expect.any(Object),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Volver a resultados/i }))
+    await waitFor(() => expect(window.location.search).toBe(''))
+  })
+
   it('no reemplaza el detalle vigente por una selección anterior lenta', async () => {
     window.history.pushState({}, '', '/historial')
     const handler = historyHandler('DESPACHADOR')
