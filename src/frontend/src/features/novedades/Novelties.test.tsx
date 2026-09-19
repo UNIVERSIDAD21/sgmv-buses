@@ -14,6 +14,20 @@ afterEach(() => {
 })
 
 describe('RF-02 novelty frontend', () => {
+  it('applies a valid status filter received from a dashboard route', async () => {
+    window.history.pushState({}, '', '/novedades?estado=PENDIENTE_REVISION')
+    const fetchMock = mockApi(noveltyHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('estado=PENDIENTE_REVISION'),
+        expect.any(Object),
+      )
+    })
+  })
+
   it('lets a driver register a novelty from the journey context without free IDs', async () => {
     window.history.pushState({}, '', '/novedades')
     const fetchMock = mockApi(noveltyHandler('CONDUCTOR'))

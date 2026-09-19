@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -24,6 +24,10 @@ import { changeBusState, getBus, listBuses, registerMileage } from './fleet.api'
 import type { BusDetailDto, BusStatus, ListBusesResponse } from './fleet.types'
 
 const statusOptions = Object.entries(BUS_STATUS_LABELS) as Array<[BusStatus, string]>
+
+function getStatusFromSearch(value: string | null): BusStatus | '' {
+  return statusOptions.some(([status]) => status === value) ? (value as BusStatus) : ''
+}
 
 const statusTone: Record<BusStatus, 'amber' | 'emerald' | 'red' | 'slate' | 'teal'> = {
   EN_MANTENIMIENTO: 'amber',
@@ -324,11 +328,14 @@ function ActionDialog({
 
 export default function FleetPage() {
   const { user } = useSession()
+  const [searchParams] = useSearchParams()
   const canEditMasterData = user?.rol.codigo === 'ADMINISTRADOR'
   const canManage = user?.rol.codigo === 'ADMINISTRADOR' || user?.rol.codigo === 'DESPACHADOR'
   const [busqueda, setBusqueda] = useState('')
   const busquedaEstable = useDebouncedValue(busqueda)
-  const [estado, setEstado] = useState<BusStatus | ''>('')
+  const [estado, setEstado] = useState<BusStatus | ''>(() =>
+    getStatusFromSearch(searchParams.get('estado')),
+  )
   const [pagina, setPagina] = useState(1)
   const [listData, setListData] = useState<ListBusesResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -339,6 +346,11 @@ export default function FleetPage() {
   const [action, setAction] = useState<FleetAction | null>(null)
   const [operationError, setOperationError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    setEstado(getStatusFromSearch(searchParams.get('estado')))
+    setPagina(1)
+  }, [searchParams])
 
   const refreshAdminList = useCallback(async () => {
     if (!canManage) {

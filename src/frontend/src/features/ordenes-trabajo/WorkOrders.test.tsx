@@ -14,6 +14,20 @@ afterEach(() => {
 })
 
 describe('RF-04 work order frontend', () => {
+  it('applies a valid status filter received from a dashboard route', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo?estado=PENDIENTE_ASIGNACION')
+    const fetchMock = mockApi(workOrderHandler('ADMINISTRADOR'))
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('estado=PENDIENTE_ASIGNACION'),
+        expect.any(Object),
+      )
+    })
+  })
+
   it('shows dispatchers only the operational work-order projection', async () => {
     window.history.pushState({}, '', '/ordenes-trabajo/despacho')
     mockApi(workOrderHandler('DESPACHADOR'))

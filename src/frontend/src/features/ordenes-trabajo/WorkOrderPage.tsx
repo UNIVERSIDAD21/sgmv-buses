@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -121,6 +122,10 @@ const priorityTone: Record<OrderPriority, BadgeTone> = {
 }
 
 const statusOptions = Object.entries(statusLabels) as Array<[WorkOrderStatus, string]>
+
+function getWorkOrderStatusFromSearch(value: string | null): WorkOrderStatus | '' {
+  return statusOptions.some(([status]) => status === value) ? (value as WorkOrderStatus) : ''
+}
 const typeOptions = Object.entries(typeLabels) as Array<[WorkOrderType, string]>
 const originOptions = Object.entries(originLabels) as Array<[WorkOrderOrigin, string]>
 const priorityOptions = Object.entries(priorityLabels) as Array<[OrderPriority, string]>
@@ -1736,6 +1741,7 @@ function SummaryMetrics({
 
 export default function WorkOrderPage() {
   const { user } = useSession()
+  const [searchParams] = useSearchParams()
   const [assignmentAction, setAssignmentAction] = useState<AssignmentAction | null>(null)
   const [buses, setBuses] = useState<BusSummaryDto[]>([])
   const [busId, setBusId] = useState('')
@@ -1743,7 +1749,9 @@ export default function WorkOrderPage() {
   const [closeAction, setCloseAction] = useState<WorkOrderDetailDto | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [direccion, setDireccion] = useState<'asc' | 'desc'>('desc')
-  const [estado, setEstado] = useState<WorkOrderStatus | ''>('')
+  const [estado, setEstado] = useState<WorkOrderStatus | ''>(() =>
+    getWorkOrderStatusFromSearch(searchParams.get('estado')),
+  )
   const [feedback, setFeedback] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [listData, setListData] = useState<WorkOrderListResponse | null>(null)
@@ -1760,6 +1768,11 @@ export default function WorkOrderPage() {
   const [summary, setSummary] = useState<WorkOrderSummaryDto | null>(null)
   const [tecnicoId, setTecnicoId] = useState('')
   const [tipo, setTipo] = useState<WorkOrderType | ''>('')
+
+  useEffect(() => {
+    setEstado(getWorkOrderStatusFromSearch(searchParams.get('estado')))
+    setPagina(1)
+  }, [searchParams])
 
   const isAdmin = user?.rol.codigo === 'ADMINISTRADOR'
   const isMechanic = user?.rol.codigo === 'MECANICO'

@@ -26,6 +26,20 @@ afterEach(() => {
 })
 
 describe('RF-01 fleet frontend', () => {
+  it('applies a valid status filter received from a dashboard route', async () => {
+    window.history.pushState({}, '', '/flota?estado=EN_MANTENIMIENTO')
+    const fetchMock = mockApi(fleetHandler())
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('estado=EN_MANTENIMIENTO'),
+        expect.any(Object),
+      )
+    })
+  })
+
   it('loads fleet list with search, filter and pagination', async () => {
     window.history.pushState({}, '', '/flota')
     const fetchMock = mockApi(fleetHandler())

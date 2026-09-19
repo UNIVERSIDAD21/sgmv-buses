@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -53,6 +53,10 @@ interface AdminAction {
 }
 
 const statusOptions = Object.entries(NOVELTY_STATUS_LABELS) as Array<[NoveltyStatus, string]>
+
+function getNoveltyStatusFromSearch(value: string | null): NoveltyStatus | '' {
+  return statusOptions.some(([status]) => status === value) ? (value as NoveltyStatus) : ''
+}
 const priorityOptions: Array<[OrderPriority, string]> = [
   ['BAJA', 'Baja'],
   ['MEDIA', 'Media'],
@@ -979,13 +983,16 @@ function DriverView() {
 
 function AdminView() {
   const { user } = useSession()
+  const [searchParams] = useSearchParams()
   const isAdmin = user?.rol.codigo === 'ADMINISTRADOR'
   const [action, setAction] = useState<AdminAction | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [clasificacion, setClasificacion] = useState('')
   const [detailLoading, setDetailLoading] = useState(false)
-  const [estado, setEstado] = useState<NoveltyStatus | ''>('')
+  const [estado, setEstado] = useState<NoveltyStatus | ''>(() =>
+    getNoveltyStatusFromSearch(searchParams.get('estado')),
+  )
   const [feedback, setFeedback] = useState<string | null>(null)
   const [listData, setListData] = useState<NoveltyListResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -995,6 +1002,11 @@ function AdminView() {
   const [selectedNovelty, setSelectedNovelty] = useState<NoveltyDto | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [summary, setSummary] = useState<NoveltySummaryDto | null>(null)
+
+  useEffect(() => {
+    setEstado(getNoveltyStatusFromSearch(searchParams.get('estado')))
+    setPagina(1)
+  }, [searchParams])
 
   const refreshAdminData = useCallback(async () => {
     const [summaryData, novelties] = await Promise.all([

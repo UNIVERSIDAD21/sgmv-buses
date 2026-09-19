@@ -191,7 +191,7 @@ export default function DashboardPage() {
               icon={<Bus size={16} />}
               label="Total de buses"
               note={fleetError ?? undefined}
-              to="/flota"
+              to="/flota?estado=OPERATIVO"
               value={fleetSummary?.totalBuses ?? null}
             />
             <StatCard
@@ -200,7 +200,7 @@ export default function DashboardPage() {
               icon={<Shield size={16} />}
               label="Buses operativos"
               note="Listos para operar si no tienen otras restricciones"
-              to="/flota"
+              to="/flota?estado=EN_MANTENIMIENTO"
               value={fleetSummary?.porEstado.OPERATIVO ?? null}
             />
             <StatCard
@@ -229,7 +229,7 @@ export default function DashboardPage() {
               label="Novedades pendientes de revisión"
               note="Clasifique, resuelva o genere una orden"
               priority="attention"
-              to="/novedades"
+              to="/novedades?estado=PENDIENTE_REVISION"
               value={noveltySummary?.pendientes ?? null}
             />
             <StatCard
@@ -253,7 +253,7 @@ export default function DashboardPage() {
               label="Órdenes pendientes de asignación"
               note="Asigne un mecánico para iniciar el trabajo"
               priority="attention"
-              to="/ordenes-trabajo"
+              to="/ordenes-trabajo?estado=PENDIENTE_ASIGNACION"
               value={workOrderSummary?.pendientesAsignacion ?? null}
             />
             <StatCard
@@ -262,7 +262,7 @@ export default function DashboardPage() {
               icon={<Wrench size={16} />}
               label="Órdenes en ejecución"
               note="Siga el avance de cada intervención"
-              to="/ordenes-trabajo"
+              to="/ordenes-trabajo?estado=EN_EJECUCION"
               value={workOrderSummary?.porEstado.EN_EJECUCION ?? null}
             />
             <StatCard
@@ -272,7 +272,7 @@ export default function DashboardPage() {
               label="Órdenes esperando validación"
               note="Revise la evidencia antes de cerrar"
               priority="attention"
-              to="/ordenes-trabajo"
+              to="/ordenes-trabajo?estado=COMPLETADA_TECNICO"
               value={workOrderSummary?.pendientesRevision ?? null}
             />
             <StatCard
@@ -305,7 +305,7 @@ export default function DashboardPage() {
               icon={<Bus size={16} />}
               label="Total de buses"
               note={fleetError ?? undefined}
-              to="/flota"
+              to="/flota?estado=OPERATIVO"
               value={fleetSummary?.totalBuses ?? null}
             />
             <StatCard
@@ -339,7 +339,7 @@ export default function DashboardPage() {
               label="Novedades pendientes de atención"
               note="Revise si requiere cambiar recursos de una jornada"
               priority="attention"
-              to="/novedades"
+              to="/novedades?estado=PENDIENTE_REVISION"
               value={noveltySummary?.pendientes ?? null}
             />
           </div>
