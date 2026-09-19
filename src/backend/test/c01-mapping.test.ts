@@ -35,10 +35,9 @@ describe('C-01: mapeado semántico sin pérdida de información', () => {
     expect(createBusSchema.safeParse({ ...bus, placa: 'ß'.repeat(8) }).success).toBe(false)
   })
 
-  it('aplica límites de clave y componente sin reducir actividad libre ni diagnóstico', () => {
+  it('genera internamente la clave y conserva los límites de componente, actividad y diagnóstico', () => {
     const plan = {
       busId: 1,
-      claveTarea: 'A'.repeat(80),
       componente: 'C'.repeat(120),
       actividad: 'Actividad detallada. '.repeat(40),
       criterio: 'KILOMETRAJE',
@@ -49,7 +48,7 @@ describe('C-01: mapeado semántico sin pérdida de información', () => {
     }
     expect(createPreventivePlanSchema.safeParse(plan).success).toBe(true)
     expect(
-      createPreventivePlanSchema.safeParse({ ...plan, claveTarea: 'A'.repeat(81) }).success,
+      createPreventivePlanSchema.safeParse({ ...plan, claveTarea: 'A'.repeat(80) }).success,
     ).toBe(false)
     expect(
       createPreventivePlanSchema.safeParse({ ...plan, componente: 'C'.repeat(121) }).success,

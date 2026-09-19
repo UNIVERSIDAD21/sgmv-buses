@@ -13,6 +13,7 @@ import {
   initialPreventiveTargets,
 } from '../src/preventive/preventive-cycle.js'
 import { PreventivePlanService } from '../src/preventive/preventive-plan.service.js'
+import { reconcilePreventiveObligationForTask } from '../src/preventive/preventive-reconciliation.js'
 import { PreventiveService } from '../src/preventive/preventive.service.js'
 import { WorkOrderRepository } from '../src/work-orders/work-order.repository.js'
 import { createCsrfAgent } from './http-test-client.js'
@@ -405,19 +406,17 @@ describe('P6-C ciclo preventivo recurrente', () => {
         admin.actor,
       )
 
-      const busPlanResult = await new PreventivePlanService().createPlan(
-        {
-          actividad: 'Mantenimiento particular reconciliado para el bus',
-          anticipacionKm: 300,
-          bloqueaAlVencer: true,
+      const busPlan = await createPlan(
+        admin.actor.id,
+        { busId: bus.id },
+        { claveTarea: key, intervaloKm: 6_000 },
+      )
+      await prisma.$transaction((tx) =>
+        reconcilePreventiveObligationForTask(tx, {
+          actorId: admin.actor.id,
           busId: bus.id,
           claveTarea: key,
-          componente: 'Componente particular',
-          criterio: 'KILOMETRAJE',
-          intervaloKm: 6_000,
-          prioridad: 'ALTA',
-        },
-        admin.actor,
+        }),
       )
       const afterBusPlan = await prisma.programacionMantenimiento.findMany({
         where: { busId: bus.id, planMantenimientoPreventivo: { claveTarea: key } },
@@ -427,10 +426,10 @@ describe('P6-C ciclo preventivo recurrente', () => {
       expect(afterBusPlan.find((item) => item.id === first.programacion.id)?.activa).toBe(false)
       expect(afterBusPlan.find((item) => item.activa)).toMatchObject({
         kilometrajeObjetivo: 26_000,
-        planMantenimientoPreventivoId: busPlanResult.plan.id,
+        planMantenimientoPreventivoId: busPlan.id,
       })
 
-      await new PreventivePlanService().deactivatePlan(busPlanResult.plan.id, admin.actor)
+      await new PreventivePlanService().deactivatePlan(busPlan.id, admin.actor)
       const afterDeactivate = await prisma.programacionMantenimiento.findFirstOrThrow({
         where: { activa: true, busId: bus.id, planMantenimientoPreventivo: { claveTarea: key } },
       })
@@ -492,19 +491,17 @@ describe('P6-C ciclo preventivo recurrente', () => {
         admin.actor,
       )
 
-      const busPlanResult = await new PreventivePlanService().createPlan(
-        {
-          actividad: 'Mantenimiento particular para el siguiente ciclo',
-          anticipacionKm: 300,
-          bloqueaAlVencer: true,
+      const busPlan = await createPlan(
+        admin.actor.id,
+        { busId: bus.id },
+        { claveTarea: key, intervaloKm: 6_000 },
+      )
+      await prisma.$transaction((tx) =>
+        reconcilePreventiveObligationForTask(tx, {
+          actorId: admin.actor.id,
           busId: bus.id,
           claveTarea: key,
-          componente: 'Componente particular diferido',
-          criterio: 'KILOMETRAJE',
-          intervaloKm: 6_000,
-          prioridad: 'ALTA',
-        },
-        admin.actor,
+        }),
       )
       expect(
         await prisma.programacionMantenimiento.findUniqueOrThrow({
@@ -527,7 +524,7 @@ describe('P6-C ciclo preventivo recurrente', () => {
       })
       expect(successor).toMatchObject({
         kilometrajeObjetivo: 41_000,
-        planMantenimientoPreventivoId: busPlanResult.plan.id,
+        planMantenimientoPreventivoId: busPlan.id,
       })
     },
     testTimeout,
