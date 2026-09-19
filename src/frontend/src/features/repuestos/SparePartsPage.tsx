@@ -177,6 +177,59 @@ function FieldValue({ children, label }: { children: ReactNode; label: string })
   )
 }
 
+function TechnicalDataPreview({
+  dimensiones,
+  especificaciones,
+}: {
+  dimensiones: KeyValueEntry[]
+  especificaciones: KeyValueEntry[]
+}) {
+  const groups = [
+    { entries: especificaciones, label: 'Especificaciones' },
+    { entries: dimensiones, label: 'Medidas y dimensiones' },
+  ].map((group) => ({
+    ...group,
+    entries: group.entries.filter((entry) => entry.campo.trim() && entry.valor.trim()),
+  }))
+  const hasData = groups.some((group) => group.entries.length > 0)
+
+  return (
+    <section
+      aria-live="polite"
+      className="rounded-lg border border-sky-200 bg-sky-50 p-3"
+      aria-label="Vista previa de datos técnicos"
+    >
+      <h3 className="text-sm font-semibold text-slate-800">Vista previa de datos técnicos</h3>
+      {!hasData ? (
+        <p className="mt-1 text-sm text-slate-600">Sin datos técnicos adicionales.</p>
+      ) : (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {groups.map(
+            (group) =>
+              group.entries.length > 0 && (
+                <div className="rounded-md border border-sky-100 bg-white p-3" key={group.label}>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {group.label}
+                  </p>
+                  <dl className="mt-2 space-y-1 text-sm">
+                    {group.entries.map((entry, index) => (
+                      <div className="flex justify-between gap-3" key={`${entry.campo}-${index}`}>
+                        <dt className="text-slate-600">{entry.campo.trim()}</dt>
+                        <dd className="text-right font-medium text-slate-800">
+                          {entry.valor.trim()}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ),
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function Pagination({
   onNext,
   onPrev,
@@ -565,17 +618,20 @@ function CreateForm({
       <TextInput label="Fabricante" onChange={setFabricante} value={fabricante} />
       <TextInput label="Numero de parte" onChange={setNumeroParte} value={numeroParte} />
       <KeyValueFields
+        addLabel="Agregar especificación"
         entries={especificaciones}
         help="Agregue únicamente los datos relevantes, por ejemplo voltaje, viscosidad o material."
         label="Especificaciones técnicas"
         onChange={setEspecificaciones}
       />
       <KeyValueFields
+        addLabel="Agregar medida"
         entries={dimensiones}
-        help="Agregue medidas solo cuando ayuden a identificar el repuesto, por ejemplo largo o diámetro."
-        label="Dimensiones"
+        help="Registre medidas solo cuando identifiquen el repuesto. Use un número y su unidad, por ejemplo: Diámetro / 30 mm."
+        label="Medidas y dimensiones"
         onChange={setDimensiones}
       />
+      <TechnicalDataPreview dimensiones={dimensiones} especificaciones={especificaciones} />
       <TextInput
         label="Unidad de medida"
         onChange={setUnidadMedida}
@@ -682,11 +738,20 @@ function EditForm({
       <TextInput label="Fabricante" onChange={setFabricante} value={fabricante} />
       <TextInput label="Numero de parte" onChange={setNumeroParte} value={numeroParte} />
       <KeyValueFields
+        addLabel="Agregar especificación"
         entries={especificaciones}
+        help="Agregue únicamente datos que ayuden a identificar o validar el repuesto."
         label="Especificaciones técnicas"
         onChange={setEspecificaciones}
       />
-      <KeyValueFields entries={dimensiones} label="Dimensiones" onChange={setDimensiones} />
+      <KeyValueFields
+        addLabel="Agregar medida"
+        entries={dimensiones}
+        help="Use un número y su unidad, por ejemplo: Largo / 250 mm."
+        label="Medidas y dimensiones"
+        onChange={setDimensiones}
+      />
+      <TechnicalDataPreview dimensiones={dimensiones} especificaciones={especificaciones} />
       <TextInput
         label="Unidad de medida"
         onChange={setUnidadMedida}
@@ -977,12 +1042,30 @@ function CompatibilityRuleForm({
 }) {
   const [destination, setDestination] = useState<'BUS' | 'MODELO'>('BUS')
   const [destinationId, setDestinationId] = useState('')
-  const [allowed, setAllowed] = useState(true)
   const [condition, setCondition] = useState('')
+  const [outcome, setOutcome] = useState<'PERMITIDO' | 'NO_PERMITIDO' | 'CON_CONDICIONES'>(
+    'PERMITIDO',
+  )
   const [validatedSpecs, setValidatedSpecs] = useState<KeyValueEntry[]>([
     { campo: 'Revisión', valor: 'P8' },
   ])
   const [localError, setLocalError] = useState<string | null>(null)
+  const selectedBus = buses.find((bus) => bus.id === Number(destinationId))
+  const selectedModel = models.find((model) => model.id === Number(destinationId))
+  const selectedDestinationLabel =
+    destination === 'BUS'
+      ? selectedBus
+        ? `${selectedBus.codigoInterno} · ${selectedBus.placa}`
+        : 'Pendiente de selección'
+      : selectedModel
+        ? `${selectedModel.marca} · ${selectedModel.nombreModelo}`
+        : 'Pendiente de selección'
+  const resultLabel =
+    outcome === 'NO_PERMITIDO'
+      ? 'No compatible'
+      : outcome === 'CON_CONDICIONES'
+        ? 'Compatible con condiciones'
+        : 'Compatible'
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -995,6 +1078,10 @@ function CompatibilityRuleForm({
       setLocalError(specificationsResult.error ?? 'Registre al menos un dato técnico validado.')
       return
     }
+    if (outcome === 'CON_CONDICIONES' && !normalizeText(condition)) {
+      setLocalError('Explique las condiciones que deben cumplirse antes de usar este repuesto.')
+      return
+    }
     setLocalError(null)
     await onSubmit({
       ...(destination === 'BUS'
@@ -1002,7 +1089,7 @@ function CompatibilityRuleForm({
         : { modeloBusId: Number(destinationId) }),
       condicionUso: normalizeText(condition) || undefined,
       especificacionesValidadas: specificationsResult.value,
-      permitido: allowed,
+      permitido: outcome !== 'NO_PERMITIDO',
     })
   }
 
@@ -1058,11 +1145,14 @@ function CompatibilityRuleForm({
         Resultado
         <select
           className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
-          onChange={(event) => setAllowed(event.target.value === 'true')}
-          value={String(allowed)}
+          onChange={(event) =>
+            setOutcome(event.target.value as 'PERMITIDO' | 'NO_PERMITIDO' | 'CON_CONDICIONES')
+          }
+          value={outcome}
         >
-          <option value="true">Permitido</option>
-          <option value="false">No permitido</option>
+          <option value="PERMITIDO">Compatible</option>
+          <option value="CON_CONDICIONES">Compatible con condiciones</option>
+          <option value="NO_PERMITIDO">No compatible</option>
         </select>
       </label>
       <label className="block text-sm font-medium text-slate-700">
@@ -1075,11 +1165,37 @@ function CompatibilityRuleForm({
         />
       </label>
       <KeyValueFields
+        addLabel="Agregar evidencia"
         entries={validatedSpecs}
         help="Registre la evidencia técnica con la que se validó esta compatibilidad."
         label="Datos técnicos validados"
         onChange={setValidatedSpecs}
       />
+      <section
+        aria-label="Resumen de la regla de compatibilidad"
+        className="rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-sm"
+      >
+        <h3 className="font-semibold text-slate-800">Resumen antes de guardar</h3>
+        <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div>
+            <dt className="text-xs font-medium uppercase text-slate-500">Destino</dt>
+            <dd className="mt-1 text-slate-800">{selectedDestinationLabel}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium uppercase text-slate-500">Resultado</dt>
+            <dd className="mt-1 text-slate-800">{resultLabel}</dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="text-xs font-medium uppercase text-slate-500">Condiciones</dt>
+            <dd className="mt-1 text-slate-800">
+              {normalizeText(condition) || 'Sin condiciones adicionales.'}
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-xs leading-5 text-cyan-900">
+          Si existe una regla para este bus, tendrá prioridad sobre la regla del modelo.
+        </p>
+      </section>
       <Button icon={<PlusCircle size={14} />} loading={submitting} type="submit">
         Crear nueva version
       </Button>
@@ -1668,7 +1784,8 @@ export default function SparePartsPage() {
                 Compatibilidad tecnica
               </h3>
               <p className="mt-1 text-xs text-cyan-700">
-                Historial versionado; la regla vigente aparece primero.
+                Historial versionado; la regla vigente aparece primero. Una regla de bus tiene
+                prioridad sobre la del modelo.
               </p>
               <div className="mt-3">
                 <Button
@@ -1697,7 +1814,12 @@ export default function SparePartsPage() {
                             : `Modelo ${rule.modeloBus?.nombreModelo ?? rule.modeloBusId}`}
                         </strong>
                         <span>
-                          {rule.permitido ? 'Permitido' : 'No permitido'} · v{rule.version}
+                          {rule.permitido
+                            ? rule.condicionUso
+                              ? 'Compatible con condiciones'
+                              : 'Compatible'
+                            : 'No compatible'}{' '}
+                          · v{rule.version}
                           {rule.vigente ? ' · Vigente' : ' · Inactiva'}
                         </span>
                       </div>

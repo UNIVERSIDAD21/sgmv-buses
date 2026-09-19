@@ -129,6 +129,17 @@ describe('RF-05 spare parts frontend', () => {
     const dialog = await screen.findByRole('dialog', { name: /Nuevo repuesto/i })
     expect(within(dialog).queryByLabelText(/^Codigo$/i)).not.toBeInTheDocument()
     expect(within(dialog).getByText(/asignará un código interno único/i)).toBeInTheDocument()
+    const preview = within(dialog).getByRole('region', { name: /Vista previa de datos técnicos/i })
+    expect(within(preview).getByText(/Sin datos técnicos adicionales/i)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: /Agregar especificación/i }))
+    fireEvent.change(within(dialog).getByLabelText(/^Nombre del dato 1$/i), {
+      target: { value: 'Voltaje' },
+    })
+    fireEvent.change(within(dialog).getByLabelText(/^Valor del dato 1$/i), {
+      target: { value: '24 V' },
+    })
+    expect(within(preview).getByText('Voltaje')).toBeInTheDocument()
+    expect(within(preview).getByText('24 V')).toBeInTheDocument()
     fireEvent.change(within(dialog).getByLabelText(/^Nombre$/i), {
       target: { value: ' Kit de filtros ' },
     })
@@ -252,15 +263,23 @@ describe('RF-05 spare parts frontend', () => {
       target: { value: fleetBus.id },
     })
     fireEvent.change(within(ruleDialog).getByLabelText(/^Resultado$/i), {
-      target: { value: 'false' },
+      target: { value: 'CON_CONDICIONES' },
     })
     fireEvent.change(within(ruleDialog).getByLabelText(/Condicion de uso/i), {
       target: { value: 'Solo con autorizacion P8' },
     })
+    const summary = within(ruleDialog).getByRole('region', {
+      name: /Resumen de la regla de compatibilidad/i,
+    })
+    expect(within(summary).getByText(/Compatible con condiciones/i)).toBeInTheDocument()
+    expect(within(summary).getByText(new RegExp(fleetBus.codigoInterno))).toBeInTheDocument()
+    expect(within(summary).getByText(/prioridad sobre la regla del modelo/i)).toBeInTheDocument()
     fireEvent.click(within(ruleDialog).getByRole('button', { name: /Crear nueva version/i }))
 
     expect(await screen.findByText(/Nueva version de compatibilidad creada/i)).toBeInTheDocument()
-    expect(await within(detailDialog).findByText(/No permitido.*v1.*Vigente/i)).toBeInTheDocument()
+    expect(
+      await within(detailDialog).findByText(/Compatible con condiciones.*v1.*Vigente/i),
+    ).toBeInTheDocument()
     expect(
       fetchMock.mock.calls.some(
         ([input, init]) =>
@@ -277,7 +296,9 @@ describe('RF-05 spare parts frontend', () => {
     )
 
     expect(await screen.findByText(/Regla de compatibilidad inactivada/i)).toBeInTheDocument()
-    expect(await within(detailDialog).findByText(/No permitido.*v1.*Inactiva/i)).toBeInTheDocument()
+    expect(
+      await within(detailDialog).findByText(/Compatible con condiciones.*v1.*Inactiva/i),
+    ).toBeInTheDocument()
   })
 
   it('registers entries and explicit adjustments with confirmation and stock-insufficient feedback', async () => {
