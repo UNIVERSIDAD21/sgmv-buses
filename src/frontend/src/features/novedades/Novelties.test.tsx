@@ -109,6 +109,19 @@ describe('RF-02 novelty frontend', () => {
     )
   })
 
+  it('links operational coordination to the exact journey that requires attention', async () => {
+    window.history.pushState({}, '', '/novedades')
+    mockApi(noveltyHandler('ADMINISTRADOR', { reviewed: true }))
+
+    render(<App />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Detalle/i }))
+
+    expect(
+      await screen.findByRole('link', { name: /Resolver impacto operativo/i }),
+    ).toHaveAttribute('href', '/jornadas?detalle=2029')
+  })
+
   it('loads the administrative list with search, status, priority and pagination', async () => {
     window.history.pushState({}, '', '/novedades')
     const fetchMock = mockApi(noveltyHandler('ADMINISTRADOR'))

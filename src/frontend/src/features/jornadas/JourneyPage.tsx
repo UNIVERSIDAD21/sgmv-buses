@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
 import JourneyProjection from './JourneyProjection'
@@ -17,6 +17,7 @@ import {
   cancelJourney,
   createJourney,
   finishJourney,
+  getJourney,
   getJourneyOptions,
   getMyJourney,
   listJourneys,
@@ -71,6 +72,12 @@ function defaultSchedule(hours: number) {
 
 function toIso(value: string) {
   return new Date(value).toISOString()
+}
+
+function getJourneyIdFromSearch(value: string | null) {
+  if (!value || !/^\d+$/.test(value)) return null
+  const journeyId = Number(value)
+  return Number.isSafeInteger(journeyId) && journeyId > 0 ? journeyId : null
 }
 
 function JourneyCard({
@@ -139,6 +146,38 @@ function JourneyCard({
 
       {journey.motivoCambio && (
         <p className="mt-3 text-xs text-slate-500">Cambio: {journey.motivoCambio}</p>
+      )}
+      {(journey.jornadaAnteriorId || journey.jornadaSucesoraId) && (
+        <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
+          {journey.jornadaAnteriorId && (
+            <Link
+              className="rounded-md bg-slate-100 px-2 py-1 hover:bg-slate-200"
+              to={`/jornadas?detalle=${journey.jornadaAnteriorId}`}
+            >
+              Ver tramo anterior
+            </Link>
+          )}
+          {journey.jornadaSucesoraId && (
+            <Link
+              className="rounded-md bg-slate-100 px-2 py-1 hover:bg-slate-200"
+              to={`/jornadas?detalle=${journey.jornadaSucesoraId}`}
+            >
+              Ver tramo siguiente
+            </Link>
+          )}
+        </div>
+      )}
+
+      {journey.estado === 'PROGRAMADA' && !journey.lecturaInicial && (
+        <p className="mt-3 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-900">
+          Recordatorio: el Conductor debe registrar la lectura observada al iniciar. La hora
+          programada no reemplaza el odómetro real.
+        </p>
+      )}
+      {journey.estado === 'EN_CURSO' && !journey.lecturaFinal && (
+        <p className="mt-3 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-900">
+          Recordatorio: antes de finalizar, registre la lectura observada de cierre del odómetro.
+        </p>
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -438,6 +477,9 @@ function ScheduleForm({
                       step="0.001"
                       value={nonCommercial}
                       onChange={(event) => setNonCommercial(event.target.value)}
+                      onBlur={() => {
+                        if (!nonCommercial.trim()) setNonCommercial('0')
+                      }}
                       required
                     />
                   </label>
@@ -477,6 +519,7 @@ function ActionDialog({
   onCompleted: (message: string) => Promise<void>
   options: JourneyOptionsResponse | null
 }) {
+  const { user } = useSession()
   const now = new Date()
   const suggestedEnd = new Date(
     Math.max(new Date(journey.finProgramado).getTime(), now.getTime() + 8 * 60 * 60_000),
@@ -493,12 +536,23 @@ function ActionDialog({
       : toLocalInput(new Date(journey.inicioProgramado)),
   )
   const [finProgramado, setFinProgramado] = useState(toLocalInput(suggestedEnd))
+  const [recalcularProyeccion, setRecalcularProyeccion] = useState(false)
+  const [ciclosSimulados, setCiclosSimulados] = useState('1')
+  const [kmNoComerciales, setKmNoComerciales] = useState('0')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const needsMileage = action === 'start' || action === 'finish' || journey.estado === 'EN_CURSO'
+  const selectedReplacementBus = options?.buses.find((bus) => bus.id === Number(busId))
+  const selectedReplacementDriver = options?.conductores.find(
+    (driver) => driver.id === Number(conductorId),
+  )
+  const selectedReplacementRoute = options?.rutas.find((route) => route.id === Number(rutaId))
+  const cyclesValue = Number(ciclosSimulados)
+  const nonCommercialValue = Number(kmNoComerciales)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (submitting) return
     setError(null)
     const mileageValue = Number(kilometraje)
     if (needsMileage && (!Number.isInteger(mileageValue) || mileageValue < 0)) {
@@ -507,6 +561,20 @@ function ActionDialog({
     }
     if ((action === 'cancel' || action === 'reassign') && motivo.trim().length < 3) {
       setError('El motivo debe tener al menos 3 caracteres.')
+      return
+    }
+    if (
+      action === 'reassign' &&
+      recalcularProyeccion &&
+      (!selectedReplacementRoute?.longitudKmOficial ||
+        !Number.isInteger(cyclesValue) ||
+        cyclesValue < 1 ||
+        cyclesValue > 100 ||
+        !Number.isFinite(nonCommercialValue) ||
+        nonCommercialValue < 0 ||
+        nonCommercialValue > 1000)
+    ) {
+      setError('Para recalcular la estimación indique una ruta y valores válidos de simulación.')
       return
     }
 
@@ -539,6 +607,14 @@ function ActionDialog({
           ...(journey.estado === 'EN_CURSO' ? { kilometrajeFinal: mileageValue } : {}),
           motivo: motivo.trim(),
           rutaId: rutaId ? Number(rutaId) : null,
+          ...(recalcularProyeccion
+            ? {
+                simulacion: {
+                  ciclosCompletosSimulados: cyclesValue,
+                  kmNoComercialesSimulados: nonCommercialValue,
+                },
+              }
+            : {}),
         })
         await onCompleted('Cambio de bus o conductor registrado sin perder el historial')
       }
@@ -595,11 +671,14 @@ function ActionDialog({
             <span className="mt-1 block text-xs font-normal text-slate-500">
               Se registrará como lectura real de este evento y no como proyección académica.
             </span>
+            <span className="mt-1 block text-xs font-normal text-slate-500">
+              Quedará registrada a nombre de {user?.nombre ?? 'la persona autenticada'}.
+            </span>
           </label>
         )}
         {(action === 'cancel' || action === 'reassign') && (
           <label className="block text-sm font-medium text-slate-700">
-            Motivo
+            {action === 'reassign' ? 'Motivo del cambio' : 'Motivo'}
             <textarea
               className="mt-1 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               onChange={(event) => setMotivo(event.target.value)}
@@ -607,6 +686,29 @@ function ActionDialog({
               value={motivo}
             />
           </label>
+        )}
+        {action === 'reassign' && (
+          <>
+            <ol className="grid gap-2 text-xs sm:grid-cols-3" aria-label="Pasos para cambiar tramo">
+              <li className="rounded-lg bg-slate-100 px-3 py-2 font-semibold text-slate-700">
+                1. Cerrar tramo actual
+              </li>
+              <li className="rounded-lg bg-slate-100 px-3 py-2 font-semibold text-slate-700">
+                2. Definir reemplazo
+              </li>
+              <li className="rounded-lg bg-slate-100 px-3 py-2 font-semibold text-slate-700">
+                3. Confirmar trazabilidad
+              </li>
+            </ol>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              <p className="font-semibold text-slate-900">Estado del tramo actual</p>
+              <p className="mt-1">
+                {journey.estado === 'EN_CURSO'
+                  ? 'Está en curso: se cerrará con la lectura final que registre ahora.'
+                  : 'Aún no inició: se conservará como tramo programado reemplazado.'}
+              </p>
+            </div>
+          </>
         )}
         {action === 'reassign' && options && (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -623,7 +725,7 @@ function ActionDialog({
               </p>
             )}
             <label className="text-sm font-medium text-slate-700">
-              Nuevo bus
+              Bus para continuar
               <select
                 className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
                 onChange={(event) => setBusId(event.target.value)}
@@ -637,7 +739,7 @@ function ActionDialog({
               </select>
             </label>
             <label className="text-sm font-medium text-slate-700">
-              Nuevo conductor
+              Conductor para continuar
               <select
                 className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
                 onChange={(event) => setConductorId(event.target.value)}
@@ -683,6 +785,58 @@ function ActionDialog({
                 value={finProgramado}
               />
             </label>
+            <fieldset className="rounded-lg border border-cyan-200 bg-cyan-50/60 p-3 text-sm text-slate-700 sm:col-span-2">
+              <legend className="px-1 text-xs font-semibold uppercase text-cyan-800">
+                Estimación académica opcional
+              </legend>
+              <label className="flex items-start gap-2">
+                <input
+                  checked={recalcularProyeccion}
+                  onChange={(event) => setRecalcularProyeccion(event.target.checked)}
+                  type="checkbox"
+                />
+                <span>
+                  Recalcular la estimación del nuevo tramo. No modifica la lectura real del
+                  odómetro.
+                </span>
+              </label>
+              {recalcularProyeccion && (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm font-medium text-slate-700">
+                    Ciclos completos simulados
+                    <input
+                      className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+                      min="1"
+                      onChange={(event) => setCiclosSimulados(event.target.value)}
+                      type="number"
+                      value={ciclosSimulados}
+                    />
+                  </label>
+                  <label className="text-sm font-medium text-slate-700">
+                    Kilómetros no comerciales simulados
+                    <input
+                      className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+                      min="0"
+                      onChange={(event) => setKmNoComerciales(event.target.value)}
+                      type="number"
+                      value={kmNoComerciales}
+                    />
+                  </label>
+                </div>
+              )}
+            </fieldset>
+            <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950 sm:col-span-2">
+              <h3 className="font-semibold">Resumen antes de confirmar</h3>
+              <p className="mt-1">
+                El tramo actual quedará registrado como reemplazado por:{' '}
+                {selectedReplacementBus?.codigoInterno ?? 'bus pendiente'} ·{' '}
+                {selectedReplacementDriver?.nombre ?? 'conductor pendiente'}.
+              </p>
+              <p className="mt-1">
+                Horario del nuevo tramo: {formatDateTime(toIso(inicioProgramado))} a{' '}
+                {formatDateTime(toIso(finProgramado))}.
+              </p>
+            </section>
           </div>
         )}
         {error && (
@@ -698,7 +852,7 @@ function ActionDialog({
             Volver
           </Button>
           <Button loading={submitting} type="submit">
-            Confirmar
+            {action === 'reassign' ? 'Confirmar cambio de tramo' : 'Confirmar'}
           </Button>
         </div>
       </form>
@@ -708,6 +862,7 @@ function ActionDialog({
 
 export default function JourneyPage() {
   const { user } = useSession()
+  const [searchParams, setSearchParams] = useSearchParams()
   const isDriver = user?.rol.codigo === 'CONDUCTOR'
   const [list, setList] = useState<JourneyListResponse | null>(null)
   const [own, setOwn] = useState<MyJourneyResponse | null>(null)
@@ -719,6 +874,14 @@ export default function JourneyPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [focusedJourney, setFocusedJourney] = useState<{
+    journey: JourneyDto
+    journeyId: number
+  } | null>(null)
+  const [focusedJourneyError, setFocusedJourneyError] = useState<{
+    journeyId: number
+    message: string
+  } | null>(null)
   const [operation, setOperation] = useState<{ action: JourneyAction; journey: JourneyDto } | null>(
     null,
   )
@@ -752,6 +915,43 @@ export default function JourneyPage() {
     }
   }, [refresh])
 
+  const focusedJourneyId = getJourneyIdFromSearch(searchParams.get('detalle'))
+
+  useEffect(() => {
+    let active = true
+
+    if (!focusedJourneyId || isDriver)
+      return () => {
+        active = false
+      }
+
+    void getJourney(focusedJourneyId)
+      .then((data) => {
+        if (active) {
+          setFocusedJourney({ journey: data.jornada, journeyId: focusedJourneyId })
+          setFocusedJourneyError(null)
+        }
+      })
+      .catch((loadError) => {
+        if (active) {
+          setFocusedJourneyError({
+            journeyId: focusedJourneyId,
+            message: getErrorMessage(loadError),
+          })
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [focusedJourneyId, isDriver])
+
+  function clearFocusedJourney() {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('detalle')
+    setSearchParams(nextParams)
+  }
+
   async function completeOperation(message: string) {
     setFeedback(message)
     await refresh()
@@ -776,6 +976,13 @@ export default function JourneyPage() {
         eyebrow={isDriver ? 'Conductor' : 'Despacho operativo'}
         title={isDriver ? 'Mi jornada' : 'Jornadas operativas'}
       />
+
+      <ContextHint title="Quién registra las lecturas">
+        {isDriver
+          ? 'Usted registra la lectura observada del odómetro al iniciar y finalizar su jornada.'
+          : 'El Conductor registra las lecturas de su jornada. Despacho solo actúa como respaldo cuando el flujo lo autoriza y el sistema conserva quién realizó la acción.'}{' '}
+        La hora programada organiza la agenda, pero no prueba el recorrido ni reemplaza el odómetro.
+      </ContextHint>
 
       {feedback && (
         <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
@@ -822,6 +1029,39 @@ export default function JourneyPage() {
           }}
           options={options}
         />
+      )}
+      {!loading && !error && !isDriver && focusedJourneyError?.journeyId === focusedJourneyId && (
+        <StatePanel
+          action={
+            <Button onClick={clearFocusedJourney} variant="outline">
+              Volver a jornadas
+            </Button>
+          }
+          description={focusedJourneyError.message}
+          title="No fue posible abrir la jornada vinculada"
+          tone="error"
+        />
+      )}
+      {!loading && !error && !isDriver && focusedJourney?.journeyId === focusedJourneyId && (
+        <section aria-label="Jornada vinculada a novedad" className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">
+                Jornada vinculada a novedad
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Revise el impacto operativo de este tramo antes de cambiar recursos o cancelarlo.
+              </p>
+            </div>
+            <Button onClick={clearFocusedJourney} size="sm" variant="outline">
+              Ver agenda completa
+            </Button>
+          </div>
+          <JourneyCard
+            journey={focusedJourney.journey}
+            onAction={(action, journey) => setOperation({ action, journey })}
+          />
+        </section>
       )}
       {!loading && !error && !isDriver && (
         <section className="space-y-4">

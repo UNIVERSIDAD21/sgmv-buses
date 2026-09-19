@@ -43,6 +43,10 @@ export function getMyJourney() {
   return apiRequest<MyJourneyResponse>('/jornadas/mi-jornada')
 }
 
+export function getJourney(journeyId: number) {
+  return apiRequest<{ jornada: JourneyDto }>(`/jornadas/${journeyId}`)
+}
+
 export function getJourneyOptions() {
   return apiRequest<JourneyOptionsResponse>('/jornadas/opciones')
 }

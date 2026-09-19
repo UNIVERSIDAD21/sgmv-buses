@@ -1223,9 +1223,9 @@ function AdminView() {
             </p>
             <Link
               className="mt-3 inline-flex min-h-9 items-center justify-center rounded-lg bg-amber-900 px-3 text-sm font-medium text-white"
-              to="/jornadas"
+              to={`/jornadas?detalle=${novelty.jornada?.id}`}
             >
-              Coordinar jornada
+              Resolver impacto operativo
             </Link>
           </section>
         )}

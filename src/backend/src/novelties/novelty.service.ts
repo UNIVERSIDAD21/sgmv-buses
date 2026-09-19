@@ -78,7 +78,11 @@ function mapNovelty(novelty: NoveltyRecord, actor: AuthenticatedUser): NoveltyDt
         novelty.estado === 'PENDIENTE_REVISION' &&
         !novelty.ordenTrabajo,
       puedeCoordinarJornada:
-        operationalManager && novelty.afectaOperacion === true && novelty.jornadaOperativa !== null,
+        operationalManager &&
+        novelty.afectaOperacion === true &&
+        novelty.jornadaOperativa !== null &&
+        (novelty.jornadaOperativa.estado === 'PROGRAMADA' ||
+          novelty.jornadaOperativa.estado === 'EN_CURSO'),
       puedeRevisar: actor.rol.codigo === 'ADMINISTRADOR' && novelty.estado === 'PENDIENTE_REVISION',
     },
     afectaOperacion: novelty.afectaOperacion,

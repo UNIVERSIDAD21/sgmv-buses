@@ -306,6 +306,7 @@ export function journeyOptions() {
         codigo: 'RUTA-01',
         destino: 'Terminal Norte',
         id: 2065,
+        longitudKmOficial: 12,
         nombre: 'Centro - Norte',
         origen: 'Patio Central',
       },
@@ -1880,6 +1881,9 @@ export function journeyHandler(
         paginacion: { limite: 12, pagina: 1, paginas: 1, total: jornadas.length },
       })
     }
+    if (path === '/jornadas/2029' && !init?.method) {
+      return ok({ jornada: journeyFixture(currentStatus) })
+    }
     if (path === '/jornadas' && init?.method === 'POST') {
       return ok({ jornada: journeyFixture('PROGRAMADA') })
     }
@@ -1924,10 +1928,10 @@ export function journeyHandler(
 
 export function noveltyHandler(
   role: RoleCode = 'ADMINISTRADOR',
-  options: Partial<{ empty: boolean; failList: boolean; noBus: boolean }> = {},
+  options: Partial<{ empty: boolean; failList: boolean; noBus: boolean; reviewed: boolean }> = {},
 ) {
   let converted = false
-  let reviewed = false
+  let reviewed = Boolean(options.reviewed)
 
   return async (path: string, init?: RequestInit) => {
     if (path === '/auth/me') {
