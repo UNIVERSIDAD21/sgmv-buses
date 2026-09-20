@@ -71,6 +71,47 @@ describe('RF-02 novelty frontend', () => {
     expect(String(createCalls[0][1]?.body)).not.toContain('conductorId')
   })
 
+  it('uploads optional images after creating a driver novelty', async () => {
+    window.history.pushState({}, '', '/novedades')
+    const fetchMock = mockApi(noveltyHandler('CONDUCTOR'))
+
+    render(<App />)
+
+    await screen.findByText(/Mis novedades operativas/i)
+    await screen.findByText(/BUS-JORNADA-01 - JOR001/i)
+    fireEvent.change(screen.getByLabelText(/Kilometraje observado/i), {
+      target: { value: '45010' },
+    })
+    fireEvent.change(screen.getByLabelText(/Tipo de novedad/i), {
+      target: { value: 'Golpe exterior' },
+    })
+    fireEvent.change(screen.getByLabelText(/Descripcion/i), {
+      target: { value: 'Se observa un golpe exterior en el costado del bus.' },
+    })
+    const image = new File([new Uint8Array([137, 80, 78, 71])], 'costado.png', {
+      type: 'image/png',
+    })
+    fireEvent.change(screen.getByLabelText(/Evidencia fotográfica opcional/i), {
+      target: { files: [image] },
+    })
+    expect(screen.getByText('costado.png')).toBeInTheDocument()
+    expect(screen.getByText(/vehículo esté detenido/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar' }))
+    expect(screen.queryByText('costado.png')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/Evidencia fotográfica opcional/i), {
+      target: { files: [image] },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Enviar novedad/i }))
+
+    expect(await screen.findByText(/Novedad registrada y vinculada/i)).toBeInTheDocument()
+    const uploadCall = fetchMock.mock.calls.find(
+      ([input, init]) => getPath(input) === '/novedades/2040/evidencias' && init?.method === 'POST',
+    )
+    expect(uploadCall?.[1]?.body).toBeInstanceOf(FormData)
+    expect((uploadCall?.[1]?.body as FormData).getAll('imagenes')).toHaveLength(1)
+  })
+
   it('allows a 2066 late report when the driver has no journey currently in progress', async () => {
     window.history.pushState({}, '', '/novedades')
     mockApi(noveltyHandler('CONDUCTOR', { noBus: true }))
@@ -107,6 +148,37 @@ describe('RF-02 novelty frontend', () => {
       expect.stringContaining('/novedades/2040'),
       expect.any(Object),
     )
+  })
+
+  it('lets an administrator delete evidence only with a written justification', async () => {
+    window.history.pushState({}, '', '/novedades?detalle=2040')
+    const fetchMock = mockApi(noveltyHandler('ADMINISTRADOR', { withEvidence: true }))
+
+    render(<App />)
+
+    expect(await screen.findByText('tablero.png')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Eliminar con justificación/i }))
+    fireEvent.change(screen.getByLabelText(/Motivo para eliminar tablero.png/i), {
+      target: { value: 'La imagen fue asociada al reporte equivocado.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar eliminación/i }))
+
+    expect(await screen.findByText(/imagen fue eliminada/i)).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/novedades/2040/evidencias/2091'),
+      expect.objectContaining({ method: 'DELETE' }),
+    )
+  })
+
+  it('does not expose evidence metadata to dispatch', async () => {
+    window.history.pushState({}, '', '/novedades?detalle=2040')
+    mockApi(noveltyHandler('DESPACHADOR', { withEvidence: true }))
+
+    render(<App />)
+
+    expect(await screen.findByText(/Detalle de novedad/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Evidencia fotográfica/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('tablero.png')).not.toBeInTheDocument()
   })
 
   it('links operational coordination to the exact journey that requires attention', async () => {

@@ -1,6 +1,7 @@
 import { apiRequest } from '../../lib/api'
 import type {
   NoveltyDto,
+  NoveltyEvidenceDto,
   NoveltyListResponse,
   NoveltyStatus,
   NoveltySummaryDto,
@@ -93,6 +94,27 @@ export function createNovelty(input: CreateNoveltyInput) {
     body: JSON.stringify(input),
     method: 'POST',
   })
+}
+
+export function uploadNoveltyEvidence(novedadId: number, files: File[], cargaId: string) {
+  const body = new FormData()
+  body.set('cargaId', cargaId)
+  files.forEach((file) => body.append('imagenes', file))
+
+  return apiRequest<{ evidencias: NoveltyEvidenceDto[]; yaExistia: boolean }>(
+    `/novedades/${novedadId}/evidencias`,
+    { body, method: 'POST' },
+  )
+}
+
+export function deleteNoveltyEvidence(novedadId: number, evidenciaId: number, motivo: string) {
+  return apiRequest<{ evidenciaId: number; eliminada: boolean }>(
+    `/novedades/${novedadId}/evidencias/${evidenciaId}`,
+    {
+      body: JSON.stringify({ motivo }),
+      method: 'DELETE',
+    },
+  )
 }
 
 export function reviewNovelty(novedadId: number, input: ReviewNoveltyInput) {

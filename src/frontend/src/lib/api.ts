@@ -4,6 +4,10 @@ const CSRF_HEADER = 'X-CSRF-Token'
 const IDEMPOTENCY_HEADER = 'Idempotency-Key'
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
+export function apiResourceUrl(path: string) {
+  return `${API_URL}${path}`
+}
+
 interface ApiEnvelope<T> {
   data: T
   message?: string
@@ -85,7 +89,9 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers)
   const method = (init.method ?? 'GET').toUpperCase()
 
-  if (init.body && !headers.has('Content-Type')) {
+  const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData
+
+  if (init.body && !headers.has('Content-Type') && !isFormData) {
     headers.set('Content-Type', 'application/json')
   }
 

@@ -3,6 +3,7 @@ import { Router } from 'express'
 import { authenticate, authorizeRoles, enforceAllowedOrigin } from '../auth/auth.middleware.js'
 import { idempotent } from '../idempotency/idempotency.middleware.js'
 import { asyncHandler } from '../shared/http.js'
+import { parseNoveltyEvidenceUpload } from '../media/image-upload.middleware.js'
 import { NoveltyController } from './novelty.controller.js'
 
 const noveltyController = new NoveltyController()
@@ -30,6 +31,24 @@ noveltyRoutes.post(
   enforceAllowedOrigin,
   authorizeRoles('CONDUCTOR'),
   idempotent(noveltyController.createNovelty),
+)
+noveltyRoutes.post(
+  '/:novedadId/evidencias',
+  enforceAllowedOrigin,
+  authorizeRoles('CONDUCTOR'),
+  parseNoveltyEvidenceUpload,
+  asyncHandler(noveltyController.uploadEvidence),
+)
+noveltyRoutes.get(
+  '/:novedadId/evidencias/:evidenciaId/contenido',
+  authorizeRoles('ADMINISTRADOR', 'MECANICO', 'CONDUCTOR'),
+  asyncHandler(noveltyController.downloadEvidence),
+)
+noveltyRoutes.delete(
+  '/:novedadId/evidencias/:evidenciaId',
+  enforceAllowedOrigin,
+  authorizeRoles('ADMINISTRADOR'),
+  idempotent(noveltyController.deleteEvidence),
 )
 noveltyRoutes.get(
   '/',

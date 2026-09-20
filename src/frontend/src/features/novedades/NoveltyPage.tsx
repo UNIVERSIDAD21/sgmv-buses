@@ -32,9 +32,11 @@ import {
   listAdminNovelties,
   listOwnNovelties,
   reviewNovelty,
+  uploadNoveltyEvidence,
   type ConvertNoveltyInput,
   type ReviewNoveltyInput,
 } from './novelty.api'
+import NoveltyEvidenceGallery, { NoveltyEvidencePicker } from './NoveltyEvidenceGallery'
 import type {
   NoveltyCriticality,
   NoveltyDto,
@@ -145,7 +147,17 @@ function TimelineEmpty({ text }: { text: string }) {
   )
 }
 
-function NoveltyDetail({ actions, novelty }: { actions?: ReactNode; novelty: NoveltyDto }) {
+function NoveltyDetail({
+  actions,
+  canUploadEvidence = false,
+  novelty,
+  onEvidenceChange,
+}: {
+  actions?: ReactNode
+  canUploadEvidence?: boolean
+  novelty: NoveltyDto
+  onEvidenceChange?: (evidences: NonNullable<NoveltyDto['evidencias']>) => void
+}) {
   const nextAction =
     novelty.estado === 'PENDIENTE_REVISION'
       ? 'Pendiente de clasificación administrativa.'
@@ -265,6 +277,15 @@ function NoveltyDetail({ actions, novelty }: { actions?: ReactNode; novelty: Nov
         </section>
       ) : (
         <TimelineEmpty text="Resultado técnico pendiente: esta novedad todavía no tiene una orden correctiva asociada." />
+      )}
+
+      {novelty.evidencias !== undefined && (
+        <NoveltyEvidenceGallery
+          canUpload={canUploadEvidence}
+          evidences={novelty.evidencias}
+          noveltyId={novelty.id}
+          onChange={onEvidenceChange}
+        />
       )}
 
       {actions}
@@ -588,6 +609,8 @@ function DriverView() {
   const [descripcion, setDescripcion] = useState('')
   const [detailLoading, setDetailLoading] = useState(false)
   const [estado, setEstado] = useState<NoveltyStatus | ''>('')
+  const [evidenceFiles, setEvidenceFiles] = useState<File[]>([])
+  const [evidencePickerKey, setEvidencePickerKey] = useState(0)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [listData, setListData] = useState<NoveltyListResponse | null>(null)
@@ -708,18 +731,34 @@ function DriverView() {
     setSubmitting(true)
 
     try {
-      await createNovelty({
+      const created = await createNovelty({
         descripcion: normalizeText(descripcion),
         fechaOcurrencia: new Date(fechaOcurrencia).toISOString(),
         kilometraje: Number(kilometraje),
         tipo: normalizeText(tipo),
       })
 
+      let evidenceWarning: string | null = null
+      if (evidenceFiles.length > 0) {
+        try {
+          await uploadNoveltyEvidence(created.novedad.id, evidenceFiles, crypto.randomUUID())
+        } catch (uploadError) {
+          evidenceWarning = getErrorMessage(uploadError)
+        }
+      }
+
       setTipo('')
       setDescripcion('')
       setFechaOcurrencia(formatLocalDateTimeInput())
       setKilometraje('')
-      setFeedback('Novedad registrada y vinculada a la jornada correspondiente.')
+      setEvidenceFiles([])
+      setEvidencePickerKey((current) => current + 1)
+      setFeedback(
+        evidenceWarning
+          ? 'La novedad quedó registrada, pero las imágenes no se guardaron. Puede cargarlas desde el detalle.'
+          : 'Novedad registrada y vinculada a la jornada correspondiente.',
+      )
+      if (evidenceWarning) setSubmitError(evidenceWarning)
       await refreshDriverData()
     } catch (error) {
       setSubmitError(getErrorMessage(error))
@@ -941,6 +980,24 @@ function DriverView() {
                     </span>
                   )}
                 </label>
+
+                <NoveltyEvidencePicker
+                  disabled={submitting}
+                  files={evidenceFiles}
+                  key={evidencePickerKey}
+                  onChange={(files, error) => {
+                    setEvidenceFiles(files)
+                    setFieldErrors((current) => {
+                      const next = { ...current }
+                      if (error) next.evidencias = error
+                      else delete next.evidencias
+                      return next
+                    })
+                  }}
+                />
+                {fieldErrors.evidencias && (
+                  <span className="block text-xs text-red-600">{fieldErrors.evidencias}</span>
+                )}
               </div>
 
               <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -951,6 +1008,8 @@ function DriverView() {
                     setDescripcion('')
                     setFechaOcurrencia(formatLocalDateTimeInput())
                     setKilometraje('')
+                    setEvidenceFiles([])
+                    setEvidencePickerKey((current) => current + 1)
                     setFieldErrors({})
                     setSubmitError(null)
                   }}
@@ -1025,7 +1084,15 @@ function DriverView() {
         {detailLoading && (
           <StatePanel description="Consultando detalle." title="Cargando" tone="loading" />
         )}
-        {selectedNovelty && <NoveltyDetail novelty={selectedNovelty} />}
+        {selectedNovelty && (
+          <NoveltyDetail
+            canUploadEvidence
+            novelty={selectedNovelty}
+            onEvidenceChange={(evidencias) =>
+              setSelectedNovelty((current) => (current ? { ...current, evidencias } : current))
+            }
+          />
+        )}
       </Drawer>
     </div>
   )
@@ -1504,6 +1571,9 @@ function AdminView() {
             <NoveltyDetail
               actions={renderAdminActions(selectedNovelty)}
               novelty={selectedNovelty}
+              onEvidenceChange={(evidencias) =>
+                setSelectedNovelty((current) => (current ? { ...current, evidencias } : current))
+              }
             />
           )}
         </Drawer>

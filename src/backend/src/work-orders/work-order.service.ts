@@ -6,6 +6,7 @@ import {
 } from '@prisma/client'
 
 import type { AuthenticatedUser } from '../auth/auth.types.js'
+import { mapNoveltyEvidence } from '../novelties/novelty-evidence.service.js'
 import { resolveCompatibility } from '../spare-parts/compatibility.resolver.js'
 import { AppError } from '../shared/http.js'
 import type {
@@ -115,7 +116,10 @@ function mapBus(bus: WorkOrderRecord['bus']): WorkOrderBusDto {
   }
 }
 
-function mapNovelty(novelty: WorkOrderRecord['novedad']): WorkOrderNoveltyDto | null {
+function mapNovelty(
+  novelty: WorkOrderRecord['novedad'],
+  actor: AuthenticatedUser,
+): WorkOrderNoveltyDto | null {
   if (!novelty) {
     return null
   }
@@ -124,6 +128,7 @@ function mapNovelty(novelty: WorkOrderRecord['novedad']): WorkOrderNoveltyDto | 
     clasificacion: novelty.clasificacion,
     conductor: mapUser(novelty.conductor),
     descripcion: novelty.descripcion,
+    evidencias: novelty.evidencias.map((item) => mapNoveltyEvidence(item, actor)),
     estado: novelty.estado,
     fechaReporte: novelty.fechaReporte.toISOString(),
     id: novelty.id,
@@ -428,7 +433,7 @@ function mapDetailOrder(
       .filter((reading): reading is WorkOrderTechnicalReadingDto => reading !== null),
     kilometrajeObjetivoPreventivo: order.kilometrajeObjetivoPreventivo,
     motivoDevolucionActual: latestReturnReason(order),
-    novedad: mapNovelty(order.novedad),
+    novedad: mapNovelty(order.novedad, actor),
     programacionMantenimiento: mapPreventiveSchedule(order.programacionMantenimiento),
     reasignaciones: order.reasignaciones.map(mapReassignment),
     disponibilidadAlCierre: order.disponibilidadAlCierre,

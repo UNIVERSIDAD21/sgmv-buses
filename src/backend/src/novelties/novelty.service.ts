@@ -20,6 +20,7 @@ import type {
   NoveltyUserDto,
   WorkOrderSummaryDto,
 } from './novelty.types.js'
+import { mapNoveltyEvidence } from './novelty-evidence.service.js'
 
 const noveltyStatusDefaults: Record<EstadoNovedad, number> = {
   CONVERTIDA_A_ORDEN: 0,
@@ -98,6 +99,9 @@ function mapNovelty(novelty: NoveltyRecord, actor: AuthenticatedUser): NoveltyDt
     criticidad: novelty.criticidad,
     descripcion: novelty.descripcion,
     estado: novelty.estado,
+    ...(actor.rol.codigo === 'ADMINISTRADOR' || actor.rol.codigo === 'CONDUCTOR'
+      ? { evidencias: novelty.evidencias.map((item) => mapNoveltyEvidence(item, actor)) }
+      : {}),
     fechaOcurrencia: novelty.fechaOcurrencia?.toISOString() ?? null,
     fechaReporte: novelty.fechaReporte.toISOString(),
     fechaRevision: novelty.fechaRevision?.toISOString() ?? null,

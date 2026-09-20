@@ -12,6 +12,7 @@ import type {
 } from '@prisma/client'
 
 import type { AvailabilityDto } from '../availability/availability.types.js'
+import type { NoveltyEvidenceDto } from '../novelties/novelty-evidence.types.js'
 
 export interface WorkOrderUserDto {
   email: string
@@ -40,6 +41,7 @@ export interface WorkOrderNoveltyDto {
   clasificacion: string | null
   conductor: WorkOrderUserDto
   descripcion: string
+  evidencias: NoveltyEvidenceDto[]
   estado: EstadoNovedad
   fechaReporte: string
   id: number

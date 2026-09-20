@@ -46,6 +46,13 @@ export const noveltyInclude = {
   conductor: {
     select: userSelect,
   },
+  evidencias: {
+    where: { estado: 'ACTIVA' as const },
+    include: {
+      cargadaPor: { select: { id: true, nombre: true } },
+    },
+    orderBy: { createdAt: 'asc' as const },
+  },
   jornadaOperativa: {
     select: {
       estado: true,

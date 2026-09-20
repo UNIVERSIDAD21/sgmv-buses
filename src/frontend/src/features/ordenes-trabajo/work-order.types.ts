@@ -1,5 +1,5 @@
 import type { BusStatus } from '../flota/fleet.types'
-import type { OrderPriority } from '../novedades/novelty.types'
+import type { NoveltyEvidenceDto, OrderPriority } from '../novedades/novelty.types'
 
 export type WorkOrderStatus =
   | 'ASIGNADA'
@@ -39,6 +39,7 @@ export interface WorkOrderNoveltyDto {
   clasificacion: string | null
   conductor: WorkOrderUserDto
   descripcion: string
+  evidencias?: NoveltyEvidenceDto[]
   estado: string
   fechaReporte: string
   id: number

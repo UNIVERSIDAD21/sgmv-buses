@@ -17,6 +17,22 @@ export interface NoveltyBusDto {
   placa: string
 }
 
+export interface NoveltyEvidenceDto {
+  alto: number
+  ancho: number
+  bytes: number
+  cargadaPor: {
+    id: number
+    nombre: string
+  }
+  contenidoUrl: string
+  createdAt: string
+  id: number
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp'
+  nombreOriginal: string
+  puedeEliminar: boolean
+}
+
 export interface WorkOrderSummaryDto {
   codigo: string
   descripcion?: string
@@ -41,6 +57,7 @@ export interface NoveltyDto {
   conductor: NoveltyUserDto
   criticidad: NoveltyCriticality | null
   descripcion: string
+  evidencias?: NoveltyEvidenceDto[]
   estado: NoveltyStatus
   fechaOcurrencia: string | null
   fechaReporte: string

@@ -55,6 +55,9 @@ for (const fragment of [
   'healthCheckPath: /ready',
   '- key: DATABASE_URL',
   '- key: DIRECT_URL',
+  '- key: CLOUDINARY_CLOUD_NAME',
+  '- key: CLOUDINARY_API_KEY',
+  '- key: CLOUDINARY_API_SECRET',
   'sync: false',
 ]) {
   requireCondition(render.includes(fragment), `render.yaml is missing: ${fragment}`)
@@ -67,6 +70,10 @@ requireCondition(
 requireCondition(
   !/(JWT|CSRF|RATE_LIMIT)_SECRET:\s*\S+/i.test(render),
   'render.yaml contains an inline secret',
+)
+requireCondition(
+  !/CLOUDINARY_(?:CLOUD_NAME|API_KEY|API_SECRET):\s*\S+/i.test(render),
+  'render.yaml contains an inline Cloudinary credential',
 )
 
 console.log('P13 deployment configuration: PASS')

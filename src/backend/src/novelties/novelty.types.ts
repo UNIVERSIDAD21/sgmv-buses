@@ -5,6 +5,7 @@ import type {
   EstadoOrdenTrabajo,
   PrioridadOrden,
 } from '@prisma/client'
+import type { NoveltyEvidenceDto } from './novelty-evidence.types.js'
 
 export interface NoveltyUserDto {
   email?: string
@@ -66,6 +67,7 @@ export interface NoveltyDto {
   criticidad: CriticidadNovedad | null
   descripcion: string
   estado: EstadoNovedad
+  evidencias?: NoveltyEvidenceDto[]
   fechaOcurrencia: string | null
   fechaReporte: string
   fechaRevision: string | null

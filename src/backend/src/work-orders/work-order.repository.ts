@@ -156,6 +156,11 @@ export const workOrderDetailInclude = {
         select: userSelect,
       },
       descripcion: true,
+      evidencias: {
+        where: { estado: 'ACTIVA' as const },
+        include: { cargadaPor: { select: { id: true, nombre: true } } },
+        orderBy: { createdAt: 'asc' as const },
+      },
       estado: true,
       fechaReporte: true,
       id: true,

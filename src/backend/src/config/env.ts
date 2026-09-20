@@ -57,6 +57,13 @@ const envSchema = z.object({
   SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
   PREVENTIVE_SOON_DAYS: z.coerce.number().int().positive().default(7),
   PREVENTIVE_SOON_KM: z.coerce.number().int().positive().default(500),
+  CLOUDINARY_CLOUD_NAME: z.string().trim().min(1).optional(),
+  CLOUDINARY_API_KEY: z.string().trim().min(1).optional(),
+  CLOUDINARY_API_SECRET: z.string().trim().min(1).optional(),
+  CLOUDINARY_FOLDER: z.string().trim().min(1).default('sgmv/novedades'),
+  MEDIA_MAX_FILES_PER_NOVELTY: z.coerce.number().int().min(1).max(5).default(5),
+  MEDIA_MAX_FILE_BYTES: z.coerce.number().int().min(1).max(5_242_880).default(5_242_880),
+  MEDIA_FETCH_TIMEOUT_MS: z.coerce.number().int().positive().max(30_000).default(10_000),
 })
 
 const parsedEnv = envSchema.safeParse(process.env)
@@ -90,9 +97,15 @@ if (env.COOKIE_SAMESITE === 'none' && !env.COOKIE_SECURE) {
 }
 
 if (env.NODE_ENV === 'production') {
-  const missing = ['DATABASE_URL', 'JWT_SECRET', 'CSRF_SECRET', 'RATE_LIMIT_SECRET'].filter(
-    (key) => !env[key as keyof typeof env],
-  )
+  const missing = [
+    'DATABASE_URL',
+    'JWT_SECRET',
+    'CSRF_SECRET',
+    'RATE_LIMIT_SECRET',
+    'CLOUDINARY_CLOUD_NAME',
+    'CLOUDINARY_API_KEY',
+    'CLOUDINARY_API_SECRET',
+  ].filter((key) => !env[key as keyof typeof env])
 
   if (missing.length > 0) {
     console.error(`Missing required production environment variables: ${missing.join(', ')}`)
@@ -108,6 +121,18 @@ if (env.NODE_ENV === 'production') {
     console.error('TRUST_PROXY_HOPS must identify the trusted production proxy chain')
     process.exit(1)
   }
+}
+
+const cloudinaryValues = [
+  env.CLOUDINARY_CLOUD_NAME,
+  env.CLOUDINARY_API_KEY,
+  env.CLOUDINARY_API_SECRET,
+]
+if (cloudinaryValues.some(Boolean) && !cloudinaryValues.every(Boolean)) {
+  console.error(
+    'CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET must be configured together',
+  )
+  process.exit(1)
 }
 
 export { env }

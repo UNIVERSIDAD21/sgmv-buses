@@ -14,6 +14,26 @@ afterEach(() => {
 })
 
 describe('RF-04 work order frontend', () => {
+  it('shows novelty evidence read-only to the assigned mechanic', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo')
+    mockApi(
+      workOrderHandler('MECANICO', {
+        initialStatus: 'ASIGNADA',
+        withEvidence: true,
+      }),
+    )
+
+    render(<App />)
+
+    fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
+    expect(await screen.findByText('tablero.png')).toBeInTheDocument()
+    expect(screen.getByText(/Evidencia fotográfica/i)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Eliminar con justificación/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/Cargar imágenes/i)).not.toBeInTheDocument()
+  })
+
   it('applies a valid status filter received from a dashboard route', async () => {
     window.history.pushState({}, '', '/ordenes-trabajo?estado=PENDIENTE_ASIGNACION')
     const fetchMock = mockApi(workOrderHandler('ADMINISTRADOR'))

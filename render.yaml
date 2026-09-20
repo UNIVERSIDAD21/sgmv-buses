@@ -33,3 +33,17 @@ services:
         sync: false
       - key: RATE_LIMIT_SECRET
         sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: sgmv/novedades
+      - key: MEDIA_MAX_FILES_PER_NOVELTY
+        value: '5'
+      - key: MEDIA_MAX_FILE_BYTES
+        value: '5242880'
+      - key: MEDIA_FETCH_TIMEOUT_MS
+        value: '10000'

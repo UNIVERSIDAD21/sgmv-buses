@@ -27,6 +27,7 @@ import { useSession } from '../auth/session.context'
 import { listBuses } from '../flota/fleet.api'
 import type { BusSummaryDto } from '../flota/fleet.types'
 import type { OrderPriority } from '../novedades/novelty.types'
+import NoveltyEvidenceGallery from '../novedades/NoveltyEvidenceGallery'
 import {
   assignWorkOrder,
   authorizeWorkOrderConsumptionException,
@@ -1434,6 +1435,19 @@ function WorkOrderDetail({
             </FieldValue>
           )}
         </section>
+      )}
+
+      {order.novedad?.evidencias !== undefined && (
+        <NoveltyEvidenceGallery
+          evidences={order.novedad.evidencias}
+          noveltyId={order.novedad.id}
+          onChange={(evidencias) =>
+            onOrderChange({
+              ...order,
+              novedad: order.novedad ? { ...order.novedad, evidencias } : null,
+            })
+          }
+        />
       )}
 
       {isAdmin && (

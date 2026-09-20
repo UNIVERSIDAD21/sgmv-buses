@@ -26,6 +26,20 @@ export const noveltyIdParamSchema = z.object({
   novedadId: entityIdSchema,
 })
 
+export const noveltyEvidenceParamSchema = noveltyIdParamSchema.extend({
+  evidenciaId: entityIdSchema,
+})
+
+export const uploadNoveltyEvidenceSchema = z.object({
+  cargaId: z.uuid(),
+})
+
+export const deleteNoveltyEvidenceSchema = z
+  .object({
+    motivo: trimmedText(10, 500),
+  })
+  .strict()
+
 export const listNoveltiesQuerySchema = z.object({
   busqueda: optionalTrimmedText(120),
   clasificacion: optionalTrimmedText(120),

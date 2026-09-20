@@ -8,6 +8,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import type { AuthenticatedUser } from '../src/auth/auth.types.js'
 import { createApp } from '../src/app.js'
+import { setMediaStorageForTests } from '../src/media/cloudinary-media-storage.js'
+import type { MediaStorage, MediaUploadInput } from '../src/media/media-storage.js'
 import { NoveltyService } from '../src/novelties/novelty.service.js'
 import { createCsrfAgent } from './http-test-client.js'
 
@@ -35,7 +37,41 @@ interface NoveltyFixture {
   despachadorEmail: string
   despachadorId: number
   mecanicoEmail: string
+  mecanicoId: number
 }
+
+class FakeMediaStorage implements MediaStorage {
+  readonly deleted: string[] = []
+  readonly uploaded: string[] = []
+  private readonly content = new Map<string, Buffer>()
+
+  async upload(input: MediaUploadInput) {
+    const publicId = `test/evidence-${input.evidenceId}`
+    this.content.set(publicId, input.buffer)
+    this.uploaded.push(publicId)
+    return {
+      assetId: `asset-${input.evidenceId}`,
+      height: 720,
+      publicId,
+      version: '1',
+      width: 1280,
+    }
+  }
+
+  async download(publicId: string) {
+    const buffer = this.content.get(publicId)
+    if (!buffer) throw new Error('Missing fake media')
+    return buffer
+  }
+
+  async delete(publicId: string) {
+    this.content.delete(publicId)
+    this.deleted.push(publicId)
+  }
+}
+
+const fakeMediaStorage = new FakeMediaStorage()
+const pngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
 function shortCode() {
   return randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase()
@@ -275,6 +311,7 @@ async function createFixture(): Promise<NoveltyFixture> {
     despachadorEmail: despachador.email,
     despachadorId: despachador.id,
     mecanicoEmail: mecanico.email,
+    mecanicoId: mecanico.id,
   }
 }
 
@@ -333,6 +370,13 @@ async function cleanup() {
         where: {
           id: {
             in: uniqueOrderIds,
+          },
+        },
+      })
+      await tx.evidenciaNovedad.deleteMany({
+        where: {
+          novedadId: {
+            in: created.novedades,
           },
         },
       })
@@ -396,6 +440,7 @@ describe('RF-02 Novelty API', () => {
   let fixture: NoveltyFixture
 
   beforeAll(async () => {
+    setMediaStorageForTests(fakeMediaStorage)
     fixture = await createFixture()
   }, 60000)
 
@@ -403,6 +448,7 @@ describe('RF-02 Novelty API', () => {
     try {
       await cleanup()
     } finally {
+      setMediaStorageForTests(null)
       await prisma.$disconnect()
     }
   }, 60000)
@@ -417,6 +463,116 @@ describe('RF-02 Novelty API', () => {
       .send({ descripcion: 'Falla detectada', tipo: 'Falla' })
       .expect(403)
   })
+
+  it('uploads private images idempotently and keeps metadata hidden from dispatch', async () => {
+    const bus = await createBus()
+    const novelty = await createNovelty(fixture.conductorId, bus.id)
+    const cargaId = randomUUID()
+    const conductor = await loginAgent(fixture.conductorEmail)
+    const uploadsBefore = fakeMediaStorage.uploaded.length
+
+    const first = await conductor
+      .post(`/novedades/${novelty.id}/evidencias`)
+      .field('cargaId', cargaId)
+      .attach('imagenes', pngBuffer, { contentType: 'image/png', filename: 'tablero.png' })
+      .expect(201)
+    const replay = await conductor
+      .post(`/novedades/${novelty.id}/evidencias`)
+      .field('cargaId', cargaId)
+      .attach('imagenes', pngBuffer, { contentType: 'image/png', filename: 'tablero.png' })
+      .expect(200)
+
+    expect(first.body.data.evidencias).toHaveLength(1)
+    expect(first.body.data.evidencias[0]).toMatchObject({
+      mimeType: 'image/png',
+      nombreOriginal: 'tablero.png',
+      puedeEliminar: false,
+    })
+    expect(replay.body.data.yaExistia).toBe(true)
+    expect(replay.body.data.evidencias[0].id).toBe(first.body.data.evidencias[0].id)
+    expect(fakeMediaStorage.uploaded).toHaveLength(uploadsBefore + 1)
+
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const detail = await dispatcher.get(`/novedades/${novelty.id}`).expect(200)
+    expect(detail.body.data.novedad.evidencias).toBeUndefined()
+
+    const otherDriver = await loginAgent(fixture.conductorAltEmail)
+    await otherDriver
+      .get(`/novedades/${novelty.id}/evidencias/${first.body.data.evidencias[0].id}/contenido`)
+      .expect(404)
+  }, 60000)
+
+  it('lets the assigned mechanic read evidence and requires justified admin deletion', async () => {
+    const bus = await createBus()
+    const novelty = await createNovelty(fixture.conductorId, bus.id)
+    const conductor = await loginAgent(fixture.conductorEmail)
+    const upload = await conductor
+      .post(`/novedades/${novelty.id}/evidencias`)
+      .field('cargaId', randomUUID())
+      .attach('imagenes', pngBuffer, { contentType: 'image/png', filename: 'freno.png' })
+      .expect(201)
+    const evidenceId = upload.body.data.evidencias[0].id as number
+    const orderCreatedAt = new Date(Date.now() - 1_000)
+    const order = await prisma.ordenTrabajo.create({
+      data: {
+        busId: bus.id,
+        codigo: `OT-EVI-${shortCode()}`,
+        creadaPorId: fixture.adminId,
+        descripcion: 'Orden para comprobar evidencia asignada',
+        estado: 'ASIGNADA',
+        fechaCreacion: orderCreatedAt,
+        fechaAsignacion: new Date(),
+        novedadId: novelty.id,
+        origen: 'NOVEDAD',
+        prioridad: 'MEDIA',
+        tecnicoAsignadoId: fixture.mecanicoId,
+        tipo: 'CORRECTIVA',
+      },
+    })
+    created.ordenes.push(order.id)
+
+    const mechanic = await loginAgent(fixture.mecanicoEmail)
+    const content = await mechanic
+      .get(`/novedades/${novelty.id}/evidencias/${evidenceId}/contenido`)
+      .expect('Content-Type', /image\/png/)
+      .expect(200)
+    expect(content.body).toEqual(pngBuffer)
+
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    await dispatcher.get(`/novedades/${novelty.id}/evidencias/${evidenceId}/contenido`).expect(403)
+
+    const admin = await loginAgent(fixture.adminEmail)
+    await admin
+      .delete(`/novedades/${novelty.id}/evidencias/${evidenceId}`)
+      .send({ motivo: 'Corto' })
+      .expect(400)
+    await admin
+      .delete(`/novedades/${novelty.id}/evidencias/${evidenceId}`)
+      .send({ motivo: 'La imagen corresponde a otro reporte operativo.' })
+      .expect(200)
+    await mechanic.get(`/novedades/${novelty.id}/evidencias/${evidenceId}/contenido`).expect(404)
+
+    const stored = await prisma.evidenciaNovedad.findUniqueOrThrow({ where: { id: evidenceId } })
+    expect(stored.estado).toBe('ELIMINADA')
+    expect(stored.motivoEliminacion).toContain('otro reporte')
+  }, 60000)
+
+  it('rejects files whose declared type does not match their content', async () => {
+    const bus = await createBus()
+    const novelty = await createNovelty(fixture.conductorId, bus.id)
+    const conductor = await loginAgent(fixture.conductorEmail)
+
+    const response = await conductor
+      .post(`/novedades/${novelty.id}/evidencias`)
+      .field('cargaId', randomUUID())
+      .attach('imagenes', Buffer.from('not-an-image'), {
+        contentType: 'image/png',
+        filename: 'falsa.png',
+      })
+      .expect(400)
+
+    expect(response.body.error.code).toBe('INVALID_IMAGE_CONTENT')
+  }, 60000)
 
   it('creates a novelty from the journey context and derives bus and author from session', async () => {
     const bus = await createBus()

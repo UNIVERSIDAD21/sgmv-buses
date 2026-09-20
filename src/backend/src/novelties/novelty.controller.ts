@@ -4,14 +4,57 @@ import { sendData } from '../shared/http.js'
 import {
   convertNoveltySchema,
   createNoveltySchema,
+  deleteNoveltyEvidenceSchema,
   listNoveltiesQuerySchema,
+  noveltyEvidenceParamSchema,
   noveltyIdParamSchema,
   reviewNoveltySchema,
+  uploadNoveltyEvidenceSchema,
 } from './novelty.schemas.js'
 import { NoveltyService } from './novelty.service.js'
+import { NoveltyEvidenceService } from './novelty-evidence.service.js'
+import { validateUploadedImages } from '../media/image-upload.middleware.js'
 
 export class NoveltyController {
-  constructor(private readonly noveltyService = new NoveltyService()) {}
+  constructor(
+    private readonly noveltyService = new NoveltyService(),
+    private readonly evidenceService = new NoveltyEvidenceService(),
+  ) {}
+
+  uploadEvidence: RequestHandler = async (request, response) => {
+    const { novedadId } = noveltyIdParamSchema.parse(request.params)
+    const { cargaId } = uploadNoveltyEvidenceSchema.parse(request.body)
+    const files = validateUploadedImages(request)
+    const result = await this.evidenceService.upload(novedadId, cargaId, files, request.user!)
+
+    response.status(result.yaExistia ? 200 : 201)
+    sendData(response, result, result.yaExistia ? 'Carga recuperada' : 'Evidencias guardadas')
+  }
+
+  downloadEvidence: RequestHandler = async (request, response) => {
+    const { evidenciaId, novedadId } = noveltyEvidenceParamSchema.parse(request.params)
+    const { buffer, evidence } = await this.evidenceService.download(
+      novedadId,
+      evidenciaId,
+      request.user!,
+    )
+
+    response.set({
+      'Cache-Control': 'private, max-age=300, no-transform',
+      'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(evidence.nombreOriginal)}`,
+      'Content-Length': String(buffer.length),
+      'Content-Type': evidence.mimeType,
+      'X-Content-Type-Options': 'nosniff',
+    })
+    response.send(buffer)
+  }
+
+  deleteEvidence: RequestHandler = async (request, response) => {
+    const { evidenciaId, novedadId } = noveltyEvidenceParamSchema.parse(request.params)
+    const { motivo } = deleteNoveltyEvidenceSchema.parse(request.body)
+    const result = await this.evidenceService.delete(novedadId, evidenciaId, motivo, request.user!)
+    sendData(response, result, 'Evidencia eliminada')
+  }
 
   convertToCorrectiveOrder: RequestHandler = async (request, response) => {
     const { novedadId } = noveltyIdParamSchema.parse(request.params)

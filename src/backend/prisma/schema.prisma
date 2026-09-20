@@ -43,6 +43,15 @@ enum EstadoNovedad {
   @@map("estado_novedad")
 }
 
+enum EstadoEvidenciaNovedad {
+  PENDIENTE
+  ACTIVA
+  ELIMINADA
+  FALLIDA
+
+  @@map("estado_evidencia_novedad")
+}
+
 enum CriterioMantenimiento {
   FECHA
   KILOMETRAJE
@@ -253,6 +262,8 @@ model Usuario {
   solicitudesIdempotentes           SolicitudIdempotente[]
   tokensActivacion                  TokenActivacionCuenta[]        @relation("TokenActivacionUsuario")
   tokensActivacionCreados           TokenActivacionCuenta[]        @relation("TokenActivacionCreadoPor")
+  evidenciasNovedadCargadas         EvidenciaNovedad[]             @relation("EvidenciaNovedadCargadaPor")
+  evidenciasNovedadEliminadas       EvidenciaNovedad[]             @relation("EvidenciaNovedadEliminadaPor")
 
   @@index([rolId])
   @@index([estado])
@@ -406,6 +417,7 @@ model Novedad {
   jornadaOperativa   JornadaOperativa?   @relation(fields: [jornadaOperativaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   lecturaKilometraje LecturaKilometraje? @relation(fields: [lecturaKilometrajeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   alertasInternas    AlertaInterna[]
+  evidencias         EvidenciaNovedad[]
 
   @@unique([id, busId])
   @@index([busId, fechaReporte])
@@ -414,6 +426,39 @@ model Novedad {
   @@index([revisadaPorId])
   @@index([jornadaOperativaId])
   @@map("novedades")
+}
+
+model EvidenciaNovedad {
+  id                Int                    @id @default(autoincrement())
+  novedadId         Int                    @map("novedad_id")
+  cargaId           String                 @map("carga_id") @db.Uuid
+  ordinal           Int
+  nombreOriginal    String                 @map("nombre_original") @db.VarChar(255)
+  mimeType          String                 @map("mime_type") @db.VarChar(50)
+  bytes             Int
+  ancho             Int?
+  alto              Int?
+  estado            EstadoEvidenciaNovedad @default(PENDIENTE)
+  storagePublicId   String?                @unique @map("storage_public_id") @db.VarChar(255)
+  storageAssetId    String?                @unique @map("storage_asset_id") @db.VarChar(255)
+  storageVersion    String?                @map("storage_version") @db.VarChar(30)
+  cargadaPorId      Int                    @map("cargada_por_id")
+  activadaAt        DateTime?              @map("activada_at") @db.Timestamptz(6)
+  eliminadaAt       DateTime?              @map("eliminada_at") @db.Timestamptz(6)
+  eliminadaPorId    Int?                   @map("eliminada_por_id")
+  motivoEliminacion String?                @map("motivo_eliminacion") @db.Text
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  novedad      Novedad  @relation(fields: [novedadId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  cargadaPor   Usuario  @relation("EvidenciaNovedadCargadaPor", fields: [cargadaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  eliminadaPor Usuario? @relation("EvidenciaNovedadEliminadaPor", fields: [eliminadaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([cargaId, ordinal])
+  @@index([novedadId, estado, createdAt])
+  @@index([cargadaPorId])
+  @@index([eliminadaPorId])
+  @@map("evidencias_novedad")
 }
 
 model ProgramacionMantenimiento {

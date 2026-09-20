@@ -378,6 +378,19 @@ export const noveltyOne = {
   updatedAt: '2026-08-27T12:00:00.000Z',
 }
 
+export const noveltyEvidence = {
+  alto: 720,
+  ancho: 1280,
+  bytes: 120000,
+  cargadaPor: { id: 2011, nombre: 'Conductor Uno' },
+  contenidoUrl: '/novedades/2040/evidencias/2091/contenido',
+  createdAt: '2026-08-27T12:01:00.000Z',
+  id: 2091,
+  mimeType: 'image/png',
+  nombreOriginal: 'tablero.png',
+  puedeEliminar: true,
+}
+
 export const reviewedNovelty = {
   ...noveltyOne,
   acciones: {
@@ -833,9 +846,23 @@ function projectWorkOrderForRole<T>(value: T, role: RoleCode): T {
 
 export function workOrderHandler(
   role: RoleCode = 'ADMINISTRADOR',
-  options: Partial<{ empty: boolean; failList: boolean; initialStatus: string }> = {},
+  options: Partial<{
+    empty: boolean
+    failList: boolean
+    initialStatus: string
+    withEvidence: boolean
+  }> = {},
 ) {
   let order = createWorkOrderDetail(options.initialStatus ?? 'PENDIENTE_ASIGNACION')
+  if (options.withEvidence && order.novedad) {
+    order = {
+      ...order,
+      novedad: {
+        ...order.novedad,
+        evidencias: [{ ...noveltyEvidence, puedeEliminar: role === 'ADMINISTRADOR' }],
+      },
+    }
+  }
 
   function decoratedOrder() {
     return projectWorkOrderForRole(
@@ -1932,10 +1959,24 @@ export function journeyHandler(
 
 export function noveltyHandler(
   role: RoleCode = 'ADMINISTRADOR',
-  options: Partial<{ empty: boolean; failList: boolean; noBus: boolean; reviewed: boolean }> = {},
+  options: Partial<{
+    empty: boolean
+    failList: boolean
+    noBus: boolean
+    reviewed: boolean
+    withEvidence: boolean
+  }> = {},
 ) {
   let converted = false
   let reviewed = Boolean(options.reviewed)
+  let evidences = options.withEvidence
+    ? [{ ...noveltyEvidence, puedeEliminar: role === 'ADMINISTRADOR' }]
+    : []
+
+  function visibleNovelty() {
+    const novelty = converted ? convertedNovelty : reviewed ? reviewedNovelty : noveltyOne
+    return role === 'DESPACHADOR' ? novelty : { ...novelty, evidencias: evidences }
+  }
 
   return async (path: string, init?: RequestInit) => {
     if (path === '/auth/me') {
@@ -1954,15 +1995,25 @@ export function noveltyHandler(
     }
 
     if (path === '/novedades/mis-novedades' && !init?.method) {
-      return ok(noveltyList(options.empty ? [] : [converted ? convertedNovelty : noveltyOne], 2))
+      return ok(noveltyList(options.empty ? [] : [visibleNovelty()], 2))
     }
 
     if (path === '/novedades/mis-novedades/2040') {
-      return ok({ novedad: converted ? convertedNovelty : noveltyOne })
+      return ok({ novedad: visibleNovelty() })
     }
 
     if (path === '/novedades' && init?.method === 'POST') {
-      return ok({ novedad: noveltyOne })
+      return ok({ novedad: visibleNovelty() })
+    }
+
+    if (path === '/novedades/2040/evidencias' && init?.method === 'POST') {
+      evidences = [{ ...noveltyEvidence, puedeEliminar: false }]
+      return ok({ evidencias: evidences, yaExistia: false })
+    }
+
+    if (path === '/novedades/2040/evidencias/2091' && init?.method === 'DELETE') {
+      evidences = []
+      return ok({ eliminada: true, evidenciaId: 2091 })
     }
 
     if (path === '/novedades' && !init?.method) {
@@ -1970,11 +2021,11 @@ export function noveltyHandler(
         return apiError(500, 'INTERNAL_ERROR', 'Fallo controlado')
       }
 
-      return ok(noveltyList(options.empty ? [] : [converted ? convertedNovelty : noveltyOne], 2))
+      return ok(noveltyList(options.empty ? [] : [visibleNovelty()], 2))
     }
 
     if (path === '/novedades/2040' && !init?.method) {
-      return ok({ novedad: converted ? convertedNovelty : reviewed ? reviewedNovelty : noveltyOne })
+      return ok({ novedad: visibleNovelty() })
     }
 
     if (path === '/novedades/2040/revision' && init?.method === 'POST') {
