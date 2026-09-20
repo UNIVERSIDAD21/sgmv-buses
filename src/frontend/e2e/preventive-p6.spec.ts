@@ -11,6 +11,7 @@ const marker = `E2E.P6.${randomUUID().replaceAll('-', '').slice(0, 8).toUpperCas
 const busId = testEntityId()
 const busCode = `000-P6E2E-${marker.slice(-8)}`
 let planId: number | null = null
+let planKey: string | null = null
 let scheduleId: number | null = null
 let orderId: number | null = null
 
@@ -118,31 +119,36 @@ test('P6 aplica plan, deriva obligacion, restringe despacho y evita orden duplic
 
   await login(page, 'administrador.demo@sgmv.local')
   await page.goto('/mantenimiento-preventivo')
-  await page.getByRole('button', { name: 'Planes recurrentes' }).click()
-  await page.getByRole('button', { name: 'Crear plan' }).click()
+  await page.getByRole('button', { name: 'Rutinas de mantenimiento' }).click()
+  await page.getByRole('button', { name: 'Crear rutina' }).click()
   const planDialog = page.getByRole('dialog')
-  await planDialog.getByLabel('Clave de tarea').fill(marker)
-  await planDialog.getByLabel('Componente').fill(`Componente ${marker}`)
-  await planDialog.getByLabel('Actividad').fill(`Actividad preventiva reproducible para ${marker}.`)
-  await planDialog.getByLabel('Criterio de plan').selectOption('KILOMETRAJE')
-  await planDialog.getByLabel('Intervalo kilometraje').fill('100')
-  await planDialog.getByLabel('Anticipacion kilometraje').fill('50')
+  await planDialog.getByRole('textbox').nth(0).fill(`Componente ${marker}`)
+  await planDialog
+    .getByRole('textbox')
+    .nth(1)
+    .fill(`Actividad preventiva reproducible para ${marker}.`)
+  await planDialog.getByRole('combobox').nth(0).selectOption('KILOMETRAJE')
+  await planDialog.getByLabel('Repetir cada (km)').fill('100')
+  await planDialog.getByLabel('Avisar con (km)').fill('50')
   await planDialog.getByLabel('Bus destino').selectOption(String(busId))
-  await planDialog.getByText('Bloquear operacion al vencer').click()
-  await planDialog.getByRole('button', { name: 'Crear plan' }).click()
-  await expect(page.getByText('Plan preventivo registrado.')).toBeVisible()
+  await planDialog.getByText('Impedir nuevas jornadas si se vence').click()
+  await planDialog.getByRole('button', { name: 'Crear rutina' }).click()
+  await expect(page.getByText('Rutina de mantenimiento registrada.')).toBeVisible()
 
   planId = (
     await prisma.planMantenimientoPreventivo.findFirstOrThrow({
-      where: { busId, claveTarea: marker },
+      orderBy: { id: 'desc' },
+      where: { busId, componente: `Componente ${marker}` },
     })
   ).id
-  const row = page.getByRole('row').filter({ hasText: marker })
-  await row.getByRole('button', { name: 'Aplicar' }).click()
-  const applyDialog = page.getByRole('dialog', { name: 'Aplicar plan preventivo' })
+  planKey = (await prisma.planMantenimientoPreventivo.findUniqueOrThrow({ where: { id: planId } }))
+    .claveTarea
+  const row = page.getByRole('row').filter({ hasText: planKey })
+  await row.getByRole('button', { name: 'Asignar a buses' }).click()
+  const applyDialog = page.getByRole('dialog', { name: 'Asignar rutina a un bus' })
   await expect(applyDialog.getByLabel('Bus para aplicar plan')).toHaveValue(String(busId))
-  await applyDialog.getByRole('button', { name: 'Aplicar plan' }).click()
-  await expect(page.getByText(/objetivos derivados correctamente/i)).toBeVisible()
+  await applyDialog.getByRole('button', { name: 'Asignar rutina' }).click()
+  await expect(page.getByText(/Rutina asignada/i)).toBeVisible()
 
   const schedule = await prisma.programacionMantenimiento.findFirstOrThrow({
     where: { activa: true, busId, planMantenimientoPreventivoId: planId },
@@ -167,13 +173,13 @@ test('P6 aplica plan, deriva obligacion, restringe despacho y evita orden duplic
     await evaluatePreventiveAlertsForBus(busId, tx)
   })
 
-  await page.getByRole('button', { name: 'Programaciones' }).click()
+  await page.getByRole('button', { name: 'Mantenimientos programados' }).click()
   await page.getByPlaceholder(/Buscar por actividad/i).fill(marker)
-  const scheduleRow = page.getByRole('row').filter({ hasText: marker })
-  await expect(scheduleRow.getByText(`${marker} v1`)).toBeVisible()
+  const scheduleRow = page.getByRole('row').filter({ hasText: planKey })
+  await expect(scheduleRow.getByText(`${planKey} v1`)).toBeVisible()
   await expect(scheduleRow.getByText('Vencido')).toBeVisible()
   await scheduleRow.getByRole('button', { name: 'Detalle' }).click()
-  await expect(page.getByText(`Plan de bus · ${marker} v1`)).toBeVisible()
+  await expect(page.getByText(`Plan de bus · ${planKey} v1`)).toBeVisible()
   await page.getByRole('button', { name: 'Generar orden' }).click()
   await page
     .getByRole('dialog', { name: 'Generar orden preventiva' })
@@ -190,7 +196,7 @@ test('P6 aplica plan, deriva obligacion, restringe despacho y evita orden duplic
   })
   orderId = order.id
   expect(order.planAplicado).toMatchObject({
-    claveTarea: marker,
+    claveTarea: planKey,
     kilometrajeObjetivo: 10_100,
     planId,
     planVersion: 1,
@@ -238,7 +244,8 @@ test('P6 aplica plan, deriva obligacion, restringe despacho y evita orden duplic
   await login(page, 'despachador.demo@sgmv.local')
   await page.goto('/mantenimiento-preventivo')
   await expect(page.getByText(busCode)).toBeVisible()
-  await expect(page.getByText('Bloquea despacho').first()).toBeVisible()
+  await expect(page.getByText('Vencido').first()).toBeVisible()
+  await expect(page.getByText(/El mantenimiento vencido impide nuevas jornadas/i)).toBeVisible()
   await expect(page.getByText(`Componente ${marker}`)).toHaveCount(0)
   await expect(page.getByText(`Actividad preventiva reproducible para ${marker}.`)).toHaveCount(0)
   await testInfo.attach('p6-restriccion-despachador', {

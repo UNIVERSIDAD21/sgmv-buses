@@ -33,7 +33,7 @@ test('SOL sidebar conserva navegación accesible en desktop, tablet y móvil', a
   await expect(desktopSidebar).toHaveCSS('width', '248px')
   await page.getByRole('button', { name: /Colapsar men/ }).click()
   await expect(desktopSidebar).toHaveCSS('width', '72px')
-  await expect(page.getByRole('link', { name: 'Jornadas operativas' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Jornadas operativas', exact: true })).toBeVisible()
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem('sgmv:sidebar-expanded')))
     .toBe('false')

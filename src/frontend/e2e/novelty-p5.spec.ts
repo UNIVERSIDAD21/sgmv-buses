@@ -86,7 +86,7 @@ test('P5 enlaza reporte tardio, clasificacion critica y reaccion de despacho', a
   await expect(
     page.getByText('No use este dispositivo ni complete el formulario mientras conduce.'),
   ).toBeVisible()
-  await expect(page.getByText('Sin jornada en curso')).toBeVisible()
+  await expect(page.getByText(/Jornada en curso/)).toBeVisible()
   await page.getByLabel('Fecha y hora de ocurrencia').fill('2026-09-01T08:00')
   await page.getByLabel('Kilometraje observado').fill('44950')
   await page.getByLabel('Tipo de novedad').fill(marker)
@@ -119,18 +119,16 @@ test('P5 enlaza reporte tardio, clasificacion critica y reaccion de despacho', a
   await page.goto('/novedades')
   await page.getByPlaceholder('Buscar por tipo, descripcion, placa o codigo').fill(marker)
   await page.getByRole('button', { name: 'Detalle' }).first().click()
-  await expect(page.getByText('Reaccion operativa requerida')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Coordinar jornada' })).toBeVisible()
+  await expect(page.getByText('Bloquea el despacho')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Coordinar jornada' })).toHaveCount(0)
+  await expect(page.getByText(/Resultado técnico pendiente/i)).toBeVisible()
   await expect(page.getByText('Coordinacion operativa inmediata E2E')).toHaveCount(0)
   await expect(page.getByText('Acciones administrativas')).toHaveCount(0)
   await testInfo.attach('p5-despachador', {
     body: await page.screenshot({ fullPage: true }),
     contentType: 'image/png',
   })
-  await page.getByRole('link', { name: 'Coordinar jornada' }).click()
-  await expect(
-    page.getByRole('main').getByRole('heading', { name: 'Jornadas operativas' }),
-  ).toBeVisible()
+  await expect(page).toHaveURL(/\/novedades$/)
   expect(
     consoleErrors.filter(
       (message) => !message.includes('server responded with a status of 401 (Unauthorized)'),

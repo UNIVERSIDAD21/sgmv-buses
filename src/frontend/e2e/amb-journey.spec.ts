@@ -151,11 +151,17 @@ test('AMB programa desde UI, avisa al Conductor y concilia odómetro sin costos'
     .first()
   await expect(card.getByText('290 km proyectados')).toBeVisible()
   await card.getByRole('button', { name: 'Iniciar jornada' }).click()
-  await page.getByRole('dialog').getByLabel('Kilometraje', { exact: true }).fill('48930')
+  await page
+    .getByRole('dialog')
+    .getByLabel(/Lectura observada del odómetro/i)
+    .fill('48930')
   await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click()
   await expect(card.getByRole('button', { name: 'Finalizar jornada' })).toBeVisible()
   await card.getByRole('button', { name: 'Finalizar jornada' }).click()
-  await page.getByRole('dialog').getByLabel('Kilometraje final').fill('49205')
+  await page
+    .getByRole('dialog')
+    .getByLabel(/Lectura observada del odómetro/i)
+    .fill('49205')
   await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click()
   await expect(page.getByText('Jornada finalizada con lectura final')).toBeVisible()
   // Driver's current view removes closed journeys; history remains accessible through its own API.

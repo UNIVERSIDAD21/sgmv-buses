@@ -13,6 +13,11 @@ const localBaseUrl = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
 assertSafeWriteE2eTarget(localBaseUrl)
 assertSafeWriteE2eDatabase(process.env.DATABASE_URL)
 
+// El conjunto E2E local usa exclusivamente las cuentas académicas sembradas.
+// La configuración de la estación puede contener una clave protegida para otros
+// servicios; nunca debe reemplazar esta credencial pública ni alterar la base.
+process.env.SEED_USER_PASSWORD = '123456'
+
 export default defineConfig({
   expect: { timeout: 10_000 },
   fullyParallel: false,

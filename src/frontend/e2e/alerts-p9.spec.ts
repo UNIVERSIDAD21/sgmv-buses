@@ -259,7 +259,7 @@ test('materializa evento crítico, opera bandeja propia y bloquea lectura ajena'
   await article.getByRole('button', { name: 'Marcar atendida' }).click()
   await expect(article.getByText('Atendida', { exact: true })).toBeVisible()
   await article.getByRole('button', { name: 'Ver origen' }).click()
-  await expect(page).toHaveURL(/\/novedades$/)
+  await expect(page).toHaveURL(/\/novedades\?detalle=\d+&desde=alertas$/)
 
   await login(page, emails.mechanic)
   await page.goto('/alertas')

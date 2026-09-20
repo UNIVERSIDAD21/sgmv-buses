@@ -8,7 +8,8 @@ import { prisma } from '../../backend/src/prisma/client.js'
 const demoPassword = process.env.SEED_USER_PASSWORD
 const suffix = randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase()
 const marker = `P8E2E-${suffix}`
-const partCode = `REP-${marker}`
+const partNumber = `P8-${suffix}`
+let partCode: string | null = null
 const testBusId = testEntityId()
 const testOrderId = testEntityId()
 const testInterventionId = testEntityId()
@@ -82,9 +83,9 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  const persistedPart = await prisma.repuesto.findUnique({
+  const persistedPart = await prisma.repuesto.findFirst({
     select: { id: true },
-    where: { codigo: partCode },
+    where: { numeroParte: partNumber },
   })
   const cleanupPartId = partId ?? persistedPart?.id ?? null
 
@@ -141,13 +142,18 @@ test('administra reglas, rechaza incompatibilidad y registra consumo decimal tra
   await page.goto('/repuestos')
   await page.getByRole('button', { name: 'Nuevo repuesto' }).click()
   const form = page.getByRole('dialog', { name: 'Nuevo repuesto' })
-  await form.getByLabel('Codigo').fill(partCode)
   await form.getByLabel('Nombre').fill(`Filtro P8 ${marker}`)
   await form.getByLabel('Categoria').fill('Motor')
   await form.getByLabel('Fabricante').fill('Fabricante P8')
-  await form.getByLabel('Numero de parte').fill(`P8-${suffix}`)
-  await form.getByLabel('Especificaciones (JSON)').fill('{"material":"reforzado","voltaje":"24V"}')
-  await form.getByLabel('Dimensiones (JSON)').fill('{"largoMm":100,"anchoMm":40}')
+  await form.getByLabel('Numero de parte').fill(partNumber)
+  const specifications = form.getByRole('group', { name: 'Especificaciones técnicas' })
+  await specifications.getByRole('button', { name: 'Agregar especificación' }).click()
+  await specifications.getByLabel('Nombre del dato 1').fill('Material')
+  await specifications.getByLabel('Valor del dato 1').fill('reforzado')
+  const dimensions = form.getByRole('group', { name: 'Medidas y dimensiones' })
+  await dimensions.getByRole('button', { name: 'Agregar medida' }).click()
+  await dimensions.getByLabel('Nombre del dato 1').fill('Largo')
+  await dimensions.getByLabel('Valor del dato 1').fill('100 mm')
   await form.getByLabel('Unidad de medida').fill('unidad')
   await form.getByLabel('Stock inicial').fill('2.50')
   await form.getByLabel('Stock minimo').fill('1')
@@ -157,8 +163,9 @@ test('administra reglas, rechaza incompatibilidad y registra consumo decimal tra
   await expect(page.getByText('Repuesto creado.')).toBeVisible()
   const createdDetail = page.getByRole('dialog', { name: 'Detalle de repuesto' })
   await expect(createdDetail.getByText('Fabricante P8', { exact: true })).toBeVisible()
-  const createdPart = await prisma.repuesto.findUniqueOrThrow({ where: { codigo: partCode } })
+  const createdPart = await prisma.repuesto.findFirstOrThrow({ where: { numeroParte: partNumber } })
   partId = createdPart.id
+  partCode = createdPart.codigo
   const order = await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: testOrderId } })
 
   async function createRule(detail: ReturnType<Page['getByRole']>, allowed: boolean) {
@@ -166,13 +173,17 @@ test('administra reglas, rechaza incompatibilidad y registra consumo decimal tra
     const submitRule = page.getByRole('button', { name: 'Crear nueva version' })
     const ruleForm = page.locator('form').filter({ has: submitRule })
     await ruleForm.locator('select').nth(0).selectOption(String(testBusId))
-    await ruleForm.locator('select').nth(1).selectOption(String(allowed))
+    await ruleForm
+      .locator('select')
+      .nth(1)
+      .selectOption(allowed ? 'PERMITIDO' : 'NO_PERMITIDO')
     await ruleForm
       .getByLabel('Condicion de uso')
       .fill(allowed ? 'Instalar con torque controlado.' : 'Bloqueado hasta validar montaje.')
-    await ruleForm
-      .getByLabel('Especificaciones validadas (JSON)')
-      .fill(JSON.stringify({ fuente: 'E2E P8', marker, resultado: allowed }))
+    const evidence = ruleForm.getByRole('group', { name: 'Datos técnicos validados' })
+    await evidence.getByRole('button', { name: 'Agregar evidencia' }).click()
+    await evidence.getByLabel('Nombre del dato 1').fill('Fuente')
+    await evidence.getByLabel('Valor del dato 1').fill(`E2E P8 ${marker} ${allowed}`)
     const creationResponse = page.waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&
@@ -188,14 +199,14 @@ test('administra reglas, rechaza incompatibilidad y registra consumo decimal tra
   }
 
   await createRule(createdDetail, false)
-  await expect(createdDetail.getByText(/No permitido.*v1/)).toBeVisible()
+  await expect(createdDetail.getByText(/No compatible.*v1/)).toBeVisible()
   await createdDetail.getByRole('button', { name: 'Cerrar' }).click()
 
   await login(page, 'mecanico.demo@sgmv.local')
   await openOrder(page)
   let orderDetail = page.getByRole('dialog', { name: 'Detalle de orden' })
-  await orderDetail.getByLabel('Buscar repuesto').fill(partCode)
-  let partOption = orderDetail.locator('option').filter({ hasText: partCode })
+  await orderDetail.getByLabel('Buscar repuesto').fill(partCode!)
+  let partOption = orderDetail.locator('option').filter({ hasText: partCode! })
   await expect(partOption).toHaveCount(1)
   await expect(partOption).toHaveAttribute('disabled', '')
 
@@ -240,23 +251,23 @@ test('administra reglas, rechaza incompatibilidad y registra consumo decimal tra
 
   await login(page, 'administrador.demo@sgmv.local')
   await page.goto('/repuestos')
-  await page.locator('label').filter({ hasText: 'Buscar' }).first().locator('input').fill(partCode)
+  await page.locator('label').filter({ hasText: 'Buscar' }).first().locator('input').fill(partCode!)
   const partRow = page
     .getByRole('row')
-    .filter({ hasText: partCode })
+    .filter({ hasText: partCode! })
     .filter({ has: page.getByRole('button', { name: 'Detalle' }) })
   await expect(partRow).toBeVisible()
   await partRow.getByRole('button', { name: 'Detalle' }).click()
   const ruleDetail = page.getByRole('dialog', { name: 'Detalle de repuesto' })
   await createRule(ruleDetail, true)
-  await expect(ruleDetail.getByText(/Permitido.*v2/)).toBeVisible()
+  await expect(ruleDetail.getByText(/Compatible.*v2/)).toBeVisible()
   await ruleDetail.getByRole('button', { name: 'Cerrar' }).click()
 
   await login(page, 'mecanico.demo@sgmv.local')
   await openOrder(page)
   orderDetail = page.getByRole('dialog', { name: 'Detalle de orden' })
-  await orderDetail.getByLabel('Buscar repuesto').fill(partCode)
-  partOption = orderDetail.locator('option').filter({ hasText: partCode })
+  await orderDetail.getByLabel('Buscar repuesto').fill(partCode!)
+  partOption = orderDetail.locator('option').filter({ hasText: partCode! })
   await expect(partOption).toHaveCount(1)
   await expect(partOption).not.toHaveAttribute('disabled')
   await orderDetail.getByLabel('Cantidad').fill('1.25')
