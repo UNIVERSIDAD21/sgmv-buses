@@ -13,7 +13,7 @@ function configureCloudinary() {
     throw new AppError(
       503,
       'MEDIA_STORAGE_UNAVAILABLE',
-      'El almacenamiento de evidencias no esta configurado',
+      'La carga de fotos no esta habilitada en este servidor. Reinicie el backend con la configuracion de evidencias.',
     )
   }
 

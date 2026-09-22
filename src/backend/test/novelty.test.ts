@@ -11,6 +11,7 @@ import { createApp } from '../src/app.js'
 import { setMediaStorageForTests } from '../src/media/cloudinary-media-storage.js'
 import type { MediaStorage, MediaUploadInput } from '../src/media/media-storage.js'
 import { NoveltyService } from '../src/novelties/novelty.service.js'
+import { AppError } from '../src/shared/http.js'
 import { createCsrfAgent } from './http-test-client.js'
 
 const prisma = new PrismaClient()
@@ -572,6 +573,39 @@ describe('RF-02 Novelty API', () => {
       .expect(400)
 
     expect(response.body.error.code).toBe('INVALID_IMAGE_CONTENT')
+  }, 60000)
+
+  it('expone la falta de almacenamiento configurado sin ocultarla como un fallo generico', async () => {
+    const bus = await createBus()
+    const novelty = await createNovelty(fixture.conductorId, bus.id)
+    const conductor = await loginAgent(fixture.conductorEmail)
+    const unavailableStorage: MediaStorage = {
+      async delete() {},
+      async download() {
+        throw new Error('No aplica para esta prueba')
+      },
+      async upload() {
+        throw new AppError(
+          503,
+          'MEDIA_STORAGE_UNAVAILABLE',
+          'La carga de fotos no esta habilitada en este servidor.',
+        )
+      },
+    }
+
+    setMediaStorageForTests(unavailableStorage)
+    try {
+      const response = await conductor
+        .post(`/novedades/${novelty.id}/evidencias`)
+        .field('cargaId', randomUUID())
+        .attach('imagenes', pngBuffer, { contentType: 'image/png', filename: 'tablero.png' })
+        .expect(503)
+
+      expect(response.body.error.code).toBe('MEDIA_STORAGE_UNAVAILABLE')
+      expect(response.body.error.message).toMatch(/carga de fotos/i)
+    } finally {
+      setMediaStorageForTests(fakeMediaStorage)
+    }
   }, 60000)
 
   it('creates a novelty from the journey context and derives bus and author from session', async () => {

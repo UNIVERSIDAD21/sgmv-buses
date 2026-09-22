@@ -98,6 +98,7 @@ export class NoveltyEvidenceService {
       await Promise.allSettled(uploaded.map((item) => storage.delete(item.publicId)))
       await this.repository.markFailed(reservation.evidences.map((item) => item.id))
       logger.error({ err: error, noveltyId }, 'No se pudo almacenar evidencia de novedad')
+      if (error instanceof AppError) throw error
       throw new AppError(502, 'MEDIA_UPLOAD_FAILED', 'No se pudieron guardar las imagenes')
     }
 

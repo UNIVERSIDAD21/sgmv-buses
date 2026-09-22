@@ -45,8 +45,8 @@ export function NoveltyEvidencePicker({
         />
       </label>
       <p className="mt-2 text-xs leading-5 text-slate-500">
-        JPG, PNG o WebP. Máximo 5 MB por imagen y {MAX_EVIDENCE_FILES} por novedad. El sistema
-        elimina metadatos EXIF al almacenar.
+        Solo fotos JPG, PNG o WebP; los videos no están habilitados. Máximo 5 MB por imagen y{' '}
+        {MAX_EVIDENCE_FILES} por novedad. El sistema elimina metadatos EXIF al almacenar.
       </p>
       <p className="mt-1 text-xs font-medium leading-5 text-amber-700">
         Tome o seleccione la evidencia solo cuando el vehículo esté detenido y sea seguro hacerlo.
