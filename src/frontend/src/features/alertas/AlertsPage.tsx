@@ -7,6 +7,7 @@ import PageHeader from '../../components/ui/PageHeader'
 import StatePanel from '../../components/ui/StatePanel'
 import { ApiError } from '../../lib/api'
 import { useSession } from '../auth/session.context'
+import { useCurrentTime } from '../../hooks/useCurrentTime'
 import { announceAlertsUpdated, listAlerts, markAlertAttended, markAlertRead } from './alert.api'
 import type {
   AlertFilters,
@@ -60,6 +61,7 @@ const initialFilters: AlertFilters = {
 
 const TYPES_BY_ROLE = {
   ADMINISTRADOR: [
+    'JORNADA_SIN_KILOMETRAJE_FINAL',
     'BAJO_INVENTARIO',
     'CONFLICTO_JORNADA',
     'CONSUMO_INCOMPATIBLE',
@@ -147,6 +149,7 @@ function contextEntries(context: Record<string, unknown>) {
 }
 
 export default function AlertsPage() {
+  const now = useCurrentTime()
   const { user } = useSession()
   const [filters, setFilters] = useState<AlertFilters>(initialFilters)
   const [inbox, setInbox] = useState<AlertInboxDto | null>(null)
@@ -217,6 +220,17 @@ export default function AlertsPage() {
         eyebrow="Bandeja personal"
         title="Alertas internas"
       />
+      <div className="rounded-lg border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-950">
+        <p className="font-semibold">Las alertas son internas; revísalas al iniciar sesión.</p>
+        <p>
+          No se envían por correo, WhatsApp, SMS ni notificaciones push. Marcar una alerta como
+          atendida no cierra una jornada ni libera un bus.
+        </p>
+        <p>
+          Destinatario de esta bandeja: {user?.nombre}. Cada persona conserva su propio estado de
+          lectura y atención.
+        </p>
+      </div>
 
       <form
         aria-label="Filtros de alertas"
@@ -388,7 +402,19 @@ export default function AlertsPage() {
                       dateTime={item.fechaGeneracion}
                     >
                       {formatAlertDate(item.fechaGeneracion)}
+                      {' · Hace '}
+                      {Math.max(
+                        0,
+                        Math.floor((now - Date.parse(item.fechaGeneracion)) / 3_600_000),
+                      )}{' '}
+                      h
                     </time>
+                    {item.tipo === 'JORNADA_SIN_KILOMETRAJE_FINAL' && (
+                      <p className="mt-2 text-sm font-medium text-red-800">
+                        Acción sugerida: abre la jornada y registra o coordina su cierre con
+                        kilometraje final real.
+                      </p>
+                    )}
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2 lg:max-w-[300px] lg:justify-end">
                     {item.estado === 'NO_LEIDA' && (

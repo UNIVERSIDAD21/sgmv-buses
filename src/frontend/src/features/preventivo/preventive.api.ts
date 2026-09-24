@@ -183,6 +183,35 @@ export function applyPreventivePlan(input: ApplyPreventivePlanInput) {
   )
 }
 
+export interface PlanApplicationPreview {
+  revision: string
+  nuevas: number
+  items: Array<{
+    busId: number
+    codigoInterno: string
+    planId: number
+    programacionId: number | null
+    fechaProgramada: string | null
+    kilometrajeObjetivo: number | null
+    particular: boolean
+  }>
+}
+export function previewPlanApplication(input: { planId: number; busIds: number[] }) {
+  return apiRequest<PlanApplicationPreview>(
+    '/mantenimiento-preventivo/planes/previsualizar-aplicacion',
+    { method: 'POST', body: JSON.stringify(input) },
+  )
+}
+export function applyPlanToBuses(input: { planId: number; busIds: number[]; revision: string }) {
+  return apiRequest<{
+    creadas: number
+    resultados: Array<{ programacion: PreventiveScheduleDto; yaExistia: boolean }>
+  }>('/mantenimiento-preventivo/planes/aplicar-lote', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
 export function updatePreventiveSchedule(
   programacionId: number,
   input: Omit<PreventiveScheduleInput, 'busId'>,

@@ -10,7 +10,9 @@ import { ApiError } from '../../lib/api'
 import { listBuses, listModelosBus } from '../flota/fleet.api'
 import type { BusSummaryDto, ModeloBusSummaryDto } from '../flota/fleet.types'
 import {
-  applyPreventivePlan,
+  applyPlanToBuses,
+  previewPlanApplication,
+  type PlanApplicationPreview,
   createPreventivePlan,
   createPreventivePlanVersion,
   deactivatePreventivePlan,
@@ -31,6 +33,15 @@ const fieldClass =
 
 function messageFrom(error: unknown) {
   return error instanceof ApiError ? error.message : 'No se pudo completar la operacion.'
+}
+
+async function loadPlanBuses() {
+  const first = await listBuses({ limite: 100, pagina: 1 })
+  const buses = [...first.buses]
+  for (let pagina = 2; pagina <= first.paginacion.totalPaginas; pagina++) {
+    buses.push(...(await listBuses({ limite: 100, pagina })).buses)
+  }
+  return buses
 }
 
 function optionalPositive(value: string) {
@@ -385,7 +396,7 @@ function ApplyPlanDialog({
   saving,
 }: {
   buses: BusSummaryDto[]
-  onApply: (busId: number) => Promise<void>
+  onApply: (busIds: number[], revision: string) => Promise<void>
   onCancel: () => void
   plan: PreventivePlanDto
   saving: boolean
@@ -398,19 +409,21 @@ function ApplyPlanDialog({
     (bus) => bus.estadoOperativo !== 'INACTIVO' && belongsToPlan(bus),
   )
   const ineligibleBuses = buses.filter((bus) => !eligibleBuses.includes(bus))
-  const [busId, setBusId] = useState(String(eligibleBuses[0]?.id ?? ''))
-  const [openedAt] = useState(() => new Date())
-  const selectedBus = eligibleBuses.find((bus) => bus.id === Number(busId))
-  const estimatedDate =
-    plan.intervaloDias === null
-      ? null
-      : new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' }).format(
-          new Date(openedAt.getTime() + plan.intervaloDias * 24 * 60 * 60 * 1000),
-        )
-  const estimatedMileage =
-    selectedBus && plan.intervaloKm !== null
-      ? `${formatNumber(selectedBus.kilometrajeActual + plan.intervaloKm)} km`
-      : null
+  const [busIds, setBusIds] = useState<number[]>([])
+  const [preview, setPreview] = useState<PlanApplicationPreview | null>(null)
+  const [checking, setChecking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  async function review() {
+    setChecking(true)
+    setError(null)
+    try {
+      setPreview(await previewPlanApplication({ planId: plan.id, busIds }))
+    } catch (failure) {
+      setError(messageFrom(failure))
+    } finally {
+      setChecking(false)
+    }
+  }
 
   function ineligibleReason(bus: BusSummaryDto) {
     if (bus.estadoOperativo === 'INACTIVO') return 'El bus esta inactivo.'
@@ -419,36 +432,64 @@ function ApplyPlanDialog({
   }
 
   return (
-    <Modal onClose={onCancel} subtitle={plan.claveTarea} title="Asignar rutina a un bus">
+    <Modal onClose={onCancel} subtitle={plan.actividad} title="Asignar a buses de este modelo">
       <div className="p-5">
         <p className="text-sm text-slate-500">
-          Se creará un mantenimiento programado usando la fecha y el kilometraje actuales.
+          Selecciona los buses. Cada uno tendrá sus propios objetivos según su kilometraje y la
+          fecha actuales. Las programaciones existentes se conservarán sin duplicarlas.
         </p>
-        <label className="mt-4 block text-sm font-medium">
-          Bus elegible
-          <select
-            aria-label="Bus para aplicar plan"
-            className={fieldClass}
-            onChange={(event) => setBusId(event.target.value)}
-            value={busId}
+        <fieldset className="mt-4 space-y-2" disabled={saving || checking}>
+          <legend className="mb-2 font-semibold">Buses elegibles ({eligibleBuses.length})</legend>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setBusIds(eligibleBuses.slice(0, 100).map((bus) => bus.id))
+              setPreview(null)
+            }}
           >
-            {eligibleBuses.length === 0 && <option value="">Sin buses elegibles</option>}
-            {eligibleBuses.map((bus) => (
-              <option key={bus.id} value={bus.id}>
-                {bus.codigoInterno} · {bus.placa}
-              </option>
-            ))}
-          </select>
-        </label>
-        {selectedBus && (
-          <section className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-            <h4 className="font-semibold text-slate-900">Objetivo que se programara</h4>
-            <p className="mt-1 text-slate-600">
-              {estimatedDate ? `Fecha: ${estimatedDate}.` : 'Sin objetivo por fecha.'}{' '}
-              {estimatedMileage
-                ? `Kilometraje: ${estimatedMileage}.`
-                : 'Sin objetivo por kilometraje.'}
+            {eligibleBuses.length > 100 ? 'Seleccionar primeros 100' : 'Seleccionar todos'}
+          </Button>
+          {eligibleBuses.length > 100 && (
+            <p>
+              Selecciona hasta 100 buses por operación. Después puedes continuar con los restantes.
             </p>
+          )}
+          {eligibleBuses.map((bus) => (
+            <label key={bus.id} className="flex items-center gap-3 rounded border p-3 text-sm">
+              <input
+                type="checkbox"
+                checked={busIds.includes(bus.id)}
+                onChange={(event) => {
+                  setBusIds(
+                    event.target.checked
+                      ? [...busIds, bus.id]
+                      : busIds.filter((id) => id !== bus.id),
+                  )
+                  setPreview(null)
+                }}
+              />
+              {bus.codigoInterno} · {bus.placa} · {formatNumber(bus.kilometrajeActual)} km
+            </label>
+          ))}
+          {eligibleBuses.length === 0 && <p>Sin buses elegibles.</p>}
+        </fieldset>
+        {preview && (
+          <section className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+            <h4 className="font-semibold text-slate-900">
+              Se crearán {preview.nuevas} programaciones para {busIds.length} buses seleccionados
+            </h4>
+            <ul className="mt-3 space-y-3">
+              {preview.items.map((item) => (
+                <li key={item.busId}>
+                  <b>{item.codigoInterno}</b>:{' '}
+                  {item.programacionId ? 'Ya programado; se conserva.' : 'Nueva programación.'}{' '}
+                  {item.fechaProgramada && `Fecha: ${item.fechaProgramada}.`}{' '}
+                  {item.kilometrajeObjetivo !== null &&
+                    `Objetivo: ${formatNumber(item.kilometrajeObjetivo)} km.`}{' '}
+                  {item.particular && 'Se respeta la rutina particular de este bus.'}
+                </li>
+              ))}
+            </ul>
           </section>
         )}
         <details className="mt-4 rounded-lg border border-slate-200 p-3 text-sm">
@@ -467,17 +508,29 @@ function ApplyPlanDialog({
             </ul>
           )}
         </details>
+        {error && (
+          <p role="alert" className="mt-3 text-sm text-red-700">
+            {error}
+          </p>
+        )}
         <div className="mt-5 flex justify-end gap-2">
           <Button onClick={onCancel} type="button" variant="outline">
             Cancelar
           </Button>
           <Button
-            disabled={!busId}
-            loading={saving}
-            onClick={() => void onApply(Number(busId))}
+            disabled={busIds.length === 0}
+            loading={saving || checking}
+            onClick={() =>
+              preview
+                ? void onApply(busIds, preview.revision).catch((failure: unknown) => {
+                    setError(messageFrom(failure))
+                    setPreview(null)
+                  })
+                : void review()
+            }
             type="button"
           >
-            Asignar rutina
+            {preview ? 'Confirmar programaciones' : 'Revisar programación'}
           </Button>
         </div>
       </div>
@@ -599,11 +652,11 @@ export default function PreventivePlansPanel({
     try {
       const [planResult, busResult, modelResult] = await Promise.all([
         listPreventivePlans(includeHistorical),
-        listBuses({ limite: 100, pagina: 1 }),
+        loadPlanBuses(),
         listModelosBus(),
       ])
       setPlans(planResult.planes)
-      setBuses(busResult.buses)
+      setBuses(busResult)
       setModels(modelResult.modelosBus)
     } catch (loadError) {
       setError(messageFrom(loadError))
@@ -645,21 +698,20 @@ export default function PreventivePlansPanel({
       setSaving(false)
     }
   }
-  async function apply(plan: PreventivePlanDto, busId: number) {
+  async function apply(plan: PreventivePlanDto, busIds: number[], revision: string) {
     setSaving(true)
     setError(null)
     try {
-      const result = await applyPreventivePlan({ busId, planId: plan.id })
-      setExistingSchedule(result.yaExistia ? result.programacion : null)
+      const result = await applyPlanToBuses({ busIds, planId: plan.id, revision })
+      setExistingSchedule(result.resultados[0]?.programacion ?? null)
       setFeedback(
-        result.yaExistia
-          ? `Esta rutina ya estaba asignada a ese bus.`
-          : `Rutina asignada: el mantenimiento programado ya tiene sus objetivos.`,
+        `${result.creadas} programaciones creadas. ${result.resultados.length - result.creadas} existentes conservadas sin duplicar.`,
       )
       setApplying(null)
       await load()
     } catch (operationError) {
       setError(messageFrom(operationError))
+      throw operationError
     } finally {
       setSaving(false)
     }
@@ -752,12 +804,15 @@ export default function PreventivePlansPanel({
               {plans?.map((plan) => (
                 <tr key={plan.id}>
                   <td className="px-4 py-3">
-                    <b>{plan.claveTarea}</b>
+                    <b>{plan.actividad}</b>
+                    <p className="text-xs text-slate-500">{plan.claveTarea}</p>
                     <p className="text-slate-500">{plan.componente}</p>
                   </td>
                   <td className="px-4 py-3">{PREVENTIVE_CRITERION_LABELS[plan.criterio]}</td>
                   <td className="px-4 py-3">
-                    {plan.destino.tipo === 'BUS' ? 'Bus especifico' : 'Modelo de bus'}
+                    {plan.destino.tipo === 'BUS'
+                      ? `Aplica únicamente a: ${buses.find((bus) => plan.destino.tipo === 'BUS' && bus.id === plan.destino.busId)?.codigoInterno ?? plan.destino.busId}`
+                      : `Modelo: ${models.find((model) => plan.destino.tipo === 'MODELO' && model.id === plan.destino.modeloBusId)?.nombreModelo ?? plan.destino.modeloBusId}`}
                   </td>
                   <td className="px-4 py-3">v{plan.version}</td>
                   <td className="px-4 py-3">
@@ -766,14 +821,16 @@ export default function PreventivePlansPanel({
                   <td className="px-4 py-3">{plan.programacionesActivas}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      <Button
-                        disabled={!plan.activa || saving}
-                        onClick={() => setApplying(plan)}
-                        size="sm"
-                        variant="secondary"
-                      >
-                        Asignar a buses
-                      </Button>
+                      {plan.destino.tipo === 'MODELO' && (
+                        <Button
+                          disabled={!plan.activa || saving}
+                          onClick={() => setApplying(plan)}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Asignar a buses de este modelo
+                        </Button>
+                      )}
                       <Button onClick={() => void showVersions(plan)} size="sm" variant="outline">
                         Versiones
                       </Button>
@@ -820,7 +877,7 @@ export default function PreventivePlansPanel({
       {applying && (
         <ApplyPlanDialog
           buses={buses}
-          onApply={(busId) => apply(applying, busId)}
+          onApply={(busIds, revision) => apply(applying, busIds, revision)}
           onCancel={() => setApplying(null)}
           plan={applying}
           saving={saving}

@@ -10,6 +10,7 @@ import PageHeader from '../../components/ui/PageHeader'
 import StatePanel from '../../components/ui/StatePanel'
 import { BUS_STATUS_LABELS } from '../../domain/labels'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
+import { useCurrentTime } from '../../hooks/useCurrentTime'
 import { ApiError } from '../../lib/api'
 import { formatNumber } from '../../lib/format'
 import { useSession } from '../auth/session.context'
@@ -22,6 +23,7 @@ import {
   getMyJourney,
   listJourneys,
   reassignJourney,
+  reportJourneyClosureProblem,
   startJourney,
 } from './journey.api'
 import type {
@@ -48,7 +50,13 @@ const JOURNEY_TONES: Record<JourneyStatus, 'amber' | 'emerald' | 'red' | 'slate'
   REASIGNADA: 'slate',
 }
 
-type JourneyAction = 'cancel' | 'finish' | 'reassign' | 'start'
+type JourneyAction = 'cancel' | 'finish' | 'reassign' | 'start' | 'report'
+
+function closureOverdue(journey: JourneyDto, now: number) {
+  return (
+    journey.estado === 'EN_CURSO' && !journey.finReal && Date.parse(journey.finProgramado) < now
+  )
+}
 
 function getErrorMessage(error: unknown) {
   return error instanceof ApiError ? error.message : 'No se pudo completar la operacion'
@@ -87,6 +95,10 @@ function JourneyCard({
   journey: JourneyDto
   onAction: (action: JourneyAction, journey: JourneyDto) => void
 }) {
+  const { user } = useSession()
+  const now = useCurrentTime()
+  const overdue = closureOverdue(journey, now)
+  const hours = Math.max(0, Math.floor((now - Date.parse(journey.finProgramado)) / 3_600_000))
   return (
     <article className="surface overflow-hidden p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -95,7 +107,9 @@ function JourneyCard({
             <h3 className="font-semibold text-slate-900">
               {journey.bus.codigoInterno} · {journey.bus.placa}
             </h3>
-            <Badge tone={JOURNEY_TONES[journey.estado]}>{JOURNEY_LABELS[journey.estado]}</Badge>
+            <Badge tone={overdue ? 'red' : JOURNEY_TONES[journey.estado]}>
+              {overdue ? 'Cierre atrasado' : JOURNEY_LABELS[journey.estado]}
+            </Badge>
           </div>
           <p className="mt-1 text-sm text-slate-600">Conductor: {journey.conductor.nombre}</p>
           <p className="mt-1 text-xs text-slate-500">
@@ -108,6 +122,32 @@ function JourneyCard({
           {BUS_STATUS_LABELS[journey.bus.estadoOperativo]}
         </Badge>
       </div>
+
+      {overdue && (
+        <section className="mt-3 space-y-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-950">
+          <p className="font-semibold">
+            {user?.rol.codigo === 'CONDUCTOR' ? 'Tu jornada terminó el' : 'La jornada terminó el'}{' '}
+            {formatDateTime(journey.finProgramado)} y falta registrar el cierre.
+          </p>
+          <p>
+            Atraso: {hours === 0 ? 'menos de 1 h' : `${hours} h`}. El bus y el Conductor siguen
+            bloqueados para nuevas jornadas. Registra únicamente el kilometraje final real; nunca la
+            estimación.
+          </p>
+          <p>
+            {hours >= 24
+              ? 'El atraso requiere atención del Administrador (escalamiento interno a partir de 24 horas).'
+              : 'Despacho recibe la alerta interna. A las 24 horas se escala al Administrador.'}
+          </p>
+          {journey.cierrePendiente && (
+            <p>
+              Informe de {journey.cierrePendiente.reportadoPor.nombre} ·{' '}
+              {formatDateTime(journey.cierrePendiente.reportadoAt)}:{' '}
+              {journey.cierrePendiente.motivo}
+            </p>
+          )}
+        </section>
+      )}
 
       <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
         <div className="surface-muted p-3">
@@ -188,7 +228,12 @@ function JourneyCard({
         )}
         {journey.acciones.puedeFinalizar && (
           <Button onClick={() => onAction('finish', journey)} size="sm" variant="secondary">
-            Finalizar jornada
+            {overdue ? 'Registrar cierre ahora' : 'Finalizar jornada'}
+          </Button>
+        )}
+        {overdue && user?.rol.codigo === 'CONDUCTOR' && !journey.cierrePendiente && (
+          <Button onClick={() => onAction('report', journey)} size="sm" variant="outline">
+            Informar que no puedo registrar el cierre
           </Button>
         )}
         {journey.acciones.puedeReasignar && (
@@ -525,7 +570,7 @@ function ActionDialog({
     Math.max(new Date(journey.finProgramado).getTime(), now.getTime() + 8 * 60 * 60_000),
   )
   const [fechaEvento, setFechaEvento] = useState(toLocalInput(now))
-  const [kilometraje, setKilometraje] = useState(String(journey.lecturaInicial?.kilometraje ?? 0))
+  const [kilometraje, setKilometraje] = useState('')
   const [motivo, setMotivo] = useState('')
   const [busId, setBusId] = useState(String(journey.bus.id))
   const [conductorId, setConductorId] = useState(String(journey.conductor.id))
@@ -541,7 +586,9 @@ function ActionDialog({
   const [kmNoComerciales, setKmNoComerciales] = useState('0')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const needsMileage = action === 'start' || action === 'finish' || journey.estado === 'EN_CURSO'
+  const needsMileage =
+    action !== 'report' &&
+    (action === 'start' || action === 'finish' || journey.estado === 'EN_CURSO')
   const selectedReplacementBus = options?.buses.find((bus) => bus.id === Number(busId))
   const selectedReplacementDriver = options?.conductores.find(
     (driver) => driver.id === Number(conductorId),
@@ -555,12 +602,18 @@ function ActionDialog({
     if (submitting) return
     setError(null)
     const mileageValue = Number(kilometraje)
-    if (needsMileage && (!Number.isInteger(mileageValue) || mileageValue < 0)) {
+    if (
+      needsMileage &&
+      (!kilometraje.trim() || !Number.isInteger(mileageValue) || mileageValue < 0)
+    ) {
       setError('Registre un kilometraje entero valido.')
       return
     }
-    if ((action === 'cancel' || action === 'reassign') && motivo.trim().length < 3) {
-      setError('El motivo debe tener al menos 3 caracteres.')
+    if (
+      (action === 'cancel' || action === 'reassign' || action === 'report') &&
+      motivo.trim().length < (action === 'report' ? 10 : 3)
+    ) {
+      setError(`El motivo debe tener al menos ${action === 'report' ? 10 : 3} caracteres.`)
       return
     }
     if (
@@ -580,7 +633,12 @@ function ActionDialog({
 
     setSubmitting(true)
     try {
-      if (action === 'start') {
+      if (action === 'report') {
+        await reportJourneyClosureProblem(journey.id, motivo.trim())
+        await onCompleted(
+          'Informe enviado a la bandeja interna de Despacho. El bus sigue bloqueado hasta registrar el cierre o una cancelación justificada.',
+        )
+      } else if (action === 'start') {
         await startJourney(journey.id, toIso(fechaEvento), mileageValue)
         await onCompleted('Jornada iniciada con lectura inicial')
       } else if (action === 'finish') {
@@ -627,6 +685,7 @@ function ActionDialog({
   }
 
   const title = {
+    report: 'Informar cierre pendiente',
     cancel: 'Cancelar jornada',
     finish: 'Finalizar jornada',
     reassign: 'Cambiar bus o conductor',
@@ -646,17 +705,25 @@ function ActionDialog({
             actúa como respaldo y el horario programado no prueba que el recorrido ocurrió.
           </ContextHint>
         )}
-        <label className="block text-sm font-medium text-slate-700">
-          Fecha real del evento
-          <input
-            className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-            max={toLocalInput(new Date())}
-            onChange={(event) => setFechaEvento(event.target.value)}
-            required
-            type="datetime-local"
-            value={fechaEvento}
-          />
-        </label>
+        {action === 'report' && (
+          <p className="text-sm text-slate-600">
+            Explica por qué no puedes obtener la lectura final. Despacho podrá ver tu informe dentro
+            del sistema. No se enviará correo, WhatsApp ni SMS y la jornada no se cerrará sola.
+          </p>
+        )}
+        {action !== 'report' && (
+          <label className="block text-sm font-medium text-slate-700">
+            Fecha real del evento
+            <input
+              className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+              max={toLocalInput(new Date())}
+              onChange={(event) => setFechaEvento(event.target.value)}
+              required
+              type="datetime-local"
+              value={fechaEvento}
+            />
+          </label>
+        )}
         {needsMileage && (
           <label className="block text-sm font-medium text-slate-700">
             Lectura observada del odómetro {journey.estado === 'EN_CURSO' ? 'al finalizar' : ''}
@@ -676,7 +743,7 @@ function ActionDialog({
             </span>
           </label>
         )}
-        {(action === 'cancel' || action === 'reassign') && (
+        {(action === 'cancel' || action === 'reassign' || action === 'report') && (
           <label className="block text-sm font-medium text-slate-700">
             {action === 'reassign' ? 'Motivo del cambio' : 'Motivo'}
             <textarea
@@ -862,9 +929,12 @@ function ActionDialog({
 
 export default function JourneyPage() {
   const { user } = useSession()
+  const now = useCurrentTime()
   const [searchParams, setSearchParams] = useSearchParams()
   const isDriver = user?.rol.codigo === 'CONDUCTOR'
   const [list, setList] = useState<JourneyListResponse | null>(null)
+  const [pending, setPending] = useState<JourneyListResponse | null>(null)
+  const [pendingPage, setPendingPage] = useState(1)
   const [own, setOwn] = useState<MyJourneyResponse | null>(null)
   const [options, setOptions] = useState<JourneyOptionsResponse | null>(null)
   const [buscar, setBuscar] = useState('')
@@ -894,16 +964,18 @@ export default function JourneyPage() {
         setOwn(await getMyJourney())
         return
       }
-      const [journeys, journeyOptions] = await Promise.all([
+      const [journeys, journeyOptions, pendingClosures] = await Promise.all([
         listJourneys({ buscar: busquedaEstable, estado, pagina }),
         getJourneyOptions(),
+        listJourneys({ cierreAtrasado: true, pagina: pendingPage }),
       ])
       setList(journeys)
       setOptions(journeyOptions)
+      setPending(pendingClosures)
     } finally {
       setLoading(false)
     }
-  }, [busquedaEstable, estado, isDriver, pagina])
+  }, [busquedaEstable, estado, isDriver, pagina, pendingPage])
 
   useEffect(() => {
     let active = true
@@ -1010,7 +1082,11 @@ export default function JourneyPage() {
       {!loading && !error && isDriver && driverJourney && (
         <div className="space-y-3">
           {own?.jornadaActual ? (
-            <Badge tone="teal">Tramo actual</Badge>
+            <Badge tone={closureOverdue(driverJourney, now) ? 'red' : 'teal'}>
+              {closureOverdue(driverJourney, now)
+                ? 'Cierre pendiente de una jornada anterior'
+                : 'Tramo actual'}
+            </Badge>
           ) : (
             <Badge tone="amber">Proxima jornada</Badge>
           )}
@@ -1019,6 +1095,50 @@ export default function JourneyPage() {
             onAction={(action, journey) => setOperation({ action, journey })}
           />
         </div>
+      )}
+
+      {!loading && !error && !isDriver && pending && pending.paginacion.total > 0 && (
+        <section
+          aria-label="Jornadas pendientes de cierre"
+          className="space-y-3 rounded-xl border border-red-200 bg-red-50/30 p-4"
+        >
+          <h2 className="font-bold text-red-950">
+            Jornadas pendientes de cierre ({pending.paginacion.total})
+          </h2>
+          <p className="text-sm text-slate-700">
+            Primero las más antiguas. Contacta al Conductor por los medios habituales para confirmar
+            el odómetro y la hora real. Puedes registrar el cierre autorizado, cancelar con motivo o
+            cambiar tramo; las jornadas iniciadas exigen lectura final real también al cancelar o
+            reasignar.
+          </p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {pending.jornadas.map((journey) => (
+              <JourneyCard
+                key={journey.id}
+                journey={journey}
+                onAction={(action, selected) => setOperation({ action, journey: selected })}
+              />
+            ))}
+          </div>
+          {pending.paginacion.paginas > 1 && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                disabled={pendingPage === 1}
+                onClick={() => setPendingPage(pendingPage - 1)}
+              >
+                Cierres anteriores
+              </Button>
+              <Button
+                variant="outline"
+                disabled={pendingPage === pending.paginacion.paginas}
+                onClick={() => setPendingPage(pendingPage + 1)}
+              >
+                Más cierres pendientes
+              </Button>
+            </div>
+          )}
+        </section>
       )}
 
       {!loading && !error && !isDriver && options && (

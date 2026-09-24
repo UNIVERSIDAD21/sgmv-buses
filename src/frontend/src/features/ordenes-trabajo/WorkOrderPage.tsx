@@ -28,6 +28,7 @@ import { listBuses } from '../flota/fleet.api'
 import type { BusSummaryDto } from '../flota/fleet.types'
 import type { OrderPriority } from '../novedades/novelty.types'
 import NoveltyEvidenceGallery from '../novedades/NoveltyEvidenceGallery'
+import { useInterventionDraft } from './useInterventionDraft'
 import {
   assignWorkOrder,
   authorizeWorkOrderConsumptionException,
@@ -48,7 +49,6 @@ import {
   resumeWorkOrder,
   returnWorkOrder,
   startWorkOrder,
-  updateWorkOrderIntervention,
   type AssignWorkOrderInput,
   type CreateManualWorkOrderInput,
   type ReassignWorkOrderInput,
@@ -691,7 +691,12 @@ function TechnicalReadingPanel({
   onOrderChange: (order: WorkOrderDetailDto) => void
   order: WorkOrderDetailDto
 }) {
-  const [fechaEvento, setFechaEvento] = useState('')
+  const [fechaEvento, setFechaEvento] = useState(() => {
+    const now = new Date()
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+  })
+  const [earlierReading, setEarlierReading] = useState(false)
+  const [confirmReading, setConfirmReading] = useState(false)
   const [kilometraje, setKilometraje] = useState('')
   const [motivo, setMotivo] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -712,8 +717,17 @@ function TechnicalReadingPanel({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const normalizedMileage = Number(kilometraje)
-    if (!fechaEvento || !Number.isInteger(normalizedMileage) || normalizedMileage < 0) {
+    if (
+      !kilometraje.trim() ||
+      !fechaEvento ||
+      !Number.isInteger(normalizedMileage) ||
+      normalizedMileage < 0
+    ) {
       setError('Indique fecha del evento y kilometraje entero valido.')
+      return
+    }
+    if (!confirmReading) {
+      setConfirmReading(true)
       return
     }
     setError(null)
@@ -729,6 +743,7 @@ function TechnicalReadingPanel({
       onFeedback('Lectura tecnica registrada.')
       setKilometraje('')
       setMotivo('')
+      setConfirmReading(false)
     } catch (requestError) {
       setError(getErrorMessage(requestError))
     } finally {
@@ -739,6 +754,18 @@ function TechnicalReadingPanel({
   return (
     <section className="surface p-4">
       <h3 className="text-xs font-semibold uppercase text-slate-500">Kilometraje tecnico</h3>
+      <p className="mt-2 text-sm text-slate-600">
+        Registra solo una lectura real del odómetro cuando corresponda. Al confirmar se añade al
+        historial y se actualizan los cálculos preventivos.
+      </p>
+      <label className="mt-3 flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={earlierReading}
+          onChange={(event) => setEarlierReading(event.target.checked)}
+        />
+        ¿La lectura fue tomada antes?
+      </label>
       <form className="mt-3 grid gap-3 sm:grid-cols-2" onSubmit={submit}>
         <label className="block text-sm font-medium text-slate-700">
           Tipo
@@ -764,6 +791,7 @@ function TechnicalReadingPanel({
             className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
             onChange={(event) => setFechaEvento(event.target.value)}
             type="datetime-local"
+            readOnly={!earlierReading}
             value={fechaEvento}
           />
         </label>
@@ -789,9 +817,23 @@ function TechnicalReadingPanel({
         {error && <p className="sm:col-span-2 text-sm text-red-700">{error}</p>}
         <div className="sm:col-span-2 flex justify-end">
           <Button icon={<Clock size={14} />} loading={submitting} size="sm" type="submit">
-            Registrar lectura
+            {confirmReading ? 'Confirmar lectura real' : 'Revisar lectura'}
           </Button>
         </div>
+        {confirmReading && (
+          <p role="status" className="sm:col-span-2 rounded-lg bg-amber-50 p-3 text-sm">
+            Vas a registrar {formatNumber(Number(kilometraje))} km, tomados el{' '}
+            {formatDateTimeValue(new Date(fechaEvento).toISOString())}. Confirma únicamente si
+            leíste ese valor en el bus.{' '}
+            <button
+              type="button"
+              className="font-semibold underline"
+              onClick={() => setConfirmReading(false)}
+            >
+              Volver a revisar
+            </button>
+          </p>
+        )}
       </form>
     </section>
   )
@@ -812,9 +854,22 @@ function TechnicalPanel({
   const [actividad, setActividad] = useState('')
   const [cantidad, setCantidad] = useState('')
   const [completeConfirmOpen, setCompleteConfirmOpen] = useState(false)
-  const [diagnostico, setDiagnostico] = useState(activeIntervention?.diagnostico ?? '')
+  const draft = useInterventionDraft(
+    order.id,
+    activeIntervention?.id,
+    activeIntervention?.diagnostico ?? '',
+    activeIntervention?.observaciones ?? '',
+    order.acciones.puedeRegistrarTecnica,
+  )
+  const { diagnostico, observaciones, setDiagnostico, setObservaciones } = draft
+  const hasCurrentActivity = Boolean(activeIntervention?.actividades.length)
+  const hasDiagnosis =
+    Boolean(diagnostico.trim()) ||
+    order.intervenciones.some(
+      (item) => item.id !== activeIntervention?.id && item.diagnostico?.trim(),
+    )
   const [error, setError] = useState<string | null>(null)
-  const [observaciones, setObservaciones] = useState(activeIntervention?.observaciones ?? '')
+  const [confirmEvent, setConfirmEvent] = useState<'activity' | 'part' | null>(null)
   const [parts, setParts] = useState<AvailableSparePartDto[]>([])
   const [partsLoading, setPartsLoading] = useState(false)
   const [partsSearch, setPartsSearch] = useState('')
@@ -877,31 +932,14 @@ function TechnicalPanel({
       onOrderChange(result.orden)
       onFeedback(successMessage)
       setCompleteConfirmOpen(false)
+      setConfirmEvent(null)
+      return true
     } catch (operationError) {
       setError(getErrorMessage(operationError))
+      return false
     } finally {
       setTechnicalSubmitting(false)
     }
-  }
-
-  function handleInterventionSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    const normalizedDiagnosis = normalizeText(diagnostico)
-    const normalizedObservations = normalizeText(observaciones)
-
-    if (!normalizedDiagnosis && !normalizedObservations) {
-      setError('Registre diagnostico u observaciones.')
-      return
-    }
-
-    runOperation(
-      updateWorkOrderIntervention(order.id, {
-        ...(normalizedDiagnosis ? { diagnostico: normalizedDiagnosis } : {}),
-        ...(normalizedObservations ? { observaciones: normalizedObservations } : {}),
-      }),
-      'Intervencion actualizada.',
-    )
   }
 
   function handleActivitySubmit(event: FormEvent<HTMLFormElement>) {
@@ -914,11 +952,7 @@ function TechnicalPanel({
       return
     }
 
-    runOperation(
-      createWorkOrderActivity(order.id, { descripcion: normalizedActivity }),
-      'Actividad registrada.',
-    )
-    setActividad('')
+    setConfirmEvent('activity')
   }
 
   function handleConsumptionSubmit(event: FormEvent<HTMLFormElement>) {
@@ -934,16 +968,7 @@ function TechnicalPanel({
       return
     }
 
-    runOperation(
-      createWorkOrderConsumption(order.id, {
-        ...(applicableAuthorization ? { autorizacionExcepcionId: applicableAuthorization.id } : {}),
-        cantidad,
-        claveIdempotencia: idempotencyKey(),
-        repuestoId: Number(repuestoId),
-      }),
-      'Consumo registrado.',
-    )
-    setCantidad('')
+    setConfirmEvent('part')
   }
 
   return (
@@ -976,17 +1001,6 @@ function TechnicalPanel({
               Reanudar
             </Button>
           )}
-          {order.acciones.puedeCompletar && (
-            <Button
-              icon={<CheckCircle size={14} />}
-              loading={isBusy}
-              onClick={() => setCompleteConfirmOpen(true)}
-              size="sm"
-              variant="secondary"
-            >
-              Completar
-            </Button>
-          )}
         </div>
       </div>
 
@@ -998,13 +1012,20 @@ function TechnicalPanel({
 
       {order.acciones.puedeRegistrarTecnica ? (
         <>
-          <form className="grid gap-3" onSubmit={handleInterventionSubmit}>
+          <div className="grid gap-3">
+            <h4 className="font-semibold">1. Describe lo que encontraste</h4>
+            <p className="text-sm text-slate-600">
+              Diagnóstico y observaciones se guardan como borrador. Puedes corregirlos mientras la
+              orden esté en ejecución.
+            </p>
             <label className="block text-sm font-medium text-slate-700">
               Diagnostico
               <textarea
                 className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setDiagnostico(event.target.value)}
                 value={diagnostico}
+                maxLength={3000}
+                onBlur={() => void draft.flush().catch(() => undefined)}
               />
             </label>
             <label className="block text-sm font-medium text-slate-700">
@@ -1013,19 +1034,29 @@ function TechnicalPanel({
                 className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setObservaciones(event.target.value)}
                 value={observaciones}
+                maxLength={3000}
+                onBlur={() => void draft.flush().catch(() => undefined)}
               />
             </label>
-            <div className="flex justify-end">
-              <Button icon={<Wrench size={14} />} loading={isBusy} size="sm" type="submit">
-                Guardar tecnica
+            <p role="status" className="text-sm text-slate-600">
+              {draft.status}
+            </p>
+            {draft.status.startsWith('No guardado') && (
+              <Button variant="outline" onClick={() => void draft.flush().catch(() => undefined)}>
+                Reintentar guardar borrador
               </Button>
-            </div>
-          </form>
+            )}
+          </div>
 
           <form
             className="grid gap-3 border-t border-slate-100 pt-4"
             onSubmit={handleActivitySubmit}
           >
+            <h4 className="font-semibold">2. Añade el trabajo realizado</h4>
+            <p className="text-sm text-slate-600">
+              Añade cada actividad cuando la hayas realizado. La confirmación crea un registro
+              permanente en el historial.
+            </p>
             <label className="block text-sm font-medium text-slate-700">
               Actividad realizada
               <textarea
@@ -1036,7 +1067,7 @@ function TechnicalPanel({
             </label>
             <div className="flex justify-end">
               <Button icon={<Activity size={14} />} loading={isBusy} size="sm" type="submit">
-                Registrar actividad
+                Añadir actividad realizada
               </Button>
             </div>
           </form>
@@ -1045,6 +1076,11 @@ function TechnicalPanel({
             className="grid gap-3 border-t border-slate-100 pt-4"
             onSubmit={handleConsumptionSubmit}
           >
+            <h4 className="font-semibold">3. Repuestos utilizados (solo si usaste alguno)</h4>
+            <p className="text-sm text-slate-600">
+              No es obligatorio usar repuestos. Confirmar el uso descuenta la cantidad del
+              inventario y conserva el movimiento.
+            </p>
             <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
               <label className="block text-sm font-medium text-slate-700">
                 Buscar repuesto
@@ -1110,13 +1146,112 @@ function TechnicalPanel({
             )}
             <div className="flex justify-end">
               <Button icon={<Package size={14} />} loading={isBusy} size="sm" type="submit">
-                Registrar consumo
+                Registrar repuesto utilizado
               </Button>
             </div>
           </form>
         </>
       ) : (
         <TimelineEmpty text="La orden no esta en un estado editable para el mecanico asignado." />
+      )}
+
+      <TechnicalReadingPanel
+        isAdmin={false}
+        order={order}
+        onFeedback={onFeedback}
+        onOrderChange={onOrderChange}
+      />
+
+      {confirmEvent && (
+        <ModalFrame
+          title={
+            confirmEvent === 'activity'
+              ? 'Confirmar actividad realizada'
+              : 'Confirmar uso de repuesto'
+          }
+          subtitle={order.codigo}
+          onClose={() => setConfirmEvent(null)}
+        >
+          <div className="space-y-4 p-5">
+            <p className="text-sm">
+              {confirmEvent === 'activity'
+                ? `${actividad}. Se añadirá al historial de esta intervención.`
+                : `${selectedPart?.nombre}: ${cantidad} ${selectedPart?.unidadMedida}. El inventario se reducirá de ${selectedPart?.stockActual} a ${Number(selectedPart?.stockActual ?? 0) - Number(cantidad)}.`}
+            </p>
+            {error && (
+              <p role="alert" className="text-red-700">
+                {error}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" disabled={isBusy} onClick={() => setConfirmEvent(null)}>
+                Volver a revisar
+              </Button>
+              <Button
+                loading={isBusy}
+                onClick={() => {
+                  if (confirmEvent === 'activity')
+                    void runOperation(
+                      createWorkOrderActivity(order.id, { descripcion: normalizeText(actividad) }),
+                      'Actividad registrada.',
+                    ).then((ok) => {
+                      if (ok) setActividad('')
+                    })
+                  else
+                    void runOperation(
+                      createWorkOrderConsumption(order.id, {
+                        ...(applicableAuthorization
+                          ? { autorizacionExcepcionId: applicableAuthorization.id }
+                          : {}),
+                        cantidad,
+                        claveIdempotencia: idempotencyKey(),
+                        repuestoId: Number(repuestoId),
+                      }),
+                      'Repuesto utilizado registrado.',
+                    ).then((ok) => {
+                      if (ok) setCantidad('')
+                    })
+                }}
+              >
+                {confirmEvent === 'activity' ? 'Confirmar actividad' : 'Confirmar uso de repuesto'}
+              </Button>
+            </div>
+          </div>
+        </ModalFrame>
+      )}
+
+      {order.acciones.puedeCompletar && (
+        <section className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+          <h3 className="font-semibold text-emerald-950">Paso final: terminar mantenimiento</h3>
+          <p className="text-sm">
+            {activeIntervention?.actividades.length ?? 0} actividades en tu intervención actual ·{' '}
+            {order.consumosRepuesto.length} usos de repuestos · {order.lecturasTecnicas.length}{' '}
+            lecturas registradas.
+          </p>
+          <p className="text-sm">
+            {!hasCurrentActivity
+              ? 'Falta añadir al menos una actividad realizada en esta intervención.'
+              : order.tipo === 'CORRECTIVA' && !hasDiagnosis
+                ? 'Falta escribir el diagnóstico de la falla.'
+                : 'Revisa que el trabajo realizado esté completo.'}{' '}
+            {draft.dirty && 'Espera a que se guarde el borrador.'}
+          </p>
+          <p className="text-sm">
+            El Administrador revisará el trabajo. Solo podrás volver a editar si lo devuelve para
+            corrección. Terminar no libera automáticamente el bus.
+          </p>
+          <Button
+            disabled={
+              isBusy ||
+              draft.dirty ||
+              !hasCurrentActivity ||
+              (order.tipo === 'CORRECTIVA' && !hasDiagnosis)
+            }
+            onClick={() => setCompleteConfirmOpen(true)}
+          >
+            Terminar mantenimiento
+          </Button>
+        </section>
       )}
 
       {completeConfirmOpen && (
@@ -1148,7 +1283,10 @@ function TechnicalPanel({
                 icon={<CheckCircle size={15} />}
                 loading={isBusy}
                 onClick={() =>
-                  runOperation(completeWorkOrder(order.id), 'Orden completada tecnicamente.')
+                  runOperation(
+                    draft.flush().then(() => completeWorkOrder(order.id)),
+                    'Orden completada tecnicamente.',
+                  )
                 }
                 type="button"
                 variant="secondary"
@@ -1363,159 +1501,419 @@ function WorkOrderDetail({
 }) {
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <FieldValue label="Codigo">{order.codigo}</FieldValue>
-        <FieldValue label="Estado">
-          <StatusBadge status={order.estado} />
-        </FieldValue>
-        <FieldValue label="Bus">
-          {order.bus.codigoInterno} - {order.bus.placa}
-        </FieldValue>
-        <FieldValue label="Estado bus">{BUS_STATUS_LABELS[order.bus.estadoOperativo]}</FieldValue>
-        <FieldValue label="Tipo">
-          <TypeBadge type={order.tipo} />
-        </FieldValue>
-        <FieldValue label="Origen">
-          <OriginBadge origin={order.origen} />
-        </FieldValue>
-        <FieldValue label="Prioridad">
-          <PriorityBadge priority={order.prioridad} />
-        </FieldValue>
-        <FieldValue label="Mecanico actual">
-          {order.tecnicoAsignado?.nombre ?? 'Sin asignar'}
-        </FieldValue>
-        <FieldValue label="Creacion">{formatDateTimeValue(order.fechaCreacion)}</FieldValue>
-        <FieldValue label="Cierre">{formatDateTimeValue(order.fechaCierre)}</FieldValue>
-      </div>
+      {isMechanic && (
+        <section className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <h2 className="text-lg font-bold text-emerald-950">Qué debes hacer ahora</h2>
+          <p className="font-semibold">
+            {order.programacionMantenimiento?.actividad ??
+              order.novedad?.descripcion ??
+              order.descripcion}
+          </p>
+          <p className="text-sm">
+            <b>Bus:</b> {order.bus.codigoInterno} · {order.bus.placa}
+          </p>
+          <p className="text-sm">
+            <b>Motivo:</b>{' '}
+            {order.programacionMantenimiento
+              ? 'Mantenimiento preventivo programado para conservar el bus en condiciones de operación.'
+              : order.novedad
+                ? 'El Conductor reportó esta falla; inspecciona y registra qué encontraste.'
+                : 'El Administrador solicitó esta intervención correctiva.'}
+          </p>
+          {order.fechaObjetivoPreventivo && (
+            <p className="text-sm">
+              Fecha objetivo: {formatDateValue(order.fechaObjetivoPreventivo)}.
+            </p>
+          )}
+          {order.kilometrajeObjetivoPreventivo !== null && (
+            <p className="text-sm">
+              Objetivo del odómetro: {formatNumber(order.kilometrajeObjetivoPreventivo)} km.
+            </p>
+          )}
+          <p className="text-sm">
+            <b>Resultado esperado:</b> dejar documentado el trabajo y su resultado para que el
+            Administrador pueda revisarlo. Si la falla continúa, indícalo en el diagnóstico.
+          </p>
+          {['COMPLETADA_TECNICO', 'CERRADA'].includes(order.estado) ? (
+            <p className="font-semibold">
+              {order.estado === 'CERRADA'
+                ? 'Mantenimiento cerrado. Puedes consultar su historial.'
+                : 'Trabajo enviado. El siguiente paso corresponde al Administrador: revisar y cerrar o solicitar corrección.'}
+            </p>
+          ) : (
+            <ol className="list-decimal space-y-1 pl-5 text-sm">
+              <li>Inicia o reanuda la orden y revisa el bus.</li>
+              <li>Describe el diagnóstico y añade las actividades realmente realizadas.</li>
+              <li>Registra repuestos y odómetro solo cuando corresponda.</li>
+              <li>Revisa el resumen final y envía el trabajo al Administrador.</li>
+            </ol>
+          )}
+        </section>
+      )}
+      <details open={!isMechanic} className="space-y-4">
+        <summary className="cursor-pointer rounded-lg bg-slate-100 p-3 text-sm font-semibold">
+          Contexto e historial de la orden
+        </summary>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FieldValue label="Codigo">{order.codigo}</FieldValue>
+          <FieldValue label="Estado">
+            <StatusBadge status={order.estado} />
+          </FieldValue>
+          <FieldValue label="Bus">
+            {order.bus.codigoInterno} - {order.bus.placa}
+          </FieldValue>
+          <FieldValue label="Estado bus">{BUS_STATUS_LABELS[order.bus.estadoOperativo]}</FieldValue>
+          <FieldValue label="Tipo">
+            <TypeBadge type={order.tipo} />
+          </FieldValue>
+          <FieldValue label="Origen">
+            <OriginBadge origin={order.origen} />
+          </FieldValue>
+          <FieldValue label="Prioridad">
+            <PriorityBadge priority={order.prioridad} />
+          </FieldValue>
+          <FieldValue label="Mecanico actual">
+            {order.tecnicoAsignado?.nombre ?? 'Sin asignar'}
+          </FieldValue>
+          <FieldValue label="Creacion">{formatDateTimeValue(order.fechaCreacion)}</FieldValue>
+          <FieldValue label="Cierre">{formatDateTimeValue(order.fechaCierre)}</FieldValue>
+        </div>
 
-      {order.motivoDevolucionActual && (
-        <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <h3 className="text-sm font-semibold text-amber-900">Motivo de devolucion</h3>
-          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-amber-800">
-            {order.motivoDevolucionActual}
+        {order.motivoDevolucionActual && (
+          <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <h3 className="text-sm font-semibold text-amber-900">Motivo de devolucion</h3>
+            <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-amber-800">
+              {order.motivoDevolucionActual}
+            </p>
+          </section>
+        )}
+
+        <section className="surface p-4">
+          <h3 className="text-xs font-semibold uppercase text-slate-500">Descripcion</h3>
+          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+            {order.descripcion}
           </p>
         </section>
-      )}
 
-      <section className="surface p-4">
-        <h3 className="text-xs font-semibold uppercase text-slate-500">Descripcion</h3>
-        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
-          {order.descripcion}
-        </p>
-      </section>
+        {(order.novedad || order.programacionMantenimiento || order.jornadaOperativa) && (
+          <section className="grid gap-3 sm:grid-cols-2">
+            {order.novedad && (
+              <FieldValue label="Novedad">
+                {order.novedad.tipo} - {order.novedad.clasificacion ?? order.novedad.estado}
+              </FieldValue>
+            )}
+            {order.programacionMantenimiento && (
+              <FieldValue label="Programacion">
+                {order.programacionMantenimiento.tipo} - {order.programacionMantenimiento.criterio}
+              </FieldValue>
+            )}
+            {order.jornadaOperativa && (
+              <FieldValue label="Jornada de origen">
+                {order.jornadaOperativa.ruta
+                  ? `${order.jornadaOperativa.ruta.codigo} - ${order.jornadaOperativa.ruta.nombre}`
+                  : `Jornada ${String(order.jornadaOperativa.id)}`}{' '}
+                · {order.jornadaOperativa.estado.replaceAll('_', ' ')}
+              </FieldValue>
+            )}
+            {order.fechaObjetivoPreventivo && (
+              <FieldValue label="Fecha objetivo">
+                {formatDateValue(order.fechaObjetivoPreventivo)}
+              </FieldValue>
+            )}
+            {order.kilometrajeObjetivoPreventivo && (
+              <FieldValue label="Km objetivo">
+                {formatNumber(order.kilometrajeObjetivoPreventivo)} km
+              </FieldValue>
+            )}
+          </section>
+        )}
 
-      {(order.novedad || order.programacionMantenimiento || order.jornadaOperativa) && (
-        <section className="grid gap-3 sm:grid-cols-2">
-          {order.novedad && (
-            <FieldValue label="Novedad">
-              {order.novedad.tipo} - {order.novedad.clasificacion ?? order.novedad.estado}
-            </FieldValue>
-          )}
-          {order.programacionMantenimiento && (
-            <FieldValue label="Programacion">
-              {order.programacionMantenimiento.tipo} - {order.programacionMantenimiento.criterio}
-            </FieldValue>
-          )}
-          {order.jornadaOperativa && (
-            <FieldValue label="Jornada de origen">
-              {order.jornadaOperativa.ruta
-                ? `${order.jornadaOperativa.ruta.codigo} - ${order.jornadaOperativa.ruta.nombre}`
-                : `Jornada ${String(order.jornadaOperativa.id)}`}{' '}
-              · {order.jornadaOperativa.estado.replaceAll('_', ' ')}
-            </FieldValue>
-          )}
-          {order.fechaObjetivoPreventivo && (
-            <FieldValue label="Fecha objetivo">
-              {formatDateValue(order.fechaObjetivoPreventivo)}
-            </FieldValue>
-          )}
-          {order.kilometrajeObjetivoPreventivo && (
-            <FieldValue label="Km objetivo">
-              {formatNumber(order.kilometrajeObjetivoPreventivo)} km
-            </FieldValue>
+        {order.novedad?.evidencias !== undefined && (
+          <NoveltyEvidenceGallery
+            evidences={order.novedad.evidencias}
+            noveltyId={order.novedad.id}
+            onChange={(evidencias) =>
+              onOrderChange({
+                ...order,
+                novedad: order.novedad ? { ...order.novedad, evidencias } : null,
+              })
+            }
+          />
+        )}
+
+        {isAdmin && (
+          <section className="surface p-4">
+            <h3 className="text-xs font-semibold uppercase text-slate-500">
+              Acciones administrativas
+            </h3>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {order.acciones.puedeAsignar && (
+                <Button
+                  icon={<User size={14} />}
+                  onClick={() => onAssign({ mode: 'assign', order })}
+                  size="sm"
+                  variant="outline"
+                >
+                  Asignar
+                </Button>
+              )}
+              {order.acciones.puedeReasignar && (
+                <Button
+                  icon={<User size={14} />}
+                  onClick={() => onAssign({ mode: 'reassign', order })}
+                  size="sm"
+                  variant="outline"
+                >
+                  Reasignar
+                </Button>
+              )}
+              {order.acciones.puedeDevolver && (
+                <Button
+                  icon={<AlertTriangle size={14} />}
+                  onClick={() => onReturn(order)}
+                  size="sm"
+                  variant="outline"
+                >
+                  Devolver
+                </Button>
+              )}
+              {order.acciones.puedeCerrar && (
+                <Button
+                  icon={<CheckCircle size={14} />}
+                  onClick={() => onCloseOrder(order)}
+                  size="sm"
+                  variant="secondary"
+                >
+                  Cerrar
+                </Button>
+              )}
+              {!order.acciones.puedeAsignar &&
+                !order.acciones.puedeReasignar &&
+                !order.acciones.puedeDevolver &&
+                !order.acciones.puedeCerrar && (
+                  <p className="text-sm text-slate-500">
+                    No hay acciones administrativas disponibles.
+                  </p>
+                )}
+            </div>
+          </section>
+        )}
+
+        {isAdmin && (
+          <ConsumptionExceptionPanel
+            onFeedback={onFeedback}
+            onOrderChange={onOrderChange}
+            order={order}
+          />
+        )}
+
+        {isAdmin && (
+          <TechnicalReadingPanel
+            isAdmin={isAdmin}
+            onFeedback={onFeedback}
+            onOrderChange={onOrderChange}
+            order={order}
+          />
+        )}
+
+        <section className="surface p-4">
+          <h3 className="text-xs font-semibold uppercase text-slate-500">Lecturas tecnicas</h3>
+          {order.lecturasTecnicas.length === 0 ? (
+            <div className="mt-3">
+              <TimelineEmpty text="No hay lecturas tecnicas registradas." />
+            </div>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {order.lecturasTecnicas.map((reading) => (
+                <li
+                  className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                  key={reading.id}
+                >
+                  <strong>{reading.tipo.replaceAll('_', ' ')}</strong> ·{' '}
+                  {formatNumber(reading.kilometraje)} km
+                  <span className="mt-1 block text-xs text-slate-500">
+                    {formatDateTimeValue(reading.fechaLectura)} · {reading.registradoPor.nombre}
+                    {reading.motivo ? ` · ${reading.motivo}` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
         </section>
-      )}
 
-      {order.novedad?.evidencias !== undefined && (
-        <NoveltyEvidenceGallery
-          evidences={order.novedad.evidencias}
-          noveltyId={order.novedad.id}
-          onChange={(evidencias) =>
-            onOrderChange({
-              ...order,
-              novedad: order.novedad ? { ...order.novedad, evidencias } : null,
-            })
-          }
-        />
-      )}
+        <section className="grid gap-3 sm:grid-cols-2">
+          {isAdmin && (
+            <FieldValue label="Costo basico">{formatCurrency(order.costoTotal ?? 0)}</FieldValue>
+          )}
+          <FieldValue label="Responsable cierre">
+            {order.cerradaPor?.nombre ?? 'Sin cierre administrativo'}
+          </FieldValue>
+          <FieldValue label="Disponibilidad al cierre">
+            {order.disponibilidadAlCierre === null
+              ? 'Pendiente de cierre'
+              : order.disponibilidadAlCierre
+                ? 'Disponible'
+                : 'Con restricciones activas'}
+          </FieldValue>
+        </section>
 
-      {isAdmin && (
+        <section className="surface p-4">
+          <h3 className="text-xs font-semibold uppercase text-slate-500">Intervenciones</h3>
+          {order.intervenciones.length === 0 ? (
+            <div className="mt-3">
+              <TimelineEmpty text="Aun no hay intervenciones registradas." />
+            </div>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {order.intervenciones.map((intervention) => (
+                <article className="rounded-lg bg-slate-50 p-3" key={intervention.id}>
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {intervention.tecnico.nombre}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {formatDateTimeValue(intervention.fechaInicio)} -{' '}
+                      {intervention.fechaFin
+                        ? formatDateTimeValue(intervention.fechaFin)
+                        : 'Activa'}
+                    </p>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Diagnostico: {intervention.diagnostico ?? 'Sin diagnostico'}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Observaciones: {intervention.observaciones ?? 'Sin observaciones'}
+                  </p>
+                  {intervention.actividades.length > 0 && (
+                    <ul className="mt-3 space-y-2">
+                      {intervention.actividades.map((activity) => (
+                        <li
+                          className="rounded-lg bg-white px-3 py-2 text-sm text-slate-700"
+                          key={activity.id}
+                        >
+                          {activity.descripcion}
+                          <span className="mt-1 block text-xs text-slate-400">
+                            {formatDateTimeValue(activity.fechaRegistro)} -{' '}
+                            {activity.registradaPor.nombre}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
         <section className="surface p-4">
           <h3 className="text-xs font-semibold uppercase text-slate-500">
-            Acciones administrativas
+            {isAdmin ? 'Consumos y costo' : 'Consumos'}
           </h3>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {order.acciones.puedeAsignar && (
-              <Button
-                icon={<User size={14} />}
-                onClick={() => onAssign({ mode: 'assign', order })}
-                size="sm"
-                variant="outline"
+          {order.consumosRepuesto.length === 0 ? (
+            <div className="mt-3">
+              <TimelineEmpty text="No se han registrado consumos de repuestos." />
+            </div>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {order.consumosRepuesto.map((consumption) => (
+                <div
+                  className={`grid gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 ${
+                    isAdmin ? 'sm:grid-cols-[1fr_90px_110px]' : 'sm:grid-cols-[1fr_90px]'
+                  }`}
+                  key={consumption.id}
+                >
+                  <span>
+                    {consumption.repuesto.codigo} - {consumption.repuesto.nombre}
+                  </span>
+                  <span>{consumption.cantidad}</span>
+                  {isAdmin && (
+                    <span className="font-semibold">
+                      {formatCurrency(consumption.subtotal ?? 0)}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="surface p-4">
+          <h3 className="text-xs font-semibold uppercase text-slate-500">Historial de estados</h3>
+          <div className="mt-3 space-y-2">
+            {order.historialEstados.map((history) => (
+              <div
+                className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                key={history.id}
               >
-                Asignar
-              </Button>
-            )}
-            {order.acciones.puedeReasignar && (
-              <Button
-                icon={<User size={14} />}
-                onClick={() => onAssign({ mode: 'reassign', order })}
-                size="sm"
-                variant="outline"
-              >
-                Reasignar
-              </Button>
-            )}
-            {order.acciones.puedeDevolver && (
-              <Button
-                icon={<AlertTriangle size={14} />}
-                onClick={() => onReturn(order)}
-                size="sm"
-                variant="outline"
-              >
-                Devolver
-              </Button>
-            )}
-            {order.acciones.puedeCerrar && (
-              <Button
-                icon={<CheckCircle size={14} />}
-                onClick={() => onCloseOrder(order)}
-                size="sm"
-                variant="secondary"
-              >
-                Cerrar
-              </Button>
-            )}
-            {!order.acciones.puedeAsignar &&
-              !order.acciones.puedeReasignar &&
-              !order.acciones.puedeDevolver &&
-              !order.acciones.puedeCerrar && (
-                <p className="text-sm text-slate-500">
-                  No hay acciones administrativas disponibles.
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    {history.estadoAnterior ? statusLabels[history.estadoAnterior] : 'Creacion'} -{' '}
+                    {statusLabels[history.estadoNuevo]}
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    {formatDateTimeValue(history.fechaCambio)}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {history.cambiadoPor.nombre}
+                  {history.observacion ? `: ${history.observacion}` : ''}
                 </p>
-              )}
+              </div>
+            ))}
           </div>
         </section>
-      )}
 
-      {isAdmin && (
-        <ConsumptionExceptionPanel
-          onFeedback={onFeedback}
-          onOrderChange={onOrderChange}
-          order={order}
-        />
-      )}
+        <section className="surface p-4">
+          <h3 className="text-xs font-semibold uppercase text-slate-500">Reasignaciones</h3>
+          {order.reasignaciones.length === 0 ? (
+            <div className="mt-3">
+              <TimelineEmpty text="Sin reasignaciones registradas." />
+            </div>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {order.reasignaciones.map((reassignment) => (
+                <div
+                  className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                  key={reassignment.id}
+                >
+                  {reassignment.tecnicoAnterior?.nombre ?? 'Sin mecanico'} -{' '}
+                  {reassignment.tecnicoNuevo.nombre}
+                  <span className="mt-1 block text-xs text-slate-500">
+                    {formatDateTimeValue(reassignment.fechaReasignacion)} - {reassignment.motivo}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
+        <section className="surface p-4">
+          <h3 className="text-xs font-semibold uppercase text-slate-500">
+            Historial tecnico del bus
+          </h3>
+          {order.historialTecnicoBus.length === 0 ? (
+            <div className="mt-3">
+              <TimelineEmpty text="Sin ordenes cerradas previas para este bus." />
+            </div>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {order.historialTecnicoBus.map((item) => (
+                <div
+                  className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                  key={item.id}
+                >
+                  {item.codigo} - {typeLabels[item.tipo]}
+                  <span className="mt-1 block text-xs text-slate-500">
+                    {formatDateTimeValue(item.fechaCierre)} -{' '}
+                    {item.diagnostico ?? 'Sin diagnostico'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </details>
       {isMechanic && (
         <TechnicalPanel
           key={`${order.id}-${order.intervenciones.find((intervention) => !intervention.fechaFin)?.id ?? 'no-active'}`}
@@ -1525,208 +1923,6 @@ function WorkOrderDetail({
           submitting={submitting}
         />
       )}
-
-      {(isAdmin || isMechanic) && (
-        <TechnicalReadingPanel
-          isAdmin={isAdmin}
-          onFeedback={onFeedback}
-          onOrderChange={onOrderChange}
-          order={order}
-        />
-      )}
-
-      <section className="surface p-4">
-        <h3 className="text-xs font-semibold uppercase text-slate-500">Lecturas tecnicas</h3>
-        {order.lecturasTecnicas.length === 0 ? (
-          <div className="mt-3">
-            <TimelineEmpty text="No hay lecturas tecnicas registradas." />
-          </div>
-        ) : (
-          <ul className="mt-3 space-y-2">
-            {order.lecturasTecnicas.map((reading) => (
-              <li
-                className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700"
-                key={reading.id}
-              >
-                <strong>{reading.tipo.replaceAll('_', ' ')}</strong> ·{' '}
-                {formatNumber(reading.kilometraje)} km
-                <span className="mt-1 block text-xs text-slate-500">
-                  {formatDateTimeValue(reading.fechaLectura)} · {reading.registradoPor.nombre}
-                  {reading.motivo ? ` · ${reading.motivo}` : ''}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="grid gap-3 sm:grid-cols-2">
-        {isAdmin && (
-          <FieldValue label="Costo basico">{formatCurrency(order.costoTotal ?? 0)}</FieldValue>
-        )}
-        <FieldValue label="Responsable cierre">
-          {order.cerradaPor?.nombre ?? 'Sin cierre administrativo'}
-        </FieldValue>
-        <FieldValue label="Disponibilidad al cierre">
-          {order.disponibilidadAlCierre === null
-            ? 'Pendiente de cierre'
-            : order.disponibilidadAlCierre
-              ? 'Disponible'
-              : 'Con restricciones activas'}
-        </FieldValue>
-      </section>
-
-      <section className="surface p-4">
-        <h3 className="text-xs font-semibold uppercase text-slate-500">Intervenciones</h3>
-        {order.intervenciones.length === 0 ? (
-          <div className="mt-3">
-            <TimelineEmpty text="Aun no hay intervenciones registradas." />
-          </div>
-        ) : (
-          <div className="mt-3 space-y-3">
-            {order.intervenciones.map((intervention) => (
-              <article className="rounded-lg bg-slate-50 p-3" key={intervention.id}>
-                <div className="flex flex-wrap justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-900">
-                    {intervention.tecnico.nombre}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {formatDateTimeValue(intervention.fechaInicio)} -{' '}
-                    {intervention.fechaFin ? formatDateTimeValue(intervention.fechaFin) : 'Activa'}
-                  </p>
-                </div>
-                <p className="mt-2 text-sm text-slate-600">
-                  Diagnostico: {intervention.diagnostico ?? 'Sin diagnostico'}
-                </p>
-                <p className="mt-1 text-sm text-slate-600">
-                  Observaciones: {intervention.observaciones ?? 'Sin observaciones'}
-                </p>
-                {intervention.actividades.length > 0 && (
-                  <ul className="mt-3 space-y-2">
-                    {intervention.actividades.map((activity) => (
-                      <li
-                        className="rounded-lg bg-white px-3 py-2 text-sm text-slate-700"
-                        key={activity.id}
-                      >
-                        {activity.descripcion}
-                        <span className="mt-1 block text-xs text-slate-400">
-                          {formatDateTimeValue(activity.fechaRegistro)} -{' '}
-                          {activity.registradaPor.nombre}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="surface p-4">
-        <h3 className="text-xs font-semibold uppercase text-slate-500">
-          {isAdmin ? 'Consumos y costo' : 'Consumos'}
-        </h3>
-        {order.consumosRepuesto.length === 0 ? (
-          <div className="mt-3">
-            <TimelineEmpty text="No se han registrado consumos de repuestos." />
-          </div>
-        ) : (
-          <div className="mt-3 space-y-2">
-            {order.consumosRepuesto.map((consumption) => (
-              <div
-                className={`grid gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 ${
-                  isAdmin ? 'sm:grid-cols-[1fr_90px_110px]' : 'sm:grid-cols-[1fr_90px]'
-                }`}
-                key={consumption.id}
-              >
-                <span>
-                  {consumption.repuesto.codigo} - {consumption.repuesto.nombre}
-                </span>
-                <span>{consumption.cantidad}</span>
-                {isAdmin && (
-                  <span className="font-semibold">{formatCurrency(consumption.subtotal ?? 0)}</span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="surface p-4">
-        <h3 className="text-xs font-semibold uppercase text-slate-500">Historial de estados</h3>
-        <div className="mt-3 space-y-2">
-          {order.historialEstados.map((history) => (
-            <div
-              className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700"
-              key={history.id}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span>
-                  {history.estadoAnterior ? statusLabels[history.estadoAnterior] : 'Creacion'} -{' '}
-                  {statusLabels[history.estadoNuevo]}
-                </span>
-                <span className="text-xs text-slate-400">
-                  {formatDateTimeValue(history.fechaCambio)}
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-slate-500">
-                {history.cambiadoPor.nombre}
-                {history.observacion ? `: ${history.observacion}` : ''}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="surface p-4">
-        <h3 className="text-xs font-semibold uppercase text-slate-500">Reasignaciones</h3>
-        {order.reasignaciones.length === 0 ? (
-          <div className="mt-3">
-            <TimelineEmpty text="Sin reasignaciones registradas." />
-          </div>
-        ) : (
-          <div className="mt-3 space-y-2">
-            {order.reasignaciones.map((reassignment) => (
-              <div
-                className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700"
-                key={reassignment.id}
-              >
-                {reassignment.tecnicoAnterior?.nombre ?? 'Sin mecanico'} -{' '}
-                {reassignment.tecnicoNuevo.nombre}
-                <span className="mt-1 block text-xs text-slate-500">
-                  {formatDateTimeValue(reassignment.fechaReasignacion)} - {reassignment.motivo}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="surface p-4">
-        <h3 className="text-xs font-semibold uppercase text-slate-500">
-          Historial tecnico del bus
-        </h3>
-        {order.historialTecnicoBus.length === 0 ? (
-          <div className="mt-3">
-            <TimelineEmpty text="Sin ordenes cerradas previas para este bus." />
-          </div>
-        ) : (
-          <div className="mt-3 space-y-2">
-            {order.historialTecnicoBus.map((item) => (
-              <div
-                className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700"
-                key={item.id}
-              >
-                {item.codigo} - {typeLabels[item.tipo]}
-                <span className="mt-1 block text-xs text-slate-500">
-                  {formatDateTimeValue(item.fechaCierre)} - {item.diagnostico ?? 'Sin diagnostico'}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
     </div>
   )
 }

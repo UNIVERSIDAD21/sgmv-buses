@@ -14,6 +14,46 @@ afterEach(() => {
 })
 
 describe('P4 journey frontend', () => {
+  it('reports an overdue closure without a mileage input or automatic closure', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    const fetchMock = mockApi(journeyHandler('CONDUCTOR', { overdue: true }))
+    render(<App />)
+    expect(await screen.findByText('Cierre atrasado')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Registrar cierre ahora' })).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Informar que no puedo registrar el cierre' }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Informar cierre pendiente' })
+    expect(within(dialog).queryByLabelText(/odómetro/i)).not.toBeInTheDocument()
+    fireEvent.change(within(dialog).getByLabelText(/Motivo/i), {
+      target: { value: 'No tengo acceso al bus para observar el odómetro.' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: /Confirmar/i }))
+    expect(
+      await screen.findByText(/Informe enviado a la bandeja interna de Despacho/i),
+    ).toBeInTheDocument()
+    expect(
+      fetchMock.mock.calls
+        .filter(([url, init]) => init?.method === 'POST' && !String(url).includes('/auth/'))
+        .map(([url]) => String(url)),
+    ).toEqual([expect.stringContaining('/informar-cierre-pendiente')])
+    expect(
+      screen.queryByRole('button', { name: 'Informar que no puedo registrar el cierre' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows dispatch an independent overdue queue with bus, driver and real closure action', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    mockApi(journeyHandler('DESPACHADOR', { overdue: true }))
+    render(<App />)
+    const queue = await screen.findByRole('region', { name: 'Jornadas pendientes de cierre' })
+    expect(within(queue).getByText(/BUS-JORNADA-01/)).toBeInTheDocument()
+    expect(within(queue).getByText(/Atraso: 25 h/)).toBeInTheDocument()
+    expect(
+      within(queue).getByRole('button', { name: 'Registrar cierre ahora' }),
+    ).toBeInTheDocument()
+  })
+
   it('lets the dispatcher program a journey from controlled options and session authorship', async () => {
     window.history.pushState({}, '', '/jornadas')
     const fetchMock = mockApi(journeyHandler('DESPACHADOR'))

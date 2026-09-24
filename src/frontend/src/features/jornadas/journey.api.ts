@@ -29,6 +29,7 @@ export interface JourneyReassignInput {
 }
 
 export function listJourneys(input: {
+  cierreAtrasado?: boolean
   buscar?: string
   estado?: JourneyStatus | ''
   pagina?: number
@@ -36,7 +37,15 @@ export function listJourneys(input: {
   const query = new URLSearchParams({ limite: '12', pagina: String(input.pagina ?? 1) })
   if (input.buscar?.trim()) query.set('buscar', input.buscar.trim())
   if (input.estado) query.set('estado', input.estado)
+  if (input.cierreAtrasado) query.set('cierreAtrasado', 'true')
   return apiRequest<JourneyListResponse>(`/jornadas?${query.toString()}`)
+}
+
+export function reportJourneyClosureProblem(journeyId: number, motivo: string) {
+  return apiRequest<{ jornada: JourneyDto }>(`/jornadas/${journeyId}/informar-cierre-pendiente`, {
+    method: 'POST',
+    body: JSON.stringify({ motivo }),
+  })
 }
 
 export function getMyJourney() {

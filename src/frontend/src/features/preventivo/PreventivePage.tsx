@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -793,6 +793,35 @@ export default function PreventivePage() {
     return (
       <section className="surface p-4">
         <h3 className="text-xs font-semibold uppercase text-slate-500">Acciones administrativas</h3>
+        {schedule.ordenActiva && (
+          <div className="mt-3 space-y-3 rounded-lg bg-emerald-50 p-4 text-sm text-emerald-950">
+            <p className="font-semibold">
+              Siguiente responsable:{' '}
+              {['PENDIENTE_ASIGNACION', 'COMPLETADA_TECNICO'].includes(schedule.ordenActiva.estado)
+                ? 'Administrador'
+                : 'Mecánico asignado'}
+            </p>
+            <p>
+              {schedule.ordenActiva.estado === 'PENDIENTE_ASIGNACION'
+                ? 'Abre la orden y asigna un Mecánico para iniciar el mantenimiento.'
+                : schedule.ordenActiva.estado === 'COMPLETADA_TECNICO'
+                  ? 'El Mecánico terminó. Revisa el trabajo y cierra la orden, o devuélvela con el motivo de corrección.'
+                  : schedule.ordenActiva.estado === 'DEVUELTA_CORRECCION'
+                    ? 'El Mecánico debe corregir lo solicitado y volver a terminar el mantenimiento.'
+                    : 'El Mecánico debe ejecutar la orden. Después podrás revisar y cerrar el trabajo.'}
+            </p>
+            <Link
+              className="inline-flex rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white"
+              to={`/ordenes-trabajo?detalle=${schedule.ordenActiva.id}`}
+            >
+              Abrir orden {schedule.ordenActiva.codigo}
+            </Link>
+            <p>
+              No se creará otra orden ni se reprogramará este mantenimiento mientras la orden siga
+              activa.
+            </p>
+          </div>
+        )}
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {!schedule.ordenActiva && schedule.fuente === 'INDEPENDIENTE' && (
             <Button

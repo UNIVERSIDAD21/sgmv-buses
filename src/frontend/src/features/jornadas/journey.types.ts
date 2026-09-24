@@ -26,6 +26,7 @@ export interface AvailabilityCauseDto {
 }
 
 export interface JourneyDto {
+  cierrePendiente?: { reportadoAt: string; motivo: string; reportadoPor: JourneyUserRefDto } | null
   proyeccionDemo?: {
     origen: 'PROYECCION_SIMULADA'
     origenSemanticaDemo: 'SIMULADO_SGMV'

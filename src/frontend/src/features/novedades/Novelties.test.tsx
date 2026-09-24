@@ -6,6 +6,8 @@ import { getPath, mockApi, noveltyHandler } from '../../test/app-test-helpers'
 import App from '../../App'
 
 beforeEach(() => {
+  URL.createObjectURL = vi.fn(() => 'blob:preview-test')
+  URL.revokeObjectURL = vi.fn()
   window.history.pushState({}, '', '/')
 })
 
@@ -95,6 +97,7 @@ describe('RF-02 novelty frontend', () => {
       target: { files: [image] },
     })
     expect(screen.getByText('costado.png')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Vista previa de costado.png' })).toBeInTheDocument()
     expect(screen.getByText(/vehículo esté detenido/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Quitar' }))
     expect(screen.queryByText('costado.png')).not.toBeInTheDocument()

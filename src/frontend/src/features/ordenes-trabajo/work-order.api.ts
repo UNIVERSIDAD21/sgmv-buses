@@ -48,6 +48,7 @@ export interface TransitionObservationInput {
 }
 
 export interface InterventionUpdateInput {
+  intervencionId?: number
   diagnostico?: string
   observaciones?: string
 }

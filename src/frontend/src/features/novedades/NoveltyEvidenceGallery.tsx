@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 
 import Button from '../../components/ui/Button'
 import { ApiError, apiResourceUrl } from '../../lib/api'
@@ -12,6 +12,22 @@ function formatFileSize(bytes: number) {
 
 function errorMessage(error: unknown) {
   return error instanceof ApiError ? error.message : 'No se pudo completar la operación.'
+}
+
+function ImagePreview({ file }: { file: File }) {
+  const ref = useRef<HTMLImageElement>(null)
+  useEffect(() => {
+    const preview = URL.createObjectURL(file)
+    if (ref.current) ref.current.src = preview
+    return () => URL.revokeObjectURL(preview)
+  }, [file])
+  return (
+    <img
+      ref={ref}
+      alt={`Vista previa de ${file.name}`}
+      className="h-16 w-20 shrink-0 rounded object-cover"
+    />
+  )
 }
 
 export function NoveltyEvidencePicker({
@@ -58,6 +74,7 @@ export function NoveltyEvidencePicker({
               className="flex items-center justify-between gap-3"
               key={`${file.name}-${file.lastModified}`}
             >
+              <ImagePreview file={file} />
               <span className="min-w-0 flex-1 truncate">{file.name}</span>
               <span className="shrink-0">{formatFileSize(file.size)}</span>
               <button
@@ -96,6 +113,7 @@ export default function NoveltyEvidenceGallery({
   const [error, setError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [files, setFiles] = useState<File[]>([])
+  const [uploadId, setUploadId] = useState(() => crypto.randomUUID())
   const [inputVersion, setInputVersion] = useState(0)
   const [reason, setReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -109,12 +127,15 @@ export default function NoveltyEvidenceGallery({
     setFeedback(null)
     setSubmitting(true)
     try {
-      const result = await uploadNoveltyEvidence(noveltyId, files, crypto.randomUUID())
+      const result = await uploadNoveltyEvidence(noveltyId, files, uploadId)
+      setUploadId(crypto.randomUUID())
       setFiles([])
       setInputVersion((current) => current + 1)
       onChange?.(result.evidencias)
       setFeedback('Las imágenes quedaron asociadas a la novedad.')
     } catch (uploadError) {
+      if (uploadError instanceof ApiError && uploadError.status !== 409)
+        setUploadId(crypto.randomUUID())
       setError(errorMessage(uploadError))
     } finally {
       setSubmitting(false)
@@ -179,6 +200,7 @@ export default function NoveltyEvidenceGallery({
                   alt={`Evidencia ${evidence.nombreOriginal}`}
                   className="aspect-video w-full bg-slate-100 object-cover"
                   loading="lazy"
+                  crossOrigin="use-credentials"
                   src={apiResourceUrl(evidence.contenidoUrl)}
                 />
               </a>
@@ -216,6 +238,7 @@ export default function NoveltyEvidenceGallery({
             files={files}
             key={inputVersion}
             onChange={(selected, pickerError) => {
+              setUploadId(crypto.randomUUID())
               setFiles(selected)
               setError(pickerError)
             }}

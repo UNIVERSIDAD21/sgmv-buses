@@ -14,6 +14,30 @@ afterEach(() => {
 })
 
 describe('RF-03 preventive maintenance frontend', () => {
+  it.each([
+    ['PENDIENTE_ASIGNACION', /Abre la orden y asigna un Mecánico/i],
+    ['ASIGNADA', /Mecánico debe ejecutar/i],
+    ['EN_EJECUCION', /Mecánico debe ejecutar/i],
+    ['DEVUELTA_CORRECCION', /Mecánico debe corregir/i],
+    ['COMPLETADA_TECNICO', /Revisa el trabajo y cierra/i],
+  ])(
+    'guides the next responsible actor for %s without offering a duplicate',
+    async (orderStatus, guidance) => {
+      window.history.pushState({}, '', '/mantenimiento-preventivo?detalle=2056')
+      mockApi(preventiveHandler('ADMINISTRADOR', { orderStatus: String(orderStatus) }))
+      render(<App />)
+      const dialog = await screen.findByRole('dialog', { name: /Detalle preventivo/i })
+      expect(within(dialog).getByText(guidance)).toBeInTheDocument()
+      expect(within(dialog).getByRole('link', { name: /Abrir orden/i })).toHaveAttribute(
+        'href',
+        '/ordenes-trabajo?detalle=2044',
+      )
+      expect(
+        within(dialog).queryByRole('button', { name: /Generar orden|Reprogramar/i }),
+      ).not.toBeInTheDocument()
+    },
+  )
+
   it('loads the administrative preventive list with summary, filters and pagination', async () => {
     window.history.pushState({}, '', '/mantenimiento-preventivo')
     const fetchMock = mockApi(preventiveHandler('ADMINISTRADOR'))
@@ -332,20 +356,8 @@ describe('RF-03 preventive maintenance frontend', () => {
     expect(String(createCall?.[1]?.body)).not.toContain('modeloBusId')
     expect(String(createCall?.[1]?.body)).not.toContain('claveTarea')
 
-    fireEvent.click(screen.getByRole('button', { name: /^Asignar a buses$/i }))
-    const applyDialog = await screen.findByRole('dialog', { name: /Asignar rutina a un bus/i })
-    fireEvent.click(within(applyDialog).getByRole('button', { name: /^Asignar rutina$/i }))
-    expect(
-      await screen.findByText(/mantenimiento programado ya tiene sus objetivos/i),
-    ).toBeInTheDocument()
-    expect(
-      fetchMock.mock.calls.some(
-        ([input, init]) =>
-          String(input).endsWith('/mantenimiento-preventivo/programaciones') &&
-          init?.method === 'POST' &&
-          JSON.parse(String(init.body)).planId === 2052,
-      ),
-    ).toBe(true)
+    expect(screen.queryByRole('button', { name: /Asignar a buses/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/Aplica únicamente a:/i)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /^Versiones$/i }))
     expect(
@@ -400,17 +412,25 @@ describe('RF-03 preventive maintenance frontend', () => {
 
   it('shows the target and opens an existing scheduled maintenance without duplication', async () => {
     window.history.pushState({}, '', '/mantenimiento-preventivo')
-    mockApi(preventiveHandler('ADMINISTRADOR', { planAlreadyExists: true }))
+    mockApi(preventiveHandler('ADMINISTRADOR', { planAlreadyExists: true, modelPlan: true }))
     render(<App />)
 
     fireEvent.click(await screen.findByRole('button', { name: /Rutinas de mantenimiento/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /^Asignar a buses$/i }))
-    const dialog = await screen.findByRole('dialog', { name: /Asignar rutina a un bus/i })
-    expect(within(dialog).getByText(/Objetivo que se programara/i)).toBeInTheDocument()
+    fireEvent.click(
+      await screen.findByRole('button', { name: /^Asignar a buses de este modelo$/i }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: /Asignar a buses de este modelo/i })
     expect(within(dialog).getByText(/Buses no elegibles \(0\)/i)).toBeInTheDocument()
-
-    fireEvent.click(within(dialog).getByRole('button', { name: /^Asignar rutina$/i }))
-    expect(await screen.findByText(/Esta rutina ya estaba asignada a ese bus/i)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: /Seleccionar todos/i }))
+    fireEvent.click(within(dialog).getByRole('button', { name: /Revisar programación/i }))
+    expect(
+      await within(dialog).findByText(/Se crearán 0 programaciones para 1 buses/i),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByText(/Ya programado; se conserva/i)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: /Confirmar programaciones/i }))
+    expect(
+      await screen.findByText(/0 programaciones creadas. 1 existentes conservadas/i),
+    ).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Abrir mantenimiento programado/i }))
     expect(await screen.findByRole('heading', { name: /Detalle preventivo/i })).toBeInTheDocument()
   })

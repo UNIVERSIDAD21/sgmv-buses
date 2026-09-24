@@ -53,7 +53,9 @@ export function getPath(input: RequestInfo | URL) {
   return new URL(input.url).pathname
 }
 
-export function mockApi(handler: (path: string, init?: RequestInit) => Promise<Response>) {
+export function mockApi(
+  handler: (path: string, init?: RequestInit, query?: URLSearchParams) => Promise<Response>,
+) {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const path = getPath(input)
 
@@ -69,7 +71,11 @@ export function mockApi(handler: (path: string, init?: RequestInit) => Promise<R
       return Promise.resolve(ok({ items: [], page: 1, pageSize: 10, total: 0, totalPages: 0 }))
     }
 
-    return handler(path, init)
+    return handler(
+      path,
+      init,
+      new URL(typeof input === 'string' || input instanceof URL ? input : input.url).searchParams,
+    )
   })
 
   vi.stubGlobal('fetch', fetchMock)
@@ -247,7 +253,7 @@ export function journeyFixture(
     conductor: { id: 2071, nombre: 'Conductor', rol: 'CONDUCTOR' },
     estado: status,
     fechaCambio: null,
-    finProgramado: '2026-09-06T22:00:00.000Z',
+    finProgramado: new Date(Date.now() + 3_600_000).toISOString(),
     finReal: finished ? '2026-09-06T21:45:00.000Z' : null,
     finalizadaPor: finished ? { id: 2071, nombre: 'Conductor', rol: 'CONDUCTOR' } : null,
     id: 2029,
@@ -1883,11 +1889,25 @@ export function fleetHandler(role: RoleCode = 'ADMINISTRADOR') {
 
 export function journeyHandler(
   role: RoleCode = 'DESPACHADOR',
-  options: { empty?: boolean; fail?: boolean } = {},
+  options: { empty?: boolean; fail?: boolean; overdue?: boolean } = {},
 ) {
-  let currentStatus: 'PROGRAMADA' | 'EN_CURSO' | 'FINALIZADA' = 'PROGRAMADA'
+  let currentStatus: 'PROGRAMADA' | 'EN_CURSO' | 'FINALIZADA' = options.overdue
+    ? 'EN_CURSO'
+    : 'PROGRAMADA'
+  let cierrePendiente: {
+    motivo: string
+    reportadoAt: string
+    reportadoPor: { id: number; nombre: string; rol: string }
+  } | null = null
+  const currentJourney = () => ({
+    ...journeyFixture(currentStatus),
+    cierrePendiente,
+    ...(options.overdue
+      ? { finProgramado: new Date(Date.now() - 25 * 3_600_000).toISOString() }
+      : {}),
+  })
 
-  return async (path: string, init?: RequestInit) => {
+  return async (path: string, init?: RequestInit, query?: URLSearchParams) => {
     if (path === '/auth/me') {
       return ok({ user: userForRole(role) })
     }
@@ -1898,7 +1918,7 @@ export function journeyHandler(
     }
     if (path === '/jornadas/mi-jornada') {
       if (options.fail) return apiError(500, 'INTERNAL_ERROR', 'Fallo controlado de jornadas')
-      const journey = options.empty ? null : journeyFixture(currentStatus)
+      const journey = options.empty ? null : currentJourney()
       return ok({
         jornadaActual: currentStatus === 'EN_CURSO' ? journey : null,
         proximaJornada: currentStatus === 'PROGRAMADA' ? journey : null,
@@ -1906,14 +1926,27 @@ export function journeyHandler(
     }
     if (path === '/jornadas' && !init?.method) {
       if (options.fail) return apiError(500, 'INTERNAL_ERROR', 'Fallo controlado de jornadas')
-      const jornadas = options.empty ? [] : [journeyFixture(currentStatus)]
+      const jornadas =
+        options.empty ||
+        (query?.get('cierreAtrasado') === 'true' &&
+          (!options.overdue || currentStatus !== 'EN_CURSO'))
+          ? []
+          : [currentJourney()]
       return ok({
         jornadas,
         paginacion: { limite: 12, pagina: 1, paginas: 1, total: jornadas.length },
       })
     }
     if (path === '/jornadas/2029' && !init?.method) {
-      return ok({ jornada: journeyFixture(currentStatus) })
+      return ok({ jornada: currentJourney() })
+    }
+    if (path === '/jornadas/2029/informar-cierre-pendiente' && init?.method === 'POST') {
+      cierrePendiente = {
+        motivo: JSON.parse(String(init.body)).motivo,
+        reportadoAt: new Date().toISOString(),
+        reportadoPor: { id: 2071, nombre: 'Conductor', rol: 'CONDUCTOR' },
+      }
+      return ok({ jornada: currentJourney() })
     }
     if (path === '/jornadas' && init?.method === 'POST') {
       return ok({ jornada: journeyFixture('PROGRAMADA') })
@@ -2049,6 +2082,8 @@ export function preventiveHandler(
     failList: boolean
     orderAlreadyExists: boolean
     planAlreadyExists: boolean
+    modelPlan: boolean
+    orderStatus: string
   }> = {},
 ) {
   let generated = false
@@ -2105,7 +2140,9 @@ export function preventiveHandler(
             claveTarea: 'FRENOS.001',
             componente: 'Frenos',
             criterio: 'FECHA',
-            destino: { busId: 2006, tipo: 'BUS' },
+            destino: options.modelPlan
+              ? { modeloBusId: 2033, tipo: 'MODELO' }
+              : { busId: 2006, tipo: 'BUS' },
             id: 2052,
             intervaloDias: 30,
             intervaloKm: null,
@@ -2118,6 +2155,29 @@ export function preventiveHandler(
     }
     if (path === '/mantenimiento-preventivo/planes' && init?.method === 'POST')
       return ok({ plan: { id: 2054 } })
+    if (path === '/mantenimiento-preventivo/planes/previsualizar-aplicacion')
+      return ok({
+        revision: 'a'.repeat(64),
+        nuevas: options.planAlreadyExists ? 0 : 1,
+        items: [
+          {
+            busId: 2006,
+            codigoInterno: 'ABC123',
+            planId: 2052,
+            programacionId: options.planAlreadyExists ? 2056 : null,
+            fechaProgramada: '2026-10-23',
+            kilometrajeObjetivo: null,
+            particular: false,
+          },
+        ],
+      })
+    if (path === '/mantenimiento-preventivo/planes/aplicar-lote')
+      return ok({
+        creadas: options.planAlreadyExists ? 0 : 1,
+        resultados: [
+          { programacion: preventiveOne, yaExistia: Boolean(options.planAlreadyExists) },
+        ],
+      })
     if (path === '/mantenimiento-preventivo/planes/2052' && !init?.method)
       return ok({
         plan: {
@@ -2200,7 +2260,16 @@ export function preventiveHandler(
 
     if (path === '/mantenimiento-preventivo/programaciones/2056' && !init?.method) {
       return ok({
-        programacion: generated ? preventiveWithOrder : updated ? preventiveUpdated : preventiveOne,
+        programacion: options.orderStatus
+          ? {
+              ...preventiveWithOrder,
+              ordenActiva: { ...preventiveOrder, estado: options.orderStatus },
+            }
+          : generated
+            ? preventiveWithOrder
+            : updated
+              ? preventiveUpdated
+              : preventiveOne,
       })
     }
 

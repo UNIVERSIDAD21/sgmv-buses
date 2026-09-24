@@ -236,13 +236,22 @@ describe('RF-04 work order frontend', () => {
     expect(screen.queryByText(/Costo basico/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/Consumos y costo/i)).not.toBeInTheDocument()
 
+    expect(screen.getByRole('heading', { name: 'Qué debes hacer ahora' })).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Fecha del evento$/i)).not.toHaveValue('')
+    fireEvent.click(screen.getByLabelText('¿La lectura fue tomada antes?'))
     fireEvent.change(screen.getByLabelText(/^Fecha del evento$/i), {
       target: { value: '2026-08-28T12:06' },
     })
     fireEvent.change(screen.getByLabelText(/^Kilometraje$/i), {
       target: { value: '45201' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /Registrar lectura/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Revisar lectura/i }))
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) => String(url).endsWith('/lecturas') && init?.method === 'POST',
+      ),
+    ).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar lectura real/i }))
     expect(await screen.findByText(/Lectura tecnica registrada/i)).toBeInTheDocument()
     expect(await screen.findByText(/45\.201 km/i)).toBeInTheDocument()
 
@@ -255,22 +264,33 @@ describe('RF-04 work order frontend', () => {
     fireEvent.change(screen.getByLabelText(/Observaciones tecnicas/i), {
       target: { value: 'Observaciones tecnicas desde frontend.' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /Guardar tecnica/i }))
-    expect(await screen.findByText(/Intervencion actualizada/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Guardado automáticamente/i)).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText(/Actividad realizada/i), {
       target: { value: 'Revision y ajuste de frenos' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /Registrar actividad/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Añadir actividad realizada/i }))
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) => String(url).endsWith('/actividades') && init?.method === 'POST',
+      ),
+    ).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: /^Confirmar actividad$/i }))
     expect(await screen.findByText(/Actividad registrada/i)).toBeInTheDocument()
 
     expect(await screen.findByText(/Pastilla de freno/i)).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText(/^Repuesto$/i), { target: { value: '2064' } })
     fireEvent.change(screen.getByLabelText(/^Cantidad$/i), { target: { value: '1' } })
-    fireEvent.click(screen.getByRole('button', { name: /Registrar consumo/i }))
-    expect(await screen.findByText(/Consumo registrado/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Registrar repuesto utilizado/i }))
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) => String(url).endsWith('/consumos') && init?.method === 'POST',
+      ),
+    ).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: /^Confirmar uso de repuesto$/i }))
+    expect(await screen.findByText(/Repuesto utilizado registrado/i)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /^Completar$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Terminar mantenimiento$/i }))
     const completeDialog = await screen.findByRole('dialog', { name: /Completar orden/i })
     fireEvent.click(within(completeDialog).getByRole('button', { name: /Confirmar completado/i }))
     expect(await screen.findByText(/Orden completada tecnicamente/i)).toBeInTheDocument()

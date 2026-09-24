@@ -327,8 +327,10 @@ export default function BusFormPage() {
                   ))}
                 </select>
                 <span className="mt-1 block text-xs text-slate-400">
-                  Permite aplicar rutinas de mantenimiento y repuestos compatibles. La marca y el
-                  modelo legados se conservan como fueron registrados.
+                  Al registrar el bus se programan automáticamente las rutinas activas de este
+                  modelo. Si cambias de modelo, se ajustan las programaciones sin borrar órdenes en
+                  curso. También determina los repuestos compatibles; la marca y el modelo legados
+                  se conservan.
                 </span>
                 <span className="mt-1 block text-xs text-slate-400">
                   {modelosBus.length} configuración(es) activa(s) disponible(s).
