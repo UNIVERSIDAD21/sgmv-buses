@@ -42,9 +42,11 @@ function technicalReadingPanel(page: Page): Locator {
 async function registerReading(page: Page, input: { date: Date; mileage: string; type: string }) {
   const panel = technicalReadingPanel(page)
   await panel.getByLabel('Tipo').selectOption(input.type)
+  await panel.getByLabel('¿La lectura fue tomada antes?').check()
   await panel.getByLabel('Fecha del evento').fill(toLocalInput(input.date))
   await panel.getByLabel('Kilometraje').fill(input.mileage)
-  await panel.getByRole('button', { name: 'Registrar lectura' }).click()
+  await panel.getByRole('button', { name: 'Revisar lectura' }).click()
+  await panel.getByRole('button', { name: 'Confirmar lectura real' }).click()
   await expect(page.getByText('Lectura tecnica registrada.')).toBeVisible()
 }
 
@@ -170,10 +172,16 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
 
   await page.getByLabel('Diagnostico').fill(`Diagnostico tecnico ${marker}`)
   await page.getByLabel('Observaciones tecnicas').fill('Intervencion activa verificada.')
-  await page.getByRole('button', { name: 'Guardar tecnica' }).click()
-  await expect(page.getByText('Intervencion actualizada.')).toBeVisible()
+  await expect(page.getByText('Guardado automáticamente')).toBeVisible()
+  await page.reload()
+  await openOrder(page, marker)
+  await expect(page.getByLabel('Diagnostico')).toHaveValue(`Diagnostico tecnico ${marker}`)
+  await expect(page.getByLabel('Observaciones tecnicas')).toHaveValue(
+    'Intervencion activa verificada.',
+  )
   await page.getByLabel('Actividad realizada').fill(`Actividad controlada ${marker}`)
-  await page.getByRole('button', { name: 'Registrar actividad' }).click()
+  await page.getByRole('button', { name: 'Añadir actividad realizada' }).click()
+  await page.getByRole('button', { name: 'Confirmar actividad', exact: true }).click()
   await expect(page.getByText('Actividad registrada.')).toBeVisible()
 
   await registerReading(page, {
@@ -182,7 +190,17 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
     type: 'REVISION_TECNICA',
   })
 
-  await page.getByRole('button', { name: 'Completar' }).click()
+  await expect(page.getByRole('heading', { name: 'Qué debes hacer ahora' })).toBeVisible()
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    await testInfo.attach(`ux-mecanico-${width}`, {
+      body: await page.screenshot({ fullPage: true }),
+      contentType: 'image/png',
+    })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  }
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.getByRole('button', { name: 'Terminar mantenimiento', exact: true }).click()
   await page
     .getByRole('dialog', { name: 'Completar orden' })
     .getByRole('button', { name: 'Confirmar completado' })

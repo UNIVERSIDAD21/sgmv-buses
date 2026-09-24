@@ -144,11 +144,8 @@ test('P6 aplica plan, deriva obligacion, restringe despacho y evita orden duplic
   planKey = (await prisma.planMantenimientoPreventivo.findUniqueOrThrow({ where: { id: planId } }))
     .claveTarea
   const row = page.getByRole('row').filter({ hasText: planKey })
-  await row.getByRole('button', { name: 'Asignar a buses' }).click()
-  const applyDialog = page.getByRole('dialog', { name: 'Asignar rutina a un bus' })
-  await expect(applyDialog.getByLabel('Bus para aplicar plan')).toHaveValue(String(busId))
-  await applyDialog.getByRole('button', { name: 'Asignar rutina' }).click()
-  await expect(page.getByText(/Rutina asignada/i)).toBeVisible()
+  await expect(row.getByText(`Aplica únicamente a: ${busCode}`)).toBeVisible()
+  await expect(row.getByRole('button', { name: /Asignar a buses/i })).toHaveCount(0)
 
   const schedule = await prisma.programacionMantenimiento.findFirstOrThrow({
     where: { activa: true, busId, planMantenimientoPreventivoId: planId },
@@ -245,7 +242,12 @@ test('P6 aplica plan, deriva obligacion, restringe despacho y evita orden duplic
   await page.goto('/mantenimiento-preventivo')
   await expect(page.getByText(busCode)).toBeVisible()
   await expect(page.getByText('Vencido').first()).toBeVisible()
-  await expect(page.getByText(/El mantenimiento vencido impide nuevas jornadas/i)).toBeVisible()
+  await expect(
+    page
+      .getByRole('article')
+      .filter({ hasText: busCode })
+      .getByText(/El mantenimiento vencido impide nuevas jornadas/i),
+  ).toBeVisible()
   await expect(page.getByText(`Componente ${marker}`)).toHaveCount(0)
   await expect(page.getByText(`Actividad preventiva reproducible para ${marker}.`)).toHaveCount(0)
   await testInfo.attach('p6-restriccion-despachador', {

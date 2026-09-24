@@ -25,7 +25,12 @@ export default defineConfig({
   projects: [
     {
       name: 'regression-chromium',
-      testIgnore: [/ux-p11\.spec\.ts/, /p13-production\.spec\.ts/, /p14-evidence\.spec\.ts/],
+      testIgnore: [
+        /ux-p11\.spec\.ts/,
+        /p13-production\.spec\.ts/,
+        /p14-evidence\.spec\.ts/,
+        /novelty-media\.spec\.ts/,
+      ],
       use: { browserName: 'chromium' },
     },
     {

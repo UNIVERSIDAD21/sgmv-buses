@@ -271,11 +271,15 @@ test('administra reglas, rechaza incompatibilidad y registra consumo decimal tra
   await expect(partOption).toHaveCount(1)
   await expect(partOption).not.toHaveAttribute('disabled')
   await orderDetail.getByLabel('Cantidad').fill('1.25')
-  const consumeButton = orderDetail.getByRole('button', { name: 'Registrar consumo' })
-  const consumptionForm = orderDetail.locator('form').filter({ hasText: 'Registrar consumo' })
+  const consumeButton = orderDetail.getByRole('button', { name: 'Registrar repuesto utilizado' })
+  const consumptionForm = orderDetail
+    .locator('form')
+    .filter({ hasText: 'Registrar repuesto utilizado' })
   await consumptionForm.locator('select').selectOption(String(partId))
   await consumeButton.click()
-  await expect(page.getByText('Consumo registrado.')).toBeVisible()
+  await page.getByRole('button', { name: 'Confirmar uso de repuesto', exact: true }).click()
+  await expect(page.getByText('Repuesto utilizado registrado.')).toBeVisible()
+  await orderDetail.getByText('Contexto e historial de la orden', { exact: true }).click()
   await expect(orderDetail.getByText('1.25', { exact: true })).toBeVisible()
 
   const persisted = await prisma.consumoRepuesto.findFirstOrThrow({
