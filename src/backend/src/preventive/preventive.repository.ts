@@ -7,6 +7,7 @@ import {
   evaluatePreventiveAlertsForBus,
 } from '../alerts/alert.service.js'
 import { prisma } from '../prisma/client.js'
+import { AppError } from '../shared/http.js'
 import {
   buildPreventivePlanSnapshot,
   classifyPreventiveCycle,
@@ -90,6 +91,51 @@ interface GenerateOrderData {
 }
 
 export class PreventiveRepository {
+  async previewPlanApplication(planId: number, busIds: number[]) {
+    const plan = await prisma.planMantenimientoPreventivo.findUnique({ where: { id: planId } })
+    if (!plan?.activo)
+      throw new AppError(
+        409,
+        'PREVENTIVE_PLAN_INACTIVE',
+        'La rutina ya no está activa. Actualice la lista.',
+      )
+    const items = []
+    for (const busId of [...busIds].sort((a, b) => a - b)) {
+      const bus = await prisma.bus.findUnique({ where: { id: busId } })
+      if (
+        !bus ||
+        bus.estadoOperativo === 'INACTIVO' ||
+        (plan.busId ? plan.busId !== busId : plan.modeloBusId !== bus.modeloBusId)
+      ) {
+        throw new AppError(
+          409,
+          'BUS_NOT_ELIGIBLE',
+          'Uno de los buses ya no pertenece al alcance de esta rutina. Actualice la selección.',
+        )
+      }
+      const effective = await this.resolveEffectivePlan(prisma, busId, plan.claveTarea)
+      if (!effective)
+        throw new AppError(409, 'PREVENTIVE_PLAN_INACTIVE', 'No hay rutina aplicable.')
+      const existing = await prisma.programacionMantenimiento.findFirst({
+        where: {
+          activa: true,
+          busId,
+          planMantenimientoPreventivo: { claveTarea: plan.claveTarea },
+        },
+      })
+      const targets = existing ?? initialPreventiveTargets(effective, bus.kilometrajeActual)
+      items.push({
+        busId,
+        codigoInterno: bus.codigoInterno,
+        planId: existing?.planMantenimientoPreventivoId ?? effective.id,
+        programacionId: existing?.id ?? null,
+        fechaProgramada: targets.fechaProgramada?.toISOString().slice(0, 10) ?? null,
+        kilometrajeObjetivo: targets.kilometrajeObjetivo,
+        particular: effective.busId !== null,
+      })
+    }
+    return { items, nuevas: items.filter((item) => item.programacionId === null).length }
+  }
   countActiveOrders() {
     return prisma.ordenTrabajo.count({
       where: {

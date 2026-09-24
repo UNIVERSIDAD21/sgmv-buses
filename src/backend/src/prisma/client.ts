@@ -1,8 +1,9 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 
 import { Prisma, PrismaClient } from '@prisma/client'
+import { env } from '../config/env.js'
 
-const rootPrisma = new PrismaClient()
+const rootPrisma = new PrismaClient({ datasourceUrl: env.DATABASE_URL })
 interface TransactionContext {
   client: Prisma.TransactionClient
   savepointIndex: number

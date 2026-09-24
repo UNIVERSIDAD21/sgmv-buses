@@ -613,6 +613,7 @@ export async function evaluateJourneyMileageAlerts(
   })
 
   const dispatchers = await recipientIdsByRoles(['DESPACHADOR'], tx)
+  const administrators = await recipientIdsByRoles(['ADMINISTRADOR'], tx)
   for (const journey of journeys) {
     const missingInitial =
       journey.estado === 'PROGRAMADA' &&
@@ -626,6 +627,22 @@ export async function evaluateJourneyMileageAlerts(
       ? 'JORNADA_SIN_KILOMETRAJE_INICIAL'
       : 'JORNADA_SIN_KILOMETRAJE_FINAL'
     const scheduledAt = missingInitial ? journey.inicioProgramado : journey.finProgramado
+    if (missingFinal && evaluatedAt.getTime() - scheduledAt.getTime() >= 24 * 60 * 60 * 1000) {
+      await materializeInternal(
+        {
+          claveDeduplicacion: `jornada-cierre-escalado:${journey.id}:${scheduledAt.toISOString()}`,
+          contextoEvento: { estado: journey.estado, eventAt: evaluatedAt.toISOString() },
+          destinatarios: { kind: 'USERS', userIds: administrators },
+          mensaje:
+            'El cierre lleva al menos 24 horas pendiente. Coordine con Despacho y el Conductor la lectura final real. El bus sigue bloqueado; no se cierra automáticamente.',
+          origen: { jornadaId: journey.id },
+          prioridad: 'ALTA',
+          tipo: 'JORNADA_SIN_KILOMETRAJE_FINAL',
+          titulo: 'Cierre atrasado: requiere intervención administrativa',
+        },
+        tx,
+      )
+    }
     await materializeInternal(
       {
         claveDeduplicacion: `${type.toLowerCase()}:jornada:${journey.id}:${scheduledAt.toISOString()}`,
@@ -646,6 +663,26 @@ export async function evaluateJourneyMileageAlerts(
       tx,
     )
   }
+}
+
+export async function createJourneyClosureProblemAlert(
+  journeyId: number,
+  tx: Prisma.TransactionClient,
+) {
+  return materializeInternal(
+    {
+      claveDeduplicacion: `jornada-cierre-reportado:${journeyId}`,
+      contextoEvento: { eventAt: new Date().toISOString(), estado: 'EN_CURSO' },
+      destinatarios: { kind: 'ROLES', roles: ['DESPACHADOR'] },
+      mensaje:
+        'El Conductor informó que no puede registrar el cierre. Abra la jornada, revise el motivo y coordine una lectura real. No se libera el bus automáticamente.',
+      origen: { jornadaId: journeyId },
+      prioridad: 'ALTA',
+      tipo: 'JORNADA_SIN_KILOMETRAJE_FINAL',
+      titulo: 'Conductor necesita ayuda para registrar el cierre',
+    },
+    tx,
+  )
 }
 
 export async function persistJourneyConflictAlert(input: {

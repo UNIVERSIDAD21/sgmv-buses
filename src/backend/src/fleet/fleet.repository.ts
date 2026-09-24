@@ -198,6 +198,13 @@ export class FleetRepository {
           },
         })
 
+        if (bus.modeloBusId && bus.estadoOperativo !== 'INACTIVO') {
+          await reconcilePreventiveObligationsForBus(tx, {
+            actorId,
+            busId: bus.id,
+            previousModeloBusId: null,
+          })
+        }
         return tx.bus.findUniqueOrThrow({
           where: { id: bus.id },
           include: busDetailInclude,

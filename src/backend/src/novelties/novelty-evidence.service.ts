@@ -63,6 +63,13 @@ export class NoveltyEvidenceService {
     if (reservation.kind === 'NOT_FOUND') {
       throw new AppError(404, 'NOVELTY_NOT_FOUND', 'Novedad no encontrada')
     }
+    if (reservation.kind === 'CONFLICT') {
+      throw new AppError(
+        409,
+        'EVIDENCE_UPLOAD_CONFLICT',
+        'Esta solicitud pertenece a otra carga. Seleccione de nuevo las fotos.',
+      )
+    }
     if (reservation.kind === 'LIMIT_EXCEEDED') {
       throw new AppError(
         409,
@@ -75,7 +82,9 @@ export class NoveltyEvidenceService {
     }
     if (reservation.kind === 'REPLAY') {
       return {
-        evidencias: reservation.evidences.map((item) => mapNoveltyEvidence(item, actor)),
+        evidencias: (await this.repository.findActiveByNovelty(noveltyId)).map((item) =>
+          mapNoveltyEvidence(item, actor),
+        ),
         yaExistia: true,
       }
     }
@@ -95,9 +104,20 @@ export class NoveltyEvidenceService {
         await this.repository.activateEvidence(evidence.id, stored)
       }
     } catch (error) {
-      await Promise.allSettled(uploaded.map((item) => storage.delete(item.publicId)))
+      const cleanup = await Promise.allSettled(
+        uploaded.map((item) => storage.delete(item.publicId)),
+      )
+      if (cleanup.some((result) => result.status === 'rejected')) {
+        logger.error(
+          { noveltyId, cleanupPending: true },
+          'La limpieza de la carga parcial requiere reintento administrativo',
+        )
+      }
       await this.repository.markFailed(reservation.evidences.map((item) => item.id))
-      logger.error({ err: error, noveltyId }, 'No se pudo almacenar evidencia de novedad')
+      logger.error(
+        { noveltyId, code: error instanceof AppError ? error.code : 'MEDIA_UPLOAD_FAILED' },
+        'No se pudo almacenar evidencia de novedad',
+      )
       if (error instanceof AppError) throw error
       throw new AppError(502, 'MEDIA_UPLOAD_FAILED', 'No se pudieron guardar las imagenes')
     }
@@ -122,8 +142,11 @@ export class NoveltyEvidenceService {
         evidence.storageVersion,
       )
       return { buffer, evidence }
-    } catch (error) {
-      logger.error({ err: error, evidenceId, noveltyId }, 'No se pudo recuperar evidencia')
+    } catch {
+      logger.error(
+        { evidenceId, noveltyId, code: 'MEDIA_DOWNLOAD_FAILED' },
+        'No se pudo recuperar evidencia',
+      )
       throw new AppError(502, 'MEDIA_DOWNLOAD_FAILED', 'No se pudo consultar la imagen')
     }
   }
@@ -141,9 +164,12 @@ export class NoveltyEvidenceService {
 
     try {
       await getMediaStorage().delete(evidence.storagePublicId)
-    } catch (error) {
+    } catch {
       await this.repository.restoreActive(evidence.id)
-      logger.error({ err: error, evidenceId, noveltyId }, 'No se pudo eliminar evidencia')
+      logger.error(
+        { evidenceId, noveltyId, code: 'MEDIA_DELETE_FAILED' },
+        'No se pudo eliminar evidencia',
+      )
       throw new AppError(502, 'MEDIA_DELETE_FAILED', 'No se pudo eliminar la imagen')
     }
 

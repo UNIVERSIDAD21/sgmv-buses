@@ -784,6 +784,8 @@ model Ruta {
 }
 
 model JornadaOperativa {
+  cierreReportadoAt DateTime? @map("cierre_reportado_at") @db.Timestamptz(6)
+  motivoCierrePendiente String? @map("motivo_cierre_pendiente") @db.VarChar(500)
   ciclosCompletosSimulados Int? @map("ciclos_completos_simulados")
   kmNoComercialesSimulados Decimal? @map("km_no_comerciales_simulados") @db.Decimal(10, 3)
   longitudKmOficialSnapshot Decimal? @map("longitud_km_oficial_snapshot") @db.Decimal(10, 3)

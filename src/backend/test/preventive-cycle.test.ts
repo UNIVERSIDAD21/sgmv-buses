@@ -206,6 +206,7 @@ async function cleanup() {
         OR: [{ busId: { in: created.buses } }, { modeloBusId: { in: created.models } }],
       },
     })
+    await tx.busEstadoHistorial.deleteMany({ where: { busId: { in: created.buses } } })
     await tx.bus.deleteMany({ where: { id: { in: created.buses } } })
     await tx.modeloBus.deleteMany({ where: { id: { in: created.models } } })
     await tx.usuario.deleteMany({ where: { id: { in: created.users } } })
@@ -301,6 +302,65 @@ describe('P6-C ciclo preventivo recurrente', () => {
   })
 
   it(
+    'previsualiza y aplica varios buses sin duplicados, detecta cambios y materializa el alta con modelo',
+    async () => {
+      const model = await createModel()
+      const busA = await createBus(model.id, 1000)
+      const busB = await createBus(model.id, 3500)
+      const plan = await createPlan(
+        admin.actor.id,
+        { modeloBusId: model.id },
+        { intervaloKm: 5000 },
+      )
+      const service = new PreventiveService()
+      const input = { planId: plan.id, busIds: [busB.id, busA.id] }
+      const preview = await service.previewPlanApplication(input, admin.actor)
+      expect(preview.nuevas).toBe(2)
+      expect(preview.items.map((item) => item.kilometrajeObjetivo).sort()).toEqual([6000, 8500])
+      await expect(
+        service.applyPlanToBuses({ ...input, revision: preview.revision }, conductor.actor),
+      ).rejects.toMatchObject({ statusCode: 403 })
+      const result = await service.applyPlanToBuses(
+        { ...input, revision: preview.revision },
+        admin.actor,
+      )
+      expect(result.creadas).toBe(2)
+      const replayPreview = await service.previewPlanApplication(input, admin.actor)
+      expect(replayPreview.nuevas).toBe(0)
+      expect(
+        (
+          await service.applyPlanToBuses(
+            { ...input, revision: replayPreview.revision },
+            admin.actor,
+          )
+        ).creadas,
+      ).toBe(0)
+      await expect(
+        service.applyPlanToBuses({ ...input, revision: preview.revision }, admin.actor),
+      ).rejects.toMatchObject({ code: 'PREVENTIVE_PREVIEW_CHANGED' })
+      const createdBus = await new FleetService().createBus(
+        {
+          anio: 2026,
+          estadoOperativo: 'OPERATIVO',
+          kilometrajeActual: 800,
+          marca: 'Prueba UX',
+          modelo: 'Prueba UX',
+          modeloBusId: model.id,
+          placa: `UX${suffix()}`,
+        },
+        admin.actor,
+      )
+      created.buses.push(createdBus.bus.id)
+      expect(
+        await prisma.programacionMantenimiento.findFirst({
+          where: { busId: createdBus.bus.id, activa: true },
+        }),
+      ).toMatchObject({ kilometrajeObjetivo: 5800, planMantenimientoPreventivoId: plan.id })
+    },
+    testTimeout,
+  )
+
+  it(
     'materializa una sola obligacion y aplica precedencia bus sobre modelo',
     async () => {
       const model = await createModel()
@@ -363,6 +423,55 @@ describe('P6-C ciclo preventivo recurrente', () => {
       const afterLateReading = await service.getSchedule(first.programacion.id, admin.actor)
       expect(afterLateReading.programacion.bus.kilometrajeActual).toBe(40000)
       expect(afterLateReading.programacion.kilometrajeObjetivo).toBe(46000)
+    },
+    testTimeout,
+  )
+
+  it(
+    'conserva una orden activa al cambiar el modelo y aplica el nuevo plan solo al ciclo siguiente',
+    async () => {
+      const firstModel = await createModel()
+      const secondModel = await createModel()
+      const bus = await createBus(firstModel.id, 0)
+      const claveTarea = `MODELO.${suffix()}`
+      const first = await createPlan(
+        admin.actor.id,
+        { modeloBusId: firstModel.id },
+        { claveTarea, intervaloKm: 5000 },
+      )
+      const second = await createPlan(
+        admin.actor.id,
+        { modeloBusId: secondModel.id },
+        { claveTarea, intervaloKm: 7000 },
+      )
+      const service = new PreventiveService()
+      const applied = await service.createSchedule({ busId: bus.id, planId: first.id }, admin.actor)
+      await prisma.bus.update({ where: { id: bus.id }, data: { kilometrajeActual: 5000 } })
+      const generated = await service.generateOrder(
+        applied.programacion.id,
+        { prioridad: 'MEDIA' },
+        admin.actor,
+      )
+      const snapshot = (
+        await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: generated.orden.id } })
+      ).planAplicado
+      await new FleetService().updateBus(bus.id, { modeloBusId: secondModel.id }, admin.actor)
+      expect(
+        await prisma.programacionMantenimiento.findMany({ where: { busId: bus.id, activa: true } }),
+      ).toMatchObject([{ id: applied.programacion.id, planMantenimientoPreventivoId: first.id }])
+      expect(
+        (await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: generated.orden.id } }))
+          .planAplicado,
+      ).toEqual(snapshot)
+      await makeOrderClosable(generated.orden.id, mechanic.actor.id)
+      await new WorkOrderRepository().closeOrder(
+        generated.orden.id,
+        admin.actor.id,
+        'Cierre real del ciclo anterior al cambio de modelo',
+      )
+      expect(
+        await prisma.programacionMantenimiento.findMany({ where: { busId: bus.id, activa: true } }),
+      ).toMatchObject([{ planMantenimientoPreventivoId: second.id, kilometrajeObjetivo: 12000 }])
     },
     testTimeout,
   )

@@ -535,9 +535,11 @@ describe('RF-02 Novelty API', () => {
     const mechanic = await loginAgent(fixture.mecanicoEmail)
     const content = await mechanic
       .get(`/novedades/${novelty.id}/evidencias/${evidenceId}/contenido`)
+      .expect('Cache-Control', 'private, no-store')
       .expect('Content-Type', /image\/png/)
       .expect(200)
     expect(content.body).toEqual(pngBuffer)
+    expect(content.headers.vary).toContain('Cookie')
 
     const dispatcher = await loginAgent(fixture.despachadorEmail)
     await dispatcher.get(`/novedades/${novelty.id}/evidencias/${evidenceId}/contenido`).expect(403)

@@ -4,6 +4,7 @@ import { Prisma, type EstadoJornada } from '@prisma/client'
 
 import {
   createJourneyChangeAlert,
+  createJourneyClosureProblemAlert,
   evaluatePreventiveAlertsForBus,
 } from '../alerts/alert.service.js'
 import { evaluateJourneyProjectionAlerts } from '../alerts/journey-projection-alerts.js'
@@ -105,6 +106,14 @@ function mapJourney(
 
   return {
     acciones: buildActions(journey, actor, availability),
+    cierrePendiente:
+      journey.cierreReportadoAt && journey.motivoCierrePendiente
+        ? {
+            reportadoAt: journey.cierreReportadoAt.toISOString(),
+            motivo: journey.motivoCierrePendiente,
+            reportadoPor: mapUser(journey.conductor),
+          }
+        : null,
     proyeccionDemo: mapJourneyProjection(
       journey,
       lecturaInicial?.kilometrajeNuevo,
@@ -163,6 +172,38 @@ function translateJourneyError(error: unknown): never {
 
 export class JourneyService {
   constructor(private readonly repository = new JourneyRepository()) {}
+
+  async reportClosureProblem(id: number, motivo: string, actor: AuthenticatedUser) {
+    if (actor.rol.codigo !== 'CONDUCTOR')
+      throw new AppError(
+        403,
+        'FORBIDDEN',
+        'Solo el Conductor puede informar sobre su propio cierre.',
+      )
+    return this.repository.transaction(async (tx) => {
+      await this.repository.lockJourney(id, tx)
+      const journey = await this.repository.findById(id, tx)
+      if (!journey || journey.conductorId !== actor.id)
+        throw new AppError(404, 'JOURNEY_NOT_FOUND', 'Jornada no encontrada')
+      if (journey.estado !== 'EN_CURSO' || journey.finProgramado > new Date())
+        throw new AppError(
+          409,
+          'JOURNEY_NOT_OVERDUE',
+          'Solo se puede informar un cierre atrasado de una jornada en curso.',
+        )
+      if (!journey.cierreReportadoAt) {
+        await this.repository.update(
+          id,
+          { cierreReportadoAt: new Date(), motivoCierrePendiente: motivo.trim() },
+          tx,
+        )
+        await createJourneyClosureProblemAlert(id, tx)
+      }
+      return {
+        jornada: await this.toDto((await this.repository.findById(id, tx))!, actor, new Date(), tx),
+      }
+    })
+  }
 
   private async lockResources(busIds: number[], driverIds: number[], tx: JourneyTransaction) {
     for (const busId of [...new Set(busIds)].sort((a, b) => a - b)) {
@@ -485,6 +526,11 @@ export class JourneyService {
     if (query.busId) where.busId = query.busId
     if (query.rutaId) where.rutaId = query.rutaId
     if (query.estado) where.estado = { in: query.estado }
+    if (query.cierreAtrasado === 'true') {
+      where.estado = 'EN_CURSO'
+      where.finReal = null
+      where.finProgramado = { lt: new Date() }
+    }
     if (query.desde || query.hasta) {
       where.AND = {
         inicioProgramado: query.hasta ? { lte: new Date(query.hasta) } : undefined,
@@ -502,9 +548,12 @@ export class JourneyService {
       ]
     }
 
-    const orderBy = {
-      [query.orden]: query.direccion,
-    } as Prisma.JornadaOperativaOrderByWithRelationInput
+    const orderBy =
+      query.cierreAtrasado === 'true'
+        ? { finProgramado: 'asc' as const }
+        : ({
+            [query.orden]: query.direccion,
+          } as Prisma.JornadaOperativaOrderByWithRelationInput)
     const skip = (query.pagina - 1) * query.limite
     const [total, journeys] = await Promise.all([
       this.repository.count(where),

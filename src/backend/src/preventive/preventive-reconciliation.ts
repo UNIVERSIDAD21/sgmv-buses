@@ -45,6 +45,7 @@ export async function reconcilePreventiveObligationForTask(
 
   const bus = await tx.bus.findUnique({ where: { id: input.busId } })
   if (!bus) return { status: 'BUS_NOT_FOUND' as const }
+  if (bus.estadoOperativo === 'INACTIVO') return { status: 'BUS_INACTIVE' as const }
 
   const effectivePlan = await resolveEffectivePlan(tx, input.busId, input.claveTarea)
   const existing = await tx.programacionMantenimiento.findFirst({

@@ -234,8 +234,8 @@ interface ReassignData {
 }
 
 interface UpdateInterventionData {
-  diagnostico?: string
-  observaciones?: string
+  diagnostico?: string | null
+  observaciones?: string | null
 }
 
 interface ConsumptionData {
@@ -857,7 +857,12 @@ export class WorkOrderRepository {
     )
   }
 
-  updateActiveIntervention(orderId: number, actorId: number, data: UpdateInterventionData) {
+  updateActiveIntervention(
+    orderId: number,
+    actorId: number,
+    data: UpdateInterventionData,
+    expectedInterventionId?: number,
+  ) {
     return prisma.$transaction(
       async (tx) => {
         await this.lockWorkOrder(tx, orderId)
@@ -893,6 +898,9 @@ export class WorkOrderRepository {
           }
         }
 
+        if (expectedInterventionId && intervention.id !== expectedInterventionId) {
+          return { orden: order, status: 'NO_ACTIVE_INTERVENTION' as const }
+        }
         await tx.intervencion.update({
           where: { id: intervention.id },
           data,
@@ -1401,6 +1409,7 @@ export class WorkOrderRepository {
             where: {
               diagnostico: {
                 not: null,
+                notIn: [''],
               },
               ordenTrabajoId: orderId,
             },

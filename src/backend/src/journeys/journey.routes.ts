@@ -9,6 +9,12 @@ const controller = new JourneyController()
 const journeyRoutes = Router()
 
 journeyRoutes.use(authenticate)
+journeyRoutes.post(
+  '/:jornadaId/informar-cierre-pendiente',
+  enforceAllowedOrigin,
+  authorizeRoles('CONDUCTOR'),
+  idempotent(controller.reportClosureProblem),
+)
 
 journeyRoutes.get('/mi-jornada', authorizeRoles('CONDUCTOR'), asyncHandler(controller.getMyJourney))
 journeyRoutes.get(

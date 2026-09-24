@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto'
 import { Prisma, type CriterioMantenimiento, type PrioridadOrden } from '@prisma/client'
+import { runInPrismaTransaction } from '../prisma/client.js'
 
 import type { AuthenticatedUser } from '../auth/auth.types.js'
 import { env } from '../config/env.js'
@@ -167,6 +169,63 @@ function compareNullableString(a: string | null, b: string | null) {
 
 export class PreventiveService {
   constructor(private readonly preventiveRepository = new PreventiveRepository()) {}
+
+  async previewPlanApplication(
+    input: { planId: number; busIds: number[] },
+    actor: AuthenticatedUser,
+  ) {
+    ensureAdmin(actor)
+    const preview = await this.preventiveRepository.previewPlanApplication(
+      input.planId,
+      input.busIds,
+    )
+    return {
+      ...preview,
+      revision: createHash('sha256').update(JSON.stringify(preview)).digest('hex'),
+    }
+  }
+
+  async applyPlanToBuses(
+    input: { planId: number; busIds: number[]; revision: string },
+    actor: AuthenticatedUser,
+  ) {
+    ensureAdmin(actor)
+    return runInPrismaTransaction(async () => {
+      const preview = await this.previewPlanApplication(input, actor)
+      if (preview.revision !== input.revision)
+        throw new AppError(
+          409,
+          'PREVENTIVE_PREVIEW_CHANGED',
+          'Los objetivos cambiaron. Revise nuevamente la programación antes de confirmar.',
+        )
+      const resultados = []
+      for (const busId of [...input.busIds].sort((a, b) => a - b)) {
+        resultados.push(await this.createSchedule({ busId, planId: input.planId }, actor))
+      }
+      // Recheck under the materialization locks. If another operation changed a target
+      // between preview and write, roll back the entire batch, never confirm unseen goals.
+      const actual = await this.preventiveRepository.previewPlanApplication(
+        input.planId,
+        input.busIds,
+      )
+      const changed = actual.items.some((item, index) => {
+        const expected = preview.items[index]!
+        return (
+          item.planId !== expected.planId ||
+          item.fechaProgramada !== expected.fechaProgramada ||
+          item.kilometrajeObjetivo !== expected.kilometrajeObjetivo ||
+          item.particular !== expected.particular
+        )
+      })
+      if (changed)
+        throw new AppError(
+          409,
+          'PREVENTIVE_PREVIEW_CHANGED',
+          'Los objetivos cambiaron. Revise nuevamente la programación antes de confirmar.',
+        )
+      return { resultados, creadas: resultados.filter((item) => !item.yaExistia).length }
+    })
+  }
 
   async createSchedule(input: CreatePreventiveScheduleInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)

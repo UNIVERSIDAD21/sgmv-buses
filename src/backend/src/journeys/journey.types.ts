@@ -38,6 +38,7 @@ export interface JourneyActionsDto {
 }
 
 export interface JourneyDto {
+  cierrePendiente: { reportadoAt: string; motivo: string; reportadoPor: JourneyUserRefDto } | null
   proyeccionDemo: JourneyProjectionDto
   acciones: JourneyActionsDto
   bus: JourneyBusRefDto

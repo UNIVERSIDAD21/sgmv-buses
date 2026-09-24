@@ -1,13 +1,31 @@
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { config } from 'dotenv'
+import { readFileSync } from 'node:fs'
+
+import { config, parse } from 'dotenv'
 import { z } from 'zod'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(currentDir, '../../../..')
 
-config({ path: resolve(repoRoot, '.env') })
+// Local runtime must never inherit a remote database from the launching shell.
+// Read into a separate object: do not mutate protected environment entries.
+const localRuntime = process.env.SGMV_LOCAL_RUNTIME === 'true'
+const runtimeValues = localRuntime
+  ? { ...process.env, ...parse(readFileSync(resolve(repoRoot, '.env.local'))) }
+  : process.env
+if (!localRuntime) config({ path: resolve(repoRoot, '.env'), quiet: true })
+if (localRuntime) {
+  const database = runtimeValues.DATABASE_URL
+  if (
+    !database ||
+    !['localhost', '127.0.0.1', '[::1]'].includes(new URL(database).hostname) ||
+    runtimeValues.NODE_ENV === 'production'
+  ) {
+    throw new Error('El arranque local exige PostgreSQL local y un entorno no productivo.')
+  }
+}
 
 export function parseBooleanEnv(value: unknown) {
   if (typeof value !== 'string') {
@@ -66,7 +84,7 @@ const envSchema = z.object({
   MEDIA_FETCH_TIMEOUT_MS: z.coerce.number().int().positive().max(30_000).default(10_000),
 })
 
-const parsedEnv = envSchema.safeParse(process.env)
+const parsedEnv = envSchema.safeParse(runtimeValues)
 
 if (!parsedEnv.success) {
   console.error('Invalid environment configuration:', parsedEnv.error.flatten().fieldErrors)

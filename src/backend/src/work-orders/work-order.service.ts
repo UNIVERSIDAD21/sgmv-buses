@@ -997,14 +997,19 @@ export class WorkOrderService {
     ensureMechanic(actor)
 
     try {
-      const result = await this.workOrderRepository.updateActiveIntervention(orderId, actor.id, {
-        ...(input.diagnostico !== undefined
-          ? { diagnostico: normalizeText(input.diagnostico) }
-          : {}),
-        ...(input.observaciones !== undefined
-          ? { observaciones: normalizeText(input.observaciones) }
-          : {}),
-      })
+      const result = await this.workOrderRepository.updateActiveIntervention(
+        orderId,
+        actor.id,
+        {
+          ...(input.diagnostico !== undefined
+            ? { diagnostico: normalizeText(input.diagnostico) || null }
+            : {}),
+          ...(input.observaciones !== undefined
+            ? { observaciones: normalizeText(input.observaciones) || null }
+            : {}),
+        },
+        input.intervencionId,
+      )
 
       return {
         orden: this.mapOperationResult(result, actor),

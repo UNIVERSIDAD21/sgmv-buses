@@ -30,10 +30,12 @@ const statesQuery = z.preprocess(
 export const journeyIdParamSchema = z.object({
   jornadaId: entityIdSchema,
 })
+export const reportClosureProblemSchema = z.object({ motivo: trimmedText(10, 500) }).strict()
 
 export const listJourneysQuerySchema = z
   .object({
     buscar: z.string().trim().max(80).optional(),
+    cierreAtrasado: z.enum(['true', 'false']).optional(),
     busId: entityIdSchema.optional(),
     conductorId: entityIdSchema.optional(),
     direccion: z.enum(['asc', 'desc']).default('desc'),

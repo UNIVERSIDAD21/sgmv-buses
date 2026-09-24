@@ -107,8 +107,9 @@ export const transitionObservationSchema = z
 
 export const interventionUpdateSchema = z
   .object({
-    diagnostico: optionalTrimmedText(3000),
-    observaciones: optionalTrimmedText(3000),
+    diagnostico: z.string().trim().max(3000).optional(),
+    observaciones: z.string().trim().max(3000).optional(),
+    intervencionId: entityIdSchema.optional(),
   })
   .strict()
   .refine((input) => input.diagnostico !== undefined || input.observaciones !== undefined, {

@@ -65,6 +65,11 @@ export class NoveltyEvidenceRepository {
         orderBy: { ordinal: 'asc' },
       })
       if (previous.length > 0) {
+        if (
+          previous.some((item) => item.novedadId !== noveltyId || item.cargadaPorId !== actorId)
+        ) {
+          return { kind: 'CONFLICT' as const }
+        }
         return {
           evidences: previous,
           kind: previous.every((item) => item.estado === 'ACTIVA')

@@ -119,7 +119,7 @@ async function login(email: string) {
 
 async function cleanup() {
   await prisma.$transaction(async (tx) => {
-    await tx.programacionMantenimiento.deleteMany({ where: { id: { in: created.schedules } } })
+    await tx.programacionMantenimiento.deleteMany({ where: { busId: { in: created.buses } } })
     await tx.planMantenimientoPreventivo.deleteMany({ where: { id: { in: created.plans } } })
     await tx.bus.deleteMany({ where: { id: { in: created.buses } } })
     await tx.modeloBus.deleteMany({ where: { id: { in: created.models } } })

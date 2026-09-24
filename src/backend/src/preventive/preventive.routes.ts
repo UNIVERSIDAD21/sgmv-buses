@@ -12,6 +12,19 @@ const preventiveRoutes = Router()
 
 preventiveRoutes.use(authenticate)
 
+preventiveRoutes.post(
+  '/planes/previsualizar-aplicacion',
+  enforceAllowedOrigin,
+  authorizeRoles('ADMINISTRADOR'),
+  asyncHandler(preventiveController.previewPlanApplication),
+)
+preventiveRoutes.post(
+  '/planes/aplicar-lote',
+  enforceAllowedOrigin,
+  authorizeRoles('ADMINISTRADOR'),
+  idempotent(preventiveController.applyPlanToBuses),
+)
+
 preventiveRoutes.get(
   '/planes',
   authorizeRoles('ADMINISTRADOR'),

@@ -3,6 +3,7 @@ import type { RequestHandler } from 'express'
 import { sendData } from '../shared/http.js'
 import {
   cancelJourneySchema,
+  reportClosureProblemSchema,
   createJourneySchema,
   journeyIdParamSchema,
   journeyReadingSchema,
@@ -13,6 +14,15 @@ import { JourneyService } from './journey.service.js'
 
 export class JourneyController {
   constructor(private readonly service = new JourneyService()) {}
+  reportClosureProblem: RequestHandler = async (request, response) => {
+    const { jornadaId } = journeyIdParamSchema.parse(request.params)
+    const { motivo } = reportClosureProblemSchema.parse(request.body)
+    sendData(
+      response,
+      await this.service.reportClosureProblem(jornadaId, motivo, request.user!),
+      'Despacho recibió el informe de cierre pendiente',
+    )
+  }
 
   cancel: RequestHandler = async (request, response) => {
     const { jornadaId } = journeyIdParamSchema.parse(request.params)

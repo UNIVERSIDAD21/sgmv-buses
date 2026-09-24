@@ -930,7 +930,7 @@ describe('RF-04 Work order tracking API', () => {
       await mecanico
         .patch(`/ordenes-trabajo/${order.id}/intervencion`)
         .send({ diagnostico: '   ' })
-        .expect(400)
+        .expect(200)
 
       const updated = await mecanico
         .patch(`/ordenes-trabajo/${order.id}/intervencion`)
@@ -944,6 +944,31 @@ describe('RF-04 Work order tracking API', () => {
       expect(updated.body.data.orden.intervenciones[0].diagnostico).toBe(
         'Diagnostico tecnico registrado en RF-04',
       )
+      const interventionId = updated.body.data.orden.intervenciones[0].id
+      const rejectedDraft = await mecanico
+        .patch(`/ordenes-trabajo/${order.id}/intervencion`)
+        .send({ intervencionId: interventionId + 99999, diagnostico: 'Borrador de otro tramo' })
+      expect(rejectedDraft.status).toBeGreaterThanOrEqual(400)
+      expect(
+        (await mecanico.get(`/ordenes-trabajo/${order.id}`).expect(200)).body.data.orden
+          .intervenciones[0].diagnostico,
+      ).toBe('Diagnostico tecnico registrado en RF-04')
+      const cleared = await mecanico
+        .patch(`/ordenes-trabajo/${order.id}/intervencion`)
+        .send({ intervencionId: interventionId, diagnostico: '', observaciones: '' })
+        .expect(200)
+      expect(cleared.body.data.orden.intervenciones[0]).toMatchObject({
+        diagnostico: null,
+        observaciones: null,
+        actividades: [],
+      })
+      await mecanico
+        .patch(`/ordenes-trabajo/${order.id}/intervencion`)
+        .send({
+          intervencionId: interventionId,
+          diagnostico: 'Diagnostico tecnico registrado en RF-04',
+        })
+        .expect(200)
       expectNoEconomicFields(updated.body.data.orden)
 
       await mecanico
@@ -960,6 +985,11 @@ describe('RF-04 Work order tracking API', () => {
       expect(activity.body.data.orden.intervenciones[0].actividades[0].registradaPor.id).toBe(
         fixture.mecanicoId,
       )
+      await mecanico
+        .patch(`/ordenes-trabajo/${order.id}/intervencion`)
+        .send({ intervencionId: interventionId, diagnostico: '   ' })
+        .expect(200)
+      await mecanico.post(`/ordenes-trabajo/${order.id}/completar`).send({}).expect(400)
       expectNoEconomicFields(activity.body.data.orden)
     },
     rf04TestTimeout,

@@ -40,7 +40,8 @@ export class NoveltyController {
     )
 
     response.set({
-      'Cache-Control': 'private, max-age=300, no-transform',
+      'Cache-Control': 'private, no-store',
+      Vary: 'Cookie, Origin',
       'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(evidence.nombreOriginal)}`,
       'Content-Length': String(buffer.length),
       'Content-Type': evidence.mimeType,

@@ -5,6 +5,20 @@ export const criterioMantenimientoValues = ['FECHA', 'KILOMETRAJE', 'FECHA_KILOM
 export const preventiveClassificationValues = ['VIGENTE', 'PROXIMO', 'VENCIDO'] as const
 export const prioridadOrdenValues = ['BAJA', 'MEDIA', 'ALTA'] as const
 
+export const previewPreventivePlanSchema = z
+  .object({
+    planId: entityIdSchema,
+    busIds: z
+      .array(entityIdSchema)
+      .min(1)
+      .max(100)
+      .refine((ids) => new Set(ids).size === ids.length, 'No repita buses'),
+  })
+  .strict()
+export const applyPreventivePlanBatchSchema = previewPreventivePlanSchema.extend({
+  revision: z.string().regex(/^[a-f0-9]{64}$/),
+})
+
 const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/
 
 const optionalTrimmedText = (max = 500) =>

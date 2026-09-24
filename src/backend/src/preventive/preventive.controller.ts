@@ -2,6 +2,8 @@ import type { RequestHandler } from 'express'
 
 import { sendData } from '../shared/http.js'
 import {
+  previewPreventivePlanSchema,
+  applyPreventivePlanBatchSchema,
   createPreventiveScheduleSchema,
   generatePreventiveOrderSchema,
   listPreventiveSchedulesQuerySchema,
@@ -12,6 +14,24 @@ import { PreventiveService } from './preventive.service.js'
 import { PreventiveRestrictionsService } from './preventive-restrictions.service.js'
 
 export class PreventiveController {
+  previewPlanApplication: RequestHandler = async (request, response) => {
+    sendData(
+      response,
+      await this.preventiveService.previewPlanApplication(
+        previewPreventivePlanSchema.parse(request.body),
+        request.user!,
+      ),
+    )
+  }
+  applyPlanToBuses: RequestHandler = async (request, response) => {
+    sendData(
+      response,
+      await this.preventiveService.applyPlanToBuses(
+        applyPreventivePlanBatchSchema.parse(request.body),
+        request.user!,
+      ),
+    )
+  }
   constructor(
     private readonly preventiveService = new PreventiveService(),
     private readonly preventiveRestrictionsService = new PreventiveRestrictionsService(),

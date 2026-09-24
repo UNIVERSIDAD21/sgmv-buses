@@ -7,6 +7,7 @@ import request from 'supertest'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createApp } from '../src/app.js'
+import { evaluateJourneyMileageAlerts } from '../src/alerts/alert.service.js'
 import { createCsrfAgent } from './http-test-client.js'
 
 const prisma = new PrismaClient()
@@ -238,6 +239,125 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
       .post(`/jornadas/${journeyId}/cancelar`)
       .send({ fechaEvento: past(110).toISOString(), motivo: 'Cierre de escenario de permisos' })
       .expect(200)
+  }, 60_000)
+
+  it('informa un cierre atrasado con propiedad, idempotencia y escalamiento exacto a las 24h sin inventar lecturas', async () => {
+    const bus = await createBus()
+    const owner = await createDriver('cierre-atrasado')
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const driver = await loginAgent(owner.email)
+    const otherDriver = await loginAgent(fixture.conductorOtroEmail)
+    const admin = await loginAgent(fixture.adminEmail)
+    const mechanic = await loginAgent(fixture.mecanicoEmail)
+    const scheduledEnd = past(60)
+    const programmed = await programJourney(dispatcher, {
+      busId: bus.id,
+      conductorId: owner.id,
+      finProgramado: scheduledEnd,
+      inicioProgramado: past(180),
+    })
+    expect(programmed.status).toBe(201)
+    const id = programmed.body.data.jornada.id
+    const path = `/jornadas/${id}/informar-cierre-pendiente`
+    await driver.post(path).send({ motivo: 'Todavía no he iniciado el recorrido.' }).expect(409)
+    await driver
+      .post(`/jornadas/${id}/iniciar`)
+      .send({ fechaEvento: past(150).toISOString(), kilometraje: 100 })
+      .expect(200)
+    await otherDriver
+      .post(path)
+      .send({ motivo: 'Intento sobre jornada de otra persona.' })
+      .expect(404)
+    for (const agent of [admin, dispatcher, mechanic])
+      await agent.post(path).send({ motivo: 'Intento desde un rol no autorizado.' }).expect(403)
+    await driver.post(path).send({ motivo: 'corto' }).expect(400)
+    await driver
+      .post(path)
+      .send({ motivo: 'No puedo acceder al odómetro real.', conductorId: owner.id })
+      .expect(400)
+    const key = randomUUID()
+    const reported = await driver
+      .post(path)
+      .set('Idempotency-Key', key)
+      .send({ motivo: 'No puedo acceder al odómetro real.' })
+      .expect(200)
+    await driver
+      .post(path)
+      .set('Idempotency-Key', key)
+      .send({ motivo: 'No puedo acceder al odómetro real.' })
+      .expect(200)
+    await driver
+      .post(path)
+      .send({ motivo: 'Otro intento no debe sobrescribir la explicación.' })
+      .expect(200)
+    expect(reported.body.data.jornada).toMatchObject({
+      estado: 'EN_CURSO',
+      finReal: null,
+      lecturaFinal: null,
+      cierrePendiente: {
+        motivo: 'No puedo acceder al odómetro real.',
+        reportadoPor: { id: owner.id },
+      },
+    })
+    const reportAlerts = await prisma.alertaInterna.findMany({
+      where: { claveDeduplicacion: `jornada-cierre-reportado:${id}` },
+      include: { destinatarios: { include: { usuario: { include: { rol: true } } } } },
+    })
+    expect(reportAlerts).toHaveLength(1)
+    expect(reportAlerts[0].destinatarios.length).toBeGreaterThan(0)
+    expect(
+      reportAlerts[0].destinatarios.every((item) => item.usuario.rol.codigo === 'DESPACHADOR'),
+    ).toBe(true)
+    await prisma.$transaction((tx) =>
+      evaluateJourneyMileageAlerts(tx, new Date(scheduledEnd.getTime() + 24 * 3_600_000 - 1), [id]),
+    )
+    const escalationKey = `jornada-cierre-escalado:${id}:${scheduledEnd.toISOString()}`
+    expect(await prisma.alertaInterna.count({ where: { claveDeduplicacion: escalationKey } })).toBe(
+      0,
+    )
+    await Promise.all(
+      [1, 2].map(() =>
+        prisma.$transaction((tx) =>
+          evaluateJourneyMileageAlerts(tx, new Date(scheduledEnd.getTime() + 24 * 3_600_000), [id]),
+        ),
+      ),
+    )
+    const escalation = await prisma.alertaInterna.findUniqueOrThrow({
+      where: { claveDeduplicacion: escalationKey },
+      include: { destinatarios: { include: { usuario: { include: { rol: true } } } } },
+    })
+    expect(escalation.prioridad).toBe('ALTA')
+    expect(escalation.destinatarios.length).toBeGreaterThan(0)
+    expect(
+      escalation.destinatarios.every((item) => item.usuario.rol.codigo === 'ADMINISTRADOR'),
+    ).toBe(true)
+    expect(
+      await prisma.lecturaKilometraje.count({
+        where: { jornadaOperativaId: id, tipo: 'FIN_JORNADA' },
+      }),
+    ).toBe(0)
+    const pending = await dispatcher
+      .get(`/jornadas?cierreAtrasado=true&busId=${bus.id}`)
+      .expect(200)
+    expect(pending.body.data.jornadas).toHaveLength(1)
+    await driver
+      .post(`/jornadas/${id}/finalizar`)
+      .send({ fechaEvento: past(30).toISOString() })
+      .expect(400)
+    const finished = await dispatcher
+      .post(`/jornadas/${id}/finalizar`)
+      .send({ fechaEvento: past(30).toISOString(), kilometraje: 120 })
+      .expect(200)
+    expect(finished.body.data.jornada).toMatchObject({
+      estado: 'FINALIZADA',
+      lecturaFinal: { kilometraje: 120 },
+      cierrePendiente: { motivo: 'No puedo acceder al odómetro real.' },
+    })
+    expect(finished.body.data.jornada.finalizadaPor.rol).toBe('DESPACHADOR')
+    expect(
+      (await dispatcher.get(`/jornadas?cierreAtrasado=true&busId=${bus.id}`).expect(200)).body.data
+        .jornadas,
+    ).toHaveLength(0)
   }, 60_000)
 
   it('reconstruye bus, conductor, ruta, horario y odometro sin IDs libres del Conductor', async () => {

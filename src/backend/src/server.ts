@@ -8,7 +8,17 @@ import { shutdownServer } from './server-lifecycle.js'
 const app = createApp()
 
 const server = app.listen(env.PORT, () => {
-  logger.info({ port: env.PORT }, 'SGMV API iniciada')
+  const photoConfiguration = [
+    Boolean(env.CLOUDINARY_CLOUD_NAME),
+    Boolean(env.CLOUDINARY_API_KEY),
+    Boolean(env.CLOUDINARY_API_SECRET),
+  ]
+  logger.info({ port: env.PORT, photoConfiguration }, 'SGMV API iniciada')
+  if (!photoConfiguration.every(Boolean)) {
+    logger.warn(
+      'Fotografías no disponibles: inicie este proceso con la configuración de almacenamiento.',
+    )
+  }
 })
 const stopPreventiveEvaluation = startPreventiveEvaluation()
 const stopAlertEvaluation = startAlertEvaluation()

@@ -98,17 +98,20 @@ export const alertCatalog = {
     recipientStrategy: 'despacho y conductor propietario',
   },
   JORNADA_SIN_KILOMETRAJE_FINAL: {
-    allowedRecipientRoles: ['DESPACHADOR', 'CONDUCTOR'],
+    allowedRecipientRoles: ['ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR'],
     contextSchemaVersion: 1,
-    deduplicationScope: 'jornada y fin programado',
+    deduplicationScope:
+      'jornada y fin programado; escalamiento único a las 24 horas; informe único del Conductor',
     defaultPriority: 'MEDIA',
     defaultTitle: 'Jornada sin kilometraje final',
     internalRoutes: {
+      ADMINISTRADOR: '/jornadas',
       CONDUCTOR: '/jornadas',
       DESPACHADOR: '/jornadas',
     },
     originKind: 'jornadaId',
-    recipientStrategy: 'despacho y conductor propietario',
+    recipientStrategy:
+      'despacho y conductor propietario; administradores después de 24 horas de atraso',
   },
   ORDEN_PENDIENTE_ASIGNACION: {
     allowedRecipientRoles: administrators,

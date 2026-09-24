@@ -46,6 +46,7 @@ export class PreventivePlanRepository {
           actorId,
           busId: data.busId,
           claveTarea: data.claveTarea,
+          materializeIfMissing: true,
         })
       }
       return (await tx.planMantenimientoPreventivo.findUnique({
