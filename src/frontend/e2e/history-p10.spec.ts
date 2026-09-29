@@ -605,7 +605,7 @@ test('P10 reconstruye historial, respeta privacidad por rol y mantiene GET sin e
   await page.getByLabel('Fecha desde').fill('2026-09-02')
   await page.getByLabel('Fecha hasta').fill('2026-09-02')
   await page.getByRole('button', { name: /Aplicar filtros/i }).click()
-  await expect(page.getByText(busCode, { exact: true })).toBeVisible()
+  await expect(page.getByText(busCode, { exact: true }).first()).toBeVisible()
 
   const afterAdminReads = await snapshot()
   expect(afterAdminReads).toEqual(beforeReads)
