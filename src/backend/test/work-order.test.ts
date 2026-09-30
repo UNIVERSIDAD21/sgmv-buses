@@ -999,6 +999,63 @@ describe('RF-04 Work order tracking API', () => {
   )
 
   it(
+    'rectifica una actividad sin borrarla y exige una actividad vigente para completar',
+    async () => {
+      const { admin, mecanico, order } = await prepareCompletableOrder(fixture)
+      const detail = await mecanico.get(`/ordenes-trabajo/${order.id}`).expect(200)
+      const activity = detail.body.data.orden.intervenciones[0].actividades[0]
+      const url = `/ordenes-trabajo/${order.id}/actividades/${activity.id}/anular`
+      await admin.post(url).send({ motivo: 'Registro equivocado' }).expect(403)
+      await (
+        await loginAgent(fixture.mecanicoAltEmail)
+      )
+        .post(url)
+        .send({ motivo: 'Registro equivocado' })
+        .expect(403)
+      await mecanico.post(url).send({ motivo: '  ' }).expect(400)
+      const annulled = await mecanico
+        .post(url)
+        .send({ motivo: 'Se registró una actividad que no se realizó' })
+        .expect(200)
+      expect(annulled.body.data.orden.intervenciones[0].actividades[0]).toMatchObject({
+        id: activity.id,
+        descripcion: activity.descripcion,
+        anuladaPor: { id: fixture.mecanicoId },
+        motivoAnulacion: 'Se registró una actividad que no se realizó',
+      })
+      expect(annulled.body.data.orden.intervenciones[0].actividades[0].anuladaAt).toBeTruthy()
+      const history = await admin.get(`/historial/buses/${order.busId}`).expect(200)
+      const recorded = history.body.data.ordenes.find(
+        (candidate: { id: number }) => candidate.id === order.id,
+      ).diagnosticos[0]
+      expect(recorded.actividades).not.toContain(activity.descripcion)
+      expect(recorded.actividadesDetalladas[0]).toMatchObject({
+        id: activity.id,
+        descripcion: activity.descripcion,
+        motivoAnulacion: 'Se registró una actividad que no se realizó',
+      })
+      await mecanico.post(url).send({ motivo: 'Otra corrección' }).expect(409)
+      await mecanico.post(`/ordenes-trabajo/${order.id}/completar`).send({}).expect(400)
+      expect(
+        (await prisma.actividadOrden.findUniqueOrThrow({ where: { id: activity.id } })).descripcion,
+      ).toBe(activity.descripcion)
+      await expect(
+        prisma.actividadOrden.update({
+          where: { id: activity.id },
+          data: { descripcion: 'Intento de cambiar historia' },
+        }),
+      ).rejects.toThrow()
+      await mecanico
+        .post(`/ordenes-trabajo/${order.id}/actividades`)
+        .send({ descripcion: 'Inspección real de frenos y ajuste final' })
+        .expect(201)
+      await mecanico.post(`/ordenes-trabajo/${order.id}/completar`).send({}).expect(200)
+      await mecanico.post(url).send({ motivo: 'Fuera de ejecución' }).expect(400)
+    },
+    rf04TestTimeout,
+  )
+
+  it(
     'registers spare-part consumptions with stock, movement, cost and idempotency guarantees',
     async () => {
       const { mecanico, order } = await prepareCompletableOrder(fixture)

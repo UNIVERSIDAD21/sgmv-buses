@@ -258,6 +258,7 @@ model Usuario {
   rol Rol @relation(fields: [rolId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   actividadesRegistradas            ActividadOrden[]               @relation("ActividadRegistradaPor")
+  actividadesAnuladas               ActividadOrden[]               @relation("ActividadAnuladaPor")
   asignacionesCreadas               AsignacionConductor[]          @relation("AsignacionAsignadaPor")
   asignacionesConductor             AsignacionConductor[]          @relation("AsignacionConductorUsuario")
   busEstadosCambiados               BusEstadoHistorial[]           @relation("BusEstadoCambiadoPor")
@@ -606,17 +607,22 @@ model Intervencion {
 }
 
 model ActividadOrden {
-  id              Int      @id @default(autoincrement())
-  intervencionId  Int      @map("intervencion_id")
-  descripcion     String   @db.Text
-  fechaRegistro   DateTime @default(now()) @map("fecha_registro") @db.Timestamptz(6)
-  registradaPorId Int      @map("registrada_por_id")
+  id               Int       @id @default(autoincrement())
+  intervencionId   Int       @map("intervencion_id")
+  descripcion      String    @db.Text
+  fechaRegistro    DateTime  @default(now()) @map("fecha_registro") @db.Timestamptz(6)
+  registradaPorId  Int       @map("registrada_por_id")
+  anuladaAt        DateTime? @map("anulada_at") @db.Timestamptz(6)
+  anuladaPorId     Int?      @map("anulada_por_id")
+  motivoAnulacion  String?   @map("motivo_anulacion") @db.Text
 
   intervencion  Intervencion @relation(fields: [intervencionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   registradaPor Usuario      @relation("ActividadRegistradaPor", fields: [registradaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  anuladaPor    Usuario?     @relation("ActividadAnuladaPor", fields: [anuladaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([intervencionId, fechaRegistro])
   @@index([registradaPorId])
+  @@index([anuladaPorId])
   @@map("actividades_orden")
 }
 

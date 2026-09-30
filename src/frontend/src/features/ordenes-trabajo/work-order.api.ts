@@ -197,6 +197,13 @@ export function createWorkOrderActivity(ordenId: number, input: CreateActivityIn
   })
 }
 
+export function annulWorkOrderActivity(ordenId: number, actividadId: number, motivo: string) {
+  return apiRequest<{ orden: WorkOrderDetailDto }>(
+    `/ordenes-trabajo/${ordenId}/actividades/${actividadId}/anular`,
+    { body: JSON.stringify({ motivo }), method: 'POST' },
+  )
+}
+
 export function createTechnicalWorkOrderReading(
   ordenId: number,
   input: CreateTechnicalReadingInput,

@@ -75,6 +75,9 @@ export interface WorkOrderReassignmentDto {
 }
 
 export interface WorkOrderActivityDto {
+  anuladaAt: string | null
+  anuladaPor: WorkOrderUserDto | null
+  motivoAnulacion: string | null
   descripcion: string
   fechaRegistro: string
   id: number

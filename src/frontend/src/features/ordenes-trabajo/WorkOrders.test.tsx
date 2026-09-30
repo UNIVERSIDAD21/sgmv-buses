@@ -14,6 +14,35 @@ afterEach(() => {
 })
 
 describe('RF-04 work order frontend', () => {
+  it('rectifica una actividad conservando el original y el motivo visible', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo')
+    const fetchMock = mockApi(workOrderHandler('MECANICO', { initialStatus: 'EN_EJECUCION' }))
+    render(<App />)
+    fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
+    fireEvent.change(await screen.findByLabelText(/Actividad realizada/i), {
+      target: { value: 'Actividad ingresada por error' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Añadir actividad realizada/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Confirmar actividad$/i }))
+    expect(await screen.findByText(/Actividad registrada/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByText(/Contexto e historial de la orden/i))
+    fireEvent.click(await screen.findByRole('button', { name: /Rectificar actividad/i }))
+    const dialog = await screen.findByRole('dialog', { name: /Rectificar actividad/i })
+    fireEvent.change(within(dialog).getByLabelText(/Motivo de la rectificación/i), {
+      target: { value: 'No se realizó esta actividad' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: /Confirmar rectificación/i }))
+    expect(
+      await screen.findByText(/Actividad anulada; el registro original permanece/i),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Motivo: No se realizó esta actividad/i)).toBeInTheDocument()
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) => /\/actividades\/\d+\/anular$/.test(String(url)) && init?.method === 'POST',
+      ),
+    ).toBe(true)
+  })
+
   it('shows novelty evidence read-only to the assigned mechanic', async () => {
     window.history.pushState({}, '', '/ordenes-trabajo')
     mockApi(

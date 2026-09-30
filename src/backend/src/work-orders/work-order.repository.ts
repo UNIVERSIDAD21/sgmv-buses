@@ -119,6 +119,7 @@ export const workOrderDetailInclude = {
           registradaPor: {
             select: userSelect,
           },
+          anuladaPor: { select: userSelect },
         },
         orderBy: {
           fechaRegistro: 'asc',
@@ -1000,6 +1001,39 @@ export class WorkOrderRepository {
     )
   }
 
+  annulActivity(orderId: number, activityId: number, actorId: number, motivo: string) {
+    return prisma.$transaction(
+      async (tx) => {
+        await this.lockWorkOrder(tx, orderId)
+        const order = await this.findOrderByIdForTransaction(orderId, tx)
+        if (!order) return { orden: null, status: 'ORDER_NOT_FOUND' as const }
+        if (order.tecnicoAsignadoId !== actorId)
+          return { orden: order, status: 'NOT_ASSIGNED_MECHANIC' as const }
+        if (order.estado !== 'EN_EJECUCION')
+          return { orden: order, status: 'INVALID_STATE' as const }
+        const intervention = await this.findActiveIntervention(tx, orderId, actorId)
+        if (!intervention) return { orden: order, status: 'NO_ACTIVE_INTERVENTION' as const }
+        const activity = await tx.actividadOrden.findFirst({
+          where: { id: activityId, intervencionId: intervention.id },
+        })
+        if (!activity) return { orden: order, status: 'ACTIVITY_NOT_FOUND' as const }
+        if (activity.anuladaAt)
+          return { orden: order, status: 'ACTIVITY_ALREADY_ANNULLED' as const }
+        const updated = await tx.actividadOrden.updateMany({
+          where: { id: activityId, anuladaAt: null },
+          data: { anuladaAt: new Date(), anuladaPorId: actorId, motivoAnulacion: motivo },
+        })
+        if (updated.count !== 1)
+          return { orden: order, status: 'ACTIVITY_ALREADY_ANNULLED' as const }
+        return {
+          orden: await this.findOrderByIdForTransaction(orderId, tx),
+          status: 'ANNULLED' as const,
+        }
+      },
+      { maxWait: 15000, timeout: 60000 },
+    )
+  }
+
   createTechnicalReading(
     orderId: number,
     actorId: number,
@@ -1439,6 +1473,7 @@ export class WorkOrderRepository {
           tx.actividadOrden.count({
             where: {
               intervencionId: intervention.id,
+              anuladaAt: null,
             },
           }),
           tx.intervencion.count({
@@ -1639,6 +1674,7 @@ export class WorkOrderRepository {
                 intervencion: {
                   ordenTrabajoId: orderId,
                 },
+                anuladaAt: null,
               },
             }),
             tx.intervencion.count({

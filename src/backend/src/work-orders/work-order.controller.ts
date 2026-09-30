@@ -2,6 +2,8 @@ import type { RequestHandler } from 'express'
 
 import { sendData } from '../shared/http.js'
 import {
+  activityIdParamSchema,
+  annulActivitySchema,
   assignWorkOrderSchema,
   authorizeConsumptionExceptionSchema,
   consumptionExceptionParamSchema,
@@ -54,6 +56,18 @@ export class WorkOrderController {
 
     response.status(201)
     sendData(response, result, 'Actividad registrada')
+  }
+
+  annulActivity: RequestHandler = async (request, response) => {
+    const { ordenId, actividadId } = activityIdParamSchema.parse(request.params)
+    const input = annulActivitySchema.parse(request.body)
+    const result = await this.workOrderService.annulActivity(
+      ordenId,
+      actividadId,
+      input,
+      request.user!,
+    )
+    sendData(response, result, 'Actividad anulada conservando el registro original')
   }
 
   createConsumption: RequestHandler = async (request, response) => {

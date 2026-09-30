@@ -30,6 +30,7 @@ import type { OrderPriority } from '../novedades/novelty.types'
 import NoveltyEvidenceGallery from '../novedades/NoveltyEvidenceGallery'
 import { useInterventionDraft } from './useInterventionDraft'
 import {
+  annulWorkOrderActivity,
   assignWorkOrder,
   authorizeWorkOrderConsumptionException,
   closeWorkOrder,
@@ -910,7 +911,9 @@ function TechnicalPanel({
     order.acciones.puedeRegistrarTecnica,
   )
   const { diagnostico, observaciones, setDiagnostico, setObservaciones } = draft
-  const hasCurrentActivity = Boolean(activeIntervention?.actividades.length)
+  const hasCurrentActivity = Boolean(
+    activeIntervention?.actividades.some((item) => !item.anuladaAt),
+  )
   const hasDiagnosis =
     Boolean(diagnostico.trim()) ||
     order.intervenciones.some(
@@ -1267,9 +1270,9 @@ function TechnicalPanel({
         <section className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
           <h3 className="font-semibold text-emerald-950">Paso final: terminar mantenimiento</h3>
           <p className="text-sm">
-            {activeIntervention?.actividades.length ?? 0} actividades en tu intervención actual ·{' '}
-            {order.consumosRepuesto.length} usos de repuestos · {order.lecturasTecnicas.length}{' '}
-            lecturas registradas.
+            {activeIntervention?.actividades.filter((item) => !item.anuladaAt).length ?? 0}{' '}
+            actividades vigentes en tu intervención actual · {order.consumosRepuesto.length} usos de
+            repuestos · {order.lecturasTecnicas.length} lecturas registradas.
           </p>
           <p className="text-sm">
             {!hasCurrentActivity
@@ -1547,6 +1550,34 @@ function WorkOrderDetail({
   order: WorkOrderDetailDto
   submitting: boolean
 }) {
+  const [activityToAnnul, setActivityToAnnul] = useState<{
+    id: number
+    descripcion: string
+  } | null>(null)
+  const [annulReason, setAnnulReason] = useState('')
+  const [annulError, setAnnulError] = useState<string | null>(null)
+  const [annulBusy, setAnnulBusy] = useState(false)
+  async function submitActivityAnnulment(event: FormEvent) {
+    event.preventDefault()
+    if (!activityToAnnul || annulBusy) return
+    if (annulReason.trim().length < 3) {
+      setAnnulError('Indique el motivo de la corrección (mínimo 3 caracteres).')
+      return
+    }
+    setAnnulBusy(true)
+    setAnnulError(null)
+    try {
+      const result = await annulWorkOrderActivity(order.id, activityToAnnul.id, annulReason.trim())
+      onOrderChange(result.orden)
+      onFeedback('Actividad anulada; el registro original permanece en el historial.')
+      setActivityToAnnul(null)
+      setAnnulReason('')
+    } catch (error) {
+      setAnnulError(getErrorMessage(error))
+    } finally {
+      setAnnulBusy(false)
+    }
+  }
   return (
     <div className="space-y-5">
       {isMechanic && (
@@ -1862,7 +1893,34 @@ function WorkOrderDetail({
                           className="rounded-lg bg-white px-3 py-2 text-sm text-slate-700"
                           key={activity.id}
                         >
-                          {activity.descripcion}
+                          <span className={activity.anuladaAt ? 'line-through text-slate-500' : ''}>
+                            {activity.descripcion}
+                          </span>
+                          {activity.anuladaAt && (
+                            <span className="mt-1 block text-xs text-amber-800">
+                              Anulada por {activity.anuladaPor?.nombre ?? 'usuario no disponible'}{' '}
+                              el {formatDateTimeValue(activity.anuladaAt)}. Motivo:{' '}
+                              {activity.motivoAnulacion}
+                            </span>
+                          )}
+                          {order.acciones.puedeRegistrarTecnica &&
+                            !activity.anuladaAt &&
+                            !intervention.fechaFin && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setActivityToAnnul({
+                                    id: activity.id,
+                                    descripcion: activity.descripcion,
+                                  })
+                                  setAnnulReason('')
+                                  setAnnulError(null)
+                                }}
+                              >
+                                Rectificar actividad
+                              </Button>
+                            )}
                           <span className="mt-1 block text-xs text-slate-400">
                             {formatDateTimeValue(activity.fechaRegistro)} -{' '}
                             {activity.registradaPor.nombre}
@@ -1985,6 +2043,43 @@ function WorkOrderDetail({
           )}
         </section>
       </details>
+      {activityToAnnul && (
+        <ModalFrame
+          title="Rectificar actividad"
+          subtitle={order.codigo}
+          onClose={() => setActivityToAnnul(null)}
+        >
+          <form className="space-y-4 p-5" onSubmit={(event) => void submitActivityAnnulment(event)}>
+            <p className="text-sm text-slate-700">
+              El registro original «{activityToAnnul.descripcion}» permanecerá visible, marcado como
+              anulado. Registre la actividad correcta por separado si hubo trabajo real.
+            </p>
+            <label className="block text-sm font-medium">
+              Motivo de la rectificación
+              <textarea
+                className="mt-1 min-h-20 w-full rounded-lg border p-2"
+                value={annulReason}
+                onChange={(event) => setAnnulReason(event.target.value)}
+                maxLength={1000}
+                required
+              />
+            </label>
+            {annulError && (
+              <p role="alert" className="text-sm text-red-700">
+                {annulError}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setActivityToAnnul(null)}>
+                Volver
+              </Button>
+              <Button type="submit" loading={annulBusy}>
+                Confirmar rectificación
+              </Button>
+            </div>
+          </form>
+        </ModalFrame>
+      )}
       {isMechanic && (
         <TechnicalPanel
           key={`${order.id}-${order.intervenciones.find((intervention) => !intervention.fechaFin)?.id ?? 'no-active'}`}

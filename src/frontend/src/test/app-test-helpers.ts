@@ -744,6 +744,9 @@ export function createWorkOrderDetail(status = 'PENDIENTE_ASIGNACION') {
                 ? []
                 : [
                     {
+                      anuladaAt: null,
+                      anuladaPor: null,
+                      motivoAnulacion: null,
                       descripcion: 'Revision y ajuste tecnico',
                       fechaRegistro: '2026-08-28T12:20:00.000Z',
                       id: 2001,
@@ -1120,6 +1123,9 @@ export function workOrderHandler(
                 actividades: [
                   ...intervention.actividades,
                   {
+                    anuladaAt: null,
+                    anuladaPor: null,
+                    motivoAnulacion: null,
                     descripcion: payload.descripcion ?? 'Actividad registrada',
                     fechaRegistro: '2026-08-28T12:20:00.000Z',
                     id: 4000 + intervention.actividades.length,
@@ -1130,6 +1136,28 @@ export function workOrderHandler(
         ),
       }
 
+      return ok({ orden: decoratedOrder() })
+    }
+
+    if (/\/actividades\/\d+\/anular$/.test(path) && init?.method === 'POST') {
+      const activityId = Number(path.split('/').at(-2))
+      const payload = JSON.parse(String(init.body ?? '{}')) as { motivo: string }
+      order = {
+        ...order,
+        intervenciones: order.intervenciones.map((intervention) => ({
+          ...intervention,
+          actividades: intervention.actividades.map((activity) =>
+            activity.id === activityId
+              ? {
+                  ...activity,
+                  anuladaAt: '2026-08-28T12:22:00.000Z',
+                  anuladaPor: workOrderMechanic,
+                  motivoAnulacion: payload.motivo,
+                }
+              : activity,
+          ),
+        })),
+      }
       return ok({ orden: decoratedOrder() })
     }
 

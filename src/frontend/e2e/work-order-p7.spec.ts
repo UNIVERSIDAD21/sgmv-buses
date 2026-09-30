@@ -183,6 +183,19 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
   await page.getByRole('button', { name: 'Añadir actividad realizada' }).click()
   await page.getByRole('button', { name: 'Confirmar actividad', exact: true }).click()
   await expect(page.getByText('Actividad registrada.')).toBeVisible()
+  await page.getByText('Contexto e historial de la orden').click()
+  await page.getByRole('button', { name: 'Rectificar actividad' }).click()
+  const rectifyDialog = page.getByRole('dialog', { name: 'Rectificar actividad' })
+  await rectifyDialog
+    .getByLabel('Motivo de la rectificación')
+    .fill('Actividad cargada antes de realizarla')
+  await rectifyDialog.getByRole('button', { name: 'Confirmar rectificación' }).click()
+  await expect(page.getByText(/Actividad anulada; el registro original permanece/)).toBeVisible()
+  await expect(page.getByText(/Motivo: Actividad cargada antes de realizarla/)).toBeVisible()
+  await page.getByLabel('Actividad realizada').fill(`Actividad verificada ${marker}`)
+  await page.getByRole('button', { name: 'Añadir actividad realizada' }).click()
+  await page.getByRole('button', { name: 'Confirmar actividad', exact: true }).click()
+  await expect(page.getByText('Actividad registrada.')).toBeVisible()
 
   await registerReading(page, {
     date: new Date(baseTime + 60_000),
@@ -241,7 +254,13 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
   expect(persisted.estado).toBe('CERRADA')
   expect(persisted.disponibilidadAlCierre).toBe(true)
   expect(persisted.intervenciones).toHaveLength(1)
-  expect(persisted.intervenciones[0]?.actividades).toHaveLength(1)
+  expect(persisted.intervenciones[0]?.actividades).toHaveLength(2)
+  expect(
+    persisted.intervenciones[0]?.actividades.filter((item) => item.anuladaAt === null),
+  ).toHaveLength(1)
+  expect(
+    persisted.intervenciones[0]?.actividades.find((item) => item.anuladaAt !== null),
+  ).toMatchObject({ motivoAnulacion: 'Actividad cargada antes de realizarla' })
   expect(persisted.lecturasKilometraje.map((reading) => reading.tipo)).toEqual([
     'INGRESO_TALLER',
     'REVISION_TECNICA',

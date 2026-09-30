@@ -122,6 +122,16 @@ export const createActivitySchema = z
   })
   .strict()
 
+export const activityIdParamSchema = orderIdParamSchema.extend({
+  actividadId: entityIdSchema,
+})
+
+export const annulActivitySchema = z
+  .object({
+    motivo: trimmedText(3, 1000),
+  })
+  .strict()
+
 export const createTechnicalReadingSchema = z
   .object({
     fechaEvento: z.coerce.date(),
@@ -156,6 +166,7 @@ export const returnWorkOrderSchema = z
   })
   .strict()
 
+export type AnnulActivityInput = z.infer<typeof annulActivitySchema>
 export type AssignWorkOrderInput = z.infer<typeof assignWorkOrderSchema>
 export type AvailableMechanicsQuery = z.infer<typeof availableMechanicsQuerySchema>
 export type AvailablePartsQuery = z.infer<typeof availablePartsQuerySchema>

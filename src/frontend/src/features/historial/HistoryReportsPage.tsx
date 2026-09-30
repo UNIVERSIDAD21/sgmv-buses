@@ -457,9 +457,18 @@ function OrderHistory({ admin, orders }: { admin: boolean; orders: HistoryOrderD
               <p className="mt-1 text-slate-600">{diagnosis.diagnostico ?? 'Sin diagnóstico'}</p>
               {diagnosis.actividades.length > 0 && (
                 <p className="mt-1 text-slate-500">
-                  Actividades: {diagnosis.actividades.join(' · ')}
+                  Actividades vigentes: {diagnosis.actividades.join(' · ')}
                 </p>
               )}
+              {diagnosis.actividadesDetalladas
+                ?.filter((activity) => activity.anuladaAt)
+                .map((activity) => (
+                  <p className="mt-1 text-amber-800" key={activity.id}>
+                    Actividad rectificada: {activity.descripcion}. Motivo:{' '}
+                    {activity.motivoAnulacion}.
+                    {activity.anuladaPor ? ` Por ${activity.anuladaPor}.` : ''}
+                  </p>
+                ))}
             </div>
           ))}
           {order.historialEstados && order.historialEstados.length > 0 && (

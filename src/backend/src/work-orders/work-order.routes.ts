@@ -93,6 +93,12 @@ workOrderRoutes.post(
   idempotent(workOrderController.createActivity),
 )
 workOrderRoutes.post(
+  '/:ordenId/actividades/:actividadId/anular',
+  enforceAllowedOrigin,
+  authorizeRoles('MECANICO'),
+  idempotent(workOrderController.annulActivity),
+)
+workOrderRoutes.post(
   '/:ordenId/lecturas',
   enforceAllowedOrigin,
   authorizeRoles('ADMINISTRADOR', 'MECANICO'),

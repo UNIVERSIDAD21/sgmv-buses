@@ -249,8 +249,13 @@ export class ReportService {
       ...(canViewTechnicalDetails
         ? {
             diagnosticos: order.intervenciones.map((intervention) => ({
-              actividades: intervention.actividades.map((activity) => activity.descripcion),
+              actividades: intervention.actividades
+                .filter((activity) => !activity.anuladaAt)
+                .map((activity) => activity.descripcion),
               actividadesDetalladas: intervention.actividades.map((activity) => ({
+                anuladaAt: iso(activity.anuladaAt),
+                anuladaPor: activity.anuladaPor?.nombre ?? null,
+                motivoAnulacion: activity.motivoAnulacion,
                 descripcion: activity.descripcion,
                 fechaRegistro: activity.fechaRegistro.toISOString(),
                 id: activity.id,

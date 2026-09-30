@@ -13,6 +13,7 @@ import type {
   AvailableMechanicsQuery,
   AvailablePartsQuery,
   AuthorizeConsumptionExceptionInput,
+  AnnulActivityInput,
   AssignWorkOrderInput,
   CreateActivityInput,
   CreateConsumptionInput,
@@ -184,6 +185,9 @@ function mapActivity(
   activity: WorkOrderRecord['intervenciones'][number]['actividades'][number],
 ): WorkOrderActivityDto {
   return {
+    anuladaAt: activity.anuladaAt?.toISOString() ?? null,
+    anuladaPor: activity.anuladaPor ? mapUser(activity.anuladaPor) : null,
+    motivoAnulacion: activity.motivoAnulacion,
     descripcion: activity.descripcion,
     fechaRegistro: activity.fechaRegistro.toISOString(),
     id: activity.id,
@@ -552,6 +556,26 @@ export class WorkOrderService {
       return {
         orden: this.mapOperationResult(result, actor),
       }
+    } catch (error) {
+      translatePrismaError(error)
+    }
+  }
+
+  async annulActivity(
+    orderId: number,
+    activityId: number,
+    input: AnnulActivityInput,
+    actor: AuthenticatedUser,
+  ) {
+    ensureMechanic(actor)
+    try {
+      const result = await this.workOrderRepository.annulActivity(
+        orderId,
+        activityId,
+        actor.id,
+        normalizeText(input.motivo),
+      )
+      return { orden: this.mapOperationResult(result, actor) }
     } catch (error) {
       translatePrismaError(error)
     }
@@ -1271,6 +1295,17 @@ export class WorkOrderService {
         'TECHNICAL_CLOSURE_EXISTS',
         'Ya existe una lectura final de taller para esta orden',
       )
+    }
+
+    if (result.status === 'ACTIVITY_NOT_FOUND') {
+      throw new AppError(
+        404,
+        'ACTIVITY_NOT_FOUND',
+        'Actividad no encontrada en la intervención activa',
+      )
+    }
+    if (result.status === 'ACTIVITY_ALREADY_ANNULLED') {
+      throw new AppError(409, 'ACTIVITY_ALREADY_ANNULLED', 'La actividad ya fue anulada')
     }
 
     if (result.status === 'MISSING_ACTIVITY') {

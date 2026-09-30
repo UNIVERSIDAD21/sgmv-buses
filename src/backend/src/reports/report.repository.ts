@@ -402,7 +402,14 @@ export class ReportRepository {
           include: {
             actividades: {
               orderBy: [{ fechaRegistro: 'asc' }, { id: 'asc' }],
-              select: { descripcion: true, fechaRegistro: true, id: true },
+              select: {
+                anuladaAt: true,
+                anuladaPor: { select: { nombre: true } },
+                motivoAnulacion: true,
+                descripcion: true,
+                fechaRegistro: true,
+                id: true,
+              },
               where: dateRangeFromQuery(query)
                 ? { fechaRegistro: dateRangeFromQuery(query) }
                 : undefined,

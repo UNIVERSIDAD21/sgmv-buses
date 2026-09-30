@@ -35,6 +35,9 @@ export interface HistoryOrderDto {
   diagnosticos?: Array<{
     actividades: string[]
     actividadesDetalladas: Array<{
+      anuladaAt: string | null
+      anuladaPor: string | null
+      motivoAnulacion: string | null
       descripcion: string
       fechaRegistro: string
       id: number
