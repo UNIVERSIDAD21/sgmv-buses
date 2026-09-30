@@ -9,6 +9,7 @@ import {
 
 import {
   createNoveltyAlerts,
+  createPredepartureNoveltyAlert,
   createNoveltyStateChangeAlert,
   createWorkOrderPendingAlert,
 } from '../alerts/alert.service.js'
@@ -56,8 +57,10 @@ export const noveltyInclude = {
   jornadaOperativa: {
     select: {
       estado: true,
+      finProgramado: true,
       finReal: true,
       id: true,
+      inicioProgramado: true,
       inicioReal: true,
       ruta: {
         select: {
@@ -95,7 +98,9 @@ interface CreateNoveltyData {
   conductorId: number
   descripcion: string
   fechaOcurrencia: Date
-  kilometraje: number
+  jornadaOperativaId?: number
+  kilometraje?: number
+  motivoAusenciaLectura?: string
   tipo: string
 }
 
@@ -143,18 +148,21 @@ export class NoveltyRepository {
   createNovelty(data: CreateNoveltyData) {
     return prisma.$transaction(
       async (tx) => {
+        const beforeDeparture = data.jornadaOperativaId !== undefined
         const journey = await tx.jornadaOperativa.findFirst({
-          where: {
-            conductorId: data.conductorId,
-            inicioReal: { lte: data.fechaOcurrencia },
-            OR: [
-              { estado: 'EN_CURSO', finReal: null },
-              {
-                estado: { in: ['FINALIZADA', 'CANCELADA', 'REASIGNADA'] },
-                finReal: { gte: data.fechaOcurrencia },
+          where: beforeDeparture
+            ? { id: data.jornadaOperativaId, conductorId: data.conductorId }
+            : {
+                conductorId: data.conductorId,
+                inicioReal: { lte: data.fechaOcurrencia },
+                OR: [
+                  { estado: 'EN_CURSO', finReal: null },
+                  {
+                    estado: { in: ['FINALIZADA', 'CANCELADA', 'REASIGNADA'] },
+                    finReal: { gte: data.fechaOcurrencia },
+                  },
+                ],
               },
-            ],
-          },
           orderBy: { inicioReal: 'desc' },
           select: { busId: true, conductorId: true, id: true },
         })
@@ -171,7 +179,9 @@ export class NoveltyRepository {
           select: {
             busId: true,
             conductorId: true,
+            createdAt: true,
             estado: true,
+            fechaCambio: true,
             finReal: true,
             id: true,
             inicioReal: true,
@@ -179,26 +189,37 @@ export class NoveltyRepository {
         })
         const containsEvent =
           lockedJourney?.conductorId === data.conductorId &&
-          lockedJourney.inicioReal !== null &&
-          lockedJourney.inicioReal <= data.fechaOcurrencia &&
-          ((lockedJourney.estado === 'EN_CURSO' && lockedJourney.finReal === null) ||
-            (lockedJourney.finReal !== null && lockedJourney.finReal >= data.fechaOcurrencia))
+          (beforeDeparture
+            ? lockedJourney.inicioReal === null &&
+              Math.floor(lockedJourney.createdAt.getTime() / 60_000) * 60_000 <=
+                data.fechaOcurrencia.getTime() &&
+              (lockedJourney.estado === 'PROGRAMADA' ||
+                ((lockedJourney.estado === 'CANCELADA' || lockedJourney.estado === 'REASIGNADA') &&
+                  lockedJourney.fechaCambio !== null &&
+                  data.fechaOcurrencia <= lockedJourney.fechaCambio))
+            : lockedJourney.inicioReal !== null &&
+              lockedJourney.inicioReal <= data.fechaOcurrencia &&
+              ((lockedJourney.estado === 'EN_CURSO' && lockedJourney.finReal === null) ||
+                (lockedJourney.finReal !== null && lockedJourney.finReal >= data.fechaOcurrencia)))
 
         if (!lockedJourney || !containsEvent) {
           return { novedad: null, status: 'JOURNEY_NOT_FOUND' as const }
         }
 
-        const reading = await registerContextualMileageReading(
-          {
-            actorId: data.conductorId,
-            busId: lockedJourney.busId,
-            eventDate: data.fechaOcurrencia,
-            journeyId: lockedJourney.id,
-            mileage: data.kilometraje,
-            type: 'NOVEDAD',
-          },
-          tx,
-        )
+        const reading =
+          data.kilometraje === undefined
+            ? null
+            : await registerContextualMileageReading(
+                {
+                  actorId: data.conductorId,
+                  busId: lockedJourney.busId,
+                  eventDate: data.fechaOcurrencia,
+                  journeyId: lockedJourney.id,
+                  mileage: data.kilometraje,
+                  type: 'NOVEDAD',
+                },
+                tx,
+              )
         const novelty = await tx.novedad.create({
           data: {
             busId: lockedJourney.busId,
@@ -206,11 +227,24 @@ export class NoveltyRepository {
             descripcion: data.descripcion,
             fechaOcurrencia: data.fechaOcurrencia,
             jornadaOperativaId: lockedJourney.id,
-            lecturaKilometrajeId: reading.id,
+            lecturaKilometrajeId: reading?.id,
+            motivoAusenciaLectura: data.motivoAusenciaLectura,
+            reportadaAntesSalida: beforeDeparture,
             tipo: data.tipo,
           },
           include: noveltyInclude,
         })
+
+        if (beforeDeparture) {
+          const bus = await tx.bus.findUniqueOrThrow({
+            where: { id: lockedJourney.busId },
+            select: { codigoInterno: true },
+          })
+          await createPredepartureNoveltyAlert(
+            { busCodigo: bus.codigoInterno, eventAt: data.fechaOcurrencia, novedadId: novelty.id },
+            tx,
+          )
+        }
 
         return { novedad: novelty, status: 'CREATED' as const }
       },

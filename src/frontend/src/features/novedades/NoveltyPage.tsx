@@ -20,9 +20,10 @@ import StatePanel from '../../components/ui/StatePanel'
 import { BUS_STATUS_LABELS, NOVELTY_STATUS_LABELS, ORDER_STATUS_LABELS } from '../../domain/labels'
 import { ApiError } from '../../lib/api'
 import { formatNumber } from '../../lib/format'
+import { useCurrentTime } from '../../hooks/useCurrentTime'
 import { useSession } from '../auth/session.context'
-import { getMyJourney } from '../jornadas/journey.api'
-import type { MyJourneyResponse } from '../jornadas/journey.types'
+import { getJourney, getMyJourney } from '../jornadas/journey.api'
+import type { JourneyDto, MyJourneyResponse } from '../jornadas/journey.types'
 import {
   convertNoveltyToOrder,
   createNovelty,
@@ -196,6 +197,11 @@ function NoveltyDetail({
             : 'Sin contexto historico'}
         </FieldValue>
         <FieldValue label="Fecha reporte">{formatDateTimeValue(novelty.fechaReporte)}</FieldValue>
+        <FieldValue label="Tramo de jornada">
+          {novelty.jornada
+            ? `#${novelty.jornada.id} · ${formatDateTimeValue(novelty.jornada.inicioProgramado)} – ${formatDateTimeValue(novelty.jornada.finProgramado)}`
+            : 'Sin jornada asociada'}
+        </FieldValue>
         <FieldValue label="Tipo">{novelty.tipo}</FieldValue>
         <FieldValue label="Estado">
           <StatusBadge status={novelty.estado} />
@@ -241,6 +247,14 @@ function NoveltyDetail({
             {novelty.lecturaKilometraje
               ? `${formatNumber(novelty.lecturaKilometraje.kilometraje)} km`
               : 'Sin lectura asociada'}
+          </FieldValue>
+          {novelty.motivoAusenciaLectura && (
+            <FieldValue label="Motivo sin lectura">{novelty.motivoAusenciaLectura}</FieldValue>
+          )}
+          <FieldValue label="Momento del reporte">
+            {novelty.reportadaAntesSalida
+              ? 'Antes de confirmar salida'
+              : 'Durante o después de la jornada'}
           </FieldValue>
           <FieldValue label="Responsable revision">
             {novelty.revisadaPor?.nombre ?? 'Sin revision'}
@@ -541,7 +555,15 @@ function DriverNoveltyCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="break-words text-sm font-semibold text-slate-900">{novelty.tipo}</p>
-          <p className="mt-1 text-xs text-slate-500">{formatDateTimeValue(novelty.fechaReporte)}</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {novelty.bus.codigoInterno} · {novelty.bus.placa} ·
+            {novelty.jornada ? ` tramo #${novelty.jornada.id}` : 'sin tramo registrado'}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Hecho:{' '}
+            {novelty.fechaOcurrencia ? formatDateTimeValue(novelty.fechaOcurrencia) : 'sin fecha'}
+            {' · '}Registrado: {formatDateTimeValue(novelty.fechaReporte)}
+          </p>
         </div>
         <StatusBadge status={novelty.estado} />
       </div>
@@ -604,8 +626,10 @@ function Pagination({
 }
 
 function DriverView() {
+  const now = useCurrentTime()
   const [searchParams, setSearchParams] = useSearchParams()
   const [journeyData, setJourneyData] = useState<MyJourneyResponse | null>(null)
+  const [focusedDepartureJourney, setFocusedDepartureJourney] = useState<JourneyDto | null>(null)
   const [descripcion, setDescripcion] = useState('')
   const [detailLoading, setDetailLoading] = useState(false)
   const [estado, setEstado] = useState<NoveltyStatus | ''>('')
@@ -623,8 +647,31 @@ function DriverView() {
   const [tipo, setTipo] = useState('')
   const [fechaOcurrencia, setFechaOcurrencia] = useState(formatLocalDateTimeInput)
   const [kilometraje, setKilometraje] = useState('')
+  const [sinLectura, setSinLectura] = useState(false)
+  const [motivoAusenciaLectura, setMotivoAusenciaLectura] = useState('')
 
   const currentJourney = journeyData?.jornadaActual ?? null
+  const beforeDepartureId = Number(searchParams.get('antesDeSalir'))
+  const beforeDepartureJourney = [
+    journeyData?.jornadaPendiente,
+    journeyData?.proximaJornada,
+    focusedDepartureJourney,
+  ].find((journey) => journey?.id === beforeDepartureId && journey.estado === 'PROGRAMADA')
+
+  useEffect(() => {
+    if (!Number.isSafeInteger(beforeDepartureId) || beforeDepartureId <= 0) return
+    let active = true
+    void getJourney(beforeDepartureId)
+      .then(({ jornada }) => {
+        if (active) setFocusedDepartureJourney(jornada)
+      })
+      .catch(() => {
+        if (active) setFocusedDepartureJourney(null)
+      })
+    return () => {
+      active = false
+    }
+  }, [beforeDepartureId])
 
   const refreshDriverData = useCallback(async () => {
     const [journey, novelties] = await Promise.all([
@@ -689,7 +736,7 @@ function DriverView() {
     }`
   }, [listData])
 
-  function validateForm() {
+  function validateForm(now: number) {
     const errors: Record<string, string> = {}
     const normalizedTipo = normalizeText(tipo)
     const normalizedDescripcion = normalizeText(descripcion)
@@ -705,13 +752,23 @@ function DriverView() {
     const eventDate = new Date(fechaOcurrencia)
     if (!fechaOcurrencia || Number.isNaN(eventDate.getTime())) {
       errors.fechaOcurrencia = 'Ingrese una fecha y hora validas.'
-    } else if (eventDate.getTime() > Date.now()) {
+    } else if (eventDate.getTime() > now) {
       errors.fechaOcurrencia = 'La fecha de ocurrencia no puede estar en el futuro.'
     }
 
     const mileageValue = Number(kilometraje)
-    if (!Number.isInteger(mileageValue) || mileageValue < 0) {
+    if (
+      !sinLectura &&
+      (!kilometraje.trim() || !Number.isSafeInteger(mileageValue) || mileageValue < 0)
+    ) {
       errors.kilometraje = 'Ingrese un kilometraje entero mayor o igual a cero.'
+    }
+    if (sinLectura && normalizeText(motivoAusenciaLectura).length < 10) {
+      errors.motivoAusenciaLectura =
+        'Explique por qué no puede observar el odómetro de forma segura.'
+    }
+    if (searchParams.has('antesDeSalir') && !beforeDepartureJourney) {
+      errors.jornada = 'La jornada programada ya no está disponible para este reporte.'
     }
 
     setFieldErrors(errors)
@@ -724,7 +781,7 @@ function DriverView() {
     setFeedback(null)
     setSubmitError(null)
 
-    if (!validateForm()) {
+    if (!validateForm(now)) {
       return
     }
 
@@ -734,7 +791,10 @@ function DriverView() {
       const created = await createNovelty({
         descripcion: normalizeText(descripcion),
         fechaOcurrencia: new Date(fechaOcurrencia).toISOString(),
-        kilometraje: Number(kilometraje),
+        ...(beforeDepartureJourney ? { jornadaOperativaId: beforeDepartureJourney.id } : {}),
+        ...(sinLectura
+          ? { motivoAusenciaLectura: normalizeText(motivoAusenciaLectura) }
+          : { kilometraje: Number(kilometraje) }),
         tipo: normalizeText(tipo),
       })
 
@@ -751,12 +811,21 @@ function DriverView() {
       setDescripcion('')
       setFechaOcurrencia(formatLocalDateTimeInput())
       setKilometraje('')
+      setSinLectura(false)
+      setMotivoAusenciaLectura('')
+      if (searchParams.has('antesDeSalir')) {
+        const nextParams = new URLSearchParams(searchParams)
+        nextParams.delete('antesDeSalir')
+        setSearchParams(nextParams)
+      }
       setEvidenceFiles([])
       setEvidencePickerKey((current) => current + 1)
       setFeedback(
         evidenceWarning
           ? 'La novedad quedó registrada, pero las imágenes no se guardaron. Puede cargarlas desde el detalle.'
-          : 'Novedad registrada y vinculada a la jornada correspondiente.',
+          : beforeDepartureJourney
+            ? 'Problema registrado antes de la salida. La jornada sigue programada; Despacho debe coordinar la continuidad.'
+            : 'Novedad registrada y vinculada a la jornada correspondiente.',
       )
       if (evidenceWarning) setSubmitError(evidenceWarning)
       await refreshDriverData()
@@ -808,7 +877,8 @@ function DriverView() {
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Mis novedades operativas</h2>
             <p className="mt-1 text-sm leading-6 text-slate-500">
-              El sistema deriva la jornada, el bus y la lectura desde la fecha de ocurrencia.
+              El sistema valida la jornada y el bus; el odómetro solo se registra si usted pudo
+              observarlo.
             </p>
           </div>
           <p className="text-sm text-slate-500">{totalLabel}</p>
@@ -830,6 +900,23 @@ function DriverView() {
       {!loading && !loadError && (
         <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
           <section className="space-y-4">
+            {beforeDepartureJourney && (
+              <div className="surface border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+                <p className="font-semibold">Reportar problema antes de salir</p>
+                <p className="mt-1">
+                  {beforeDepartureJourney.bus.codigoInterno} · {beforeDepartureJourney.bus.placa} ·
+                  jornada #{beforeDepartureJourney.id}
+                </p>
+                <p className="mt-1">
+                  {beforeDepartureJourney.ruta?.codigo ?? 'Sin ruta'} ·
+                  {formatDateTimeValue(beforeDepartureJourney.inicioProgramado)} –
+                  {formatDateTimeValue(beforeDepartureJourney.finProgramado)}
+                </p>
+                <p className="mt-2">
+                  Este reporte no confirma la salida ni registra una lectura de inicio.
+                </p>
+              </div>
+            )}
             {currentJourney ? (
               <div className="surface p-4 md:p-5">
                 <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
@@ -880,6 +967,11 @@ function DriverView() {
                   {submitError}
                 </div>
               )}
+              {fieldErrors.jornada && (
+                <p role="alert" className="mt-3 text-sm text-red-700">
+                  {fieldErrors.jornada}
+                </p>
+              )}
 
               <div className="mt-5 space-y-4">
                 <label className="block text-sm font-medium text-slate-700">
@@ -906,35 +998,60 @@ function DriverView() {
                   )}
                 </label>
 
-                <label className="block text-sm font-medium text-slate-700">
-                  Kilometraje observado
+                <label className="flex items-start gap-3 text-sm text-slate-700">
                   <input
-                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                    min="0"
+                    checked={sinLectura}
+                    className="mt-1 h-4 w-4"
                     onChange={(event) => {
-                      setKilometraje(event.target.value)
-                      setFieldErrors((current) => {
-                        const next = { ...current }
-                        delete next.kilometraje
-                        return next
-                      })
+                      setSinLectura(event.target.checked)
+                      setKilometraje('')
+                      setFieldErrors((current) => ({
+                        ...current,
+                        kilometraje: '',
+                        motivoAusenciaLectura: '',
+                      }))
                     }}
-                    placeholder={
-                      currentJourney?.lecturaInicial
-                        ? String(currentJourney.lecturaInicial.kilometraje)
-                        : 'Ej. 125000'
-                    }
-                    required
-                    step="1"
-                    type="number"
-                    value={kilometraje}
+                    type="checkbox"
                   />
-                  {fieldErrors.kilometraje && (
-                    <span className="mt-1 block text-xs text-red-600">
-                      {fieldErrors.kilometraje}
-                    </span>
-                  )}
+                  No puedo observar el odómetro de forma segura.
                 </label>
+                {sinLectura ? (
+                  <label className="block text-sm font-medium text-slate-700">
+                    Motivo de ausencia de lectura
+                    <textarea
+                      className="field-control min-h-24"
+                      maxLength={500}
+                      minLength={10}
+                      onChange={(event) => setMotivoAusenciaLectura(event.target.value)}
+                      required
+                      value={motivoAusenciaLectura}
+                    />
+                    {fieldErrors.motivoAusenciaLectura && (
+                      <span className="mt-1 block text-xs text-red-600">
+                        {fieldErrors.motivoAusenciaLectura}
+                      </span>
+                    )}
+                  </label>
+                ) : (
+                  <label className="block text-sm font-medium text-slate-700">
+                    Kilometraje observado
+                    <input
+                      className="field-control"
+                      min="0"
+                      onChange={(event) => setKilometraje(event.target.value)}
+                      placeholder="Digite únicamente la lectura física observada"
+                      required
+                      step="1"
+                      type="number"
+                      value={kilometraje}
+                    />
+                    {fieldErrors.kilometraje && (
+                      <span className="mt-1 block text-xs text-red-600">
+                        {fieldErrors.kilometraje}
+                      </span>
+                    )}
+                  </label>
+                )}
 
                 <label className="block text-sm font-medium text-slate-700">
                   Tipo de novedad

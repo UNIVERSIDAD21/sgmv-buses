@@ -30,6 +30,7 @@ const TYPE_LABELS: Record<AlertType, string> = {
   MANTENIMIENTO_PROXIMO: 'Mantenimiento próximo',
   MANTENIMIENTO_VENCIDO: 'Mantenimiento vencido',
   NOVEDAD_CRITICA: 'Novedad crítica',
+  NOVEDAD_PREVIA_SALIDA: 'Problema antes de salir',
   ORDEN_ASIGNADA: 'Orden asignada',
   ORDEN_COMPLETADA_TECNICO: 'Orden completada por técnico',
   ORDEN_DEVUELTA: 'Orden devuelta',
@@ -68,6 +69,7 @@ const TYPES_BY_ROLE = {
     'MANTENIMIENTO_PROXIMO',
     'MANTENIMIENTO_VENCIDO',
     'NOVEDAD_CRITICA',
+    'NOVEDAD_PREVIA_SALIDA',
     'ORDEN_COMPLETADA_TECNICO',
     'ORDEN_PENDIENTE_ASIGNACION',
   ],
@@ -89,6 +91,7 @@ const TYPES_BY_ROLE = {
     'MANTENIMIENTO_PROXIMO',
     'MANTENIMIENTO_VENCIDO',
     'NOVEDAD_CRITICA',
+    'NOVEDAD_PREVIA_SALIDA',
   ],
   MECANICO: ['CONSUMO_INCOMPATIBLE', 'ORDEN_ASIGNADA', 'ORDEN_DEVUELTA'],
 } as const satisfies Record<string, readonly AlertType[]>

@@ -173,6 +173,14 @@ export default function JourneyCard({
           Próxima jornada: la salida estará disponible desde el horario programado.
         </p>
       )}
+      {journey.estado === 'PROGRAMADA' && user?.rol.codigo === 'CONDUCTOR' && (
+        <Link
+          className="mt-3 inline-flex min-h-10 items-center rounded-lg border border-amber-300 bg-amber-50 px-3 text-sm font-semibold text-amber-900"
+          to={`/novedades?antesDeSalir=${journey.id}`}
+        >
+          Reportar problema antes de salir
+        </Link>
+      )}
       <div className="mt-4 flex flex-wrap gap-2">
         {journey.acciones.puedeIniciar && (
           <Button onClick={() => onAction('start', journey)} size="sm">

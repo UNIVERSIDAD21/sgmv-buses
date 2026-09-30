@@ -161,6 +161,7 @@ enum TipoAlerta {
   MANTENIMIENTO_PROXIMO
   MANTENIMIENTO_VENCIDO
   NOVEDAD_CRITICA
+  NOVEDAD_PREVIA_SALIDA
   BUS_BLOQUEADO
   CONFLICTO_JORNADA
   JORNADA_SIN_KILOMETRAJE_INICIAL
@@ -405,6 +406,8 @@ model Novedad {
   updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
   jornadaOperativaId    Int?               @map("jornada_operativa_id")
   lecturaKilometrajeId  Int?               @unique @map("lectura_kilometraje_id")
+  motivoAusenciaLectura String?            @map("motivo_ausencia_lectura") @db.VarChar(500)
+  reportadaAntesSalida  Boolean            @default(false) @map("reportada_antes_salida")
   fechaOcurrencia       DateTime?          @map("fecha_ocurrencia") @db.Timestamptz(6)
   criticidad            CriticidadNovedad?
   afectaOperacion       Boolean?           @map("afecta_operacion")

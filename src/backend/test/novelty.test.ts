@@ -647,6 +647,110 @@ describe('RF-02 Novelty API', () => {
       .expect(400)
   }, 60000)
 
+  it('registra una falla antes de salir sin iniciar jornada ni inventar odómetro', async () => {
+    const roles = await ensureRoles()
+    const owner = await createUser(
+      `nov-previo-${shortCode().toLowerCase()}@test.sgmv.local`,
+      roles.conductor,
+    )
+    const other = await createUser(
+      `nov-ajeno-${shortCode().toLowerCase()}@test.sgmv.local`,
+      roles.conductor,
+    )
+    const bus = await createBus()
+    const journeyId = await createProgrammedJourney(owner.id, bus.id, fixture.adminId)
+    const conductor = await loginAgent(owner.email)
+    const foreignJourneyId = await createProgrammedJourney(
+      other.id,
+      (await createBus()).id,
+      fixture.adminId,
+    )
+    const occurrence = new Date().toISOString()
+    const base = {
+      descripcion: 'Tablero apagado al recibir el bus antes de iniciar el recorrido',
+      fechaOcurrencia: occurrence,
+      jornadaOperativaId: journeyId,
+      tipo: 'Tablero inaccesible',
+    }
+    await conductor.post('/novedades').send(base).expect(400)
+    await conductor
+      .post('/novedades')
+      .send({ ...base, motivoAusenciaLectura: '   ' })
+      .expect(400)
+    await conductor
+      .post('/novedades')
+      .send({
+        ...base,
+        jornadaOperativaId: foreignJourneyId,
+        motivoAusenciaLectura: 'Tablero sin energía',
+      })
+      .expect(409)
+
+    const beforeReadings = await prisma.lecturaKilometraje.count({ where: { busId: bus.id } })
+    const result = await conductor
+      .post('/novedades')
+      .send({
+        ...base,
+        motivoAusenciaLectura: 'Tablero sin energía; no es seguro acceder al odómetro',
+      })
+      .expect(201)
+    const id = result.body.data.novedad.id as number
+    created.novedades.push(id)
+    expect(result.body.data.novedad).toMatchObject({
+      bus: { id: bus.id },
+      jornada: { id: journeyId, estado: 'PROGRAMADA' },
+      lecturaKilometraje: null,
+      reportadaAntesSalida: true,
+    })
+    expect(result.body.data.novedad.motivoAusenciaLectura).toMatch(/Tablero sin energía/)
+    expect(await prisma.lecturaKilometraje.count({ where: { busId: bus.id } })).toBe(beforeReadings)
+    expect((await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } })).kilometrajeActual).toBe(
+      25000,
+    )
+    expect(
+      (await prisma.jornadaOperativa.findUniqueOrThrow({ where: { id: journeyId } })).estado,
+    ).toBe('PROGRAMADA')
+    const predepartureAlerts = await prisma.alertaInterna.findMany({
+      where: { novedadId: id },
+      include: { destinatarios: { include: { usuario: { include: { rol: true } } } } },
+    })
+    expect(predepartureAlerts).toHaveLength(1)
+    expect(predepartureAlerts[0].tipo).toBe('NOVEDAD_PREVIA_SALIDA')
+    expect(
+      new Set(predepartureAlerts[0].destinatarios.map((item) => item.usuario.rol.codigo)),
+    ).toEqual(new Set(['ADMINISTRADOR', 'DESPACHADOR']))
+    expect(predepartureAlerts[0].mensaje).not.toMatch(/bloquead/i)
+  }, 60000)
+
+  it('conserva el kilometraje real cuando una novedad en curso carece de lectura', async () => {
+    const roles = await ensureRoles()
+    const owner = await createUser(
+      `nov-sin-lectura-${shortCode().toLowerCase()}@test.sgmv.local`,
+      roles.conductor,
+    )
+    const bus = await createBus()
+    const { journeyId } = await createActiveJourney(owner.id, bus.id, fixture.adminId)
+    const conductor = await loginAgent(owner.email)
+    const result = await conductor
+      .post('/novedades')
+      .send({
+        descripcion: 'Falla de frenos; no es seguro consultar el tablero en este momento',
+        fechaOcurrencia: new Date().toISOString(),
+        motivoAusenciaLectura: 'Acceso al tablero inseguro tras detener el bus',
+        tipo: 'Frenos',
+      })
+      .expect(201)
+    created.novedades.push(result.body.data.novedad.id)
+    expect(result.body.data.novedad).toMatchObject({
+      jornada: { id: journeyId },
+      lecturaKilometraje: null,
+      reportadaAntesSalida: false,
+    })
+    expect((await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } })).kilometrajeActual).toBe(
+      25010,
+    )
+  }, 60000)
+
   it('blocks novelty registration when no own journey contains the event', async () => {
     const conductor = await loginAgent(fixture.conductorSinBusEmail)
 
@@ -793,6 +897,8 @@ describe('RF-02 Novelty API', () => {
     const bus = await createBus()
     const { journeyId } = await createActiveJourney(driver.id, bus.id, fixture.adminId)
     await finishJourney(journeyId, bus.id, driver.id)
+    const replacementBus = await createBus()
+    await createProgrammedJourney(driver.id, replacementBus.id, fixture.adminId)
     const conductor = await loginAgent(driver.email)
     const idempotencyKey = randomUUID()
     const occurrence = new Date(Date.now() - 5 * 60_000)
@@ -833,6 +939,7 @@ describe('RF-02 Novelty API', () => {
       jornada: { id: journeyId },
       lecturaKilometraje: { kilometraje: 25020, kilometrajeAnterior: 25010 },
     })
+    expect(first.body.data.novedad.bus.id).not.toBe(replacementBus.id)
     expect(noveltyCount).toBe(1)
     expect(reading.tipo).toBe('NOVEDAD')
     expect(finalReading.kilometrajeAnterior).toBe(25020)

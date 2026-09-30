@@ -33,8 +33,10 @@ export interface WorkOrderSummaryDto {
 
 export interface NoveltyJourneyDto {
   estado: EstadoJornada
+  finProgramado: string
   finReal: string | null
   id: number
+  inicioProgramado: string
   inicioReal: string | null
   ruta: {
     codigo: string
@@ -74,10 +76,12 @@ export interface NoveltyDto {
   id: number
   jornada: NoveltyJourneyDto | null
   lecturaKilometraje: NoveltyReadingDto | null
+  motivoAusenciaLectura: string | null
   observacionRevision: string | null
   ordenTrabajo: WorkOrderSummaryDto | null
   revisadaPor: NoveltyUserDto | null
   tipo: string
+  reportadaAntesSalida: boolean
   updatedAt: string
 }
 

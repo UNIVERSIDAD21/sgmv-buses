@@ -21,7 +21,9 @@ export interface ListNoveltyParams {
 export interface CreateNoveltyInput {
   descripcion: string
   fechaOcurrencia: string
-  kilometraje: number
+  jornadaOperativaId?: number
+  kilometraje?: number
+  motivoAusenciaLectura?: string
   tipo: string
 }
 

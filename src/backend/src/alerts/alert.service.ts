@@ -293,6 +293,24 @@ export async function createNoveltyAlerts(input: NoveltyAlertInput, tx: Prisma.T
   }
 }
 
+export async function createPredepartureNoveltyAlert(
+  input: { busCodigo: string; eventAt: Date; novedadId: number },
+  tx: Prisma.TransactionClient,
+) {
+  await materializeInternal(
+    {
+      contextoEvento: { busCodigo: input.busCodigo, eventAt: input.eventAt.toISOString() },
+      claveDeduplicacion: `novedad-previa-salida:${input.novedadId}`,
+      destinatarios: { kind: 'ROLES', roles: ['ADMINISTRADOR', 'DESPACHADOR'] },
+      mensaje: `Se reportó un problema en el bus ${input.busCodigo} antes de confirmar la salida. Despacho debe revisar la jornada.`,
+      origen: { novedadId: input.novedadId },
+      tipo: 'NOVEDAD_PREVIA_SALIDA',
+      titulo: 'Problema reportado antes de salir',
+    },
+    tx,
+  )
+}
+
 interface PreventiveAlertSchedule {
   bus: { codigoInterno: string; id: number; kilometrajeActual: number }
   fechaProgramada: Date | null

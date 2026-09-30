@@ -61,6 +61,16 @@ export const alertCatalog = {
     originKind: 'novedadId',
     recipientStrategy: 'administradores y despachadores activos',
   },
+  NOVEDAD_PREVIA_SALIDA: {
+    allowedRecipientRoles: administrativeAndDispatch,
+    contextSchemaVersion: 1,
+    deduplicationScope: 'novedad reportada antes de confirmar salida',
+    defaultPriority: 'ALTA',
+    defaultTitle: 'Problema reportado antes de salir',
+    internalRoutes: { ADMINISTRADOR: '/novedades', DESPACHADOR: '/novedades' },
+    originKind: 'novedadId',
+    recipientStrategy: 'administradores y despachadores activos',
+  },
   BUS_BLOQUEADO: {
     allowedRecipientRoles: ['DESPACHADOR', 'CONDUCTOR'],
     contextSchemaVersion: 1,

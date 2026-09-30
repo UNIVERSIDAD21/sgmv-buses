@@ -63,10 +63,14 @@ export interface NoveltyDto {
   fechaReporte: string
   fechaRevision: string | null
   id: number
+  motivoAusenciaLectura: string | null
+  reportadaAntesSalida: boolean
   jornada: {
     estado: 'PROGRAMADA' | 'EN_CURSO' | 'FINALIZADA' | 'CANCELADA' | 'REASIGNADA'
+    finProgramado: string
     finReal: string | null
     id: number
+    inicioProgramado: string
     inicioReal: string | null
     ruta: {
       codigo: string

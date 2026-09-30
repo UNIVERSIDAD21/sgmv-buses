@@ -7,6 +7,7 @@ const marker = randomUUID().slice(0, 8).toUpperCase()
 const email = `operacion-${marker.toLowerCase()}@test.sgmv.local`
 const buses: number[] = []
 const journeys: number[] = []
+const novelties: number[] = []
 let driverId: number
 const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000)
 const localDate = (date: Date) =>
@@ -78,7 +79,13 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   await prisma.$transaction(async (tx) => {
     const alerts = await tx.alertaInterna.findMany({
-      where: { OR: [{ busId: { in: buses } }, { jornadaOperativaId: { in: journeys } }] },
+      where: {
+        OR: [
+          { busId: { in: buses } },
+          { jornadaOperativaId: { in: journeys } },
+          { novedadId: { in: novelties } },
+        ],
+      },
       select: { id: true },
     })
     await tx.alertaDestinatario.deleteMany({
@@ -87,6 +94,7 @@ test.afterAll(async () => {
       },
     })
     await tx.alertaInterna.deleteMany({ where: { id: { in: alerts.map((alert) => alert.id) } } })
+    await tx.novedad.deleteMany({ where: { id: { in: novelties } } })
     await tx.lecturaKilometraje.deleteMany({ where: { busId: { in: buses } } })
     await tx.jornadaOperativa.deleteMany({ where: { id: { in: journeys } } })
     await tx.bus.deleteMany({ where: { id: { in: buses } } })
@@ -156,4 +164,46 @@ test('Conductor confirma tramos vencidos desde Inicio y consulta dos buses propi
   const foreign = await page.request.get(`http://localhost:4000/historial/mi-bus?busId=${buses[2]}`)
   expect(foreign.status()).toBe(404)
   expect(errors).toEqual([])
+})
+
+test('Conductor reporta problema antes de salir sin lectura ni inicio ficticio', async ({
+  page,
+}) => {
+  await page.goto('/login')
+  await page.getByLabel('Correo electrónico').fill(email)
+  await page.getByLabel('Contraseña').fill(process.env.SEED_USER_PASSWORD!)
+  await page.getByRole('button', { name: 'Ingresar' }).click()
+  await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toBeVisible()
+  await page.goto(`/jornadas?detalle=${journeys[2]}`)
+  const focused = page.getByRole('region', { name: 'Jornada vinculada a novedad' })
+  await focused.getByRole('link', { name: 'Reportar problema antes de salir' }).click()
+  await expect(page).toHaveURL(new RegExp(`/novedades\\?antesDeSalir=${journeys[2]}`))
+  await expect(page.getByText(`jornada #${journeys[2]}`)).toBeVisible()
+  const before = await prisma.lecturaKilometraje.count({ where: { busId: buses[1] } })
+  await page.getByLabel('No puedo observar el odómetro de forma segura.').check()
+  await page
+    .getByLabel('Motivo de ausencia de lectura')
+    .fill('Tablero sin energía al recibir el bus')
+  await page.getByLabel('Tipo de novedad').fill('Tablero sin energía')
+  await page
+    .getByLabel('Descripcion')
+    .fill('El tablero no enciende y no es seguro confirmar la salida.')
+  await page.getByRole('button', { name: 'Enviar novedad' }).click()
+  await expect(page.getByText(/Problema registrado antes de la salida/)).toBeVisible()
+  const novelty = await prisma.novedad.findFirstOrThrow({
+    where: { jornadaOperativaId: journeys[2] },
+  })
+  novelties.push(novelty.id)
+  expect(
+    await prisma.alertaInterna.count({
+      where: { novedadId: novelty.id, tipo: 'NOVEDAD_PREVIA_SALIDA' },
+    }),
+  ).toBe(1)
+  expect(novelty.busId).toBe(buses[1])
+  expect(novelty.lecturaKilometrajeId).toBeNull()
+  expect(novelty.reportadaAntesSalida).toBe(true)
+  expect(await prisma.lecturaKilometraje.count({ where: { busId: buses[1] } })).toBe(before)
+  expect(
+    (await prisma.jornadaOperativa.findUniqueOrThrow({ where: { id: journeys[2] } })).estado,
+  ).toBe('PROGRAMADA')
 })

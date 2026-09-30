@@ -357,10 +357,14 @@ export const noveltyOne = {
   fechaReporte: '2026-08-27T12:00:00.000Z',
   fechaRevision: null,
   id: 2040,
+  motivoAusenciaLectura: null,
+  reportadaAntesSalida: false,
   jornada: {
     estado: 'EN_CURSO',
+    finProgramado: '2026-08-27T18:00:00.000Z',
     finReal: null,
     id: 2029,
+    inicioProgramado: '2026-08-27T10:00:00.000Z',
     inicioReal: '2026-08-27T10:00:00.000Z',
     ruta: {
       codigo: 'RUTA-01',

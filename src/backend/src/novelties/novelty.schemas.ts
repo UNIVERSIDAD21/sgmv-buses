@@ -54,10 +54,28 @@ export const createNoveltySchema = z
   .object({
     descripcion: trimmedText(10, 2000),
     fechaOcurrencia: z.iso.datetime({ offset: true }),
-    kilometraje: z.coerce.number().int().min(0),
+    jornadaOperativaId: z.number().int().positive().optional(),
+    kilometraje: z.number().int().min(0).optional(),
+    motivoAusenciaLectura: trimmedText(10, 500).optional(),
     tipo: trimmedText(3, 120),
   })
   .strict()
+  .superRefine((input, context) => {
+    if (input.kilometraje === undefined && !input.motivoAusenciaLectura) {
+      context.addIssue({
+        code: 'custom',
+        path: ['motivoAusenciaLectura'],
+        message: 'Explique por qué no fue posible observar el odómetro',
+      })
+    }
+    if (input.kilometraje !== undefined && input.motivoAusenciaLectura) {
+      context.addIssue({
+        code: 'custom',
+        path: ['motivoAusenciaLectura'],
+        message: 'No indique ausencia cuando sí registró una lectura',
+      })
+    }
+  })
 
 export const reviewNoveltySchema = z
   .object({

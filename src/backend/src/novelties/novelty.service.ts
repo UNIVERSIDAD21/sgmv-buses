@@ -106,11 +106,15 @@ function mapNovelty(novelty: NoveltyRecord, actor: AuthenticatedUser): NoveltyDt
     fechaReporte: novelty.fechaReporte.toISOString(),
     fechaRevision: novelty.fechaRevision?.toISOString() ?? null,
     id: novelty.id,
+    motivoAusenciaLectura: novelty.motivoAusenciaLectura,
+    reportadaAntesSalida: novelty.reportadaAntesSalida,
     jornada: novelty.jornadaOperativa
       ? {
           estado: novelty.jornadaOperativa.estado,
+          finProgramado: novelty.jornadaOperativa.finProgramado.toISOString(),
           finReal: novelty.jornadaOperativa.finReal?.toISOString() ?? null,
           id: novelty.jornadaOperativa.id,
+          inicioProgramado: novelty.jornadaOperativa.inicioProgramado.toISOString(),
           inicioReal: novelty.jornadaOperativa.inicioReal?.toISOString() ?? null,
           ruta: novelty.jornadaOperativa.ruta,
         }
@@ -244,7 +248,11 @@ export class NoveltyService {
       conductorId: actor.id,
       descripcion: normalizeText(input.descripcion),
       fechaOcurrencia: eventDate,
+      jornadaOperativaId: input.jornadaOperativaId,
       kilometraje: input.kilometraje,
+      motivoAusenciaLectura: input.motivoAusenciaLectura
+        ? normalizeText(input.motivoAusenciaLectura)
+        : undefined,
       tipo: normalizeText(input.tipo),
     })
 
@@ -252,7 +260,7 @@ export class NoveltyService {
       throw new AppError(
         409,
         'JOURNEY_NOT_FOUND_FOR_EVENT',
-        'No existe una jornada propia iniciada que contenga la fecha de ocurrencia',
+        'No existe una jornada propia válida para la fecha de ocurrencia',
       )
     }
 
