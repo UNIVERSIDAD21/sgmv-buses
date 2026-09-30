@@ -122,7 +122,7 @@ fleetRoutes.patch(
 fleetRoutes.post(
   '/buses/:busId/kilometraje',
   enforceAllowedOrigin,
-  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
+  authorizeRoles('ADMINISTRADOR'),
   idempotent(fleetController.registerMileage),
 )
 fleetRoutes.get(

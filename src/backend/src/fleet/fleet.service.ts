@@ -511,7 +511,7 @@ export class FleetService {
   }
 
   async registerMileage(busId: number, input: RegisterMileageInput, actor: AuthenticatedUser) {
-    ensureAdminOrDispatcher(actor)
+    ensureAdmin(actor)
 
     try {
       const result = await this.fleetRepository.registerMileage(

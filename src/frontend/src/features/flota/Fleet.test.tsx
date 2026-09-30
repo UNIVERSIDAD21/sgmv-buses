@@ -78,6 +78,7 @@ describe('RF-01 fleet frontend', () => {
     render(<App />)
 
     expect(await screen.findByText(/Detalle de bus/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Kilometraje$/i })).not.toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/flota/buses/2006'),
       expect.any(Object),

@@ -357,6 +357,19 @@ describe('RF-01 Fleet API', () => {
       })
       .expect(400)
 
+    const dispatcherRole = await prisma.rol.findUniqueOrThrow({
+      where: { codigo: 'DESPACHADOR' },
+    })
+    const dispatcher = await createUser(
+      `fleet-despacho-${shortCode().toLowerCase()}@test.sgmv.local`,
+      dispatcherRole,
+    )
+    const dispatchAgent = await loginAgent(dispatcher.email)
+    await dispatchAgent
+      .post(`/flota/buses/${bus.id}/kilometraje`)
+      .send({ kilometrajeNuevo: 20600, motivo: 'Captura libre no permitida' })
+      .expect(403)
+
     const persisted = await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } })
     const readings = await prisma.lecturaKilometraje.count({ where: { busId: bus.id } })
 

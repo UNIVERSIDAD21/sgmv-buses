@@ -956,14 +956,16 @@ export default function FleetPage() {
               <MaintenanceOverview bus={selectedBus} />
 
               <div className="grid gap-2 sm:grid-cols-2">
-                <Button
-                  icon={<Gauge size={14} />}
-                  onClick={() => openAction('mileage', selectedBus)}
-                  size="sm"
-                  variant="outline"
-                >
-                  Kilometraje
-                </Button>
+                {canEditMasterData && (
+                  <Button
+                    icon={<Gauge size={14} />}
+                    onClick={() => openAction('mileage', selectedBus)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Kilometraje
+                  </Button>
+                )}
                 {canEditMasterData && (
                   <Button
                     icon={<Wrench size={14} />}
