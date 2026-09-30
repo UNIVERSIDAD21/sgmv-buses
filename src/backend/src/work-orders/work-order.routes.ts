@@ -47,6 +47,11 @@ workOrderRoutes.get(
   asyncHandler(workOrderController.getStateHistory),
 )
 workOrderRoutes.get(
+  '/:ordenId/disponibilidad',
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
+  asyncHandler(workOrderController.getAvailabilityForOrder),
+)
+workOrderRoutes.get(
   '/:ordenId/reasignaciones',
   authorizeRoles('ADMINISTRADOR', 'MECANICO'),
   asyncHandler(workOrderController.getReassignments),

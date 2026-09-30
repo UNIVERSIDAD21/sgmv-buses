@@ -791,6 +791,25 @@ export class WorkOrderService {
     }
   }
 
+  async getAvailabilityForOrder(orderId: number, actor: AuthenticatedUser) {
+    if (actor.rol.codigo !== 'ADMINISTRADOR' && actor.rol.codigo !== 'DESPACHADOR') {
+      throw new AppError(403, 'FORBIDDEN', 'No tiene permisos para consultar disponibilidad')
+    }
+    const disponibilidad = await this.workOrderRepository.getAvailabilityForOrder(orderId)
+    if (!disponibilidad) throw new AppError(404, 'ORDER_NOT_FOUND', 'Orden no encontrada')
+    return {
+      disponibilidad: {
+        ...disponibilidad,
+        causas: disponibilidad.causas.map((cause) => ({
+          codigo: cause.codigo,
+          mensaje: cause.mensaje,
+          origenId: cause.origenId,
+          origenTipo: cause.origenTipo,
+        })),
+      },
+    }
+  }
+
   async getAvailableMechanics(query: AvailableMechanicsQuery, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 

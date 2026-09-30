@@ -336,6 +336,10 @@ describe('RF-04 work order frontend', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Cerrar$/i }))
     const closeDialog = await screen.findByRole('dialog', { name: /Cerrar orden/i })
 
+    expect(
+      await within(closeDialog).findByText(/El bus tiene una orden tecnica activa/i),
+    ).toBeInTheDocument()
+
     fireEvent.click(within(closeDialog).getByRole('button', { name: /Cerrar orden/i }))
     expect(await screen.findByText(/Confirme el cierre administrativo/i)).toBeInTheDocument()
     fireEvent.click(within(closeDialog).getByRole('checkbox'))
@@ -346,6 +350,9 @@ describe('RF-04 work order frontend', () => {
 
     expect(await screen.findByText(/Orden cerrada/i)).toBeInTheDocument()
     expect((await screen.findAllByText(/^Cerrada$/i)).length).toBeGreaterThan(0)
+    expect(await screen.findByRole('heading', { name: 'Antes del cierre' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Después del cierre' })).toBeInTheDocument()
+    expect(screen.getByText('Sin restricciones')).toBeInTheDocument()
   })
 
   it('denies drivers access to internal work-order tracking', async () => {

@@ -117,6 +117,12 @@ export class WorkOrderController {
     sendData(response, result, 'Disponibilidad de ordenes tecnicas')
   }
 
+  getAvailabilityForOrder: RequestHandler = async (request, response) => {
+    const { ordenId } = orderIdParamSchema.parse(request.params)
+    const result = await this.workOrderService.getAvailabilityForOrder(ordenId, request.user!)
+    sendData(response, result, 'Disponibilidad operacional del bus')
+  }
+
   getAvailableMechanics: RequestHandler = async (request, response) => {
     const query = availableMechanicsQuerySchema.parse(request.query)
     const result = await this.workOrderService.getAvailableMechanics(query, request.user!)

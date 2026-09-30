@@ -223,7 +223,11 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
   await closeDialog.getByLabel(/Confirmo que la orden/i).check()
   await closeDialog.getByLabel('Observacion de cierre').fill(`Cierre administrativo ${marker}`)
   await closeDialog.getByRole('button', { name: 'Cerrar orden' }).click()
-  await expect(page.getByText('Orden cerrada.')).toBeVisible()
+  await expect(
+    page.getByText(/Orden cerrada administrativamente\. Causas antes y después/),
+  ).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Antes del cierre' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Después del cierre' })).toBeVisible()
   await expect(page.getByText('Disponible', { exact: true })).toBeVisible()
 
   const persisted = await prisma.ordenTrabajo.findUniqueOrThrow({

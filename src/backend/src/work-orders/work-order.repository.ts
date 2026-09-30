@@ -278,6 +278,31 @@ export class WorkOrderRepository {
     return listDispatchProjections()
   }
 
+  getAvailabilityForOrder(orderId: number) {
+    return prisma.$transaction(
+      async (tx) => {
+        const order = await tx.ordenTrabajo.findUnique({
+          where: { id: orderId },
+          select: { busId: true, jornadaOperativaId: true },
+        })
+        if (!order) return null
+        const evaluatedAt = new Date()
+        return buildAvailability(
+          await getAvailabilityRecords(
+            {
+              busId: order.busId,
+              eventDate: evaluatedAt,
+              journeyId: order.jornadaOperativaId,
+            },
+            tx,
+          ),
+          evaluatedAt,
+        )
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    )
+  }
+
   countOrders(where: Prisma.OrdenTrabajoWhereInput = {}) {
     return prisma.ordenTrabajo.count({ where })
   }
@@ -1740,24 +1765,6 @@ export class WorkOrderRepository {
           }
         }
 
-        // The row is already terminal inside this transaction, so the policy sees
-        // every remaining cause while excluding the work order being closed.
-        const availabilityAtClose = buildAvailability(
-          await getAvailabilityRecords(
-            {
-              busId: order.busId,
-              eventDate: now,
-              journeyId: order.jornadaOperativaId,
-            },
-            tx,
-          ),
-          now,
-        )
-        await tx.ordenTrabajo.update({
-          where: { id: orderId },
-          data: { disponibilidadAlCierre: availabilityAtClose.disponible },
-        })
-
         await tx.ordenEstadoHistorial.create({
           data: {
             cambiadoPorId: actorId,
@@ -1802,6 +1809,24 @@ export class WorkOrderRepository {
         }
 
         await evaluatePreventiveAlertsForBus(order.busId, tx)
+
+        // La política debe ver el estado final: orden cerrada, obligación cumplida
+        // desactivada y siguiente ciclo materializado dentro de esta transacción.
+        const availabilityAtClose = buildAvailability(
+          await getAvailabilityRecords(
+            {
+              busId: order.busId,
+              eventDate: now,
+              journeyId: order.jornadaOperativaId,
+            },
+            tx,
+          ),
+          now,
+        )
+        await tx.ordenTrabajo.update({
+          where: { id: orderId },
+          data: { disponibilidadAlCierre: availabilityAtClose.disponible },
+        })
 
         return {
           orden: await this.findOrderByIdForTransaction(orderId, tx),

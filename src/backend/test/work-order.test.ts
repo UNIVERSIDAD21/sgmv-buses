@@ -25,6 +25,7 @@ const created = {
   movimientos: [] as string[],
   novedades: [] as string[],
   ordenes: [] as string[],
+  planes: [] as number[],
   programaciones: [] as string[],
   repuestos: [] as string[],
   usuarios: [] as string[],
@@ -321,8 +322,8 @@ function createTokenWithRole(userId: number, email: string, rol: string, expires
   return `${unsignedToken}.${signature}`
 }
 
-async function prepareExecutionOrder(fixture: WorkOrderFixture) {
-  const order = await createPendingCorrectiveOrder(fixture)
+async function prepareExecutionOrder(fixture: WorkOrderFixture, busId?: number) {
+  const order = await createPendingCorrectiveOrder(fixture, busId ? { busId } : {})
   const admin = await loginAgent(fixture.adminEmail)
   const mecanico = await loginAgent(fixture.mecanicoEmail)
 
@@ -335,8 +336,8 @@ async function prepareExecutionOrder(fixture: WorkOrderFixture) {
   return { admin, mecanico, order }
 }
 
-async function prepareCompletableOrder(fixture: WorkOrderFixture) {
-  const context = await prepareExecutionOrder(fixture)
+async function prepareCompletableOrder(fixture: WorkOrderFixture, busId?: number) {
+  const context = await prepareExecutionOrder(fixture, busId)
 
   await context.mecanico
     .patch(`/ordenes-trabajo/${context.order.id}/intervencion`)
@@ -381,6 +382,7 @@ async function cleanup() {
         select: { id: true },
         where: {
           OR: [
+            { busId: { in: created.buses } },
             { novedadId: { in: created.novedades } },
             { ordenTrabajoId: { in: orderIds } },
             { programacionMantenimientoId: { in: created.programaciones } },
@@ -493,10 +495,11 @@ async function cleanup() {
       })
       await tx.programacionMantenimiento.deleteMany({
         where: {
-          id: {
-            in: created.programaciones,
-          },
+          busId: { in: created.buses },
         },
+      })
+      await tx.planMantenimientoPreventivo.deleteMany({
+        where: { id: { in: created.planes } },
       })
       await tx.lecturaKilometraje.deleteMany({
         where: {
@@ -1546,6 +1549,173 @@ describe('RF-04 Work order tracking API', () => {
       expect(JSON.stringify(closedProjection)).not.toMatch(
         /diagnostico|actividad|intervencion|consumo|costo|planAplicado/i,
       )
+    },
+    rf04TestTimeout,
+  )
+
+  it(
+    'calcula disponibilidad después de avanzar el ciclo preventivo cumplido',
+    async () => {
+      const bus = await createBus({ kilometrajeActual: 20000 })
+      const plan = await prisma.planMantenimientoPreventivo.create({
+        data: {
+          activo: true,
+          actividad: 'Revisión preventiva de prueba',
+          bloqueaAlVencer: true,
+          busId: bus.id,
+          claveTarea: `CIERRE.${shortCode()}`,
+          componente: 'Motor',
+          creadoPorId: fixture.adminId,
+          criterio: 'KILOMETRAJE',
+          intervaloKm: 10000,
+          prioridad: 'MEDIA',
+          version: 1,
+        },
+      })
+      created.planes.push(plan.id)
+      const schedule = await prisma.programacionMantenimiento.create({
+        data: {
+          id: track('programaciones'),
+          actividad: plan.actividad,
+          busId: bus.id,
+          creadaPorId: fixture.adminId,
+          criterio: 'KILOMETRAJE',
+          kilometrajeObjetivo: 20000,
+          planMantenimientoPreventivoId: plan.id,
+          prioridad: 'MEDIA',
+          tipo: plan.componente,
+        },
+      })
+      const admin = await loginAgent(fixture.adminEmail)
+      const mecanico = await loginAgent(fixture.mecanicoEmail)
+      const generated = await admin
+        .post(`/mantenimiento-preventivo/programaciones/${schedule.id}/generar-orden`)
+        .send({ prioridad: 'MEDIA' })
+        .expect(200)
+      const orderId = generated.body.data.orden.id as number
+      await admin
+        .post(`/ordenes-trabajo/${orderId}/asignar`)
+        .send({ tecnicoId: fixture.mecanicoId })
+        .expect(200)
+      await mecanico.post(`/ordenes-trabajo/${orderId}/iniciar`).send({}).expect(200)
+      await mecanico
+        .post(`/ordenes-trabajo/${orderId}/actividades`)
+        .send({ descripcion: 'Revisión preventiva ejecutada' })
+        .expect(201)
+      await mecanico.post(`/ordenes-trabajo/${orderId}/completar`).send({}).expect(200)
+
+      const before = await admin.get(`/ordenes-trabajo/${orderId}/disponibilidad`).expect(200)
+      expect(before.body.data.disponibilidad.causas).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ codigo: 'ORDEN_TECNICA_ACTIVA' }),
+          expect.objectContaining({ codigo: 'PREVENTIVO_VENCIDO_BLOQUEANTE' }),
+        ]),
+      )
+
+      const closed = await admin.post(`/ordenes-trabajo/${orderId}/cerrar`).send({}).expect(200)
+      const after = await admin.get(`/ordenes-trabajo/${orderId}/disponibilidad`).expect(200)
+      const activeSchedules = await prisma.programacionMantenimiento.findMany({
+        where: { activa: true, busId: bus.id },
+      })
+      expect(activeSchedules).toHaveLength(1)
+      expect(activeSchedules[0].kilometrajeObjetivo).toBe(30000)
+      expect(closed.body.data.orden.disponibilidadAlCierre).toBe(true)
+      expect(after.body.data.disponibilidad).toMatchObject({ disponible: true, causas: [] })
+    },
+    rf04TestTimeout,
+  )
+
+  it(
+    'mantiene el bloqueo de otra orden activa y no habilita el bus automáticamente',
+    async () => {
+      const bus = await createBus()
+      const first = await prepareCompletableOrder(fixture, bus.id)
+      const second = await prepareCompletableOrder(fixture, bus.id)
+      await first.mecanico.post(`/ordenes-trabajo/${first.order.id}/completar`).send({}).expect(200)
+      await second.mecanico
+        .post(`/ordenes-trabajo/${second.order.id}/completar`)
+        .send({})
+        .expect(200)
+
+      const firstClose = await first.admin
+        .post(`/ordenes-trabajo/${first.order.id}/cerrar`)
+        .send({ observacion: 'Primera orden revisada por Administración' })
+        .expect(200)
+      expect(firstClose.body.data.orden.disponibilidadAlCierre).toBe(false)
+      expect((await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } })).estadoOperativo).toBe(
+        'OPERATIVO',
+      )
+
+      const dispatcher = await loginAgent(fixture.despachadorEmail)
+      const projection = await dispatcher.get('/ordenes-trabajo/despacho').expect(200)
+      const firstItem = projection.body.data.ordenes.find(
+        (item: { orden: { id: number } }) => item.orden.id === first.order.id,
+      )
+      expect(firstItem.disponibilidad.causas).toContainEqual(
+        expect.objectContaining({ codigo: 'ORDEN_TECNICA_ACTIVA', origenId: second.order.id }),
+      )
+      expect(JSON.stringify(firstItem)).not.toMatch(
+        /diagnostico|actividad|intervencion|consumo|costo|planAplicado/i,
+      )
+      const dispatchAvailability = await dispatcher
+        .get(`/ordenes-trabajo/${first.order.id}/disponibilidad`)
+        .expect(200)
+      expect(dispatchAvailability.body.data.disponibilidad.causas).toContainEqual(
+        expect.objectContaining({ codigo: 'ORDEN_TECNICA_ACTIVA', origenId: second.order.id }),
+      )
+      expect(JSON.stringify(dispatchAvailability.body.data)).not.toMatch(
+        /diagnostico|actividad|intervencion|consumo|costo|planAplicado/i,
+      )
+      await first.mecanico.get(`/ordenes-trabajo/${first.order.id}/disponibilidad`).expect(403)
+
+      const secondClose = await second.admin
+        .post(`/ordenes-trabajo/${second.order.id}/cerrar`)
+        .send({ observacion: 'Segunda orden revisada por Administración' })
+        .expect(200)
+      expect(secondClose.body.data.orden.disponibilidadAlCierre).toBe(true)
+    },
+    rf04TestTimeout,
+  )
+
+  it(
+    'retira la única causa de orden sin cambiar el estado operativo del bus',
+    async () => {
+      const context = await prepareCompletableOrder(fixture)
+      await context.mecanico
+        .post(`/ordenes-trabajo/${context.order.id}/completar`)
+        .send({})
+        .expect(200)
+      const before = await context.admin
+        .get(`/ordenes-trabajo/${context.order.id}/disponibilidad`)
+        .expect(200)
+      expect(before.body.data.disponibilidad.causas).toEqual([
+        expect.objectContaining({ codigo: 'ORDEN_TECNICA_ACTIVA' }),
+      ])
+
+      const closed = await context.admin
+        .post(`/ordenes-trabajo/${context.order.id}/cerrar`)
+        .send({ observacion: 'Única causa técnica revisada' })
+        .expect(200)
+      expect(closed.body.data.orden.disponibilidadAlCierre).toBe(true)
+      expect(
+        (await prisma.bus.findUniqueOrThrow({ where: { id: context.order.busId } }))
+          .estadoOperativo,
+      ).toBe('OPERATIVO')
+
+      const unavailableBus = await createBus({ estadoOperativo: 'FUERA_DE_SERVICIO' })
+      const blockedOrder = await prepareCompletableOrder(fixture, unavailableBus.id)
+      await blockedOrder.mecanico
+        .post(`/ordenes-trabajo/${blockedOrder.order.id}/completar`)
+        .send({})
+        .expect(200)
+      const blockedClose = await blockedOrder.admin
+        .post(`/ordenes-trabajo/${blockedOrder.order.id}/cerrar`)
+        .send({ observacion: 'Orden cerrada; estado del bus conserva su causa' })
+        .expect(200)
+      expect(blockedClose.body.data.orden.disponibilidadAlCierre).toBe(false)
+      expect(
+        (await prisma.bus.findUniqueOrThrow({ where: { id: unavailableBus.id } })).estadoOperativo,
+      ).toBe('FUERA_DE_SERVICIO')
     },
     rf04TestTimeout,
   )

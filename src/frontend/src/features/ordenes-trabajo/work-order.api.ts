@@ -211,6 +211,12 @@ export function listDispatchWorkOrders() {
   return apiRequest<{ ordenes: DispatchWorkOrderProjectionDto[] }>('/ordenes-trabajo/despacho')
 }
 
+export function getWorkOrderAvailability(ordenId: number) {
+  return apiRequest<{ disponibilidad: DispatchWorkOrderProjectionDto['disponibilidad'] }>(
+    `/ordenes-trabajo/${ordenId}/disponibilidad`,
+  )
+}
+
 export function getAvailableSpareParts(ordenId: number, busqueda?: string) {
   const query = busqueda?.trim()
     ? `?${new URLSearchParams({ busqueda: busqueda.trim() }).toString()}`

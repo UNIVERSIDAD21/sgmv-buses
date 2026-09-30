@@ -41,6 +41,7 @@ import {
   getAvailableMechanics,
   getAvailableSpareParts,
   getWorkOrder,
+  getWorkOrderAvailability,
   getWorkOrderSummary,
   listMyWorkOrders,
   listWorkOrders,
@@ -55,6 +56,7 @@ import {
 } from './work-order.api'
 import type {
   AvailableSparePartDto,
+  DispatchWorkOrderProjectionDto,
   MechanicOptionDto,
   WorkOrderDetailDto,
   WorkOrderListResponse,
@@ -70,6 +72,7 @@ type BadgeTone = 'amber' | 'emerald' | 'red' | 'slate' | 'teal'
 type SortField =
   'bus' | 'codigo' | 'costoTotal' | 'estado' | 'fechaCierre' | 'fechaCreacion' | 'prioridad'
 type AssignmentMode = 'assign' | 'reassign'
+type OperationalAvailability = DispatchWorkOrderProjectionDto['disponibilidad']
 
 interface AssignmentAction {
   mode: AssignmentMode
@@ -577,13 +580,29 @@ function CloseDialog({
 }: {
   error: string | null
   onClose: () => void
-  onSubmit: (observacion?: string) => void
+  onSubmit: (observacion: string | undefined, before: OperationalAvailability) => void
   order: WorkOrderDetailDto
   submitting: boolean
 }) {
   const [confirm, setConfirm] = useState(false)
   const [observacion, setObservacion] = useState('')
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [availability, setAvailability] = useState<OperationalAvailability | null>(null)
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    void getWorkOrderAvailability(order.id)
+      .then((result) => {
+        if (active) setAvailability(result.disponibilidad)
+      })
+      .catch((cause) => {
+        if (active) setAvailabilityError(getErrorMessage(cause))
+      })
+    return () => {
+      active = false
+    }
+  }, [order.id])
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -594,7 +613,12 @@ function CloseDialog({
       return
     }
 
-    onSubmit(normalizeText(observacion) || undefined)
+    if (!availability) {
+      setValidationError('Espere la evaluación de las causas de disponibilidad antes de cerrar.')
+      return
+    }
+
+    onSubmit(normalizeText(observacion) || undefined, availability)
   }
 
   return (
@@ -604,6 +628,25 @@ function CloseDialog({
           Costo basico validado: {formatCurrency(order.costoTotal ?? 0)}. El estado cerrado es
           terminal.
         </div>
+        <section className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+          <h3 className="font-semibold">Causas antes del cierre</h3>
+          {availabilityError ? (
+            <p role="alert">No se pudo consultar la disponibilidad: {availabilityError}</p>
+          ) : !availability ? (
+            <p>Evaluando causas del bus…</p>
+          ) : availability.causas.length ? (
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              {availability.causas.map((cause) => (
+                <li key={`${cause.codigo}-${cause.origenId}`}>{cause.mensaje}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>No hay causas bloqueantes registradas.</p>
+          )}
+          <p className="mt-2 text-xs">
+            El cierre no cambia por sí solo el estado operativo del bus.
+          </p>
+        </section>
         <label className="block text-sm font-medium text-slate-700">
           Observacion de cierre
           <textarea
@@ -630,7 +673,12 @@ function CloseDialog({
           <Button disabled={submitting} onClick={onClose} type="button" variant="outline">
             Cancelar
           </Button>
-          <Button icon={<CheckCircle size={15} />} loading={submitting} type="submit">
+          <Button
+            icon={<CheckCircle size={15} />}
+            loading={submitting}
+            disabled={!availability}
+            type="submit"
+          >
             Cerrar orden
           </Button>
         </div>
@@ -1474,6 +1522,7 @@ function ConsumptionExceptionPanel({
 }
 
 function WorkOrderDetail({
+  closeAvailabilityComparison,
   isAdmin,
   isMechanic,
   onAssign,
@@ -1484,6 +1533,10 @@ function WorkOrderDetail({
   order,
   submitting,
 }: {
+  closeAvailabilityComparison: {
+    before: OperationalAvailability
+    after: OperationalAvailability
+  } | null
   isAdmin: boolean
   isMechanic: boolean
   onAssign: (action: AssignmentAction) => void
@@ -1747,6 +1800,34 @@ function WorkOrderDetail({
           </FieldValue>
         </section>
 
+        {closeAvailabilityComparison && isAdmin && (
+          <section
+            className="grid gap-3 sm:grid-cols-2"
+            aria-label="Disponibilidad antes y después del cierre"
+          >
+            {(
+              [
+                ['Antes del cierre', closeAvailabilityComparison.before],
+                ['Después del cierre', closeAvailabilityComparison.after],
+              ] as const
+            ).map(([title, availability]) => (
+              <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm" key={title}>
+                <h3 className="font-semibold text-slate-900">{title}</h3>
+                <p className="mt-1 text-slate-600">
+                  {availability.disponible ? 'Sin restricciones' : 'Con restricciones'}
+                </p>
+                {availability.causas.length > 0 && (
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-700">
+                    {availability.causas.map((cause) => (
+                      <li key={`${cause.codigo}-${cause.origenId}`}>{cause.mensaje}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </section>
+        )}
+
         <section className="surface p-4">
           <h3 className="text-xs font-semibold uppercase text-slate-500">Intervenciones</h3>
           {order.intervenciones.length === 0 ? (
@@ -1952,6 +2033,11 @@ export default function WorkOrderPage() {
   const [busId, setBusId] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [closeAction, setCloseAction] = useState<WorkOrderDetailDto | null>(null)
+  const [closeAvailabilityComparison, setCloseAvailabilityComparison] = useState<{
+    orderId: number
+    before: OperationalAvailability
+    after: OperationalAvailability
+  } | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [direccion, setDireccion] = useState<'asc' | 'desc'>('desc')
   const [estado, setEstado] = useState<WorkOrderStatus | ''>(() =>
@@ -2065,6 +2151,7 @@ export default function WorkOrderPage() {
   }, [listData])
 
   async function openDetail(orderId: number) {
+    setCloseAvailabilityComparison(null)
     setDetailLoading(true)
     setLoadError(null)
 
@@ -2110,6 +2197,7 @@ export default function WorkOrderPage() {
     setSubmitting(true)
     setFormError(null)
     setFeedback(null)
+    setCloseAvailabilityComparison(null)
 
     try {
       const result = await operation
@@ -2158,13 +2246,44 @@ export default function WorkOrderPage() {
     setReturnAction(null)
   }
 
-  async function handleClose(observacion?: string) {
+  async function handleClose(observacion: string | undefined, before: OperationalAvailability) {
     if (!closeAction) {
       return
     }
-
-    await applyOrderResult(closeWorkOrder(closeAction.id, { observacion }), 'Orden cerrada.')
-    setCloseAction(null)
+    const orderId = closeAction.id
+    setSubmitting(true)
+    setFormError(null)
+    setFeedback(null)
+    setCloseAvailabilityComparison(null)
+    try {
+      const result = await closeWorkOrder(orderId, { observacion })
+      setSelectedOrder(result.orden)
+      setCloseAction(null)
+      setFeedback('Orden cerrada administrativamente. Consultando causas restantes…')
+      let listRefreshed = true
+      try {
+        await refreshData()
+      } catch {
+        listRefreshed = false
+      }
+      try {
+        const after = await getWorkOrderAvailability(orderId)
+        setCloseAvailabilityComparison({ orderId, before, after: after.disponibilidad })
+        setFeedback(
+          listRefreshed
+            ? 'Orden cerrada administrativamente. Causas antes y después del cierre:'
+            : 'Orden cerrada. Se muestran las causas; recargue la lista de órdenes.',
+        )
+      } catch {
+        setFeedback(
+          'Orden cerrada. No se pudo consultar la disponibilidad posterior; recargue para verla.',
+        )
+      }
+    } catch (cause) {
+      setFormError(getErrorMessage(cause))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function clearFilters() {
@@ -2218,7 +2337,6 @@ export default function WorkOrderPage() {
             {feedback}
           </div>
         )}
-
         <SummaryMetrics isAdmin={Boolean(isAdmin)} summary={summary} />
 
         <section className="surface p-4">
@@ -2512,6 +2630,11 @@ export default function WorkOrderPage() {
           )}
           {selectedOrder && (
             <WorkOrderDetail
+              closeAvailabilityComparison={
+                closeAvailabilityComparison?.orderId === selectedOrder.id
+                  ? closeAvailabilityComparison
+                  : null
+              }
               isAdmin={Boolean(isAdmin)}
               isMechanic={Boolean(isMechanic)}
               onAssign={setAssignmentAction}
