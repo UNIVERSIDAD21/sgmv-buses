@@ -179,6 +179,17 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
   await expect(page.getByLabel('Observaciones tecnicas')).toHaveValue(
     'Intervencion activa verificada.',
   )
+  await page.getByLabel('Tipo de espera').selectOption('REPUESTO')
+  await page.getByLabel('Motivo de la espera').fill('Repuesto de frenos pendiente de entrega')
+  await page.getByRole('button', { name: 'Informar espera a Administración' }).click()
+  await expect(page.getByText('Orden en espera; Administración fue informada.')).toBeVisible()
+  await expect(page.getByText(/Siguiente responsable: Administración/)).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Terminar mantenimiento', exact: true }),
+  ).toHaveCount(0)
+  await page.getByLabel('Motivo de reanudación').fill('Repuesto de frenos entregado al taller')
+  await page.getByRole('button', { name: 'Reanudar trabajo' }).click()
+  await expect(page.getByText('Ejecución de la orden reanudada.')).toBeVisible()
   await page.getByLabel('Actividad realizada').fill(`Actividad controlada ${marker}`)
   await page.getByRole('button', { name: 'Añadir actividad realizada' }).click()
   await page.getByRole('button', { name: 'Confirmar actividad', exact: true }).click()

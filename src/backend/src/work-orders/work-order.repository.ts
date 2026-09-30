@@ -15,6 +15,7 @@ import {
   createWorkOrderCompletedAlert,
   createWorkOrderPendingAlert,
   createWorkOrderReturnedAlert,
+  createWorkOrderWaitingAlert,
   evaluatePreventiveAlertsForBus,
 } from '../alerts/alert.service.js'
 import { buildAvailability } from '../availability/availability.policy.js'
@@ -88,6 +89,7 @@ export const workOrderDetailInclude = {
   cerradaPor: {
     select: userSelect,
   },
+  esperaRegistradaPor: { select: userSelect },
   consumosRepuesto: {
     include: {
       movimientoInventario: true,
@@ -884,6 +886,119 @@ export class WorkOrderRepository {
     )
   }
 
+  markWaiting(orderId: number, actorId: number, tipo: 'REPUESTO' | 'AUTORIZACION', motivo: string) {
+    return prisma.$transaction(
+      async (tx) => {
+        await this.lockWorkOrder(tx, orderId)
+        const order = await this.findOrderByIdForTransaction(orderId, tx)
+        if (!order) return { orden: null, status: 'ORDER_NOT_FOUND' as const }
+        if (order.tecnicoAsignadoId !== actorId)
+          return { orden: order, status: 'NOT_ASSIGNED_MECHANIC' as const }
+        if (order.estado !== 'EN_EJECUCION')
+          return { orden: order, status: 'INVALID_STATE' as const }
+        if (order.esperaTipo) return { orden: order, status: 'WAIT_ALREADY_ACTIVE' as const }
+        const intervention = await this.findActiveIntervention(tx, orderId, actorId)
+        if (!intervention) return { orden: order, status: 'NO_ACTIVE_INTERVENTION' as const }
+        const now = new Date()
+        const updated = await tx.ordenTrabajo.updateMany({
+          where: {
+            id: orderId,
+            estado: 'EN_EJECUCION',
+            esperaTipo: null,
+            tecnicoAsignadoId: actorId,
+          },
+          data: {
+            esperaTipo: tipo,
+            esperaMotivo: motivo,
+            esperaDesde: now,
+            esperaRegistradaPorId: actorId,
+          },
+        })
+        if (updated.count !== 1)
+          return {
+            orden: await this.findOrderByIdForTransaction(orderId, tx),
+            status: 'WAIT_ALREADY_ACTIVE' as const,
+          }
+        const history = await tx.ordenEstadoHistorial.create({
+          data: {
+            cambiadoPorId: actorId,
+            estadoAnterior: 'EN_EJECUCION',
+            estadoNuevo: 'EN_EJECUCION',
+            observacion: `En espera de ${tipo === 'REPUESTO' ? 'repuesto' : 'autorización'}: ${motivo}`,
+            ordenTrabajoId: orderId,
+          },
+        })
+        await createWorkOrderWaitingAlert(
+          {
+            busCodigo: order.bus.codigoInterno,
+            eventAt: now,
+            occurrenceId: history.id,
+            orderCode: order.codigo,
+            orderId,
+            tipo,
+          },
+          tx,
+        )
+        return {
+          orden: await this.findOrderByIdForTransaction(orderId, tx),
+          status: 'WAITING' as const,
+        }
+      },
+      { maxWait: 15000, timeout: 60000 },
+    )
+  }
+
+  resumeWaiting(orderId: number, actorId: number, motivo: string) {
+    return prisma.$transaction(
+      async (tx) => {
+        await this.lockWorkOrder(tx, orderId)
+        const order = await this.findOrderByIdForTransaction(orderId, tx)
+        if (!order) return { orden: null, status: 'ORDER_NOT_FOUND' as const }
+        if (order.tecnicoAsignadoId !== actorId)
+          return { orden: order, status: 'NOT_ASSIGNED_MECHANIC' as const }
+        if (order.estado !== 'EN_EJECUCION')
+          return { orden: order, status: 'INVALID_STATE' as const }
+        if (!order.esperaTipo) return { orden: order, status: 'WAIT_NOT_ACTIVE' as const }
+        const intervention = await this.findActiveIntervention(tx, orderId, actorId)
+        if (!intervention) return { orden: order, status: 'NO_ACTIVE_INTERVENTION' as const }
+        const previousType = order.esperaTipo
+        const updated = await tx.ordenTrabajo.updateMany({
+          where: {
+            id: orderId,
+            estado: 'EN_EJECUCION',
+            esperaTipo: previousType,
+            tecnicoAsignadoId: actorId,
+          },
+          data: {
+            esperaTipo: null,
+            esperaMotivo: null,
+            esperaDesde: null,
+            esperaRegistradaPorId: null,
+          },
+        })
+        if (updated.count !== 1)
+          return {
+            orden: await this.findOrderByIdForTransaction(orderId, tx),
+            status: 'WAIT_NOT_ACTIVE' as const,
+          }
+        await tx.ordenEstadoHistorial.create({
+          data: {
+            cambiadoPorId: actorId,
+            estadoAnterior: 'EN_EJECUCION',
+            estadoNuevo: 'EN_EJECUCION',
+            observacion: `Reanudación tras espera de ${previousType === 'REPUESTO' ? 'repuesto' : 'autorización'}: ${motivo}`,
+            ordenTrabajoId: orderId,
+          },
+        })
+        return {
+          orden: await this.findOrderByIdForTransaction(orderId, tx),
+          status: 'WAIT_RESUMED' as const,
+        }
+      },
+      { maxWait: 15000, timeout: 60000 },
+    )
+  }
+
   updateActiveIntervention(
     orderId: number,
     actorId: number,
@@ -916,6 +1031,9 @@ export class WorkOrderRepository {
             orden: order,
             status: 'INVALID_STATE' as const,
           }
+        }
+        if (order.esperaTipo) {
+          return { orden: order, status: 'ORDER_WAITING' as const }
         }
 
         if (!intervention) {
@@ -972,6 +1090,9 @@ export class WorkOrderRepository {
             orden: order,
             status: 'INVALID_STATE' as const,
           }
+        }
+        if (order.esperaTipo) {
+          return { orden: order, status: 'ORDER_WAITING' as const }
         }
 
         if (!intervention) {
@@ -1233,6 +1354,9 @@ export class WorkOrderRepository {
             status: 'INVALID_STATE' as const,
           }
         }
+        if (order.esperaTipo) {
+          return { consumo: null, orden: order, status: 'ORDER_WAITING' as const }
+        }
 
         if (!intervention) {
           return {
@@ -1460,6 +1584,9 @@ export class WorkOrderRepository {
             orden: order,
             status: 'INVALID_STATE' as const,
           }
+        }
+        if (order.esperaTipo) {
+          return { orden: order, status: 'ORDER_WAITING' as const }
         }
 
         if (!intervention) {

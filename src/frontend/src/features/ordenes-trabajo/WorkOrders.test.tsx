@@ -14,6 +14,44 @@ afterEach(() => {
 })
 
 describe('RF-04 work order frontend', () => {
+  it('muestra la espera, el siguiente responsable y permite reanudar sin crear otro estado', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo')
+    const fetchMock = mockApi(workOrderHandler('MECANICO', { initialStatus: 'EN_EJECUCION' }))
+    render(<App />)
+    fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
+    fireEvent.change(await screen.findByLabelText('Tipo de espera'), {
+      target: { value: 'AUTORIZACION' },
+    })
+    fireEvent.change(screen.getByLabelText('Motivo de la espera'), {
+      target: { value: 'Se requiere aval para continuar' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Informar espera a Administración/i }))
+    expect(
+      await screen.findByText(/Orden en espera; Administración fue informada/i),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Espera de autorización desde/i)).toBeInTheDocument()
+    expect(screen.getByText(/Siguiente responsable: Administración/i)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /^Terminar mantenimiento$/i }),
+    ).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Motivo de reanudación'), {
+      target: { value: 'Aval administrativo registrado' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Reanudar trabajo/i }))
+    expect(await screen.findByText(/Ejecución de la orden reanudada/i)).toBeInTheDocument()
+    expect(screen.getByText(/¿No puedes continuar el trabajo/i)).toBeInTheDocument()
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) => String(url).endsWith('/marcar-espera') && init?.method === 'POST',
+      ),
+    ).toBe(true)
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) => String(url).endsWith('/reanudar-espera') && init?.method === 'POST',
+      ),
+    ).toBe(true)
+  })
+
   it('rectifica una actividad conservando el original y el motivo visible', async () => {
     window.history.pushState({}, '', '/ordenes-trabajo')
     const fetchMock = mockApi(workOrderHandler('MECANICO', { initialStatus: 'EN_EJECUCION' }))

@@ -126,6 +126,19 @@ export const activityIdParamSchema = orderIdParamSchema.extend({
   actividadId: entityIdSchema,
 })
 
+export const markOrderWaitingSchema = z
+  .object({
+    tipo: z.enum(['REPUESTO', 'AUTORIZACION']),
+    motivo: trimmedText(3, 1000),
+  })
+  .strict()
+
+export const resumeOrderWaitingSchema = z
+  .object({
+    motivo: trimmedText(3, 1000),
+  })
+  .strict()
+
 export const annulActivitySchema = z
   .object({
     motivo: trimmedText(3, 1000),
@@ -166,6 +179,8 @@ export const returnWorkOrderSchema = z
   })
   .strict()
 
+export type MarkOrderWaitingInput = z.infer<typeof markOrderWaitingSchema>
+export type ResumeOrderWaitingInput = z.infer<typeof resumeOrderWaitingSchema>
 export type AnnulActivityInput = z.infer<typeof annulActivitySchema>
 export type AssignWorkOrderInput = z.infer<typeof assignWorkOrderSchema>
 export type AvailableMechanicsQuery = z.infer<typeof availableMechanicsQuerySchema>

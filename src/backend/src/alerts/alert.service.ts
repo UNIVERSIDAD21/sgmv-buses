@@ -554,6 +554,35 @@ export async function createWorkOrderReturnedAlert(
   )
 }
 
+export async function createWorkOrderWaitingAlert(
+  input: {
+    busCodigo: string
+    eventAt: Date
+    occurrenceId: number
+    orderCode: string
+    orderId: number
+    tipo: 'REPUESTO' | 'AUTORIZACION'
+  },
+  tx: Prisma.TransactionClient,
+) {
+  return materializeInternal(
+    {
+      claveDeduplicacion: `orden-espera:orden:${input.orderId}:${input.occurrenceId}`,
+      contextoEvento: {
+        busCodigo: input.busCodigo,
+        estado: 'EN_EJECUCION',
+        eventAt: input.eventAt.toISOString(),
+      },
+      destinatarios: { kind: 'ROLES', roles: ['ADMINISTRADOR'] },
+      mensaje: `La orden ${input.orderCode} está en espera de ${input.tipo === 'REPUESTO' ? 'repuesto' : 'autorización'}. Revise el motivo en la orden.`,
+      origen: { ordenId: input.orderId },
+      tipo: 'ORDEN_EN_ESPERA',
+      titulo: 'Orden en espera de resolución administrativa',
+    },
+    tx,
+  )
+}
+
 export async function createLowInventoryAlert(
   input: {
     eventAt: Date

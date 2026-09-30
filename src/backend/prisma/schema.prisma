@@ -102,6 +102,13 @@ enum EstadoOrdenTrabajo {
   @@map("estado_orden_trabajo")
 }
 
+enum TipoEsperaOrden {
+  REPUESTO
+  AUTORIZACION
+
+  @@map("tipo_espera_orden")
+}
+
 enum EstadoRepuesto {
   ACTIVO
   INACTIVO
@@ -196,6 +203,7 @@ enum TipoAlerta {
   ORDEN_ASIGNADA
   ORDEN_COMPLETADA_TECNICO
   ORDEN_DEVUELTA
+  ORDEN_EN_ESPERA
   BAJO_INVENTARIO
   CONSUMO_INCOMPATIBLE
   CAMBIO_JORNADA
@@ -259,6 +267,7 @@ model Usuario {
 
   actividadesRegistradas            ActividadOrden[]               @relation("ActividadRegistradaPor")
   actividadesAnuladas               ActividadOrden[]               @relation("ActividadAnuladaPor")
+  esperasOrdenRegistradas           OrdenTrabajo[]                @relation("OrdenEsperaRegistradaPor")
   asignacionesCreadas               AsignacionConductor[]          @relation("AsignacionAsignadaPor")
   asignacionesConductor             AsignacionConductor[]          @relation("AsignacionConductorUsuario")
   busEstadosCambiados               BusEstadoHistorial[]           @relation("BusEstadoCambiadoPor")
@@ -554,6 +563,10 @@ model OrdenTrabajo {
   jornadaOperativaId            Int?               @map("jornada_operativa_id")
   planAplicado                  Json?              @map("plan_aplicado") @db.JsonB
   disponibilidadAlCierre        Boolean?           @map("disponibilidad_al_cierre")
+  esperaTipo                    TipoEsperaOrden?   @map("espera_tipo")
+  esperaMotivo                  String?            @map("espera_motivo") @db.Text
+  esperaDesde                   DateTime?          @map("espera_desde") @db.Timestamptz(6)
+  esperaRegistradaPorId         Int?               @map("espera_registrada_por_id")
 
   bus                       Bus                        @relation(fields: [busId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   cerradaPor                Usuario?                   @relation("OrdenCerradaPor", fields: [cerradaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -561,6 +574,7 @@ model OrdenTrabajo {
   novedad                   Novedad?                   @relation(fields: [novedadId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   programacionMantenimiento ProgramacionMantenimiento? @relation(fields: [programacionMantenimientoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   tecnicoAsignado           Usuario?                   @relation("OrdenTecnicoAsignado", fields: [tecnicoAsignadoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  esperaRegistradaPor       Usuario?                   @relation("OrdenEsperaRegistradaPor", fields: [esperaRegistradaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   jornadaOperativa          JornadaOperativa?          @relation(fields: [jornadaOperativaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   consumosRepuesto        ConsumoRepuesto[]
@@ -578,6 +592,7 @@ model OrdenTrabajo {
   @@index([programacionMantenimientoId, estado])
   @@index([tecnicoAsignadoId, estado])
   @@index([jornadaOperativaId])
+  @@index([esperaRegistradaPorId])
   @@map("ordenes_trabajo")
 }
 

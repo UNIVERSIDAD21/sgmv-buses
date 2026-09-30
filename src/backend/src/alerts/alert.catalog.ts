@@ -173,6 +173,16 @@ export const alertCatalog = {
     originKind: 'ordenId',
     recipientStrategy: 'mecánico asignado en la ocurrencia',
   },
+  ORDEN_EN_ESPERA: {
+    allowedRecipientRoles: administrators,
+    contextSchemaVersion: 1,
+    deduplicationScope: 'evento de espera de orden',
+    defaultPriority: 'ALTA',
+    defaultTitle: 'Orden en espera de resolución administrativa',
+    internalRoutes: { ADMINISTRADOR: '/ordenes-trabajo' },
+    originKind: 'ordenId',
+    recipientStrategy: 'administradores activos',
+  },
   BAJO_INVENTARIO: {
     allowedRecipientRoles: administrators,
     contextSchemaVersion: 1,

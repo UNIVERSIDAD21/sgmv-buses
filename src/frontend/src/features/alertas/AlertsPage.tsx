@@ -35,6 +35,7 @@ const TYPE_LABELS: Record<AlertType, string> = {
   ORDEN_ASIGNADA: 'Orden asignada',
   ORDEN_COMPLETADA_TECNICO: 'Orden completada por técnico',
   ORDEN_DEVUELTA: 'Orden devuelta',
+  ORDEN_EN_ESPERA: 'Orden en espera',
   ORDEN_PENDIENTE_ASIGNACION: 'Orden pendiente de asignación',
 }
 
@@ -73,6 +74,7 @@ const TYPES_BY_ROLE = {
     'NOVEDAD_PREVIA_SALIDA',
     'CONTINUIDAD_INTERRUMPIDA',
     'ORDEN_COMPLETADA_TECNICO',
+    'ORDEN_EN_ESPERA',
     'ORDEN_PENDIENTE_ASIGNACION',
   ],
   CONDUCTOR: [

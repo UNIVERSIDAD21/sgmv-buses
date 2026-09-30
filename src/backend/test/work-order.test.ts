@@ -1056,6 +1056,91 @@ describe('RF-04 Work order tracking API', () => {
   )
 
   it(
+    'detiene una OT por repuesto, informa al Administrador y exige reanudación antes de ejecutar',
+    async () => {
+      const { admin, mecanico, order } = await prepareCompletableOrder(fixture)
+      const url = `/ordenes-trabajo/${order.id}`
+      const foreign = await loginAgent(fixture.mecanicoAltEmail)
+      await foreign
+        .post(`${url}/marcar-espera`)
+        .send({ tipo: 'REPUESTO', motivo: 'No hay pastillas disponibles' })
+        .expect(403)
+      await mecanico
+        .post(`${url}/marcar-espera`)
+        .send({ tipo: 'REPUESTO', motivo: ' ' })
+        .expect(400)
+      const waiting = await mecanico
+        .post(`${url}/marcar-espera`)
+        .send({ tipo: 'REPUESTO', motivo: 'No hay pastillas disponibles' })
+        .expect(200)
+      expect(waiting.body.data.orden).toMatchObject({
+        estado: 'EN_EJECUCION',
+        espera: {
+          tipo: 'REPUESTO',
+          motivo: 'No hay pastillas disponibles',
+          siguienteResponsable: 'ADMINISTRADOR',
+        },
+        acciones: {
+          puedeCompletar: false,
+          puedeRegistrarTecnica: false,
+          puedeMarcarEspera: false,
+          puedeReanudarEspera: true,
+        },
+      })
+      expect(
+        await prisma.alertaInterna.count({
+          where: {
+            ordenTrabajoId: order.id,
+            tipo: 'ORDEN_EN_ESPERA',
+            destinatarios: { some: { usuarioId: fixture.adminId } },
+          },
+        }),
+      ).toBe(1)
+      await mecanico
+        .post(`${url}/marcar-espera`)
+        .send({ tipo: 'AUTORIZACION', motivo: 'Solicitud repetida' })
+        .expect(409)
+      await mecanico
+        .post(`${url}/actividades`)
+        .send({ descripcion: 'Intento de trabajo detenido' })
+        .expect(409)
+      await mecanico
+        .patch(`${url}/intervencion`)
+        .send({ observaciones: 'Intento de edición durante espera' })
+        .expect(409)
+      await mecanico
+        .post(`${url}/consumos`)
+        .send({ repuestoId: 9999999, cantidad: '1', claveIdempotencia: randomUUID() })
+        .expect(409)
+      await mecanico.post(`${url}/completar`).send({}).expect(409)
+      await admin.post(`${url}/reanudar-espera`).send({ motivo: 'Repuesto recibido' }).expect(403)
+      await mecanico.post(`${url}/reanudar-espera`).send({ motivo: ' ' }).expect(400)
+      const resumed = await mecanico
+        .post(`${url}/reanudar-espera`)
+        .send({ motivo: 'Pastillas entregadas a taller' })
+        .expect(200)
+      expect(resumed.body.data.orden).toMatchObject({
+        estado: 'EN_EJECUCION',
+        espera: null,
+        acciones: {
+          puedeCompletar: true,
+          puedeRegistrarTecnica: true,
+          puedeMarcarEspera: true,
+          puedeReanudarEspera: false,
+        },
+      })
+      await mecanico.post(`${url}/reanudar-espera`).send({ motivo: 'Reintento' }).expect(409)
+      expect(
+        await prisma.alertaInterna.count({
+          where: { ordenTrabajoId: order.id, tipo: 'ORDEN_EN_ESPERA' },
+        }),
+      ).toBe(1)
+      await mecanico.post(`${url}/completar`).send({}).expect(200)
+    },
+    rf04TestTimeout,
+  )
+
+  it(
     'registers spare-part consumptions with stock, movement, cost and idempotency guarantees',
     async () => {
       const { mecanico, order } = await prepareCompletableOrder(fixture)

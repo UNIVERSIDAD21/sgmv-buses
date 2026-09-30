@@ -190,6 +190,23 @@ export function updateWorkOrderIntervention(ordenId: number, input: Intervention
   })
 }
 
+export function markWorkOrderWaiting(
+  ordenId: number,
+  input: { tipo: 'REPUESTO' | 'AUTORIZACION'; motivo: string },
+) {
+  return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/marcar-espera`, {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function resumeWorkOrderWaiting(ordenId: number, motivo: string) {
+  return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/reanudar-espera`, {
+    body: JSON.stringify({ motivo }),
+    method: 'POST',
+  })
+}
+
 export function createWorkOrderActivity(ordenId: number, input: CreateActivityInput) {
   return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/actividades`, {
     body: JSON.stringify(input),

@@ -80,6 +80,18 @@ workOrderRoutes.post(
   authorizeRoles('MECANICO'),
   idempotent(workOrderController.resume),
 )
+workOrderRoutes.post(
+  '/:ordenId/marcar-espera',
+  enforceAllowedOrigin,
+  authorizeRoles('MECANICO'),
+  idempotent(workOrderController.markWaiting),
+)
+workOrderRoutes.post(
+  '/:ordenId/reanudar-espera',
+  enforceAllowedOrigin,
+  authorizeRoles('MECANICO'),
+  idempotent(workOrderController.resumeWaiting),
+)
 workOrderRoutes.patch(
   '/:ordenId/intervencion',
   enforceAllowedOrigin,

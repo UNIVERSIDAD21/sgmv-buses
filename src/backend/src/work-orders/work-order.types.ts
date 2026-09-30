@@ -9,6 +9,7 @@ import type {
   PrioridadOrden,
   TipoMovimientoInventario,
   TipoOrdenTrabajo,
+  TipoEsperaOrden,
 } from '@prisma/client'
 
 import type { AvailabilityDto } from '../availability/availability.types.js'
@@ -186,7 +187,17 @@ export interface DispatchWorkOrderProjectionDto {
   }
 }
 
+export interface WorkOrderWaitingDto {
+  tipo: TipoEsperaOrden
+  motivo: string
+  desde: string
+  registradaPor: WorkOrderUserDto
+  siguienteResponsable: 'ADMINISTRADOR'
+}
+
 export interface WorkOrderActionFlagsDto {
+  puedeMarcarEspera: boolean
+  puedeReanudarEspera: boolean
   puedeAsignar: boolean
   puedeCerrar: boolean
   puedeCompletar: boolean
@@ -225,6 +236,7 @@ export interface WorkOrderTechnicalHistoryItemDto {
 }
 
 export interface WorkOrderDetailDto extends WorkOrderSummaryItemDto {
+  espera: WorkOrderWaitingDto | null
   acciones: WorkOrderActionFlagsDto
   autorizacionesExcepcion: WorkOrderConsumptionAuthorizationDto[]
   cerradaPor: WorkOrderUserDto | null

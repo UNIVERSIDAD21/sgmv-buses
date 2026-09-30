@@ -695,7 +695,7 @@ export function workOrderStateHistory(estadoNuevo: string, estadoAnterior: strin
 }
 
 export function workOrderActions(
-  order: { estado: string; tecnicoAsignado: unknown },
+  order: { estado: string; tecnicoAsignado: unknown; espera: unknown },
   role: RoleCode,
 ) {
   const isAdmin = role === 'ADMINISTRADOR'
@@ -705,7 +705,7 @@ export function workOrderActions(
   return {
     puedeAsignar: isAdmin && order.estado === 'PENDIENTE_ASIGNACION',
     puedeCerrar: isAdmin && order.estado === 'COMPLETADA_TECNICO',
-    puedeCompletar: isMechanic && order.estado === 'EN_EJECUCION' && assigned,
+    puedeCompletar: isMechanic && order.estado === 'EN_EJECUCION' && assigned && !order.espera,
     puedeDevolver: isAdmin && order.estado === 'COMPLETADA_TECNICO',
     puedeIniciar: isMechanic && order.estado === 'ASIGNADA' && assigned,
     puedeReanudar: isMechanic && order.estado === 'DEVUELTA_CORRECCION' && assigned,
@@ -713,7 +713,11 @@ export function workOrderActions(
       isAdmin &&
       ['ASIGNADA', 'EN_EJECUCION', 'DEVUELTA_CORRECCION'].includes(order.estado) &&
       assigned,
-    puedeRegistrarTecnica: isMechanic && order.estado === 'EN_EJECUCION' && assigned,
+    puedeRegistrarTecnica:
+      isMechanic && order.estado === 'EN_EJECUCION' && assigned && !order.espera,
+    puedeMarcarEspera: isMechanic && order.estado === 'EN_EJECUCION' && assigned && !order.espera,
+    puedeReanudarEspera:
+      isMechanic && order.estado === 'EN_EJECUCION' && assigned && Boolean(order.espera),
   }
 }
 
@@ -788,6 +792,8 @@ export function createWorkOrderDetail(status = 'PENDIENTE_ASIGNACION') {
     creadaPor: workOrderAdmin,
     descripcion: 'Orden correctiva para seguimiento RF-04',
     estado: status,
+    espera: null as
+      import('../features/ordenes-trabajo/work-order.types').WorkOrderWaitingDto | null,
     fechaAsignacion,
     fechaCierre,
     fechaCompletadaTecnico,
@@ -1039,6 +1045,28 @@ export function workOrderHandler(
         tecnicoAsignado: workOrderMechanicAlt,
       }
 
+      return ok({ orden: decoratedOrder() })
+    }
+
+    if (path.endsWith('/marcar-espera') && init?.method === 'POST') {
+      const payload = JSON.parse(String(init.body ?? '{}')) as {
+        tipo: 'REPUESTO' | 'AUTORIZACION'
+        motivo: string
+      }
+      order = {
+        ...order,
+        espera: {
+          tipo: payload.tipo,
+          motivo: payload.motivo,
+          desde: '2026-08-28T12:30:00.000Z',
+          registradaPor: workOrderMechanic,
+          siguienteResponsable: 'ADMINISTRADOR',
+        },
+      }
+      return ok({ orden: decoratedOrder() })
+    }
+    if (path.endsWith('/reanudar-espera') && init?.method === 'POST') {
+      order = { ...order, espera: null }
       return ok({ orden: decoratedOrder() })
     }
 

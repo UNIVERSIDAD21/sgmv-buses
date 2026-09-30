@@ -46,6 +46,8 @@ import {
   getWorkOrderSummary,
   listMyWorkOrders,
   listWorkOrders,
+  markWorkOrderWaiting,
+  resumeWorkOrderWaiting,
   reassignWorkOrder,
   revokeWorkOrderConsumptionException,
   resumeWorkOrder,
@@ -1524,6 +1526,102 @@ function ConsumptionExceptionPanel({
   )
 }
 
+function WaitingPanel({
+  order,
+  onOrderChange,
+  onFeedback,
+}: {
+  order: WorkOrderDetailDto
+  onOrderChange: (order: WorkOrderDetailDto) => void
+  onFeedback: (message: string) => void
+}) {
+  const [tipo, setTipo] = useState<'REPUESTO' | 'AUTORIZACION'>('REPUESTO')
+  const [motivo, setMotivo] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  if (!order.espera && !order.acciones.puedeMarcarEspera) return null
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    if (busy || motivo.trim().length < 3) {
+      if (motivo.trim().length < 3) setError('Indique el motivo (mínimo 3 caracteres).')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const result = order.espera
+        ? await resumeWorkOrderWaiting(order.id, motivo.trim())
+        : await markWorkOrderWaiting(order.id, { tipo, motivo: motivo.trim() })
+      onOrderChange(result.orden)
+      onFeedback(
+        order.espera
+          ? 'Ejecución de la orden reanudada.'
+          : 'Orden en espera; Administración fue informada.',
+      )
+      setMotivo('')
+    } catch (caught) {
+      setError(getErrorMessage(caught))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <section className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+      <h3 className="font-semibold text-amber-950">
+        {order.espera ? 'Trabajo técnico en espera' : '¿No puedes continuar el trabajo?'}
+      </h3>
+      {order.espera && (
+        <div className="mt-2 space-y-1 text-sm text-amber-950">
+          <p>
+            Espera de {order.espera.tipo === 'REPUESTO' ? 'repuesto' : 'autorización'} desde{' '}
+            {formatDateTimeValue(order.espera.desde)}.
+          </p>
+          <p>Motivo: {order.espera.motivo}</p>
+          <p>
+            Siguiente responsable: Administración. Después, el Mecánico asignado registra la
+            reanudación.
+          </p>
+        </div>
+      )}
+      {(order.acciones.puedeMarcarEspera || order.acciones.puedeReanudarEspera) && (
+        <form className="mt-3 space-y-3" onSubmit={(event) => void submit(event)}>
+          {!order.espera && (
+            <label className="block text-sm">
+              Tipo de espera
+              <select
+                className="mt-1 block w-full rounded-lg border bg-white p-2"
+                value={tipo}
+                onChange={(event) => setTipo(event.target.value as 'REPUESTO' | 'AUTORIZACION')}
+              >
+                <option value="REPUESTO">En espera de repuesto</option>
+                <option value="AUTORIZACION">En espera de autorización</option>
+              </select>
+            </label>
+          )}
+          <label className="block text-sm">
+            {order.espera ? 'Motivo de reanudación' : 'Motivo de la espera'}
+            <textarea
+              className="mt-1 min-h-20 w-full rounded-lg border bg-white p-2"
+              value={motivo}
+              maxLength={1000}
+              required
+              onChange={(event) => setMotivo(event.target.value)}
+            />
+          </label>
+          {error && (
+            <p role="alert" className="text-sm text-red-700">
+              {error}
+            </p>
+          )}
+          <Button type="submit" loading={busy}>
+            {order.espera ? 'Reanudar trabajo' : 'Informar espera a Administración'}
+          </Button>
+        </form>
+      )}
+    </section>
+  )
+}
+
 function WorkOrderDetail({
   closeAvailabilityComparison,
   isAdmin,
@@ -1580,6 +1678,7 @@ function WorkOrderDetail({
   }
   return (
     <div className="space-y-5">
+      <WaitingPanel order={order} onOrderChange={onOrderChange} onFeedback={onFeedback} />
       {isMechanic && (
         <section className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
           <h2 className="text-lg font-bold text-emerald-950">Qué debes hacer ahora</h2>

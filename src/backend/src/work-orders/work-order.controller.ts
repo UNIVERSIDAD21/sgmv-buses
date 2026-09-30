@@ -15,9 +15,11 @@ import {
   createManualWorkOrderSchema,
   interventionUpdateSchema,
   listWorkOrdersQuerySchema,
+  markOrderWaitingSchema,
   orderIdParamSchema,
   reassignWorkOrderSchema,
   returnWorkOrderSchema,
+  resumeOrderWaitingSchema,
   transitionObservationSchema,
 } from './work-order.schemas.js'
 import { WorkOrderService } from './work-order.service.js'
@@ -47,6 +49,20 @@ export class WorkOrderController {
     const result = await this.workOrderService.complete(ordenId, input, request.user!)
 
     sendData(response, result, 'Orden completada tecnicamente')
+  }
+
+  markWaiting: RequestHandler = async (request, response) => {
+    const { ordenId } = orderIdParamSchema.parse(request.params)
+    const input = markOrderWaitingSchema.parse(request.body)
+    const result = await this.workOrderService.markWaiting(ordenId, input, request.user!)
+    sendData(response, result, 'Orden en espera; Administración fue informada')
+  }
+
+  resumeWaiting: RequestHandler = async (request, response) => {
+    const { ordenId } = orderIdParamSchema.parse(request.params)
+    const input = resumeOrderWaitingSchema.parse(request.body)
+    const result = await this.workOrderService.resumeWaiting(ordenId, input, request.user!)
+    sendData(response, result, 'Ejecución de la orden reanudada')
   }
 
   createActivity: RequestHandler = async (request, response) => {

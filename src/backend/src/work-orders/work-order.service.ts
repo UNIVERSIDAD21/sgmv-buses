@@ -21,8 +21,10 @@ import type {
   CreateManualWorkOrderInput,
   InterventionUpdateInput,
   ListWorkOrdersQuery,
+  MarkOrderWaitingInput,
   ReassignWorkOrderInput,
   ReturnWorkOrderInput,
+  ResumeOrderWaitingInput,
   TransitionObservationInput,
 } from './work-order.schemas.js'
 import {
@@ -369,12 +371,16 @@ function buildActions(order: WorkOrderRecord, actor: AuthenticatedUser): WorkOrd
   return {
     puedeAsignar: isAdmin && order.estado === 'PENDIENTE_ASIGNACION',
     puedeCerrar: isAdmin && order.estado === 'COMPLETADA_TECNICO',
-    puedeCompletar: isAssignedMechanic && order.estado === 'EN_EJECUCION',
+    puedeCompletar: isAssignedMechanic && order.estado === 'EN_EJECUCION' && !order.esperaTipo,
     puedeDevolver: isAdmin && order.estado === 'COMPLETADA_TECNICO',
     puedeIniciar: isAssignedMechanic && order.estado === 'ASIGNADA',
     puedeReanudar: isAssignedMechanic && order.estado === 'DEVUELTA_CORRECCION',
     puedeReasignar: isAdmin && reassignableWorkOrderStates.includes(order.estado),
-    puedeRegistrarTecnica: isAssignedMechanic && order.estado === 'EN_EJECUCION',
+    puedeRegistrarTecnica:
+      isAssignedMechanic && order.estado === 'EN_EJECUCION' && !order.esperaTipo,
+    puedeMarcarEspera: isAssignedMechanic && order.estado === 'EN_EJECUCION' && !order.esperaTipo,
+    puedeReanudarEspera:
+      isAssignedMechanic && order.estado === 'EN_EJECUCION' && Boolean(order.esperaTipo),
   }
 }
 
@@ -410,6 +416,16 @@ function mapDetailOrder(
 
   return {
     ...mapSummaryOrder(order, includeEconomicFields),
+    espera:
+      order.esperaTipo && order.esperaMotivo && order.esperaDesde && order.esperaRegistradaPor
+        ? {
+            tipo: order.esperaTipo,
+            motivo: order.esperaMotivo,
+            desde: order.esperaDesde.toISOString(),
+            registradaPor: mapUser(order.esperaRegistradaPor),
+            siguienteResponsable: 'ADMINISTRADOR' as const,
+          }
+        : null,
     acciones: buildActions(order, actor),
     autorizacionesExcepcion: order.autorizacionesExcepcion.map((authorization) => ({
       autorizadoPor: {
@@ -538,6 +554,35 @@ export class WorkOrderService {
       return {
         orden: this.mapOperationResult(result, actor),
       }
+    } catch (error) {
+      translatePrismaError(error)
+    }
+  }
+
+  async markWaiting(orderId: number, input: MarkOrderWaitingInput, actor: AuthenticatedUser) {
+    ensureMechanic(actor)
+    try {
+      const result = await this.workOrderRepository.markWaiting(
+        orderId,
+        actor.id,
+        input.tipo,
+        normalizeText(input.motivo),
+      )
+      return { orden: this.mapOperationResult(result, actor) }
+    } catch (error) {
+      translatePrismaError(error)
+    }
+  }
+
+  async resumeWaiting(orderId: number, input: ResumeOrderWaitingInput, actor: AuthenticatedUser) {
+    ensureMechanic(actor)
+    try {
+      const result = await this.workOrderRepository.resumeWaiting(
+        orderId,
+        actor.id,
+        normalizeText(input.motivo),
+      )
+      return { orden: this.mapOperationResult(result, actor) }
     } catch (error) {
       translatePrismaError(error)
     }
@@ -1295,6 +1340,20 @@ export class WorkOrderService {
         'TECHNICAL_CLOSURE_EXISTS',
         'Ya existe una lectura final de taller para esta orden',
       )
+    }
+
+    if (result.status === 'ORDER_WAITING') {
+      throw new AppError(
+        409,
+        'ORDER_WAITING',
+        'La orden está en espera; reanude antes de registrar trabajo',
+      )
+    }
+    if (result.status === 'WAIT_ALREADY_ACTIVE') {
+      throw new AppError(409, 'WAIT_ALREADY_ACTIVE', 'La orden ya está en espera')
+    }
+    if (result.status === 'WAIT_NOT_ACTIVE') {
+      throw new AppError(409, 'WAIT_NOT_ACTIVE', 'La orden no tiene una espera activa')
     }
 
     if (result.status === 'ACTIVITY_NOT_FOUND') {
