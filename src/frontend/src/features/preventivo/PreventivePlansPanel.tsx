@@ -28,6 +28,15 @@ import type {
 } from './preventive.types'
 
 const criteria: PreventiveCriterion[] = ['FECHA', 'KILOMETRAJE', 'FECHA_KILOMETRAJE']
+const ruleOriginLabels = {
+  SIN_REFERENCIA: 'Sin referencia declarada',
+  DEMO_ACADEMICA: 'Convención académica',
+  FABRICANTE: 'Fabricante / manual',
+} as const
+
+function ruleOriginLabel(origin: PreventivePlanDto['origenRegla'] | undefined) {
+  return ruleOriginLabels[origin ?? 'SIN_REFERENCIA']
+}
 const fieldClass =
   'mt-1 block h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100'
 
@@ -75,6 +84,10 @@ function PlanForm({
   const [criterion, setCriterion] = useState<PreventiveCriterion>(initial?.criterio ?? 'FECHA')
   const [destination, setDestination] = useState<'BUS' | 'MODELO'>(initial?.destino.tipo ?? 'BUS')
   const [error, setError] = useState<string | null>(null)
+  const [ruleOrigin, setRuleOrigin] = useState<NonNullable<PreventivePlanInput['origenRegla']>>(
+    initial?.origenRegla ?? 'SIN_REFERENCIA',
+  )
+  const [ruleReference, setRuleReference] = useState(initial?.referenciaRegla ?? '')
   const [form, setForm] = useState({
     actividad: initial?.actividad ?? '',
     anticipacionDias: initial?.anticipacionDias?.toString() ?? '',
@@ -118,6 +131,10 @@ function PlanForm({
       return setError('Revise el intervalo de dias para el criterio seleccionado.')
     if ((needsKm && km === null) || (!needsKm && form.intervaloKm))
       return setError('Revise el intervalo de kilometraje para el criterio seleccionado.')
+    if (ruleOrigin === 'FABRICANTE' && ruleReference.trim().length < 10)
+      return setError('Indique el manual o referencia verificable del fabricante.')
+    if (ruleOrigin === 'SIN_REFERENCIA' && ruleReference.trim())
+      return setError('Declare el origen antes de añadir una referencia.')
     if (
       (earlyDays !== undefined &&
         (!Number.isInteger(earlyDays) || earlyDays < 0 || !days || earlyDays >= days)) ||
@@ -138,6 +155,8 @@ function PlanForm({
       criterio: criterion,
       intervaloDias: days ?? undefined,
       intervaloKm: km ?? undefined,
+      origenRegla: ruleOrigin,
+      ...(ruleReference.trim() ? { referenciaRegla: ruleReference.trim() } : {}),
       prioridad: form.prioridad as PreventivePlanInput['prioridad'],
     })
   }
@@ -215,6 +234,34 @@ function PlanForm({
               <option>ALTA</option>
             </select>
           </label>
+          <label>
+            Origen de la regla
+            <select
+              aria-label="Origen de la regla"
+              className={fieldClass}
+              onChange={(event) => {
+                setRuleOrigin(event.target.value as NonNullable<PreventivePlanInput['origenRegla']>)
+                setRuleReference('')
+              }}
+              value={ruleOrigin}
+            >
+              <option value="SIN_REFERENCIA">Sin referencia declarada</option>
+              <option value="DEMO_ACADEMICA">Convención académica</option>
+              <option value="FABRICANTE">Fabricante / manual</option>
+            </select>
+          </label>
+          {ruleOrigin !== 'SIN_REFERENCIA' && (
+            <label className="sm:col-span-2">
+              Referencia de la regla{ruleOrigin === 'FABRICANTE' ? ' (obligatoria)' : ' (opcional)'}
+              <input
+                aria-label="Referencia de la regla"
+                className={fieldClass}
+                maxLength={500}
+                onChange={(event) => setRuleReference(event.target.value)}
+                value={ruleReference}
+              />
+            </label>
+          )}
           {needsDays && (
             <label>
               {'Repetir cada (d\u00edas)'}
@@ -268,6 +315,12 @@ function PlanForm({
             </label>
           )}
         </div>
+        <p className="rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-sm leading-6 text-cyan-950">
+          No existe un intervalo nacional único de 5.000–10.000 km para todos los buses. Defina cada
+          intervalo según el plan y declare su procedencia. El primer objetivo usa el odómetro real
+          del bus más el intervalo; los siguientes usan el objetivo anterior más el intervalo. La
+          proyección de una ruta no cuenta como kilometraje real.
+        </p>
         {!initial && (
           <fieldset>
             <legend className="text-sm font-medium">Alcance (exactamente uno)</legend>
@@ -563,8 +616,12 @@ function PlanVersionsDialog({
               </div>
               <p className="mt-2 text-sm text-slate-600">{version.actividad}</p>
               <p className="mt-2 text-xs text-slate-500">
-                {PREVENTIVE_CRITERION_LABELS[version.criterio]} · {version.componente}
+                {PREVENTIVE_CRITERION_LABELS[version.criterio]} · {version.componente} ·{' '}
+                {ruleOriginLabel(version.origenRegla)}
               </p>
+              {version.referenciaRegla && (
+                <p className="mt-1 text-xs text-slate-600">Referencia: {version.referenciaRegla}</p>
+              )}
             </article>
           ))}
         </div>
@@ -788,11 +845,15 @@ export default function PreventivePlansPanel({
         />
       ) : (
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table aria-label="Planes preventivos" className="w-full min-w-[850px] text-left text-sm">
+          <table
+            aria-label="Planes preventivos"
+            className="w-full min-w-[1000px] text-left text-sm"
+          >
             <thead className="bg-slate-50 text-xs text-slate-500">
               <tr>
                 <th className="px-4 py-3">Tarea</th>
                 <th className="px-4 py-3">Criterio</th>
+                <th className="px-4 py-3">Procedencia</th>
                 <th className="px-4 py-3">Destino</th>
                 <th className="px-4 py-3">Version</th>
                 <th className="px-4 py-3">Bloqueo</th>
@@ -809,6 +870,14 @@ export default function PreventivePlansPanel({
                     <p className="text-slate-500">{plan.componente}</p>
                   </td>
                   <td className="px-4 py-3">{PREVENTIVE_CRITERION_LABELS[plan.criterio]}</td>
+                  <td className="px-4 py-3">
+                    {ruleOriginLabel(plan.origenRegla)}
+                    {plan.referenciaRegla && (
+                      <p className="mt-1 max-w-48 break-words text-xs text-slate-500">
+                        {plan.referenciaRegla}
+                      </p>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {plan.destino.tipo === 'BUS'
                       ? `Aplica únicamente a: ${buses.find((bus) => plan.destino.tipo === 'BUS' && bus.id === plan.destino.busId)?.codigoInterno ?? plan.destino.busId}`

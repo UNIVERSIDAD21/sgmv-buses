@@ -827,6 +827,8 @@ async function main() {
           criterio: 'KILOMETRAJE',
           intervaloDias: null,
           intervaloKm: 5000,
+          origenRegla: 'DEMO_ACADEMICA',
+          referenciaRegla: 'Convención simulada del prototipo SGMV',
           modeloBusId: null,
           prioridad: 'ALTA',
           version: 1,

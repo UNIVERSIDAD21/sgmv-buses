@@ -17,6 +17,8 @@ const planShape = z
     criterio: z.enum(criterioMantenimientoValues),
     intervaloDias: positiveInteger.optional(),
     intervaloKm: positiveInteger.optional(),
+    origenRegla: z.enum(['SIN_REFERENCIA', 'DEMO_ACADEMICA', 'FABRICANTE']).optional(),
+    referenciaRegla: trimmedText(10, 500).optional(),
     prioridad: z.enum(prioridadOrdenValues),
   })
   .strict()
@@ -56,6 +58,20 @@ const planShape = z
         code: 'custom',
         message: 'La anticipación en kilometraje debe ser menor que el intervalo',
         path: ['anticipacionKm'],
+      })
+    }
+    if (input.origenRegla === 'FABRICANTE' && !input.referenciaRegla) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Indique el manual o referencia verificable del fabricante',
+        path: ['referenciaRegla'],
+      })
+    }
+    if ((!input.origenRegla || input.origenRegla === 'SIN_REFERENCIA') && input.referenciaRegla) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Declare el origen antes de añadir una referencia',
+        path: ['origenRegla'],
       })
     }
   })

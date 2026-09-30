@@ -111,6 +111,8 @@ export interface PreventivePlanDto {
   id: number
   intervaloDias: number | null
   intervaloKm: number | null
+  origenRegla: 'SIN_REFERENCIA' | 'DEMO_ACADEMICA' | 'FABRICANTE'
+  referenciaRegla: string | null
   prioridad: OrderPriority
   programacionesActivas: number
   version: number

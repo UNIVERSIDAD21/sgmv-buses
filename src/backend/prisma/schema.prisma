@@ -60,6 +60,14 @@ enum CriterioMantenimiento {
   @@map("criterio_mantenimiento")
 }
 
+enum OrigenReglaPreventiva {
+  SIN_REFERENCIA
+  DEMO_ACADEMICA
+  FABRICANTE
+
+  @@map("origen_regla_preventiva")
+}
+
 enum TipoOrdenTrabajo {
   PREVENTIVA
   CORRECTIVA
@@ -886,6 +894,8 @@ model PlanMantenimientoPreventivo {
   criterio         CriterioMantenimiento
   intervaloDias    Int?                  @map("intervalo_dias")
   intervaloKm      Int?                  @map("intervalo_km")
+  origenRegla      OrigenReglaPreventiva  @default(SIN_REFERENCIA) @map("origen_regla")
+  referenciaRegla  String?                @map("referencia_regla") @db.VarChar(500)
   anticipacionDias Int?                  @map("anticipacion_dias")
   anticipacionKm   Int?                  @map("anticipacion_km")
   prioridad        PrioridadOrden

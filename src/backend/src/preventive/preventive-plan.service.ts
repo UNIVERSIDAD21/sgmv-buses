@@ -172,6 +172,8 @@ export class PreventivePlanService {
       id: plan.id,
       intervaloDias: plan.intervaloDias,
       intervaloKm: plan.intervaloKm,
+      origenRegla: plan.origenRegla,
+      referenciaRegla: plan.referenciaRegla,
       prioridad: plan.prioridad,
       programacionesActivas: plan._count.programacionesMantenimiento,
       updatedAt: plan.updatedAt.toISOString(),
@@ -194,6 +196,8 @@ export class PreventivePlanService {
       criterio: input.criterio as CriterioMantenimiento,
       intervaloDias: input.intervaloDias ?? null,
       intervaloKm: input.intervaloKm ?? null,
+      origenRegla: input.origenRegla ?? 'SIN_REFERENCIA',
+      referenciaRegla: input.referenciaRegla?.trim() ?? null,
       modeloBusId: current
         ? current.modeloBusId
         : ((input as CreatePreventivePlanInput).modeloBusId ?? null),

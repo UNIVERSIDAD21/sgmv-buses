@@ -21,6 +21,8 @@ export interface PreventivePlanInput {
   criterio: PreventiveCriterion
   intervaloDias?: number
   intervaloKm?: number
+  origenRegla?: 'SIN_REFERENCIA' | 'DEMO_ACADEMICA' | 'FABRICANTE'
+  referenciaRegla?: string
   modeloBusId?: number
   prioridad: OrderPriority
 }

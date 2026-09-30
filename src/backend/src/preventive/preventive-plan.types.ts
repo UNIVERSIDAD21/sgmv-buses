@@ -1,4 +1,4 @@
-import type { CriterioMantenimiento, PrioridadOrden } from '@prisma/client'
+import type { CriterioMantenimiento, OrigenReglaPreventiva, PrioridadOrden } from '@prisma/client'
 
 import type { PreventiveUserDto } from './preventive.types.js'
 
@@ -17,6 +17,8 @@ export interface PreventivePlanDto {
   id: number
   intervaloDias: number | null
   intervaloKm: number | null
+  origenRegla: OrigenReglaPreventiva
+  referenciaRegla: string | null
   prioridad: PrioridadOrden
   programacionesActivas: number
   updatedAt: string

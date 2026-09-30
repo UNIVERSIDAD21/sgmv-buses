@@ -1,4 +1,9 @@
-import { Prisma, type CriterioMantenimiento, type PrioridadOrden } from '@prisma/client'
+import {
+  Prisma,
+  type CriterioMantenimiento,
+  type OrigenReglaPreventiva,
+  type PrioridadOrden,
+} from '@prisma/client'
 
 import { prisma } from '../prisma/client.js'
 import { reconcilePreventiveObligationForTask } from './preventive-reconciliation.js'
@@ -29,6 +34,8 @@ export interface PlanData {
   criterio: CriterioMantenimiento
   intervaloDias: number | null
   intervaloKm: number | null
+  origenRegla: OrigenReglaPreventiva
+  referenciaRegla: string | null
   modeloBusId: number | null
   prioridad: PrioridadOrden
 }

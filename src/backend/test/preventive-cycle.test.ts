@@ -102,6 +102,8 @@ async function createPlan(
     criterio: CriterioMantenimiento
     intervaloDias: number | null
     intervaloKm: number | null
+    origenRegla: 'SIN_REFERENCIA' | 'DEMO_ACADEMICA' | 'FABRICANTE'
+    referenciaRegla: string | null
     version: number
   }> = {},
 ) {
@@ -119,6 +121,8 @@ async function createPlan(
       criterio: overrides.criterio ?? 'KILOMETRAJE',
       intervaloDias: overrides.intervaloDias ?? null,
       intervaloKm: overrides.intervaloKm ?? 10000,
+      origenRegla: overrides.origenRegla ?? 'SIN_REFERENCIA',
+      referenciaRegla: overrides.referenciaRegla ?? null,
       modeloBusId: destination.modeloBusId ?? null,
       prioridad: 'ALTA',
       version: overrides.version ?? 1,
@@ -650,6 +654,8 @@ describe('P6-C ciclo preventivo recurrente', () => {
           anticipacionKm: 500,
           claveTarea: `MOTOR.${suffix()}`,
           intervaloKm: 10000,
+          origenRegla: 'DEMO_ACADEMICA',
+          referenciaRegla: 'Convención de prueba del ciclo preventivo',
         },
       )
       const schedule = await prisma.programacionMantenimiento.create({
@@ -681,6 +687,8 @@ describe('P6-C ciclo preventivo recurrente', () => {
         kilometrajeObjetivo: 50000,
         planId: plan.id,
         planVersion: 1,
+        origenRegla: 'DEMO_ACADEMICA',
+        referenciaRegla: 'Convención de prueba del ciclo preventivo',
         programacionId: schedule.id,
         schemaVersion: 1,
       })

@@ -170,6 +170,97 @@ describe('P6-B planes preventivos versionados', () => {
       .expect(400)
   }, 60000)
 
+  it('conserva la procedencia de cada versión y admite intervalos de fabricante mayores a 10.000 km', async () => {
+    const agent = await login(admin.email)
+    const bus = await createBus()
+    await agent
+      .post('/mantenimiento-preventivo/planes')
+      .send({
+        ...planPayload({ busId: bus.id }),
+        intervaloKm: 24000,
+        origenRegla: 'FABRICANTE',
+      })
+      .expect(400)
+    await agent
+      .post('/mantenimiento-preventivo/planes')
+      .send({
+        ...planPayload({ busId: bus.id }),
+        origenRegla: 'SIN_REFERENCIA',
+        referenciaRegla: 'Una referencia incompatible con el origen',
+      })
+      .expect(400)
+    const first = await agent
+      .post('/mantenimiento-preventivo/planes')
+      .send({
+        ...planPayload({ busId: bus.id }),
+        intervaloKm: 24000,
+        origenRegla: 'FABRICANTE',
+        referenciaRegla: 'Manual de mantenimiento del fabricante, sección de frenos 2026',
+      })
+      .expect(201)
+    await expect(
+      prisma.planMantenimientoPreventivo.create({
+        data: {
+          ...planPayload({ busId: bus.id }),
+          claveTarea: `PRUEBA.FABRICANTE.${suffix().toUpperCase()}`,
+          origenRegla: 'FABRICANTE',
+          referenciaRegla: null,
+          version: 1,
+          activo: false,
+          creadoPorId: admin.id,
+        },
+      }),
+    ).rejects.toThrow()
+    const firstId = first.body.data.plan.id as number
+    created.plans.push(firstId)
+    expect(first.body.data.plan).toMatchObject({
+      intervaloKm: 24000,
+      origenRegla: 'FABRICANTE',
+      referenciaRegla: 'Manual de mantenimiento del fabricante, sección de frenos 2026',
+      version: 1,
+    })
+    expect(
+      await prisma.programacionMantenimiento.findFirst({
+        where: { busId: bus.id, planMantenimientoPreventivoId: firstId, activa: true },
+        select: { kilometrajeObjetivo: true },
+      }),
+    ).toMatchObject({ kilometrajeObjetivo: 34000 })
+    await expect(
+      prisma.planMantenimientoPreventivo.update({
+        where: { id: firstId },
+        data: { origenRegla: 'DEMO_ACADEMICA' },
+      }),
+    ).rejects.toThrow()
+
+    const second = await agent
+      .post(`/mantenimiento-preventivo/planes/${firstId}/versiones`)
+      .send({
+        ...planPayload(),
+        intervaloKm: 6000,
+        origenRegla: 'DEMO_ACADEMICA',
+        referenciaRegla: 'Convención de ejemplo del prototipo SGMV',
+      })
+      .expect(201)
+    const secondId = second.body.data.plan.id as number
+    created.plans.push(secondId)
+    expect(second.body.data.plan).toMatchObject({
+      origenRegla: 'DEMO_ACADEMICA',
+      referenciaRegla: 'Convención de ejemplo del prototipo SGMV',
+      version: 2,
+    })
+    expect(
+      await prisma.planMantenimientoPreventivo.findUniqueOrThrow({
+        where: { id: firstId },
+        select: { origenRegla: true, referenciaRegla: true, intervaloKm: true, activo: true },
+      }),
+    ).toMatchObject({
+      origenRegla: 'FABRICANTE',
+      referenciaRegla: 'Manual de mantenimiento del fabricante, sección de frenos 2026',
+      intervaloKm: 24000,
+      activo: false,
+    })
+  }, 60_000)
+
   it('creates an immutable first version, rejects duplicate active identity and preserves historical references', async () => {
     const agent = await login(admin.email)
     const bus = await createBus()
@@ -181,6 +272,7 @@ describe('P6-B planes preventivos versionados', () => {
     created.plans.push(planId)
     expect(first.body.data.plan.claveTarea).toMatch(/^RUTINA\.SISTEMA-DE-FRENOS\.[A-F0-9]{12}$/)
     expect(first.body.data.plan.version).toBe(1)
+    expect(first.body.data.plan.origenRegla).toBe('SIN_REFERENCIA')
 
     await agent
       .post('/mantenimiento-preventivo/planes')

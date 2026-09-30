@@ -48,6 +48,8 @@ export async function seedAmbDemo(
         componente: 'Motor SGMV-DEMO',
         criterio: 'KILOMETRAJE',
         intervaloKm: 5000,
+        origenRegla: 'DEMO_ACADEMICA',
+        referenciaRegla: 'Escenario simulado AMB del prototipo SGMV',
         anticipacionKm: 500,
         bloqueaAlVencer: true,
         prioridad: 'MEDIA',

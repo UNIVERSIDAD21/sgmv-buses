@@ -334,6 +334,8 @@ describe('RF-03 preventive maintenance frontend', () => {
     expect(await screen.findByText('FRENOS.001')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^Crear rutina$/i }))
     const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/No existe un intervalo nacional único/i)).toBeInTheDocument()
+    expect(within(dialog).getByText(/El primer objetivo usa el odómetro real/i)).toBeInTheDocument()
     expect(within(dialog).getByText(/identificador interno.*generar\u00e1/i)).toBeInTheDocument()
     expect(within(dialog).queryByLabelText(/Clave de tarea/i)).not.toBeInTheDocument()
     fireEvent.change(within(dialog).getByLabelText(/Componente del veh\u00edculo/i), {
@@ -346,6 +348,12 @@ describe('RF-03 preventive maintenance frontend', () => {
       target: { value: '30' },
     })
     fireEvent.change(within(dialog).getByLabelText(/Bus destino/i), { target: { value: '2006' } })
+    fireEvent.change(within(dialog).getByLabelText('Origen de la regla'), {
+      target: { value: 'DEMO_ACADEMICA' },
+    })
+    fireEvent.change(within(dialog).getByLabelText('Referencia de la regla'), {
+      target: { value: 'Convención académica de prueba del prototipo' },
+    })
     fireEvent.click(within(dialog).getByRole('button', { name: /^Crear rutina$/i }))
     expect(await screen.findByText(/Rutina de mantenimiento registrada/i)).toBeInTheDocument()
     const createCall = fetchMock.mock.calls.find(
@@ -353,6 +361,10 @@ describe('RF-03 preventive maintenance frontend', () => {
         String(input).endsWith('/mantenimiento-preventivo/planes') && init?.method === 'POST',
     )
     expect(String(createCall?.[1]?.body)).toContain('2006')
+    expect(JSON.parse(String(createCall?.[1]?.body))).toMatchObject({
+      origenRegla: 'DEMO_ACADEMICA',
+      referenciaRegla: 'Convención académica de prueba del prototipo',
+    })
     expect(String(createCall?.[1]?.body)).not.toContain('modeloBusId')
     expect(String(createCall?.[1]?.body)).not.toContain('claveTarea')
 
@@ -367,8 +379,28 @@ describe('RF-03 preventive maintenance frontend', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Nueva versión$/i }))
     expect(await screen.findByText(/Crear nueva versión de FRENOS.001/i)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /^Guardar nueva versión$/i }))
+    const versionDialog = screen.getByRole('dialog')
+    fireEvent.change(within(versionDialog).getByLabelText('Origen de la regla'), {
+      target: { value: 'FABRICANTE' },
+    })
+    fireEvent.click(within(versionDialog).getByRole('button', { name: /^Guardar nueva versión$/i }))
+    expect(within(versionDialog).getByRole('alert')).toHaveTextContent(
+      /manual o referencia verificable/i,
+    )
+    fireEvent.change(within(versionDialog).getByLabelText('Referencia de la regla'), {
+      target: { value: 'Manual de mantenimiento del fabricante, sección de frenos' },
+    })
+    fireEvent.click(within(versionDialog).getByRole('button', { name: /^Guardar nueva versión$/i }))
     expect(await screen.findByText(/Nueva versión de la rutina registrada/i)).toBeInTheDocument()
+    const versionCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        String(input).endsWith('/mantenimiento-preventivo/planes/2052/versiones') &&
+        init?.method === 'POST',
+    )
+    expect(JSON.parse(String(versionCall?.[1]?.body))).toMatchObject({
+      origenRegla: 'FABRICANTE',
+      referenciaRegla: 'Manual de mantenimiento del fabricante, sección de frenos',
+    })
     fireEvent.click(screen.getByRole('button', { name: /^Dejar de usar$/i }))
     const deactivateDialog = await screen.findByRole('dialog', {
       name: /Dejar de usar esta rutina/i,

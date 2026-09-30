@@ -1,4 +1,9 @@
-import { Prisma, type CriterioMantenimiento, type PrioridadOrden } from '@prisma/client'
+import {
+  Prisma,
+  type CriterioMantenimiento,
+  type OrigenReglaPreventiva,
+  type PrioridadOrden,
+} from '@prisma/client'
 
 import { classifyPreventiveSchedule } from './preventive.classification.js'
 
@@ -17,6 +22,8 @@ export interface PreventivePlanCycleData {
   id: number
   intervaloDias: number | null
   intervaloKm: number | null
+  origenRegla?: OrigenReglaPreventiva
+  referenciaRegla?: string | null
   modeloBusId: number | null
   prioridad: PrioridadOrden
   version: number
@@ -134,6 +141,8 @@ export function buildPreventivePlanSnapshot(
     fechaObjetivo: schedule.fechaProgramada?.toISOString().slice(0, 10) ?? null,
     intervaloDias: plan.intervaloDias,
     intervaloKm: plan.intervaloKm,
+    origenRegla: plan.origenRegla ?? 'SIN_REFERENCIA',
+    referenciaRegla: plan.referenciaRegla ?? null,
     kilometrajeObjetivo: schedule.kilometrajeObjetivo,
     materializadoAt: schedule.createdAt.toISOString(),
     origenPlan: plan.busId ? 'BUS' : 'MODELO',
