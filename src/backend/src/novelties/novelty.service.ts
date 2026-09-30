@@ -80,7 +80,7 @@ function mapNovelty(novelty: NoveltyRecord, actor: AuthenticatedUser): NoveltyDt
         !novelty.ordenTrabajo,
       puedeCoordinarJornada:
         operationalManager &&
-        novelty.afectaOperacion === true &&
+        (novelty.afectaOperacion === true || novelty.continuidadInformada === 'NO') &&
         novelty.jornadaOperativa !== null &&
         (novelty.jornadaOperativa.estado === 'PROGRAMADA' ||
           novelty.jornadaOperativa.estado === 'EN_CURSO'),
@@ -94,9 +94,10 @@ function mapNovelty(novelty: NoveltyRecord, actor: AuthenticatedUser): NoveltyDt
       id: novelty.bus.id,
       placa: novelty.bus.placa,
     },
-    clasificacion: novelty.clasificacion,
+    clasificacion: actor.rol.codigo === 'DESPACHADOR' ? null : novelty.clasificacion,
+    continuidadInformada: novelty.continuidadInformada,
     conductor: mapUser(novelty.conductor, includeAdministrativeData),
-    criticidad: novelty.criticidad,
+    criticidad: actor.rol.codigo === 'DESPACHADOR' ? null : novelty.criticidad,
     descripcion: novelty.descripcion,
     estado: novelty.estado,
     ...(actor.rol.codigo === 'ADMINISTRADOR' || actor.rol.codigo === 'CONDUCTOR'
@@ -246,6 +247,7 @@ export class NoveltyService {
 
     const result = await this.noveltyRepository.createNovelty({
       conductorId: actor.id,
+      continuidadInformada: input.continuidadInformada,
       descripcion: normalizeText(input.descripcion),
       fechaOcurrencia: eventDate,
       jornadaOperativaId: input.jornadaOperativaId,
@@ -367,10 +369,12 @@ export class NoveltyService {
           bloqueaDisponibilidad: true,
           estado: 'PENDIENTE_REVISION',
         }),
-        this.noveltyRepository.countNovelties({
-          criticidad: 'CRITICA',
-          estado: 'PENDIENTE_REVISION',
-        }),
+        actor.rol.codigo === 'ADMINISTRADOR'
+          ? this.noveltyRepository.countNovelties({
+              criticidad: 'CRITICA',
+              estado: 'PENDIENTE_REVISION',
+            })
+          : Promise.resolve(null),
       ])
     const estados = { ...noveltyStatusDefaults }
 
@@ -389,7 +393,11 @@ export class NoveltyService {
     }
   }
 
-  private createWhere(query: ListNoveltiesQuery, conductorId?: number): Prisma.NovedadWhereInput {
+  private createWhere(
+    query: ListNoveltiesQuery,
+    conductorId: number | undefined,
+    includeTechnical: boolean,
+  ): Prisma.NovedadWhereInput {
     const filters: Prisma.NovedadWhereInput[] = []
 
     if (conductorId) {
@@ -409,6 +417,9 @@ export class NoveltyService {
       })
     }
 
+    if (query.clasificacion && !includeTechnical) {
+      throw new AppError(403, 'FORBIDDEN', 'La clasificación técnica no está disponible')
+    }
     if (query.clasificacion) {
       filters.push({
         clasificacion: {
@@ -441,12 +452,9 @@ export class NoveltyService {
               mode: 'insensitive',
             },
           },
-          {
-            clasificacion: {
-              contains: query.busqueda,
-              mode: 'insensitive',
-            },
-          },
+          ...(includeTechnical
+            ? [{ clasificacion: { contains: query.busqueda, mode: 'insensitive' as const } }]
+            : []),
           {
             bus: {
               codigoInterno: {
@@ -491,7 +499,7 @@ export class NoveltyService {
     actor: AuthenticatedUser,
     conductorId?: number,
   ) {
-    const where = this.createWhere(query, conductorId)
+    const where = this.createWhere(query, conductorId, actor.rol.codigo === 'ADMINISTRADOR')
     const skip = (query.pagina - 1) * query.limite
     const [total, novedades] = await Promise.all([
       this.noveltyRepository.countNovelties(where),

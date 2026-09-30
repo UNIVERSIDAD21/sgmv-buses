@@ -19,6 +19,7 @@ export interface ListNoveltyParams {
 }
 
 export interface CreateNoveltyInput {
+  continuidadInformada?: 'SI' | 'NO' | 'INDETERMINADA'
   descripcion: string
   fechaOcurrencia: string
   jornadaOperativaId?: number

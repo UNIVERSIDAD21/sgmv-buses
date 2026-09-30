@@ -43,6 +43,9 @@ describe('RF-02 novelty frontend', () => {
     fireEvent.change(screen.getByLabelText(/Kilometraje observado/i), {
       target: { value: '45010' },
     })
+    fireEvent.change(screen.getByLabelText(/La situación le permite continuar la operación/i), {
+      target: { value: 'SI' },
+    })
     fireEvent.click(screen.getByRole('button', { name: /Enviar novedad/i }))
     expect(await screen.findByText(/El tipo debe tener al menos 3 caracteres/i)).toBeInTheDocument()
     expect(
@@ -69,6 +72,7 @@ describe('RF-02 novelty frontend', () => {
     expect(String(createCalls[0][1]?.body)).toContain('Ruido en frenos')
     expect(String(createCalls[0][1]?.body)).toContain('fechaOcurrencia')
     expect(String(createCalls[0][1]?.body)).toContain('45010')
+    expect(String(createCalls[0][1]?.body)).toContain('"continuidadInformada":"SI"')
     expect(String(createCalls[0][1]?.body)).not.toContain('busId')
     expect(String(createCalls[0][1]?.body)).not.toContain('conductorId')
   })
@@ -83,6 +87,9 @@ describe('RF-02 novelty frontend', () => {
     await screen.findByText(/BUS-JORNADA-01 - JOR001/i)
     fireEvent.change(screen.getByLabelText(/Kilometraje observado/i), {
       target: { value: '45010' },
+    })
+    fireEvent.change(screen.getByLabelText(/La situación le permite continuar la operación/i), {
+      target: { value: 'SI' },
     })
     fireEvent.change(screen.getByLabelText(/Tipo de novedad/i), {
       target: { value: 'Golpe exterior' },

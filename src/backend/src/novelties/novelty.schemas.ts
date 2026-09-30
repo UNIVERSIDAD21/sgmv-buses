@@ -52,6 +52,7 @@ export const listNoveltiesQuerySchema = z.object({
 
 export const createNoveltySchema = z
   .object({
+    continuidadInformada: z.enum(['SI', 'NO', 'INDETERMINADA']).optional(),
     descripcion: trimmedText(10, 2000),
     fechaOcurrencia: z.iso.datetime({ offset: true }),
     jornadaOperativaId: z.number().int().positive().optional(),

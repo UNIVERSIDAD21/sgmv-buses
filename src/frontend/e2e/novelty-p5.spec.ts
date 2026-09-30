@@ -88,6 +88,7 @@ test('P5 enlaza reporte tardio, clasificacion critica y reaccion de despacho', a
   ).toBeVisible()
   await page.getByLabel('Fecha y hora de ocurrencia').fill('2026-09-01T08:00')
   await page.getByLabel('Kilometraje observado').fill('44950')
+  await page.getByLabel('¿La situación le permite continuar la operación?').selectOption('SI')
   await page.getByLabel('Tipo de novedad').fill(marker)
   await page
     .getByLabel('Descripcion')

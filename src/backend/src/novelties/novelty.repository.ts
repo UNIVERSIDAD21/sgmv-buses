@@ -9,6 +9,7 @@ import {
 
 import {
   createNoveltyAlerts,
+  createOperationalInterruptionAlert,
   createPredepartureNoveltyAlert,
   createNoveltyStateChangeAlert,
   createWorkOrderPendingAlert,
@@ -96,6 +97,7 @@ export type WorkOrderRecord = Prisma.OrdenTrabajoGetPayload<{ include: typeof or
 
 interface CreateNoveltyData {
   conductorId: number
+  continuidadInformada?: 'SI' | 'NO' | 'INDETERMINADA'
   descripcion: string
   fechaOcurrencia: Date
   jornadaOperativaId?: number
@@ -224,6 +226,7 @@ export class NoveltyRepository {
           data: {
             busId: lockedJourney.busId,
             conductorId: data.conductorId,
+            continuidadInformada: data.continuidadInformada,
             descripcion: data.descripcion,
             fechaOcurrencia: data.fechaOcurrencia,
             jornadaOperativaId: lockedJourney.id,
@@ -235,15 +238,21 @@ export class NoveltyRepository {
           include: noveltyInclude,
         })
 
-        if (beforeDeparture) {
+        if (beforeDeparture || data.continuidadInformada === 'NO') {
           const bus = await tx.bus.findUniqueOrThrow({
             where: { id: lockedJourney.busId },
             select: { codigoInterno: true },
           })
-          await createPredepartureNoveltyAlert(
-            { busCodigo: bus.codigoInterno, eventAt: data.fechaOcurrencia, novedadId: novelty.id },
-            tx,
-          )
+          const alertInput = {
+            busCodigo: bus.codigoInterno,
+            eventAt: data.fechaOcurrencia,
+            novedadId: novelty.id,
+          }
+          if (data.continuidadInformada === 'NO') {
+            await createOperationalInterruptionAlert(alertInput, tx)
+          } else if (beforeDeparture) {
+            await createPredepartureNoveltyAlert(alertInput, tx)
+          }
         }
 
         return { novedad: novelty, status: 'CREATED' as const }

@@ -266,9 +266,9 @@ describe('P9 alertas internas por destinatario', () => {
   }, timeout)
 
   it(
-    'configura y materializa los dieciséis tipos con origen real y contexto sanitizado',
+    'configura y materializa los diecisiete tipos con origen real y contexto sanitizado',
     async () => {
-      expect(tipoAlertaValues).toHaveLength(16)
+      expect(tipoAlertaValues).toHaveLength(17)
 
       const recipientByRole: Record<RolCodigo, string> = {
         ADMINISTRADOR: admin.id,
@@ -320,7 +320,7 @@ describe('P9 alertas internas por destinatario', () => {
         include: { destinatarios: true },
         where: { claveDeduplicacion: { startsWith: `${prefix}:catalogo:` } },
       })
-      expect(alerts).toHaveLength(16)
+      expect(alerts).toHaveLength(17)
       for (const alert of alerts) {
         expect(alert.destinatarios).toHaveLength(1)
         const serialized = JSON.stringify(alert.contextoEvento)

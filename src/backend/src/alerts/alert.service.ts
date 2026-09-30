@@ -311,6 +311,24 @@ export async function createPredepartureNoveltyAlert(
   )
 }
 
+export async function createOperationalInterruptionAlert(
+  input: { busCodigo: string; eventAt: Date; novedadId: number },
+  tx: Prisma.TransactionClient,
+) {
+  await materializeInternal(
+    {
+      contextoEvento: { busCodigo: input.busCodigo, eventAt: input.eventAt.toISOString() },
+      claveDeduplicacion: `continuidad-interrumpida:${input.novedadId}`,
+      destinatarios: { kind: 'ROLES', roles: ['ADMINISTRADOR', 'DESPACHADOR'] },
+      mensaje: `El Conductor del bus ${input.busCodigo} informa que no puede continuar. Despacho debe coordinar la operación y Administración evaluar la novedad.`,
+      origen: { novedadId: input.novedadId },
+      tipo: 'CONTINUIDAD_INTERRUMPIDA',
+      titulo: 'Conductor informa que no puede continuar',
+    },
+    tx,
+  )
+}
+
 interface PreventiveAlertSchedule {
   bus: { codigoInterno: string; id: number; kilometrajeActual: number }
   fechaProgramada: Date | null

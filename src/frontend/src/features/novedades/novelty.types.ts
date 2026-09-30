@@ -3,6 +3,7 @@ export type NoveltyStatus =
 
 export type OrderPriority = 'ALTA' | 'BAJA' | 'MEDIA'
 export type NoveltyCriticality = 'ALTA' | 'BAJA' | 'CRITICA' | 'MEDIA'
+export type ContinuityReported = 'SI' | 'NO' | 'INDETERMINADA'
 
 export interface NoveltyUserDto {
   email?: string
@@ -54,6 +55,7 @@ export interface NoveltyDto {
   bloqueaDisponibilidad: boolean | null
   bus: NoveltyBusDto
   clasificacion: string | null
+  continuidadInformada: ContinuityReported | null
   conductor: NoveltyUserDto
   criticidad: NoveltyCriticality | null
   descripcion: string
@@ -107,7 +109,7 @@ export interface NoveltyListResponse {
 export interface NoveltySummaryDto {
   afectanOperacion: number
   bloqueantes: number
-  criticas: number
+  criticas: number | null
   estados: Record<NoveltyStatus, number>
   ordenesGeneradas: number
   pendientes: number

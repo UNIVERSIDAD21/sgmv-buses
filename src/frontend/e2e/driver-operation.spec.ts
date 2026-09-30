@@ -181,6 +181,7 @@ test('Conductor reporta problema antes de salir sin lectura ni inicio ficticio',
   await expect(page.getByText(`jornada #${journeys[2]}`)).toBeVisible()
   const before = await prisma.lecturaKilometraje.count({ where: { busId: buses[1] } })
   await page.getByLabel('No puedo observar el odómetro de forma segura.').check()
+  await page.getByLabel('¿La situación le permite continuar la operación?').selectOption('NO')
   await page
     .getByLabel('Motivo de ausencia de lectura')
     .fill('Tablero sin energía al recibir el bus')
@@ -196,12 +197,13 @@ test('Conductor reporta problema antes de salir sin lectura ni inicio ficticio',
   novelties.push(novelty.id)
   expect(
     await prisma.alertaInterna.count({
-      where: { novedadId: novelty.id, tipo: 'NOVEDAD_PREVIA_SALIDA' },
+      where: { novedadId: novelty.id, tipo: 'CONTINUIDAD_INTERRUMPIDA' },
     }),
   ).toBe(1)
   expect(novelty.busId).toBe(buses[1])
   expect(novelty.lecturaKilometrajeId).toBeNull()
   expect(novelty.reportadaAntesSalida).toBe(true)
+  expect(novelty.continuidadInformada).toBe('NO')
   expect(await prisma.lecturaKilometraje.count({ where: { busId: buses[1] } })).toBe(before)
   expect(
     (await prisma.jornadaOperativa.findUniqueOrThrow({ where: { id: journeys[2] } })).estado,

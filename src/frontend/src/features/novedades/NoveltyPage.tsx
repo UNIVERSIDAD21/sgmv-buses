@@ -39,6 +39,7 @@ import {
 } from './novelty.api'
 import NoveltyEvidenceGallery, { NoveltyEvidencePicker } from './NoveltyEvidenceGallery'
 import type {
+  ContinuityReported,
   NoveltyCriticality,
   NoveltyDto,
   NoveltyListResponse,
@@ -56,6 +57,11 @@ interface AdminAction {
 }
 
 const statusOptions = Object.entries(NOVELTY_STATUS_LABELS) as Array<[NoveltyStatus, string]>
+const continuityLabels: Record<ContinuityReported, string> = {
+  SI: 'Sí, puedo continuar',
+  NO: 'No puedo continuar',
+  INDETERMINADA: 'No puedo determinarlo con seguridad',
+}
 
 function getNoveltyStatusFromSearch(value: string | null): NoveltyStatus | '' {
   return statusOptions.some(([status]) => status === value) ? (value as NoveltyStatus) : ''
@@ -159,6 +165,8 @@ function NoveltyDetail({
   novelty: NoveltyDto
   onEvidenceChange?: (evidences: NonNullable<NoveltyDto['evidencias']>) => void
 }) {
+  const { user } = useSession()
+  const restrictedTechnical = user?.rol.codigo === 'DESPACHADOR'
   const nextAction =
     novelty.estado === 'PENDIENTE_REVISION'
       ? 'Pendiente de clasificación administrativa.'
@@ -178,6 +186,9 @@ function NoveltyDetail({
             </Badge>
           )}
           {novelty.bloqueaDisponibilidad === true && <Badge tone="red">Bloquea el despacho</Badge>}
+          {novelty.continuidadInformada === 'NO' && (
+            <Badge tone="amber">Conductor no puede continuar</Badge>
+          )}
         </div>
         <p className="mt-2 text-sm font-medium text-amber-900">{nextAction}</p>
       </section>
@@ -197,6 +208,11 @@ function NoveltyDetail({
             : 'Sin contexto historico'}
         </FieldValue>
         <FieldValue label="Fecha reporte">{formatDateTimeValue(novelty.fechaReporte)}</FieldValue>
+        <FieldValue label="Continuidad informada por Conductor">
+          {novelty.continuidadInformada
+            ? continuityLabels[novelty.continuidadInformada]
+            : 'No informada en este reporte'}
+        </FieldValue>
         <FieldValue label="Tramo de jornada">
           {novelty.jornada
             ? `#${novelty.jornada.id} · ${formatDateTimeValue(novelty.jornada.inicioProgramado)} – ${formatDateTimeValue(novelty.jornada.finProgramado)}`
@@ -221,9 +237,15 @@ function NoveltyDetail({
         </h3>
         <div className="grid gap-3 sm:grid-cols-2">
           <FieldValue label="Clasificacion">
-            {novelty.clasificacion ?? 'Pendiente de clasificar'}
+            {restrictedTechnical
+              ? 'Reservada a Administración'
+              : (novelty.clasificacion ?? 'Pendiente de clasificar')}
           </FieldValue>
-          <FieldValue label="Criticidad">{novelty.criticidad ?? 'Sin clasificar'}</FieldValue>
+          <FieldValue label="Criticidad">
+            {restrictedTechnical
+              ? 'Reservada a Administración'
+              : (novelty.criticidad ?? 'Sin clasificar')}
+          </FieldValue>
           <FieldValue label="Impacto operativo">
             {novelty.afectaOperacion === null
               ? 'Sin evaluar'
@@ -564,6 +586,9 @@ function DriverNoveltyCard({
             {novelty.fechaOcurrencia ? formatDateTimeValue(novelty.fechaOcurrencia) : 'sin fecha'}
             {' · '}Registrado: {formatDateTimeValue(novelty.fechaReporte)}
           </p>
+          {novelty.continuidadInformada === 'NO' && (
+            <p className="mt-1 text-xs font-semibold text-amber-800">No puede continuar</p>
+          )}
         </div>
         <StatusBadge status={novelty.estado} />
       </div>
@@ -649,6 +674,7 @@ function DriverView() {
   const [kilometraje, setKilometraje] = useState('')
   const [sinLectura, setSinLectura] = useState(false)
   const [motivoAusenciaLectura, setMotivoAusenciaLectura] = useState('')
+  const [continuidadInformada, setContinuidadInformada] = useState<ContinuityReported | ''>('')
 
   const currentJourney = journeyData?.jornadaActual ?? null
   const beforeDepartureId = Number(searchParams.get('antesDeSalir'))
@@ -770,6 +796,9 @@ function DriverView() {
     if (searchParams.has('antesDeSalir') && !beforeDepartureJourney) {
       errors.jornada = 'La jornada programada ya no está disponible para este reporte.'
     }
+    if (!continuidadInformada) {
+      errors.continuidadInformada = 'Indique si puede continuar la operación.'
+    }
 
     setFieldErrors(errors)
 
@@ -789,6 +818,7 @@ function DriverView() {
 
     try {
       const created = await createNovelty({
+        continuidadInformada: continuidadInformada || undefined,
         descripcion: normalizeText(descripcion),
         fechaOcurrencia: new Date(fechaOcurrencia).toISOString(),
         ...(beforeDepartureJourney ? { jornadaOperativaId: beforeDepartureJourney.id } : {}),
@@ -813,6 +843,7 @@ function DriverView() {
       setKilometraje('')
       setSinLectura(false)
       setMotivoAusenciaLectura('')
+      setContinuidadInformada('')
       if (searchParams.has('antesDeSalir')) {
         const nextParams = new URLSearchParams(searchParams)
         nextParams.delete('antesDeSalir')
@@ -825,7 +856,9 @@ function DriverView() {
           ? 'La novedad quedó registrada, pero las imágenes no se guardaron. Puede cargarlas desde el detalle.'
           : beforeDepartureJourney
             ? 'Problema registrado antes de la salida. La jornada sigue programada; Despacho debe coordinar la continuidad.'
-            : 'Novedad registrada y vinculada a la jornada correspondiente.',
+            : continuidadInformada === 'NO'
+              ? 'Novedad registrada. Despacho y Administración recibieron la señal de interrupción operativa.'
+              : 'Novedad registrada y vinculada a la jornada correspondiente.',
       )
       if (evidenceWarning) setSubmitError(evidenceWarning)
       await refreshDriverData()
@@ -974,6 +1007,28 @@ function DriverView() {
               )}
 
               <div className="mt-5 space-y-4">
+                <label className="block text-sm font-medium text-slate-700">
+                  ¿La situación le permite continuar la operación?
+                  <select
+                    className="field-control mt-1.5"
+                    onChange={(event) => {
+                      setContinuidadInformada(event.target.value as ContinuityReported | '')
+                      setFieldErrors((current) => ({ ...current, continuidadInformada: '' }))
+                    }}
+                    required
+                    value={continuidadInformada}
+                  >
+                    <option value="">Seleccione una respuesta</option>
+                    <option value="SI">Sí</option>
+                    <option value="NO">No</option>
+                    <option value="INDETERMINADA">No puedo determinarlo con seguridad</option>
+                  </select>
+                  {fieldErrors.continuidadInformada && (
+                    <span className="mt-1 block text-xs text-red-600">
+                      {fieldErrors.continuidadInformada}
+                    </span>
+                  )}
+                </label>
                 <label className="block text-sm font-medium text-slate-700">
                   Fecha y hora de ocurrencia
                   <input
@@ -1494,10 +1549,12 @@ function AdminView() {
           </div>
         )}
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div
+          className={`grid gap-3 sm:grid-cols-2 ${isAdmin ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}
+        >
           <FieldValue label="Total novedades">{summary?.total ?? '...'}</FieldValue>
           <FieldValue label="Pendientes">{summary?.pendientes ?? '...'}</FieldValue>
-          <FieldValue label="Criticas">{summary?.criticas ?? '...'}</FieldValue>
+          {isAdmin && <FieldValue label="Criticas">{summary?.criticas ?? '...'}</FieldValue>}
           <FieldValue label="Afectan operacion">{summary?.afectanOperacion ?? '...'}</FieldValue>
           <FieldValue label="Bloqueantes">{summary?.bloqueantes ?? '...'}</FieldValue>
         </div>
@@ -1521,18 +1578,20 @@ function AdminView() {
                 value={busqueda}
               />
             </label>
-            <label className="block">
-              <span className="sr-only">Clasificacion</span>
-              <input
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                onChange={(event) => {
-                  setPagina(1)
-                  setClasificacion(event.target.value)
-                }}
-                placeholder="Clasificacion"
-                value={clasificacion}
-              />
-            </label>
+            {isAdmin && (
+              <label className="block">
+                <span className="sr-only">Clasificacion</span>
+                <input
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  onChange={(event) => {
+                    setPagina(1)
+                    setClasificacion(event.target.value)
+                  }}
+                  placeholder="Clasificacion"
+                  value={clasificacion}
+                />
+              </label>
+            )}
             <label className="block">
               <span className="sr-only">Prioridad</span>
               <select
@@ -1639,10 +1698,12 @@ function AdminView() {
                         <StatusBadge status={novelty.estado} />
                       </td>
                       <td className="px-4 py-3 text-slate-600">
-                        {novelty.clasificacion ?? 'Pendiente'}
+                        {isAdmin ? (novelty.clasificacion ?? 'Pendiente') : 'Reservada'}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
-                        {novelty.criticidad ?? 'Sin evaluar'}
+                        {isAdmin
+                          ? (novelty.criticidad ?? 'Sin evaluar')
+                          : 'Sin diagnóstico visible'}
                         {novelty.bloqueaDisponibilidad ? ' · Bloqueante' : ''}
                       </td>
                       <td className="px-4 py-3 text-slate-600">

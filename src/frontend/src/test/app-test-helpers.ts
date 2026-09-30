@@ -346,6 +346,7 @@ export const noveltyOne = {
     placa: fleetBus.placa,
   },
   clasificacion: null,
+  continuidadInformada: null,
   conductor: {
     id: 2011,
     nombre: 'Conductor Uno',

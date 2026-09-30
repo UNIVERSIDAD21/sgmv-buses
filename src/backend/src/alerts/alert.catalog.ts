@@ -71,6 +71,16 @@ export const alertCatalog = {
     originKind: 'novedadId',
     recipientStrategy: 'administradores y despachadores activos',
   },
+  CONTINUIDAD_INTERRUMPIDA: {
+    allowedRecipientRoles: administrativeAndDispatch,
+    contextSchemaVersion: 1,
+    deduplicationScope: 'declaración de continuidad de una novedad',
+    defaultPriority: 'ALTA',
+    defaultTitle: 'Conductor informa que no puede continuar',
+    internalRoutes: { ADMINISTRADOR: '/novedades', DESPACHADOR: '/novedades' },
+    originKind: 'novedadId',
+    recipientStrategy: 'administradores y despachadores activos',
+  },
   BUS_BLOQUEADO: {
     allowedRecipientRoles: ['DESPACHADOR', 'CONDUCTOR'],
     contextSchemaVersion: 1,

@@ -751,6 +751,63 @@ describe('RF-02 Novelty API', () => {
     )
   }, 60000)
 
+  it('informa de inmediato una interrupción operativa sin clasificar ni bloquear técnicamente', async () => {
+    const roles = await ensureRoles()
+    const owner = await createUser(
+      `nov-detencion-${shortCode().toLowerCase()}@test.sgmv.local`,
+      roles.conductor,
+    )
+    const bus = await createBus()
+    const { journeyId } = await createActiveJourney(owner.id, bus.id, fixture.adminId)
+    const conductor = await loginAgent(owner.email)
+    const report = await conductor
+      .post('/novedades')
+      .send({
+        continuidadInformada: 'NO',
+        descripcion: 'El bus se detuvo y no es posible continuar de forma segura',
+        fechaOcurrencia: new Date().toISOString(),
+        motivoAusenciaLectura: 'No es seguro acceder al tablero tras la detención',
+        tipo: 'Detención durante recorrido',
+      })
+      .expect(201)
+    const id = report.body.data.novedad.id as number
+    created.novedades.push(id)
+    expect(report.body.data.novedad).toMatchObject({
+      afectaOperacion: null,
+      bloqueaDisponibilidad: null,
+      continuidadInformada: 'NO',
+      criticidad: null,
+      jornada: { id: journeyId, estado: 'EN_CURSO' },
+    })
+    const alerts = await prisma.alertaInterna.findMany({
+      where: { novedadId: id },
+      include: { destinatarios: { include: { usuario: { include: { rol: true } } } } },
+    })
+    expect(alerts).toHaveLength(1)
+    expect(alerts[0].tipo).toBe('CONTINUIDAD_INTERRUMPIDA')
+    expect(new Set(alerts[0].destinatarios.map((item) => item.usuario.rol.codigo))).toEqual(
+      new Set(['ADMINISTRADOR', 'DESPACHADOR']),
+    )
+    expect(alerts[0].novedadId).toBe(id)
+    expect(
+      (await prisma.jornadaOperativa.findUniqueOrThrow({ where: { id: journeyId } })).estado,
+    ).toBe('EN_CURSO')
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const detail = await dispatcher.get(`/novedades/${id}`).expect(200)
+    expect(detail.body.data.novedad).toMatchObject({
+      acciones: { puedeCoordinarJornada: true, puedeRevisar: false },
+      clasificacion: null,
+      continuidadInformada: 'NO',
+      criticidad: null,
+      observacionRevision: null,
+    })
+    expect(detail.body.data.novedad.evidencias).toBeUndefined()
+    await dispatcher
+      .post(`/novedades/${id}/revision`)
+      .send({ accion: 'RESOLVER_SIN_ORDEN', observacion: 'No autorizado' })
+      .expect(403)
+  }, 60000)
+
   it('blocks novelty registration when no own journey contains the event', async () => {
     const conductor = await loginAgent(fixture.conductorSinBusEmail)
 
@@ -1010,10 +1067,15 @@ describe('RF-02 Novelty API', () => {
     expect(detail.body.data.novedad).toMatchObject({
       acciones: { puedeCoordinarJornada: true, puedeRevisar: false },
       jornada: { id: journeyId },
+      clasificacion: null,
+      criticidad: null,
       observacionRevision: null,
     })
     expect(detail.body.data.novedad.conductor.email).toBeUndefined()
     expect(detail.body.data.novedad.revisadaPor.email).toBeUndefined()
+    const restrictedSummary = await dispatcher.get('/novedades/resumen').expect(200)
+    expect(restrictedSummary.body.data.criticas).toBeNull()
+    await dispatcher.get('/novedades?clasificacion=seguridad').expect(403)
     await dispatcher
       .post(`/novedades/${noveltyId}/revision`)
       .send({ accion: 'RESOLVER_SIN_ORDEN', observacion: 'No autorizado' })

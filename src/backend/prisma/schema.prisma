@@ -141,6 +141,14 @@ enum CriticidadNovedad {
   @@map("criticidad_novedad")
 }
 
+enum ContinuidadInformada {
+  SI
+  NO
+  INDETERMINADA
+
+  @@map("continuidad_informada")
+}
+
 enum ResultadoCompatibilidad {
   COMPATIBLE
   EXCEPCION_AUTORIZADA
@@ -162,6 +170,7 @@ enum TipoAlerta {
   MANTENIMIENTO_VENCIDO
   NOVEDAD_CRITICA
   NOVEDAD_PREVIA_SALIDA
+  CONTINUIDAD_INTERRUMPIDA
   BUS_BLOQUEADO
   CONFLICTO_JORNADA
   JORNADA_SIN_KILOMETRAJE_INICIAL
@@ -408,6 +417,7 @@ model Novedad {
   lecturaKilometrajeId  Int?               @unique @map("lectura_kilometraje_id")
   motivoAusenciaLectura String?            @map("motivo_ausencia_lectura") @db.VarChar(500)
   reportadaAntesSalida  Boolean            @default(false) @map("reportada_antes_salida")
+  continuidadInformada  ContinuidadInformada? @map("continuidad_informada")
   fechaOcurrencia       DateTime?          @map("fecha_ocurrencia") @db.Timestamptz(6)
   criticidad            CriticidadNovedad?
   afectaOperacion       Boolean?           @map("afecta_operacion")

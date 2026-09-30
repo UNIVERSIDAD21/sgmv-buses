@@ -1,4 +1,5 @@
 import type {
+  ContinuidadInformada,
   CriticidadNovedad,
   EstadoJornada,
   EstadoNovedad,
@@ -65,6 +66,7 @@ export interface NoveltyDto {
   bloqueaDisponibilidad: boolean | null
   bus: NoveltyBusDto
   clasificacion: string | null
+  continuidadInformada: ContinuidadInformada | null
   conductor: NoveltyUserDto
   criticidad: CriticidadNovedad | null
   descripcion: string
@@ -98,7 +100,7 @@ export interface NoveltyListDto {
 export interface NoveltySummaryDto {
   afectanOperacion: number
   bloqueantes: number
-  criticas: number
+  criticas: number | null
   estados: Record<EstadoNovedad, number>
   ordenesGeneradas: number
   pendientes: number
