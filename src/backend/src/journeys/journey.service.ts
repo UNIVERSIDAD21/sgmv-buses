@@ -57,6 +57,50 @@ function ensureEventDate(eventDate: Date) {
   }
 }
 
+function resolveJourneyObserver(
+  input: { observadoPorId?: number; motivoRespaldo?: string },
+  journey: JourneyRecord,
+  actor: AuthenticatedUser,
+) {
+  if (actor.rol.codigo === 'CONDUCTOR') {
+    if (input.observadoPorId !== undefined && input.observadoPorId !== actor.id) {
+      throw new AppError(
+        400,
+        'INVALID_MILEAGE_OBSERVER',
+        'El Conductor solo puede declarar su propia observación',
+      )
+    }
+    return { observerId: actor.id, backupReason: null }
+  }
+  if (input.observadoPorId === undefined) {
+    if (input.motivoRespaldo)
+      throw new AppError(
+        400,
+        'INVALID_MILEAGE_OBSERVER',
+        'Identifique a la persona que observó la lectura',
+      )
+    return { observerId: null, backupReason: null }
+  }
+  if (input.observadoPorId !== actor.id && input.observadoPorId !== journey.conductorId) {
+    throw new AppError(
+      400,
+      'INVALID_MILEAGE_OBSERVER',
+      'El observador debe ser quien registra o el Conductor de la jornada',
+    )
+  }
+  if (input.observadoPorId !== actor.id && !input.motivoRespaldo) {
+    throw new AppError(
+      400,
+      'BACKUP_REASON_REQUIRED',
+      'Indique por qué transcribe la lectura del Conductor',
+    )
+  }
+  return {
+    observerId: input.observadoPorId,
+    backupReason: input.observadoPorId === actor.id ? null : input.motivoRespaldo!.trim(),
+  }
+}
+
 function mapUser(user: JourneyRecord['conductor']): JourneyUserRefDto {
   return {
     id: user.id,
@@ -68,10 +112,13 @@ function mapUser(user: JourneyRecord['conductor']): JourneyUserRefDto {
 function mapReading(reading: JourneyRecord['lecturasKilometraje'][number]): JourneyReadingDto {
   return {
     fechaLectura: (reading.fechaLectura ?? reading.fechaRegistro).toISOString(),
+    fechaRegistro: reading.fechaRegistro.toISOString(),
     id: reading.id,
     kilometraje: reading.kilometrajeNuevo,
     kilometrajeAnterior: reading.kilometrajeAnterior,
     registradoPor: mapUser(reading.registradoPor),
+    observadoPor: reading.observadoPor ? mapUser(reading.observadoPor) : null,
+    motivoRespaldo: reading.motivoRespaldo,
     tipo: reading.tipo!,
   }
 }
@@ -370,6 +417,7 @@ export class JourneyService {
           await this.repository.registerJourneyReading(
             {
               actorId: actor.id,
+              ...resolveJourneyObserver(input, journey, actor),
               busId: journey.busId,
               eventDate,
               journeyId: journey.id,
@@ -481,6 +529,7 @@ export class JourneyService {
         await this.repository.registerJourneyReading(
           {
             actorId: actor.id,
+            ...resolveJourneyObserver(input, journey, actor),
             busId: journey.busId,
             eventDate,
             journeyId: journey.id,
@@ -695,6 +744,7 @@ export class JourneyService {
           await this.repository.registerJourneyReading(
             {
               actorId: actor.id,
+              ...resolveJourneyObserver(input, journey, actor),
               busId: journey.busId,
               eventDate,
               journeyId: journey.id,
@@ -793,6 +843,7 @@ export class JourneyService {
         await this.repository.registerJourneyReading(
           {
             actorId: actor.id,
+            ...resolveJourneyObserver(input, journey, actor),
             busId: journey.busId,
             eventDate,
             journeyId: journey.id,

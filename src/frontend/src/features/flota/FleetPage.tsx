@@ -20,6 +20,8 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { ApiError } from '../../lib/api'
 import { formatNumber } from '../../lib/format'
 import { useSession } from '../auth/session.context'
+import { listUsers } from '../usuarios/user.api'
+import type { UserRecord } from '../usuarios/user.types'
 import { changeBusState, getBus, listBuses, registerMileage } from './fleet.api'
 import type { BusDetailDto, BusStatus, ListBusesResponse } from './fleet.types'
 
@@ -235,7 +237,19 @@ function BusHistory({
                 <p className="mt-1 text-xs text-slate-500">
                   Registrado por: {lectura.registradoPor.nombre}
                 </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Observado por: {lectura.observadoPor?.nombre ?? 'No consta en lectura histórica'}
+                  {lectura.fechaLectura ? ` · ${formatDateTimeValue(lectura.fechaLectura)}` : ''}
+                </p>
                 <p className="mt-1 text-xs text-slate-500">{mileageReadingLabel(lectura.tipo)}</p>
+                {lectura.contexto && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Contexto: {lectura.contexto.replaceAll('_', ' ').toLowerCase()}
+                  </p>
+                )}
+                {lectura.motivoRespaldo && (
+                  <p className="mt-1 text-xs text-slate-500">Respaldo: {lectura.motivoRespaldo}</p>
+                )}
                 {showOperationalContext &&
                   (lectura.ordenTrabajoCodigo ||
                     lectura.jornadaOperativaId ||
@@ -335,6 +349,7 @@ function ActionDialog({
   onClose,
   onSubmit,
   submitting,
+  userId,
 }: {
   action: FleetAction
   error: string | null
@@ -343,15 +358,47 @@ function ActionDialog({
     estadoNuevo?: BusStatus
     kilometrajeNuevo?: number
     motivo?: string
+    fechaLectura?: string
+    observadoPorId?: number
+    contexto?: 'CORRECCION_LECTURA' | 'CAPTURA_TARDIA' | 'LECTURA_RESPALDO'
+    motivoRespaldo?: string
   }) => void
   submitting: boolean
+  userId: number
 }) {
   const [kilometrajeNuevo, setKilometrajeNuevo] = useState(() =>
     String(action.bus.kilometrajeActual),
   )
   const [estadoNuevo, setEstadoNuevo] = useState<BusStatus>(() => action.bus.estadoOperativo)
   const [motivo, setMotivo] = useState('')
+  const [fechaLectura, setFechaLectura] = useState(() => {
+    const now = new Date()
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+  })
+  const [contexto, setContexto] = useState<
+    'CORRECCION_LECTURA' | 'CAPTURA_TARDIA' | 'LECTURA_RESPALDO'
+  >('CORRECCION_LECTURA')
+  const [esRespaldo, setEsRespaldo] = useState(false)
+  const [busquedaObservador, setBusquedaObservador] = useState('')
+  const [observadores, setObservadores] = useState<UserRecord[]>([])
+  const [observadoPorId, setObservadoPorId] = useState<number | null>(null)
+  const [motivoRespaldo, setMotivoRespaldo] = useState('')
   const [validationError, setValidationError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!esRespaldo || busquedaObservador.trim().length < 2) return
+    let active = true
+    listUsers({ busqueda: busquedaObservador.trim(), estado: 'ACTIVO' })
+      .then((result) => {
+        if (active) setObservadores(result.items.filter((item) => item.id !== userId))
+      })
+      .catch(() => {
+        if (active) setObservadores([])
+      })
+    return () => {
+      active = false
+    }
+  }, [busquedaObservador, esRespaldo, userId])
 
   const titleByType = {
     mileage: 'Registrar kilometraje',
@@ -369,12 +416,32 @@ function ActionDialog({
     if (action.type === 'mileage') {
       const value = Number(kilometrajeNuevo)
 
-      if (!Number.isInteger(value) || value < action.bus.kilometrajeActual) {
-        setValidationError('La lectura debe ser igual o superior al kilometraje actual.')
+      if (!Number.isInteger(value) || value < 0) {
+        setValidationError('La lectura debe ser un kilometraje entero no negativo.')
         return
       }
 
-      onSubmit({ kilometrajeNuevo: value, motivo: motivo.trim() || undefined })
+      if (
+        motivo.trim().length < 3 ||
+        !fechaLectura ||
+        new Date(fechaLectura).getTime() > Date.now()
+      ) {
+        setValidationError('Indique motivo y fecha física válida, no futura.')
+        return
+      }
+      if (esRespaldo && (!observadoPorId || motivoRespaldo.trim().length < 3)) {
+        setValidationError('Seleccione al observador e indique el motivo del respaldo.')
+        return
+      }
+
+      onSubmit({
+        kilometrajeNuevo: value,
+        fechaLectura: new Date(fechaLectura).toISOString(),
+        observadoPorId: esRespaldo ? observadoPorId! : userId,
+        contexto: esRespaldo ? 'LECTURA_RESPALDO' : contexto,
+        motivo: motivo.trim(),
+        ...(esRespaldo ? { motivoRespaldo: motivoRespaldo.trim() } : {}),
+      })
       return
     }
 
@@ -404,13 +471,14 @@ function ActionDialog({
         {action.type === 'mileage' && (
           <>
             <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-              Actual: {formatNumber(action.bus.kilometrajeActual)} km
+              Odómetro actual: {formatNumber(action.bus.kilometrajeActual)} km. Una captura tardía
+              puede ser inferior si conserva la secuencia de lecturas por fecha física.
             </div>
             <label className="block text-sm font-medium text-slate-700">
               Nueva lectura
               <input
                 className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-                min={action.bus.kilometrajeActual}
+                min={0}
                 onChange={(event) => setKilometrajeNuevo(event.target.value)}
                 type="number"
                 value={kilometrajeNuevo}
@@ -424,6 +492,78 @@ function ActionDialog({
                 value={motivo}
               />
             </label>
+            <label className="block text-sm font-medium text-slate-700">
+              Fecha física de la lectura
+              <input
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+                type="datetime-local"
+                value={fechaLectura}
+                onChange={(event) => setFechaLectura(event.target.value)}
+              />
+            </label>
+            <label className="block text-sm font-medium text-slate-700">
+              Contexto del ajuste
+              <select
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+                value={contexto}
+                onChange={(event) => setContexto(event.target.value as typeof contexto)}
+                disabled={esRespaldo}
+              >
+                <option value="CORRECCION_LECTURA">Corrección de lectura</option>
+                <option value="CAPTURA_TARDIA">Captura tardía</option>
+                <option value="LECTURA_RESPALDO">Lectura de respaldo</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={esRespaldo}
+                onChange={(event) => {
+                  setEsRespaldo(event.target.checked)
+                  setObservadoPorId(null)
+                }}
+              />
+              Transcribo una lectura observada por otra persona
+            </label>
+            {esRespaldo && (
+              <>
+                <label className="block text-sm font-medium text-slate-700">
+                  Buscar observador
+                  <input
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+                    value={busquedaObservador}
+                    onChange={(event) => {
+                      setBusquedaObservador(event.target.value)
+                      setObservadoPorId(null)
+                    }}
+                    placeholder="Nombre o correo (mínimo 2 caracteres)"
+                  />
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Persona que observó el odómetro
+                  <select
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+                    value={observadoPorId ?? ''}
+                    onChange={(event) => setObservadoPorId(Number(event.target.value) || null)}
+                  >
+                    <option value="">Seleccione una persona activa</option>
+                    {observadores.map((observador) => (
+                      <option key={observador.id} value={observador.id}>
+                        {observador.nombre} · {observador.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Motivo del respaldo
+                  <textarea
+                    className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    value={motivoRespaldo}
+                    onChange={(event) => setMotivoRespaldo(event.target.value)}
+                  />
+                </label>
+              </>
+            )}
           </>
         )}
 
@@ -628,6 +768,10 @@ export default function FleetPage() {
     estadoNuevo?: BusStatus
     kilometrajeNuevo?: number
     motivo?: string
+    fechaLectura?: string
+    observadoPorId?: number
+    contexto?: 'CORRECCION_LECTURA' | 'CAPTURA_TARDIA' | 'LECTURA_RESPALDO'
+    motivoRespaldo?: string
   }) {
     if (!action) {
       return
@@ -639,7 +783,14 @@ export default function FleetPage() {
 
     try {
       if (action.type === 'mileage' && payload.kilometrajeNuevo !== undefined) {
-        await registerMileage(action.bus.id, payload.kilometrajeNuevo, payload.motivo)
+        await registerMileage(action.bus.id, {
+          kilometrajeNuevo: payload.kilometrajeNuevo,
+          fechaLectura: payload.fechaLectura!,
+          observadoPorId: payload.observadoPorId!,
+          contexto: payload.contexto!,
+          motivo: payload.motivo!,
+          ...(payload.motivoRespaldo ? { motivoRespaldo: payload.motivoRespaldo } : {}),
+        })
         setFeedback('Kilometraje registrado')
       }
 
@@ -997,6 +1148,7 @@ export default function FleetPage() {
             onClose={() => setAction(null)}
             onSubmit={handleActionSubmit}
             submitting={submitting}
+            userId={user?.id ?? 0}
           />
         )}
       </div>

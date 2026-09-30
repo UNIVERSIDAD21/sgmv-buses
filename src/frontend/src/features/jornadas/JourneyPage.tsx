@@ -384,6 +384,8 @@ function ActionDialog({
   )
   const [fechaEvento, setFechaEvento] = useState(toLocalInput(now))
   const [kilometraje, setKilometraje] = useState('')
+  const [observerChoice, setObserverChoice] = useState<'self' | 'driver' | ''>('')
+  const [backupReason, setBackupReason] = useState('')
   const [motivo, setMotivo] = useState('')
   const [busId, setBusId] = useState(String(journey.bus.id))
   const [conductorId, setConductorId] = useState(String(journey.conductor.id))
@@ -400,6 +402,13 @@ function ActionDialog({
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const needsMileage = action !== 'report' && journey.estado === 'EN_CURSO'
+  const provenance =
+    needsMileage && observerChoice
+      ? {
+          observadoPorId: observerChoice === 'self' ? user!.id : journey.conductor.id,
+          ...(observerChoice === 'driver' ? { motivoRespaldo: backupReason.trim() } : {}),
+        }
+      : undefined
   const selectedReplacementBus = options?.buses.find((bus) => bus.id === Number(busId))
   const selectedReplacementDriver = options?.conductores.find(
     (driver) => driver.id === Number(conductorId),
@@ -418,6 +427,13 @@ function ActionDialog({
       (!kilometraje.trim() || !Number.isInteger(mileageValue) || mileageValue < 0)
     ) {
       setError('Registre un kilometraje entero valido.')
+      return
+    }
+    if (
+      needsMileage &&
+      (!observerChoice || (observerChoice === 'driver' && backupReason.trim().length < 3))
+    ) {
+      setError('Identifique quién observó el odómetro y el motivo del respaldo.')
       return
     }
     if (
@@ -453,6 +469,7 @@ function ActionDialog({
         await cancelJourney(journey.id, {
           fechaEvento: toIso(fechaEvento),
           ...(journey.estado === 'EN_CURSO' ? { kilometrajeFinal: mileageValue } : {}),
+          ...provenance,
           motivo: motivo.trim(),
         })
         await onCompleted('Jornada cancelada sin borrar su historial')
@@ -468,6 +485,7 @@ function ActionDialog({
           finProgramado: toIso(finProgramado),
           inicioProgramado: toIso(inicioProgramado),
           ...(journey.estado === 'EN_CURSO' ? { kilometrajeFinal: mileageValue } : {}),
+          ...provenance,
           motivo: motivo.trim(),
           rutaId: rutaId ? Number(rutaId) : null,
           ...(recalcularProyeccion
@@ -539,6 +557,36 @@ function ActionDialog({
               Quedará registrada a nombre de {user?.nombre ?? 'la persona autenticada'}.
             </span>
           </label>
+        )}
+        {needsMileage && (
+          <>
+            <label className="block text-sm font-medium text-slate-700">
+              ¿Quién observó físicamente el odómetro?
+              <select
+                className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+                value={observerChoice}
+                onChange={(event) => setObserverChoice(event.target.value as typeof observerChoice)}
+                required
+              >
+                <option value="">Seleccione</option>
+                <option value="self">Yo lo observé</option>
+                <option value="driver">
+                  El Conductor {journey.conductor.nombre} me comunicó la lectura
+                </option>
+              </select>
+            </label>
+            {observerChoice === 'driver' && (
+              <label className="block text-sm font-medium text-slate-700">
+                Motivo del respaldo
+                <textarea
+                  className="mt-1 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  value={backupReason}
+                  onChange={(event) => setBackupReason(event.target.value)}
+                  required
+                />
+              </label>
+            )}
+          </>
         )}
         {(action === 'cancel' || action === 'reassign' || action === 'report') && (
           <label className="block text-sm font-medium text-slate-700">

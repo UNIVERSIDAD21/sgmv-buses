@@ -60,11 +60,14 @@ interface MileageReadingRecord {
   kilometrajeAnterior: number
   kilometrajeNuevo: number
   motivo: string | null
+  motivoRespaldo: string | null
+  contexto: string | null
   ordenTrabajoId: number | null
   ordenTrabajo: {
     codigo: string
   } | null
   registradoPor: ResponsibleRecord
+  observadoPor: ResponsibleRecord | null
   tipo: string | null
 }
 
@@ -123,9 +126,12 @@ function mapMileageReading(reading: MileageReadingRecord): MileageReadingDto {
     kilometrajeAnterior: reading.kilometrajeAnterior,
     kilometrajeNuevo: reading.kilometrajeNuevo,
     motivo: reading.motivo,
+    motivoRespaldo: reading.motivoRespaldo,
+    contexto: reading.contexto,
     ordenTrabajoId: reading.ordenTrabajoId,
     ordenTrabajoCodigo: reading.ordenTrabajo?.codigo ?? null,
     registradoPor: mapResponsible(reading.registradoPor),
+    observadoPor: reading.observadoPor ? mapResponsible(reading.observadoPor) : null,
     tipo: reading.tipo,
   }
 }
@@ -513,23 +519,46 @@ export class FleetService {
   async registerMileage(busId: number, input: RegisterMileageInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
-    try {
-      const result = await this.fleetRepository.registerMileage(
-        busId,
-        input.kilometrajeNuevo,
-        actor.id,
-        input.motivo ?? null,
+    if (input.fechaLectura.getTime() > Date.now()) {
+      throw new AppError(400, 'EVENT_DATE_IN_FUTURE', 'La fecha de lectura no puede ser futura')
+    }
+    if (input.observadoPorId !== actor.id && !input.motivoRespaldo?.trim()) {
+      throw new AppError(
+        400,
+        'BACKUP_REASON_REQUIRED',
+        'Indique el motivo del registro por respaldo',
       )
+    }
+    if (input.observadoPorId !== actor.id && input.contexto !== 'LECTURA_RESPALDO') {
+      throw new AppError(
+        400,
+        'BACKUP_CONTEXT_REQUIRED',
+        'Una transcripción debe identificarse como lectura de respaldo',
+      )
+    }
+    if (input.observadoPorId === actor.id && input.contexto === 'LECTURA_RESPALDO') {
+      throw new AppError(
+        400,
+        'INVALID_BACKUP_CONTEXT',
+        'El respaldo requiere un observador distinto del registrador',
+      )
+    }
+
+    try {
+      const result = await this.fleetRepository.registerMileage(busId, input, actor.id)
 
       if (result.status === 'NOT_FOUND') {
         throw new AppError(404, 'BUS_NOT_FOUND', 'Bus no encontrado')
       }
 
-      if (result.status === 'MILEAGE_DECREASE') {
+      if (result.status === 'OBSERVER_NOT_FOUND') {
+        throw new AppError(404, 'OBSERVER_NOT_FOUND', 'Observador activo no encontrado')
+      }
+      if (result.status === 'MILEAGE_OUT_OF_SEQUENCE') {
         throw new AppError(
-          400,
-          'MILEAGE_DECREASE',
-          'La nueva lectura no puede ser inferior al kilometraje actual',
+          409,
+          'MILEAGE_OUT_OF_SEQUENCE',
+          'La lectura no conserva la secuencia del odometro',
         )
       }
 

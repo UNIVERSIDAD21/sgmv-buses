@@ -337,25 +337,36 @@ describe('RF-01 Fleet API', () => {
   it('records mileage atomically and rejects readings below the current value', async () => {
     const admin = await loginAgent(fixture.adminEmail)
     const bus = await createBus({ kilometrajeActual: 20000 })
+    const fechaLectura = new Date(Date.now() - 60_000).toISOString()
+    const adjustment = {
+      contexto: 'CORRECCION_LECTURA',
+      fechaLectura,
+      observadoPorId: fixture.adminId,
+      motivo: 'Corrección tras cotejar el odómetro físico',
+    }
 
     const response = await admin
       .post(`/flota/buses/${bus.id}/kilometraje`)
       .send({
         kilometrajeNuevo: 20500,
-        motivo: 'Lectura de cierre de turno',
+        ...adjustment,
       })
       .expect(200)
 
     expect(response.body.data.bus.kilometrajeActual).toBe(20500)
     expect(response.body.data.lectura.kilometrajeAnterior).toBe(20000)
     expect(response.body.data.lectura.kilometrajeNuevo).toBe(20500)
+    expect(response.body.data.lectura.tipo).toBe('AJUSTE_ADMINISTRATIVO')
+    expect(response.body.data.lectura.observadoPor.id).toBe(fixture.adminId)
+    expect(response.body.data.lectura.fechaLectura).toBe(fechaLectura)
 
     await admin
       .post(`/flota/buses/${bus.id}/kilometraje`)
       .send({
         kilometrajeNuevo: 20499,
+        ...adjustment,
       })
-      .expect(400)
+      .expect(409)
 
     const dispatcherRole = await prisma.rol.findUniqueOrThrow({
       where: { codigo: 'DESPACHADOR' },
@@ -375,6 +386,79 @@ describe('RF-01 Fleet API', () => {
 
     expect(persisted.kilometrajeActual).toBe(20500)
     expect(readings).toBe(1)
+  }, 60000)
+
+  it('preserves observer and backup reason, and validates late readings between neighbours', async () => {
+    const admin = await loginAgent(fixture.adminEmail)
+    const bus = await createBus({ kilometrajeActual: 20000 })
+    const early = new Date(Date.now() - 180_000).toISOString()
+    const late = new Date(Date.now() - 60_000).toISOString()
+    const common = {
+      contexto: 'LECTURA_RESPALDO',
+      observadoPorId: fixture.conductorId,
+      motivo: 'Ajuste extraordinario contrastado',
+    }
+
+    await admin
+      .post(`/flota/buses/${bus.id}/kilometraje`)
+      .send({ ...common, fechaLectura: late, kilometrajeNuevo: 20500 })
+      .expect(400)
+    await admin
+      .post(`/flota/buses/${bus.id}/kilometraje`)
+      .send({
+        ...common,
+        contexto: 'CORRECCION_LECTURA',
+        fechaLectura: late,
+        kilometrajeNuevo: 20500,
+        motivoRespaldo: 'Conductor informó lectura física',
+      })
+      .expect(400)
+    await admin
+      .post(`/flota/buses/${bus.id}/kilometraje`)
+      .send({
+        ...common,
+        fechaLectura: new Date(Date.now() + 60_000).toISOString(),
+        kilometrajeNuevo: 20500,
+        motivoRespaldo: 'Conductor informó lectura física',
+      })
+      .expect(400)
+    const finalReading = await admin
+      .post(`/flota/buses/${bus.id}/kilometraje`)
+      .send({
+        ...common,
+        fechaLectura: late,
+        kilometrajeNuevo: 20500,
+        motivoRespaldo: 'Conductor informó lectura física',
+      })
+      .expect(200)
+    const earlierReading = await admin
+      .post(`/flota/buses/${bus.id}/kilometraje`)
+      .send({
+        ...common,
+        fechaLectura: early,
+        kilometrajeNuevo: 20250,
+        motivoRespaldo: 'Conductor informó lectura anterior',
+      })
+      .expect(200)
+
+    expect(finalReading.body.data.lectura.observadoPor.id).toBe(fixture.conductorId)
+    expect(finalReading.body.data.lectura.registradoPor.id).toBe(fixture.adminId)
+    expect(finalReading.body.data.lectura.motivoRespaldo).toBe('Conductor informó lectura física')
+    expect(earlierReading.body.data.bus.kilometrajeActual).toBe(20500)
+    const savedFinal = await prisma.lecturaKilometraje.findUniqueOrThrow({
+      where: { id: finalReading.body.data.lectura.id },
+    })
+    expect(savedFinal.kilometrajeAnterior).toBe(20250)
+    await admin
+      .post(`/flota/buses/${bus.id}/kilometraje`)
+      .send({
+        ...common,
+        fechaLectura: new Date(Date.now() - 120_000).toISOString(),
+        kilometrajeNuevo: 20600,
+        motivoRespaldo: 'Dato incompatible',
+      })
+      .expect(409)
+    await expect(prisma.lecturaKilometraje.count({ where: { busId: bus.id } })).resolves.toBe(2)
   }, 60000)
 
   it('changes state and keeps immutable state history', async () => {

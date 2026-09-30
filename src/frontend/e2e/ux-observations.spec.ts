@@ -275,6 +275,10 @@ test('cierre atrasado: Conductor informa, Despacho coordina lectura real y Admin
   const finish = page.getByRole('dialog', { name: 'Confirmar llegada' })
   await expect(finish.getByLabel(/Lectura observada del odómetro/)).toBeEmpty()
   await finish.getByLabel(/Lectura observada del odómetro/).fill('3015')
+  await finish.getByLabel(/¿Quién observó físicamente el odómetro/).selectOption('driver')
+  await finish
+    .getByLabel('Motivo del respaldo')
+    .fill('Conductor comunicó la lectura física final a Despacho')
   await finish.getByRole('button', { name: 'Confirmar' }).click()
   await expect(page.getByText(/Llegada confirmada\./)).toBeVisible()
   expect(

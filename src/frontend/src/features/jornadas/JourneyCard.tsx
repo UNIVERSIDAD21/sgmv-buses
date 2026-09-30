@@ -106,6 +106,18 @@ export default function JourneyCard({
               ? `${formatNumber(journey.lecturaFinal.kilometraje)} km`
               : 'Pendiente'}
           </p>
+          {[journey.lecturaInicial, journey.lecturaFinal]
+            .filter((reading) => reading !== null)
+            .map((reading) => (
+              <p className="mt-1 text-xs text-slate-600" key={reading.id}>
+                {reading.tipo === 'INICIO_JORNADA' ? 'Inicio' : 'Fin'}: observado por{' '}
+                {reading.observadoPor?.nombre ?? 'persona no identificada'} el{' '}
+                {formatDateTime(reading.fechaLectura)}; registrado por{' '}
+                {reading.registradoPor.nombre} el{' '}
+                {formatDateTime(reading.fechaRegistro ?? reading.fechaLectura)}.
+                {reading.motivoRespaldo ? ` Respaldo: ${reading.motivoRespaldo}` : ''}
+              </p>
+            ))}
         </div>
       </div>
 

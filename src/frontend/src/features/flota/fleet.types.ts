@@ -31,9 +31,12 @@ export interface MileageReadingDto {
   kilometrajeAnterior: number
   kilometrajeNuevo: number
   motivo: string | null
+  motivoRespaldo: string | null
+  contexto: string | null
   ordenTrabajoId: number | null
   ordenTrabajoCodigo?: string | null
   registradoPor: ResponsibleDto
+  observadoPor: ResponsibleDto | null
   tipo: string | null
 }
 

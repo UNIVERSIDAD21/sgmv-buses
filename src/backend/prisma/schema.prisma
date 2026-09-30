@@ -247,6 +247,7 @@ model Usuario {
   consumosRepuesto                  ConsumoRepuesto[]              @relation("ConsumoConsumidoPor")
   intervenciones                    Intervencion[]                 @relation("IntervencionTecnico")
   lecturasKilometraje               LecturaKilometraje[]           @relation("LecturaRegistradaPor")
+  lecturasKilometrajeObservadas      LecturaKilometraje[]           @relation("LecturaObservadaPor")
   movimientosInventario             MovimientoInventario[]         @relation("MovimientoResponsable")
   novedades                         Novedad[]                      @relation("NovedadConductor")
   novedadesRevisadas                Novedad[]                      @relation("NovedadRevisadaPor")
@@ -335,8 +336,11 @@ model LecturaKilometraje {
   kilometrajeAnterior Int          @map("kilometraje_anterior")
   kilometrajeNuevo    Int          @map("kilometraje_nuevo")
   registradoPorId     Int          @map("registrado_por_id")
+  observadoPorId      Int?         @map("observado_por_id")
   fechaRegistro       DateTime     @default(now()) @map("fecha_registro") @db.Timestamptz(6)
   motivo              String?      @db.Text
+  motivoRespaldo      String?      @map("motivo_respaldo") @db.Text
+  contexto            String?      @db.VarChar(80)
   tipo                TipoLectura?
   fechaLectura        DateTime?    @map("fecha_lectura") @db.Timestamptz(6)
   jornadaOperativaId  Int?         @map("jornada_operativa_id")
@@ -345,6 +349,7 @@ model LecturaKilometraje {
 
   bus              Bus               @relation(fields: [busId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   registradoPor    Usuario           @relation("LecturaRegistradaPor", fields: [registradoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  observadoPor     Usuario?          @relation("LecturaObservadaPor", fields: [observadoPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   jornadaOperativa JornadaOperativa? @relation(fields: [jornadaOperativaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   ordenTrabajo     OrdenTrabajo?     @relation(fields: [ordenTrabajoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   intervencion     Intervencion?     @relation(fields: [intervencionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -354,6 +359,7 @@ model LecturaKilometraje {
   @@index([busId, fechaRegistro])
   @@index([busId, fechaLectura])
   @@index([registradoPorId])
+  @@index([observadoPorId])
   @@index([jornadaOperativaId, tipo])
   @@index([ordenTrabajoId, tipo])
   @@index([intervencionId])

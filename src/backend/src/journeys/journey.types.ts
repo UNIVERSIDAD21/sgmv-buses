@@ -23,10 +23,13 @@ export type JourneyRouteRefDto = RouteReferenceDto
 
 export interface JourneyReadingDto {
   fechaLectura: string
+  fechaRegistro: string
   id: number
   kilometraje: number
   kilometrajeAnterior: number
   registradoPor: JourneyUserRefDto
+  observadoPor: JourneyUserRefDto | null
+  motivoRespaldo: string | null
   tipo: TipoLectura
 }
 

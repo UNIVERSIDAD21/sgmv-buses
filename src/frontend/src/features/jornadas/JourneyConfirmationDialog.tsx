@@ -4,6 +4,7 @@ import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
 import { ApiError } from '../../lib/api'
 import { formatDateTime, formatNumber } from '../../lib/format'
+import { useSession } from '../auth/session.context'
 import { finishJourney, startJourney } from './journey.api'
 import type { JourneyDto } from './journey.types'
 
@@ -22,6 +23,10 @@ export default function JourneyConfirmationDialog({
   onClose: () => void
   onCompleted: (message: string) => Promise<void>
 }) {
+  const { user } = useSession()
+  const backup = user?.rol.codigo !== 'CONDUCTOR'
+  const [observerChoice, setObserverChoice] = useState<'self' | 'driver' | ''>('')
+  const [backupReason, setBackupReason] = useState('')
   const [fechaEvento, setFechaEvento] = useState(localDate(new Date()))
   const [kilometraje, setKilometraje] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +49,20 @@ export default function JourneyConfirmationDialog({
       setError('Registre la hora real y una lectura entera observada del odómetro.')
       return
     }
-    const body = JSON.stringify([date.toISOString(), mileage])
+    if (
+      backup &&
+      (!observerChoice || (observerChoice === 'driver' && backupReason.trim().length < 3))
+    ) {
+      setError('Identifique quién observó el odómetro y el motivo del respaldo.')
+      return
+    }
+    const provenance = backup
+      ? {
+          observadoPorId: observerChoice === 'self' ? user!.id : journey.conductor.id,
+          ...(observerChoice === 'driver' ? { motivoRespaldo: backupReason.trim() } : {}),
+        }
+      : undefined
+    const body = JSON.stringify([date.toISOString(), mileage, provenance])
     if (attempt.current?.body !== body) attempt.current = { body, key: crypto.randomUUID() }
     inFlight.current = true
     setSubmitting(true)
@@ -55,6 +73,7 @@ export default function JourneyConfirmationDialog({
         date.toISOString(),
         mileage,
         attempt.current.key,
+        provenance,
       )
       const initial = result.jornada.lecturaInicial
       const final = result.jornada.lecturaFinal
@@ -132,6 +151,36 @@ export default function JourneyConfirmationDialog({
           Confirme solo cuando esté detenido y pueda observar el odómetro. No use una estimación ni
           la proyección simulada.
         </p>
+        {backup && (
+          <>
+            <label className="block text-sm font-medium text-slate-700">
+              ¿Quién observó físicamente el odómetro?
+              <select
+                className="field-control"
+                value={observerChoice}
+                onChange={(event) => setObserverChoice(event.target.value as typeof observerChoice)}
+                required
+              >
+                <option value="">Seleccione</option>
+                <option value="self">Yo lo observé</option>
+                <option value="driver">
+                  El Conductor {journey.conductor.nombre} me comunicó la lectura
+                </option>
+              </select>
+            </label>
+            {observerChoice === 'driver' && (
+              <label className="block text-sm font-medium text-slate-700">
+                Motivo del respaldo
+                <textarea
+                  className="field-control"
+                  value={backupReason}
+                  onChange={(event) => setBackupReason(event.target.value)}
+                  required
+                />
+              </label>
+            )}
+          </>
+        )}
         {error && (
           <p role="alert" className="text-sm text-red-700">
             {error}

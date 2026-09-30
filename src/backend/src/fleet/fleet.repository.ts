@@ -5,6 +5,8 @@ import { type EstadoBus, Prisma } from '@prisma/client'
 import { evaluatePreventiveAlertsForBus } from '../alerts/alert.service.js'
 import { reconcilePreventiveObligationsForBus } from '../preventive/preventive-reconciliation.js'
 import { prisma } from '../prisma/client.js'
+import { lockBusMileage } from '../mileage/mileage-lock.js'
+import type { RegisterMileageInput } from './fleet.schemas.js'
 
 const responsibleSelect = {
   email: true,
@@ -75,6 +77,7 @@ export const busDetailInclude = {
       registradoPor: {
         select: responsibleSelect,
       },
+      observadoPor: { select: responsibleSelect },
     },
     orderBy: {
       fechaRegistro: 'desc',
@@ -345,6 +348,7 @@ export class FleetRepository {
         registradoPor: {
           select: responsibleSelect,
         },
+        observadoPor: { select: responsibleSelect },
       },
       orderBy: {
         fechaRegistro: 'desc',
@@ -385,9 +389,10 @@ export class FleetRepository {
     })
   }
 
-  registerMileage(busId: number, kilometrajeNuevo: number, actorId: number, motivo: string | null) {
+  registerMileage(busId: number, input: RegisterMileageInput, actorId: number) {
     return prisma.$transaction(
       async (tx) => {
+        await lockBusMileage(tx, busId)
         const bus = await this.findBusByIdForTransaction(busId, tx)
 
         if (!bus) {
@@ -398,27 +403,70 @@ export class FleetRepository {
           }
         }
 
-        if (kilometrajeNuevo < bus.kilometrajeActual) {
+        const observer = await tx.usuario.findUnique({
+          where: { id: input.observadoPorId },
+          select: { id: true, estado: true },
+        })
+        if (!observer || observer.estado !== 'ACTIVO') {
+          return { bus, lectura: null, status: 'OBSERVER_NOT_FOUND' as const }
+        }
+
+        const readings = await tx.lecturaKilometraje.findMany({
+          where: { busId },
+          select: {
+            id: true,
+            fechaLectura: true,
+            fechaRegistro: true,
+            kilometrajeAnterior: true,
+            kilometrajeNuevo: true,
+          },
+        })
+        readings.sort(
+          (left, right) =>
+            (left.fechaLectura ?? left.fechaRegistro).getTime() -
+              (right.fechaLectura ?? right.fechaRegistro).getTime() ||
+            left.fechaRegistro.getTime() - right.fechaRegistro.getTime() ||
+            left.id - right.id,
+        )
+        const nextIndex = readings.findIndex(
+          (reading) =>
+            (reading.fechaLectura ?? reading.fechaRegistro).getTime() >
+            input.fechaLectura.getTime(),
+        )
+        const previous =
+          nextIndex === 0 ? null : readings[nextIndex < 0 ? readings.length - 1 : nextIndex - 1]
+        const next = nextIndex < 0 ? null : readings[nextIndex]
+        const previousMileage =
+          previous?.kilometrajeNuevo ?? readings[0]?.kilometrajeAnterior ?? bus.kilometrajeActual
+        if (
+          input.kilometrajeNuevo < previousMileage ||
+          (next && input.kilometrajeNuevo > next.kilometrajeNuevo)
+        ) {
           return {
             bus,
             lectura: null,
-            status: 'MILEAGE_DECREASE' as const,
+            status: 'MILEAGE_OUT_OF_SEQUENCE' as const,
           }
         }
 
         const updatedBus = await tx.bus.update({
           where: { id: busId },
           data: {
-            kilometrajeActual: kilometrajeNuevo,
+            kilometrajeActual: Math.max(bus.kilometrajeActual, input.kilometrajeNuevo),
           },
         })
 
         const reading = await tx.lecturaKilometraje.create({
           data: {
             busId,
-            kilometrajeAnterior: bus.kilometrajeActual,
-            kilometrajeNuevo,
-            motivo,
+            kilometrajeAnterior: previousMileage,
+            kilometrajeNuevo: input.kilometrajeNuevo,
+            fechaLectura: input.fechaLectura,
+            observadoPorId: input.observadoPorId,
+            motivo: input.motivo,
+            motivoRespaldo: input.motivoRespaldo ?? null,
+            contexto: input.contexto,
+            tipo: 'AJUSTE_ADMINISTRATIVO',
             registradoPorId: actorId,
           },
           include: {
@@ -430,8 +478,16 @@ export class FleetRepository {
             registradoPor: {
               select: responsibleSelect,
             },
+            observadoPor: { select: responsibleSelect },
           },
         })
+
+        if (next) {
+          await tx.lecturaKilometraje.update({
+            where: { id: next.id },
+            data: { kilometrajeAnterior: input.kilometrajeNuevo },
+          })
+        }
 
         await evaluatePreventiveAlertsForBus(busId, tx)
 

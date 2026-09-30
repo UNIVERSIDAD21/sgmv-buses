@@ -207,13 +207,14 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
     .click()
   await expect(page.getByText('Orden completada tecnicamente.')).toBeVisible()
 
-  await login(page, 'administrador.demo@sgmv.local')
-  await openOrder(page, marker)
   await registerReading(page, {
     date: new Date(),
     mileage: '30002',
     type: 'CIERRE_MANTENIMIENTO',
   })
+
+  await login(page, 'administrador.demo@sgmv.local')
+  await openOrder(page, marker)
   await page
     .getByRole('dialog', { name: 'Detalle de orden' })
     .getByRole('button', { name: 'Cerrar', exact: true })

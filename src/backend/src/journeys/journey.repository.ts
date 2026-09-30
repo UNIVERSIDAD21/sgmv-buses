@@ -41,7 +41,7 @@ const journeyInclude = {
   jornadaSucesora: { select: { id: true } },
   lecturasKilometraje: {
     where: { tipo: { in: ['INICIO_JORNADA', 'FIN_JORNADA'] } },
-    include: { registradoPor: { select: userRefSelect } },
+    include: { registradoPor: { select: userRefSelect }, observadoPor: { select: userRefSelect } },
     orderBy: [{ fechaLectura: 'asc' as const }, { fechaRegistro: 'asc' as const }],
   },
   programadaPor: { select: userRefSelect },
@@ -233,7 +233,10 @@ export class JourneyRepository {
   listReadings(journeyId: number) {
     return prisma.lecturaKilometraje.findMany({
       where: { jornadaOperativaId: journeyId },
-      include: { registradoPor: { select: userRefSelect } },
+      include: {
+        registradoPor: { select: userRefSelect },
+        observadoPor: { select: userRefSelect },
+      },
       orderBy: [{ fechaLectura: 'asc' }, { fechaRegistro: 'asc' }, { id: 'asc' }],
     })
   }
@@ -262,6 +265,8 @@ export class JourneyRepository {
   async registerJourneyReading(
     input: {
       actorId: number
+      observerId: number | null
+      backupReason?: string | null
       busId: number
       eventDate: Date
       journeyId: number

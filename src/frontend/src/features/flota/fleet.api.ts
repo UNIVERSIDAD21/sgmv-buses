@@ -158,9 +158,19 @@ export function setRutaActive(rutaId: number, activa: boolean) {
   )
 }
 
-export function registerMileage(busId: number, kilometrajeNuevo: number, motivo?: string) {
+export function registerMileage(
+  busId: number,
+  input: {
+    kilometrajeNuevo: number
+    fechaLectura: string
+    observadoPorId: number
+    contexto: 'CORRECCION_LECTURA' | 'CAPTURA_TARDIA' | 'LECTURA_RESPALDO'
+    motivo: string
+    motivoRespaldo?: string
+  },
+) {
   return apiRequest(`/flota/buses/${busId}/kilometraje`, {
-    body: JSON.stringify({ kilometrajeNuevo, motivo }),
+    body: JSON.stringify(input),
     method: 'POST',
   })
 }

@@ -86,7 +86,11 @@ export const updateBusSchema = z
 export const registerMileageSchema = z
   .object({
     kilometrajeNuevo: z.coerce.number().int().min(0),
-    motivo: optionalTrimmedText(500),
+    fechaLectura: z.coerce.date(),
+    observadoPorId: entityIdSchema,
+    contexto: z.enum(['CORRECCION_LECTURA', 'CAPTURA_TARDIA', 'LECTURA_RESPALDO']),
+    motivo: trimmedText(500),
+    motivoRespaldo: optionalTrimmedText(500),
   })
   .strict()
 

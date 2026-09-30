@@ -230,12 +230,15 @@ function mapTechnicalReading(
   if (!isTechnicalReadingType(reading.tipo)) return null
   return {
     fechaLectura: (reading.fechaLectura ?? reading.fechaRegistro).toISOString(),
+    fechaRegistro: reading.fechaRegistro.toISOString(),
     id: reading.id,
     intervencionId: reading.intervencionId,
     kilometraje: reading.kilometrajeNuevo,
     kilometrajeAnterior: reading.kilometrajeAnterior,
     motivo: reading.motivo,
     registradoPor: mapUser(reading.registradoPor),
+    observadoPor: reading.observadoPor ? mapUser(reading.observadoPor) : null,
+    motivoRespaldo: reading.motivoRespaldo,
     tipo: reading.tipo,
   }
 }
@@ -1240,7 +1243,14 @@ export class WorkOrderService {
       throw new AppError(
         403,
         'FORBIDDEN',
-        'El cierre de kilometraje tecnico requiere validacion administrativa',
+        'La lectura final de taller corresponde al Mecanico asignado',
+      )
+    }
+    if (result.status === 'TECHNICAL_CLOSURE_EXISTS') {
+      throw new AppError(
+        409,
+        'TECHNICAL_CLOSURE_EXISTS',
+        'Ya existe una lectura final de taller para esta orden',
       )
     }
 

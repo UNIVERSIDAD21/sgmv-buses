@@ -214,6 +214,7 @@ export class NoveltyRepository {
             : await registerContextualMileageReading(
                 {
                   actorId: data.conductorId,
+                  observerId: data.conductorId,
                   busId: lockedJourney.busId,
                   eventDate: data.fechaOcurrencia,
                   journeyId: lockedJourney.id,

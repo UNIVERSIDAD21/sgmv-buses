@@ -12,6 +12,8 @@ const userRefSelect = {
 
 interface RegisterContextualMileageInput {
   actorId: number
+  observerId: number | null
+  backupReason?: string | null
   busId: number
   eventDate: Date
   journeyId: number
@@ -83,6 +85,8 @@ export async function registerContextualMileageReading(
       kilometrajeAnterior: previousMileage,
       kilometrajeNuevo: input.mileage,
       registradoPorId: input.actorId,
+      observadoPorId: input.observerId,
+      motivoRespaldo: input.backupReason ?? null,
       tipo: input.type,
     },
     include: { registradoPor: { select: userRefSelect } },

@@ -672,6 +672,9 @@ describe('RF-03 Preventive maintenance API', () => {
       .post(`/flota/buses/${bus.id}/kilometraje`)
       .send({
         kilometrajeNuevo: 10100,
+        fechaLectura: new Date().toISOString(),
+        observadoPorId: fixture.adminId,
+        contexto: 'CORRECCION_LECTURA',
         motivo: 'Lectura oficial para recalculo preventivo',
       })
       .expect(200)

@@ -140,7 +140,10 @@ describe('RF-01 fleet frontend', () => {
     expect(screen.getByText(/\+1\.000 km/i)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /Kilometraje/i }))
-    fireEvent.change(screen.getByLabelText(/Nueva lectura/i), { target: { value: '12000' } })
+    fireEvent.change(screen.getByLabelText(/Nueva lectura/i), { target: { value: '10500' } })
+    fireEvent.change(screen.getByLabelText(/Contexto del ajuste/i), {
+      target: { value: 'CAPTURA_TARDIA' },
+    })
     fireEvent.change(screen.getByLabelText(/^Motivo$/i), {
       target: { value: 'Lectura validada' },
     })
@@ -163,6 +166,14 @@ describe('RF-01 fleet frontend', () => {
       expect.stringContaining('/flota/buses/2006/kilometraje'),
       expect.objectContaining({ method: 'POST' }),
     )
+    const mileageRequest = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        getPath(input) === '/flota/buses/2006/kilometraje' && init?.method === 'POST',
+    )
+    expect(JSON.parse(String(mileageRequest?.[1]?.body))).toMatchObject({
+      kilometrajeNuevo: 10500,
+      contexto: 'CAPTURA_TARDIA',
+    })
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/flota/buses/2006/estado'),
       expect.objectContaining({ method: 'POST' }),

@@ -155,12 +155,15 @@ export type TechnicalReadingType = 'INGRESO_TALLER' | 'REVISION_TECNICA' | 'CIER
 
 export interface WorkOrderTechnicalReadingDto {
   fechaLectura: string
+  fechaRegistro?: string
   id: number
   intervencionId: number | null
   kilometraje: number
   kilometrajeAnterior: number
   motivo: string | null
   registradoPor: WorkOrderUserDto
+  observadoPor?: WorkOrderUserDto | null
+  motivoRespaldo?: string | null
   tipo: TechnicalReadingType
 }
 

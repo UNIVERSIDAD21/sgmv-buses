@@ -681,12 +681,10 @@ function WorkOrderCard({
 }
 
 function TechnicalReadingPanel({
-  isAdmin,
   onFeedback,
   onOrderChange,
   order,
 }: {
-  isAdmin: boolean
   onFeedback: (message: string) => void
   onOrderChange: (order: WorkOrderDetailDto) => void
   order: WorkOrderDetailDto
@@ -702,15 +700,17 @@ function TechnicalReadingPanel({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tipo, setTipo] = useState<TechnicalReadingType>(
-    isAdmin ? 'CIERRE_MANTENIMIENTO' : 'INGRESO_TALLER',
+    order.estado === 'COMPLETADA_TECNICO' ? 'CIERRE_MANTENIMIENTO' : 'INGRESO_TALLER',
   )
 
-  const availableTypes: TechnicalReadingType[] = isAdmin
-    ? ['CIERRE_MANTENIMIENTO']
-    : ['INGRESO_TALLER', 'REVISION_TECNICA']
-  const canRegister = isAdmin
-    ? order.estado === 'COMPLETADA_TECNICO'
-    : order.acciones.puedeRegistrarTecnica || order.estado === 'ASIGNADA'
+  const availableTypes: TechnicalReadingType[] =
+    order.estado === 'COMPLETADA_TECNICO'
+      ? ['CIERRE_MANTENIMIENTO']
+      : ['INGRESO_TALLER', 'REVISION_TECNICA']
+  const canRegister =
+    order.estado === 'COMPLETADA_TECNICO' ||
+    order.acciones.puedeRegistrarTecnica ||
+    order.estado === 'ASIGNADA'
 
   if (!canRegister) return null
 
@@ -1155,12 +1155,7 @@ function TechnicalPanel({
         <TimelineEmpty text="La orden no esta en un estado editable para el mecanico asignado." />
       )}
 
-      <TechnicalReadingPanel
-        isAdmin={false}
-        order={order}
-        onFeedback={onFeedback}
-        onOrderChange={onOrderChange}
-      />
+      <TechnicalReadingPanel order={order} onFeedback={onFeedback} onOrderChange={onOrderChange} />
 
       {confirmEvent && (
         <ModalFrame
@@ -1707,15 +1702,6 @@ function WorkOrderDetail({
           />
         )}
 
-        {isAdmin && (
-          <TechnicalReadingPanel
-            isAdmin={isAdmin}
-            onFeedback={onFeedback}
-            onOrderChange={onOrderChange}
-            order={order}
-          />
-        )}
-
         <section className="surface p-4">
           <h3 className="text-xs font-semibold uppercase text-slate-500">Lecturas tecnicas</h3>
           {order.lecturasTecnicas.length === 0 ? (
@@ -1732,8 +1718,12 @@ function WorkOrderDetail({
                   <strong>{reading.tipo.replaceAll('_', ' ')}</strong> ·{' '}
                   {formatNumber(reading.kilometraje)} km
                   <span className="mt-1 block text-xs text-slate-500">
-                    {formatDateTimeValue(reading.fechaLectura)} · {reading.registradoPor.nombre}
+                    {formatDateTimeValue(reading.fechaLectura)} · observado por{' '}
+                    {reading.observadoPor?.nombre ?? 'persona no identificada'} · registrado por{' '}
+                    {reading.registradoPor.nombre} el{' '}
+                    {formatDateTimeValue(reading.fechaRegistro ?? reading.fechaLectura)}
                     {reading.motivo ? ` · ${reading.motivo}` : ''}
+                    {reading.motivoRespaldo ? ` · Respaldo: ${reading.motivoRespaldo}` : ''}
                   </span>
                 </li>
               ))}

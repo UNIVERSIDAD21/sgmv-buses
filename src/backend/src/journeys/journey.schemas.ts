@@ -73,6 +73,8 @@ export const createJourneySchema = z
 export const journeyReadingSchema = z
   .object({
     fechaEvento: eventDate,
+    observadoPorId: entityIdSchema.optional(),
+    motivoRespaldo: trimmedText(3, 500).optional(),
     kilometraje: z.preprocess(
       (value) => (typeof value === 'string' && value.trim() ? Number(value) : value),
       z.number().int().min(0),
@@ -83,6 +85,8 @@ export const journeyReadingSchema = z
 export const cancelJourneySchema = z
   .object({
     fechaEvento: eventDate,
+    observadoPorId: entityIdSchema.optional(),
+    motivoRespaldo: trimmedText(3, 500).optional(),
     kilometrajeFinal: z.coerce.number().int().min(0).optional(),
     motivo: trimmedText(3, 500),
   })
@@ -94,6 +98,8 @@ export const reassignJourneySchema = z
     busId: entityIdSchema.optional(),
     conductorId: entityIdSchema.optional(),
     fechaEvento: eventDate,
+    observadoPorId: entityIdSchema.optional(),
+    motivoRespaldo: trimmedText(3, 500).optional(),
     finProgramado: eventDate.optional(),
     inicioProgramado: eventDate.optional(),
     kilometrajeFinal: z.coerce.number().int().min(0).optional(),

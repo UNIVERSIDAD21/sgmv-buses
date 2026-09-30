@@ -831,7 +831,21 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
       conductorId: journeyDriver.id,
     })
     const journeyId = programmed.body.data.jornada.id as string
-    const startPayload = { fechaEvento: past(90).toISOString(), kilometraje: 700 }
+    const startPayload = {
+      fechaEvento: past(90).toISOString(),
+      kilometraje: 700,
+      observadoPorId: journeyDriver.id,
+      motivoRespaldo: 'Conductor comunicó lectura física al despacho',
+    }
+
+    await dispatcher
+      .post(`/jornadas/${journeyId}/iniciar`)
+      .send({ ...startPayload, motivoRespaldo: undefined })
+      .expect(400)
+    await dispatcher
+      .post(`/jornadas/${journeyId}/iniciar`)
+      .send({ ...startPayload, observadoPorId: fixture.conductorOtroId })
+      .expect(400)
 
     const startResults = await Promise.all([
       dispatcher.post(`/jornadas/${journeyId}/iniciar`).send(startPayload),
@@ -844,7 +858,12 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
       }),
     ).toBe(1)
 
-    const finishPayload = { fechaEvento: past(45).toISOString(), kilometraje: 750 }
+    const finishPayload = {
+      fechaEvento: past(45).toISOString(),
+      kilometraje: 750,
+      observadoPorId: journeyDriver.id,
+      motivoRespaldo: 'Conductor comunicó lectura final al despacho',
+    }
     const finishResults = await Promise.all([
       dispatcher.post(`/jornadas/${journeyId}/finalizar`).send(finishPayload),
       dispatcher.post(`/jornadas/${journeyId}/finalizar`).send(finishPayload),
@@ -855,6 +874,16 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
         where: { jornadaOperativaId: journeyId, tipo: 'FIN_JORNADA' },
       }),
     ).toBe(1)
+    const readings = await prisma.lecturaKilometraje.findMany({
+      where: { jornadaOperativaId: journeyId },
+    })
+    expect(readings).toHaveLength(2)
+    expect(readings.every((reading) => reading.observadoPorId === journeyDriver.id)).toBe(true)
+    expect(
+      readings.every(
+        (reading) => reading.registradoPorId !== journeyDriver.id && !!reading.motivoRespaldo,
+      ),
+    ).toBe(true)
   }, 60_000)
 
   it('mantiene AsignacionConductor solo como lectura historica', async () => {

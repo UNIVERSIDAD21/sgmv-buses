@@ -24,6 +24,8 @@ export interface JourneyReassignInput {
   finProgramado?: string
   inicioProgramado?: string
   kilometrajeFinal?: number
+  observadoPorId?: number
+  motivoRespaldo?: string
   motivo: string
   rutaId?: number | null
 }
@@ -72,10 +74,11 @@ export function startJourney(
   fechaEvento: string,
   kilometraje: number,
   idempotencyKey?: string,
+  provenance?: { observadoPorId: number; motivoRespaldo?: string },
 ) {
   return apiRequest<{ jornada: JourneyDto }>(`/jornadas/${journeyId}/iniciar`, {
     headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
-    body: JSON.stringify({ fechaEvento, kilometraje }),
+    body: JSON.stringify({ fechaEvento, kilometraje, ...provenance }),
     method: 'POST',
   })
 }
@@ -85,17 +88,24 @@ export function finishJourney(
   fechaEvento: string,
   kilometraje: number,
   idempotencyKey?: string,
+  provenance?: { observadoPorId: number; motivoRespaldo?: string },
 ) {
   return apiRequest<{ jornada: JourneyDto }>(`/jornadas/${journeyId}/finalizar`, {
     headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
-    body: JSON.stringify({ fechaEvento, kilometraje }),
+    body: JSON.stringify({ fechaEvento, kilometraje, ...provenance }),
     method: 'POST',
   })
 }
 
 export function cancelJourney(
   journeyId: number,
-  input: { fechaEvento: string; kilometrajeFinal?: number; motivo: string },
+  input: {
+    fechaEvento: string
+    kilometrajeFinal?: number
+    motivo: string
+    observadoPorId?: number
+    motivoRespaldo?: string
+  },
 ) {
   return apiRequest<{ jornada: JourneyDto }>(`/jornadas/${journeyId}/cancelar`, {
     body: JSON.stringify(input),

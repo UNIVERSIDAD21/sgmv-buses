@@ -155,12 +155,15 @@ export interface WorkOrderJourneyDto {
 
 export interface WorkOrderTechnicalReadingDto {
   fechaLectura: string
+  fechaRegistro: string
   id: number
   intervencionId: number | null
   kilometraje: number
   kilometrajeAnterior: number
   motivo: string | null
   registradoPor: WorkOrderUserDto
+  observadoPor: WorkOrderUserDto | null
+  motivoRespaldo: string | null
   tipo: 'INGRESO_TALLER' | 'REVISION_TECNICA' | 'CIERRE_MANTENIMIENTO'
 }
 

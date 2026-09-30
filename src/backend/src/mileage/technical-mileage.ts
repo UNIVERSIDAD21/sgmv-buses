@@ -6,6 +6,7 @@ import { lockBusMileage } from './mileage-lock.js'
 
 export interface RegisterTechnicalMileageInput {
   actorId: number
+  observerId: number | null
   busId: number
   eventDate: Date
   interventionId?: number
@@ -84,6 +85,7 @@ export async function registerTechnicalMileageReading(
       ...(input.motivo ? { motivo: input.motivo } : {}),
       ordenTrabajoId: input.orderId,
       registradoPorId: input.actorId,
+      observadoPorId: input.observerId,
       tipo: input.type,
     },
   })

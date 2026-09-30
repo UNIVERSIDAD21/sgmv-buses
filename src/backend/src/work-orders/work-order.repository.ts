@@ -146,6 +146,7 @@ export const workOrderDetailInclude = {
   lecturasKilometraje: {
     include: {
       registradoPor: { select: userSelect },
+      observadoPor: { select: userSelect },
     },
     orderBy: technicalReadingOrderBy,
   },
@@ -1007,11 +1008,20 @@ export class WorkOrderRepository {
           interventionId = activeIntervention.id
         }
 
-        if (data.tipo === 'CIERRE_MANTENIMIENTO' && actorRole !== 'ADMINISTRADOR') {
-          return { orden: order, status: 'FORBIDDEN_TECHNICAL_CLOSURE' as const }
-        }
         if (data.tipo === 'CIERRE_MANTENIMIENTO' && order.estado !== 'COMPLETADA_TECNICO') {
           return { orden: order, status: 'INVALID_STATE' as const }
+        }
+        if (data.tipo === 'CIERRE_MANTENIMIENTO' && actorRole !== 'MECANICO') {
+          return { orden: order, status: 'FORBIDDEN_TECHNICAL_CLOSURE' as const }
+        }
+        if (
+          data.tipo === 'CIERRE_MANTENIMIENTO' &&
+          (await tx.lecturaKilometraje.findFirst({
+            where: { ordenTrabajoId: orderId, tipo: 'CIERRE_MANTENIMIENTO' },
+            select: { id: true },
+          }))
+        ) {
+          return { orden: order, status: 'TECHNICAL_CLOSURE_EXISTS' as const }
         }
         if (
           data.tipo !== 'CIERRE_MANTENIMIENTO' &&
@@ -1023,6 +1033,7 @@ export class WorkOrderRepository {
         await registerTechnicalMileageReading(
           {
             actorId,
+            observerId: actorRole === 'MECANICO' ? actorId : null,
             busId: order.busId,
             eventDate: data.fechaEvento,
             ...(interventionId ? { interventionId } : {}),

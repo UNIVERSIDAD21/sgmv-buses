@@ -1373,6 +1373,54 @@ describe('RF-04 Work order tracking API', () => {
   )
 
   it(
+    'permite al mecanico asignado registrar la lectura final sin cerrar administrativamente',
+    async () => {
+      const context = await prepareCompletableOrder(fixture)
+      await context.mecanico
+        .post(`/ordenes-trabajo/${context.order.id}/completar`)
+        .send({})
+        .expect(200)
+      const payload = {
+        fechaEvento: new Date(Date.now() - 1000).toISOString(),
+        kilometraje: 20000,
+        tipo: 'CIERRE_MANTENIMIENTO',
+      }
+
+      await context.admin
+        .post(`/ordenes-trabajo/${context.order.id}/lecturas`)
+        .send(payload)
+        .expect(403)
+      const recorded = await context.mecanico
+        .post(`/ordenes-trabajo/${context.order.id}/lecturas`)
+        .send(payload)
+        .expect(201)
+      expect(recorded.body.data.orden.estado).toBe('COMPLETADA_TECNICO')
+      expect(recorded.body.data.orden.lecturasTecnicas).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            tipo: 'CIERRE_MANTENIMIENTO',
+            registradoPor: expect.objectContaining({ id: fixture.mecanicoId }),
+          }),
+        ]),
+      )
+      const saved = await prisma.lecturaKilometraje.findFirstOrThrow({
+        where: { ordenTrabajoId: context.order.id, tipo: 'CIERRE_MANTENIMIENTO' },
+      })
+      expect(saved.observadoPorId).toBe(fixture.mecanicoId)
+      await context.mecanico
+        .post(`/ordenes-trabajo/${context.order.id}/lecturas`)
+        .send(payload)
+        .expect(409)
+      const closed = await context.admin
+        .post(`/ordenes-trabajo/${context.order.id}/cerrar`)
+        .send({ observacion: 'Validación administrativa posterior' })
+        .expect(200)
+      expect(closed.body.data.orden.estado).toBe('CERRADA')
+    },
+    rf04TestTimeout,
+  )
+
+  it(
     'rechaza lecturas de revision sin intervencion activa y fechas futuras sin mutar datos',
     async () => {
       const order = await createPendingCorrectiveOrder(fixture)
