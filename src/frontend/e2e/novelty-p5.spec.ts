@@ -86,7 +86,6 @@ test('P5 enlaza reporte tardio, clasificacion critica y reaccion de despacho', a
   await expect(
     page.getByText('No use este dispositivo ni complete el formulario mientras conduce.'),
   ).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Sin jornada en curso' })).toBeVisible()
   await page.getByLabel('Fecha y hora de ocurrencia').fill('2026-09-01T08:00')
   await page.getByLabel('Kilometraje observado').fill('44950')
   await page.getByLabel('Tipo de novedad').fill(marker)

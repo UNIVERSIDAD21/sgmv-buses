@@ -223,7 +223,7 @@ test('cierre atrasado: Conductor informa, Despacho coordina lectura real y Admin
   await login(page, driverEmail)
   await page.goto('/jornadas')
   await expect(page.getByText('Cierre atrasado', { exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Registrar cierre ahora' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Confirmar llegada' })).toBeVisible()
   await capture(page, info, 'conductor-cierre-atrasado')
   await page.getByRole('button', { name: 'Informar que no puedo registrar el cierre' }).click()
   const report = page.getByRole('dialog', { name: 'Informar cierre pendiente' })
@@ -265,19 +265,18 @@ test('cierre atrasado: Conductor informa, Despacho coordina lectura real y Admin
   await login(page, 'despachador')
   await page.goto('/jornadas')
   const queue = page.getByRole('region', { name: 'Jornadas pendientes de cierre' })
+  await expect(queue).toBeVisible({ timeout: 30_000 })
   const card = queue.locator('article').filter({ hasText: `${marker}-2` })
   await expect(
     card.getByText(`Necesito ayuda para leer el odómetro ${marker}.`, { exact: false }),
   ).toBeVisible()
   await capture(page, info, 'despacho-cola-cierres')
   await card.getByRole('button', { name: 'Registrar cierre ahora' }).click()
-  const finish = page.getByRole('dialog', { name: 'Finalizar jornada' })
+  const finish = page.getByRole('dialog', { name: 'Confirmar llegada' })
   await expect(finish.getByLabel(/Lectura observada del odómetro/)).toBeEmpty()
   await finish.getByLabel(/Lectura observada del odómetro/).fill('3015')
   await finish.getByRole('button', { name: 'Confirmar' }).click()
-  await expect(
-    page.getByText('Jornada finalizada con lectura final', { exact: true }),
-  ).toBeVisible()
+  await expect(page.getByText(/Llegada confirmada\./)).toBeVisible()
   expect(
     await prisma.jornadaOperativa.findUniqueOrThrow({ where: { id: journeyId } }),
   ).toMatchObject({ estado: 'FINALIZADA' })

@@ -317,8 +317,17 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
     ]
   }, [])
 
-  const visibleNav = navigationItems.filter((item) => item.roles.includes(user.rol.codigo))
-  const pageTitle = getPageTitle(location.pathname)
+  const visibleNav = navigationItems
+    .filter((item) => item.roles.includes(user.rol.codigo))
+    .map((item) =>
+      user.rol.codigo === 'CONDUCTOR' && item.id === 'historial'
+        ? { ...item, label: 'Mis jornadas y reportes', shortLabel: 'Mis jornadas y reportes' }
+        : item,
+    )
+  const pageTitle =
+    user.rol.codigo === 'CONDUCTOR' && location.pathname.startsWith('/historial')
+      ? 'Mis jornadas y reportes'
+      : getPageTitle(location.pathname)
 
   useEffect(() => {
     document.title = `${pageTitle} | SGMV`

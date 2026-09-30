@@ -2,7 +2,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { getPath, mockApi, journeyHandler } from '../../test/app-test-helpers'
+import { getPath, mockApi, journeyHandler, journeyFixture, ok } from '../../test/app-test-helpers'
 import App from '../../App'
 
 beforeEach(() => {
@@ -14,12 +14,86 @@ afterEach(() => {
 })
 
 describe('P4 journey frontend', () => {
+  it('prioriza el pendiente sobre una jornada futura y confirma desde Inicio sin precargar odómetro', async () => {
+    window.history.pushState({}, '', '/inicio')
+    const handler = journeyHandler('CONDUCTOR')
+    let started = false
+    const pending = {
+      ...journeyFixture('PROGRAMADA'),
+      lecturaReferencia: { kilometraje: 44000, fechaLectura: '2026-09-01T10:00:00Z' },
+    }
+    const future = {
+      ...pending,
+      id: 2099,
+      bus: { ...pending.bus, codigoInterno: 'FUTURA-NO-PRIORIZAR' },
+    }
+    const fetchMock = mockApi(async (path, init, query) => {
+      if (path === '/jornadas/mi-jornada')
+        return ok({
+          jornadaActual: started ? journeyFixture('EN_CURSO') : null,
+          jornadaPendiente: started ? null : pending,
+          proximaJornada: future,
+        })
+      if (path.endsWith('/iniciar')) started = true
+      return handler(path, init, query)
+    })
+    render(<App />)
+    const button = await screen.findByRole('button', { name: 'Confirmar salida' })
+    expect(screen.queryByText(/FUTURA-NO-PRIORIZAR/)).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0)
+    fireEvent.click(button)
+    const dialog = screen.getByRole('dialog', { name: 'Confirmar salida' })
+    expect(within(dialog).getByLabelText('Lectura observada del odómetro')).toHaveValue(null)
+    expect(within(dialog).getByText(/Último odómetro registrado/)).toHaveTextContent(/44[.,]000 km/)
+    fireEvent.change(within(dialog).getByLabelText('Lectura observada del odómetro'), {
+      target: { value: '45000' },
+    })
+    const confirm = within(dialog).getByRole('button', { name: 'Confirmar salida' })
+    fireEvent.click(confirm)
+    fireEvent.click(confirm)
+    expect(await screen.findByRole('button', { name: 'Confirmar llegada' })).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/inicio')
+    expect(
+      fetchMock.mock.calls.filter(
+        ([url, init]) => String(url).endsWith('/iniciar') && init?.method === 'POST',
+      ),
+    ).toHaveLength(1)
+  })
+
+  it('conserva la clave de reintento si se pierde la respuesta de una confirmación', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    const handler = journeyHandler('CONDUCTOR')
+    let attempts = 0
+    const keys: Array<string | null> = []
+    mockApi(async (path, init, query) => {
+      if (path.endsWith('/iniciar')) {
+        keys.push(new Headers(init?.headers).get('Idempotency-Key'))
+        attempts++
+        if (attempts === 1) throw new TypeError('Respuesta perdida')
+      }
+      return handler(path, init, query)
+    })
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar salida' }))
+    const dialog = screen.getByRole('dialog', { name: 'Confirmar salida' })
+    fireEvent.change(within(dialog).getByLabelText('Lectura observada del odómetro'), {
+      target: { value: '45000' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar salida' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(/Puede reintentar/)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar salida' }))
+    expect(await screen.findByRole('button', { name: 'Confirmar llegada' })).toBeInTheDocument()
+    expect(keys).toHaveLength(2)
+    expect(keys[0]).toBeTruthy()
+    expect(keys[0]).toBe(keys[1])
+  })
+
   it('reports an overdue closure without a mileage input or automatic closure', async () => {
     window.history.pushState({}, '', '/jornadas')
     const fetchMock = mockApi(journeyHandler('CONDUCTOR', { overdue: true }))
     render(<App />)
     expect(await screen.findByText('Cierre atrasado')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Registrar cierre ahora' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Confirmar llegada' })).toBeInTheDocument()
     fireEvent.click(
       screen.getByRole('button', { name: 'Informar que no puedo registrar el cierre' }),
     )
@@ -97,17 +171,17 @@ describe('P4 journey frontend', () => {
 
     render(<App />)
 
-    fireEvent.click(await screen.findByRole('button', { name: /Iniciar jornada/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Confirmar salida/i }))
     expect(
       screen.getByText(/Usted registra la lectura observada del odómetro/i),
     ).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText(/Lectura observada del odómetro/i), {
       target: { value: '45000' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /Confirmar/i }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Confirmar/i }))
 
-    expect(await screen.findByText(/Jornada iniciada con lectura inicial/i)).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: /Finalizar jornada/i })).toBeInTheDocument()
+    expect(await screen.findByText(/Salida confirmada con lectura real/i)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Confirmar llegada/i })).toBeInTheDocument()
     const startCall = fetchMock.mock.calls.find(
       ([input, init]) => getPath(input) === '/jornadas/2029/iniciar' && init?.method === 'POST',
     )

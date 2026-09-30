@@ -67,15 +67,27 @@ export function createJourney(input: JourneyScheduleInput) {
   })
 }
 
-export function startJourney(journeyId: number, fechaEvento: string, kilometraje: number) {
+export function startJourney(
+  journeyId: number,
+  fechaEvento: string,
+  kilometraje: number,
+  idempotencyKey?: string,
+) {
   return apiRequest<{ jornada: JourneyDto }>(`/jornadas/${journeyId}/iniciar`, {
+    headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
     body: JSON.stringify({ fechaEvento, kilometraje }),
     method: 'POST',
   })
 }
 
-export function finishJourney(journeyId: number, fechaEvento: string, kilometraje: number) {
+export function finishJourney(
+  journeyId: number,
+  fechaEvento: string,
+  kilometraje: number,
+  idempotencyKey?: string,
+) {
   return apiRequest<{ jornada: JourneyDto }>(`/jornadas/${journeyId}/finalizar`, {
+    headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
     body: JSON.stringify({ fechaEvento, kilometraje }),
     method: 'POST',
   })

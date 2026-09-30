@@ -38,6 +38,7 @@ export interface JourneyActionsDto {
 }
 
 export interface JourneyDto {
+  lecturaReferencia: { kilometraje: number; fechaLectura: string } | null
   cierrePendiente: { reportadoAt: string; motivo: string; reportadoPor: JourneyUserRefDto } | null
   proyeccionDemo: JourneyProjectionDto
   acciones: JourneyActionsDto

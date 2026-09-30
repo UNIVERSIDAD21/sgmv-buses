@@ -188,13 +188,55 @@ describe('RF-06 history and reports frontend', () => {
     expect(screen.queryByText(/Informes administrativos/i)).not.toBeInTheDocument()
   })
 
+  it('permite elegir otro bus propio y reemplaza su historial sin consultar toda la flota', async () => {
+    window.history.pushState({}, '', '/historial')
+    const handler = historyHandler('CONDUCTOR')
+    const detail = historyDetail('CONDUCTOR')
+    const secondId = detail.bus.id + 1
+    const fetchMock = mockApi(async (path, _init, query) => {
+      if (path === '/historial/mi-bus') {
+        const second = query?.get('busId') === String(secondId)
+        return ok({
+          asignacion: null,
+          buses: [
+            { id: detail.bus.id, codigoInterno: 'BUS-PROPIO-UNO', placa: 'AAA111' },
+            { id: secondId, codigoInterno: 'BUS-PROPIO-DOS', placa: 'BBB222' },
+          ],
+          historial: {
+            ...detail,
+            bus: {
+              ...detail.bus,
+              id: second ? secondId : detail.bus.id,
+              codigoInterno: second ? 'BUS-PROPIO-DOS' : 'BUS-PROPIO-UNO',
+            },
+          },
+        })
+      }
+      return handler(path)
+    })
+    render(<App />)
+    const select = await screen.findByLabelText('Bus de mis jornadas y reportes')
+    fireEvent.change(select, { target: { value: String(secondId) } })
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining(`busId=${secondId}`),
+        expect.any(Object),
+      ),
+    )
+    await waitFor(() => expect(select).not.toBeDisabled())
+    expect(select).toHaveValue(String(secondId))
+    expect(screen.queryByText(/Desgaste de pastillas delanteras/i)).not.toBeInTheDocument()
+  })
+
   it('loads the driver bus from the dedicated endpoint and keeps private technical data hidden', async () => {
     window.history.pushState({}, '', '/historial')
     const fetchMock = mockApi(historyHandler('CONDUCTOR'))
 
     render(<App />)
 
-    expect(await screen.findByText(/Historial de mi bus asignado/i)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/Mis jornadas y reportes del bus seleccionado/i),
+    ).toBeInTheDocument()
     expect(await screen.findByText(/Vibración leve al frenar/i)).toBeInTheDocument()
     expect(screen.queryByLabelText(/Buscar bus/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/Desgaste de pastillas delanteras/i)).not.toBeInTheDocument()
@@ -216,7 +258,9 @@ describe('RF-06 history and reports frontend', () => {
 
     render(<App />)
 
-    expect(await screen.findByText(/Sin bus asignado actualmente/i)).toBeInTheDocument()
-    expect(screen.getByText(/no acepta identificadores de bus/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Sin jornadas o reportes propios/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/No tiene jornadas ni asignaciones históricas propias/i),
+    ).toBeInTheDocument()
   })
 })

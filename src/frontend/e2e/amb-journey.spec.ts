@@ -149,21 +149,22 @@ test('AMB programa desde UI, avisa al Conductor y concilia odómetro sin costos'
     .locator('article')
     .filter({ has: page.getByRole('heading', { name: new RegExp(code) }) })
     .first()
+  await card.getByText('Referencia académica simulada (no es odómetro)', { exact: true }).click()
   await expect(card.getByText('290 km proyectados')).toBeVisible()
-  await card.getByRole('button', { name: 'Iniciar jornada' }).click()
+  await card.getByRole('button', { name: 'Confirmar salida' }).click()
   await page
     .getByRole('dialog')
     .getByLabel(/Lectura observada del odómetro/i)
     .fill('48930')
   await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click()
-  await expect(card.getByRole('button', { name: 'Finalizar jornada' })).toBeVisible()
-  await card.getByRole('button', { name: 'Finalizar jornada' }).click()
+  await expect(card.getByRole('button', { name: 'Confirmar llegada' })).toBeVisible()
+  await card.getByRole('button', { name: 'Confirmar llegada' }).click()
   await page
     .getByRole('dialog')
     .getByLabel(/Lectura observada del odómetro/i)
     .fill('49205')
   await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click()
-  await expect(page.getByText('Jornada finalizada con lectura final')).toBeVisible()
+  await expect(page.getByText(/Llegada confirmada\./)).toBeVisible()
   // Driver's current view removes closed journeys; history remains accessible through its own API.
   const detail = await page.request.get(`${response.url()}/${journeyId}`)
   expect((await detail.json()).data.jornada.proyeccionDemo).toMatchObject({
@@ -178,6 +179,9 @@ test('AMB programa desde UI, avisa al Conductor y concilia odómetro sin costos'
     .locator('article')
     .filter({ has: page.getByRole('heading', { name: new RegExp(code) }) })
     .first()
+  await closedCard
+    .getByText('Referencia académica simulada (no es odómetro)', { exact: true })
+    .click()
   await expect(closedCard.getByText('Recorrido por odómetro:', { exact: false })).toContainText(
     '275 km',
   )

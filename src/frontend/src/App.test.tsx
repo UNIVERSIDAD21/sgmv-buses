@@ -259,7 +259,7 @@ describe('App authentication and role navigation', () => {
     expect(await screen.findByText(/Panel del conductor/i)).toBeInTheDocument()
     expect(screen.getAllByText(/Jornadas operativas/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Novedades operativas/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/Historial e informes/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Mis jornadas y reportes/i).length).toBeGreaterThan(0)
     expect(screen.queryByText(/Mantenimiento preventivo/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/Órdenes de trabajo/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/Repuestos e inventario/i)).not.toBeInTheDocument()

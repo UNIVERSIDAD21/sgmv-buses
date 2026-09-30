@@ -26,6 +26,7 @@ export interface AvailabilityCauseDto {
 }
 
 export interface JourneyDto {
+  lecturaReferencia?: { kilometraje: number; fechaLectura: string } | null
   cierrePendiente?: { reportadoAt: string; motivo: string; reportadoPor: JourneyUserRefDto } | null
   proyeccionDemo?: {
     origen: 'PROYECCION_SIMULADA'
@@ -118,6 +119,7 @@ export type JourneyRouteRef = Pick<
 >
 
 export interface MyJourneyResponse {
+  jornadaPendiente?: JourneyDto | null
   jornadaActual: JourneyDto | null
   proximaJornada: JourneyDto | null
 }

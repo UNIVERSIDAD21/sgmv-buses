@@ -22,6 +22,16 @@ const journeyInclude = {
       id: true,
       placa: true,
       kilometrajeActual: true,
+      lecturasKilometraje: {
+        where: { fechaLectura: { not: null } },
+        select: { kilometrajeNuevo: true, fechaLectura: true, fechaRegistro: true },
+        orderBy: [
+          { fechaLectura: { sort: 'desc', nulls: 'last' } },
+          { fechaRegistro: 'desc' },
+          { id: 'desc' },
+        ],
+        take: 1,
+      },
     },
   },
   cambioPor: { select: userRefSelect },
@@ -90,9 +100,14 @@ export class JourneyRepository {
         orderBy: { inicioReal: 'desc' },
       }),
       prisma.jornadaOperativa.findFirst({
-        where: { conductorId, estado: 'PROGRAMADA', finProgramado: { gte: now } },
+        where: { conductorId, estado: 'PROGRAMADA', inicioProgramado: { lte: now } },
         include: journeyInclude,
-        orderBy: { inicioProgramado: 'asc' },
+        orderBy: [{ inicioProgramado: 'asc' }, { id: 'asc' }],
+      }),
+      prisma.jornadaOperativa.findFirst({
+        where: { conductorId, estado: 'PROGRAMADA', inicioProgramado: { gt: now } },
+        include: journeyInclude,
+        orderBy: [{ inicioProgramado: 'asc' }, { id: 'asc' }],
       }),
     ])
   }

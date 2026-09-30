@@ -604,17 +604,13 @@ describe('RF-06 History and reports API', () => {
     expect(dispatcherRead.body.data.indicadores.buses).toBe(0)
   }, 60000)
 
-  it('ignores a conductor busId override and keeps the assigned bus and order scope', async () => {
+  it('rechaza seleccionar un bus sin vínculo propio, sin exponer su historial', async () => {
     const driver = await loginAgent(fixture.conductorEmail)
     const response = await driver
       .get('/historial/mi-bus')
       .query({ busId: fixture.otherBusId })
-      .expect(200)
-
-    expect(response.body.data.historial.bus.id).toBe(fixture.busId)
-    expect(response.body.data.historial.ordenes).toHaveLength(1)
-    expect(response.body.data.historial.ordenes[0].codigo).toBe(`OT-RF06-${suffix}`)
-    expect(JSON.stringify(response.body)).not.toContain(`OT-RF06-OTHER-${suffix}`)
+      .expect(404)
+    expect(response.body).not.toHaveProperty('data')
   }, 60000)
 
   it('validates chronological filters and supports filtered pagination aliases', async () => {

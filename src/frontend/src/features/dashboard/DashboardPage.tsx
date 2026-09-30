@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
 import {
@@ -20,7 +20,9 @@ import { useSession } from '../auth/session.context'
 import { getFleetSummary } from '../flota/fleet.api'
 import type { FleetSummaryDto } from '../flota/fleet.types'
 import { getMyJourney } from '../jornadas/journey.api'
-import type { MyJourneyResponse } from '../jornadas/journey.types'
+import JourneyCard from '../jornadas/JourneyCard'
+import JourneyConfirmationDialog from '../jornadas/JourneyConfirmationDialog'
+import type { JourneyDto, MyJourneyResponse } from '../jornadas/journey.types'
 import { getNoveltySummary, listOwnNovelties } from '../novedades/novelty.api'
 import type { NoveltyListResponse, NoveltySummaryDto } from '../novedades/novelty.types'
 import { getWorkOrderSummary } from '../ordenes-trabajo/work-order.api'
@@ -126,6 +128,12 @@ function AttentionPanel({ items }: { items: AttentionItem[] }) {
 export default function DashboardPage() {
   const { user } = useSession()
   const [fleetSummary, setFleetSummary] = useState<FleetSummaryDto | null>(null)
+  const navigate = useNavigate()
+  const [journeyOperation, setJourneyOperation] = useState<{
+    action: 'start' | 'finish'
+    journey: JourneyDto
+  } | null>(null)
+  const [journeyFeedback, setJourneyFeedback] = useState<string | null>(null)
   const [driverJourney, setDriverJourney] = useState<MyJourneyResponse | null>(null)
   const [driverNovelties, setDriverNovelties] = useState<NoveltyListResponse | null>(null)
   const [fleetError, setFleetError] = useState<string | null>(null)
@@ -135,7 +143,11 @@ export default function DashboardPage() {
   const [workOrderSummary, setWorkOrderSummary] = useState<WorkOrderSummaryDto | null>(null)
 
   const visibleItems = user
-    ? REQUIREMENT_NAV_ITEMS.filter((item) => item.roles.includes(user.rol.codigo))
+    ? REQUIREMENT_NAV_ITEMS.filter((item) => item.roles.includes(user.rol.codigo)).map((item) =>
+        user.rol.codigo === 'CONDUCTOR' && item.id === 'historial'
+          ? { ...item, label: 'Mis jornadas y reportes' }
+          : item,
+      )
     : []
   const isAdmin = user?.rol.codigo === 'ADMINISTRADOR'
   const isDispatcher = user?.rol.codigo === 'DESPACHADOR'
@@ -286,7 +298,11 @@ export default function DashboardPage() {
     return null
   }
 
-  const activeDriverJourney = driverJourney?.jornadaActual ?? driverJourney?.proximaJornada ?? null
+  const activeDriverJourney =
+    driverJourney?.jornadaActual ??
+    driverJourney?.jornadaPendiente ??
+    driverJourney?.proximaJornada ??
+    null
 
   return (
     <div className="page-container">
@@ -505,49 +521,70 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {journeyOperation && (
+        <JourneyConfirmationDialog
+          action={journeyOperation.action}
+          journey={journeyOperation.journey}
+          onClose={() => setJourneyOperation(null)}
+          onCompleted={async (message) => {
+            setJourneyFeedback(message)
+            setDriverJourney(await getMyJourney())
+          }}
+        />
+      )}
       {isDriver && (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
           <section>
             <h2 className="mb-3 text-xs font-semibold uppercase text-slate-500">
               Panel del conductor
             </h2>
+            {fleetError && (
+              <p role="alert" className="text-sm text-red-700">
+                {fleetError}
+              </p>
+            )}
+            {journeyFeedback && (
+              <p role="status" className="mb-3 text-sm text-emerald-800">
+                {journeyFeedback}
+              </p>
+            )}
+            {!fleetError && activeDriverJourney && (
+              <div className="mb-4 space-y-2">
+                <h3 className="text-base font-semibold text-slate-900">
+                  {driverJourney?.jornadaActual
+                    ? 'Mi jornada en curso'
+                    : driverJourney?.jornadaPendiente
+                      ? 'Salida pendiente de confirmar'
+                      : 'Próxima jornada'}
+                </h3>
+                <JourneyCard
+                  journey={activeDriverJourney}
+                  onAction={(action, journey) => {
+                    if (action === 'start' || action === 'finish')
+                      setJourneyOperation({ action, journey })
+                    else navigate(`/jornadas?detalle=${journey.id}`)
+                  }}
+                />
+                <Link
+                  className="inline-block py-2 text-sm font-semibold text-emerald-800"
+                  to="/jornadas"
+                >
+                  Ver mis jornadas
+                </Link>
+              </div>
+            )}
+            {!fleetError && driverJourney && !activeDriverJourney && (
+              <p className="mb-4 text-sm text-slate-600">
+                No hay jornadas pendientes ni próximas. Puede consultar sus jornadas y reportes
+                anteriores.
+              </p>
+            )}
+            {!fleetError && !driverJourney && (
+              <p className="mb-4 text-sm text-slate-600">Consultando jornada.</p>
+            )}
             <ModuleList items={visibleItems} />
           </section>
           <div className="space-y-4">
-            <div className="rounded-lg border border-slate-200 bg-white p-5">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
-                <Wrench size={18} />
-              </div>
-              <h3 className="text-base font-semibold text-slate-900">Mi jornada</h3>
-              {fleetError && <p className="mt-2 text-sm leading-6 text-red-600">{fleetError}</p>}
-              {!fleetError && activeDriverJourney && (
-                <>
-                  <p className="mt-2 text-sm font-semibold text-slate-800">
-                    {activeDriverJourney.bus.codigoInterno} - {activeDriverJourney.bus.placa}
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-slate-500">
-                    {activeDriverJourney.ruta
-                      ? `${activeDriverJourney.ruta.codigo} · ${activeDriverJourney.ruta.nombre}`
-                      : 'Sin ruta contextual'}
-                  </p>
-                  <Link
-                    className="mt-5 inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                    to="/jornadas"
-                  >
-                    Ver mi jornada
-                  </Link>
-                </>
-              )}
-              {!fleetError && driverJourney && !activeDriverJourney && (
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  No hay una jornada en curso ni una proxima jornada programada.
-                </p>
-              )}
-              {!fleetError && !driverJourney && (
-                <p className="mt-2 text-sm leading-6 text-slate-500">Consultando jornada.</p>
-              )}
-            </div>
-
             <div className="rounded-lg border border-slate-200 bg-white p-5">
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
                 <AlertTriangle size={18} />

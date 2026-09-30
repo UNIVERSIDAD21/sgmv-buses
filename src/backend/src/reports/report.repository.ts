@@ -258,9 +258,26 @@ export class ReportRepository {
     })
   }
 
+  findDriverHistoryBuses(userId: number) {
+    return prisma.bus.findMany({
+      where: {
+        OR: [
+          { jornadasOperativas: { some: { conductorId: userId } } },
+          { asignaciones: { some: { conductorId: userId } } },
+        ],
+      },
+      select: { id: true, codigoInterno: true, placa: true },
+      orderBy: [{ codigoInterno: 'asc' }, { id: 'asc' }],
+    })
+  }
+
   async findDriverHistoryBus(userId: number) {
-    const activeAssignment = await this.findActiveDriverAssignment(userId)
-    if (activeAssignment) return { assignment: activeAssignment, busId: activeAssignment.busId }
+    const current = await prisma.jornadaOperativa.findFirst({
+      where: { conductorId: userId, estado: 'EN_CURSO' },
+      select: { busId: true },
+      orderBy: [{ inicioReal: 'desc' }, { id: 'desc' }],
+    })
+    if (current) return { assignment: null, busId: current.busId }
 
     const [journey, assignment] = await Promise.all([
       prisma.jornadaOperativa.findFirst({

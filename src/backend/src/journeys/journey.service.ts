@@ -88,7 +88,10 @@ function buildActions(
     puedeCancelar: dispatcher && (journey.estado === 'PROGRAMADA' || journey.estado === 'EN_CURSO'),
     puedeFinalizar: (dispatcher || ownDriver) && journey.estado === 'EN_CURSO',
     puedeIniciar:
-      (dispatcher || ownDriver) && journey.estado === 'PROGRAMADA' && availability.disponible,
+      (dispatcher || ownDriver) &&
+      journey.estado === 'PROGRAMADA' &&
+      journey.inicioProgramado <= new Date() &&
+      availability.disponible,
     puedeReasignar:
       dispatcher && (journey.estado === 'PROGRAMADA' || journey.estado === 'EN_CURSO'),
   }
@@ -119,7 +122,21 @@ function mapJourney(
       lecturaInicial?.kilometrajeNuevo,
       lecturaFinal?.kilometrajeNuevo,
     ),
-    bus: journey.bus,
+    bus: {
+      id: journey.bus.id,
+      codigoInterno: journey.bus.codigoInterno,
+      placa: journey.bus.placa,
+      estadoOperativo: journey.bus.estadoOperativo,
+    },
+    lecturaReferencia: journey.bus.lecturasKilometraje[0]
+      ? {
+          kilometraje: journey.bus.lecturasKilometraje[0].kilometrajeNuevo,
+          fechaLectura: (
+            journey.bus.lecturasKilometraje[0].fechaLectura ??
+            journey.bus.lecturasKilometraje[0].fechaRegistro
+          ).toISOString(),
+        }
+      : null,
     cambioPor: journey.cambioPor ? mapUser(journey.cambioPor) : null,
     causasDisponibilidad: availability.causas,
     conductor: mapUser(journey.conductor),
@@ -498,9 +515,10 @@ export class JourneyService {
     }
 
     const now = new Date()
-    const [current, next] = await this.repository.findCurrentAndNextByDriver(actor.id, now)
+    const [current, pending, next] = await this.repository.findCurrentAndNextByDriver(actor.id, now)
 
     return this.repository.transaction(async (tx) => ({
+      jornadaPendiente: pending ? await this.toDto(pending, actor, now, tx) : null,
       jornadaActual: current ? await this.toDto(current, actor, now, tx) : null,
       proximaJornada: next ? await this.toDto(next, actor, now, tx) : null,
     }))
@@ -748,6 +766,13 @@ export class JourneyService {
           )
         }
 
+        if (eventDate < journey.inicioProgramado) {
+          throw new AppError(
+            409,
+            'JOURNEY_NOT_DUE',
+            'La salida no puede preceder al inicio programado; solicite a Despacho ajustar la jornada',
+          )
+        }
         const availability = await this.availability(journey, eventDate, tx)
         if (!availability.disponible) {
           throw new AppError(409, 'BUS_NOT_AVAILABLE', 'El bus no esta disponible para iniciar', {

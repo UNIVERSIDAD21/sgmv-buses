@@ -819,6 +819,9 @@ export default function HistoryReportsPage() {
   const [draft, setDraft] = useState<HistoryFilters>(initialFilters)
   const [filters, setFilters] = useState<HistoryFilters>(initialFilters)
   const [summary, setSummary] = useState<HistorySummaryDto | null>(null)
+  const [ownBuses, setOwnBuses] = useState<
+    Array<{ id: number; codigoInterno: string; placa: string }>
+  >([])
   const [buses, setBuses] = useState<HistoryBusDto[]>([])
   const [detail, setDetail] = useState<HistoryDetailDto | null>(null)
   const [maintenance, setMaintenance] = useState<MaintenanceReportDto | null>(null)
@@ -852,6 +855,7 @@ export default function HistoryReportsPage() {
         if (version !== loadVersion.current) return
         setSummary(summaryResult)
         setDetail(myBus.historial)
+        setOwnBuses(myBus.buses ?? [])
         setBuses([])
       } else {
         const [summaryResult, busResult] = await Promise.all([
@@ -1002,7 +1006,9 @@ export default function HistoryReportsPage() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold text-slate-950">Historial e informes</h1>
+            <h1 className="text-xl font-semibold text-slate-950">
+              {role === 'CONDUCTOR' ? 'Mis jornadas y reportes' : 'Historial e informes'}
+            </h1>
             {role && <Badge tone="teal">{`Vista ${ROLE_LABELS[role]}`}</Badge>}
           </div>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
@@ -1072,10 +1078,32 @@ export default function HistoryReportsPage() {
 
       {isAdmin && <AdminReports costs={costs} maintenance={maintenance} parts={parts} />}
 
+      {role === 'CONDUCTOR' && ownBuses.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-slate-700">
+            Bus de mis jornadas y reportes
+            <select
+              className="field-control max-w-lg"
+              value={filters.busId ?? detail?.bus.id ?? ''}
+              disabled={loading}
+              onChange={(event) => setFilters({ ...filters, busId: Number(event.target.value) })}
+            >
+              {ownBuses.map((bus) => (
+                <option key={bus.id} value={bus.id}>
+                  {bus.codigoInterno} · {bus.placa}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="mt-1 text-xs text-slate-500">
+            Solo buses con vínculo propio; no muestra jornadas ni reportes de otros conductores.
+          </p>
+        </div>
+      )}
       {role === 'CONDUCTOR' && !detail && (
         <StatePanel
-          description="No existe una asignación activa. El historial no acepta identificadores de bus enviados por el conductor."
-          title="Sin bus asignado actualmente"
+          description="No tiene jornadas ni asignaciones históricas propias para consultar."
+          title="Sin jornadas o reportes propios"
         />
       )}
 
@@ -1087,7 +1115,7 @@ export default function HistoryReportsPage() {
           showOperationalAudit={isAdmin || isDispatcher}
           title={
             role === 'CONDUCTOR'
-              ? 'Historial de mi bus asignado'
+              ? 'Mis jornadas y reportes del bus seleccionado'
               : isDispatcher
                 ? 'Trazabilidad operativa del bus'
                 : 'Detalle histórico del bus'

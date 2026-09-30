@@ -298,7 +298,7 @@ describe('RF-01 fleet frontend', () => {
     expect(await screen.findByText(/Mi jornada/i)).toBeInTheDocument()
     expect(await screen.findByText(/BUS-JORNADA-01/i)).toBeInTheDocument()
     expect(screen.queryByText(/Registrar bus/i)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Iniciar jornada/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Confirmar salida/i })).toBeInTheDocument()
   })
 
   it('shows the driver journey empty state and denies mechanic access to RF-01', async () => {

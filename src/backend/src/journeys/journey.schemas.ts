@@ -73,7 +73,10 @@ export const createJourneySchema = z
 export const journeyReadingSchema = z
   .object({
     fechaEvento: eventDate,
-    kilometraje: z.coerce.number().int().min(0),
+    kilometraje: z.preprocess(
+      (value) => (typeof value === 'string' && value.trim() ? Number(value) : value),
+      z.number().int().min(0),
+    ),
   })
   .strict()
 

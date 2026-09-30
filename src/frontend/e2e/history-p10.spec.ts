@@ -658,8 +658,13 @@ test('P10 reconstruye historial, respeta privacidad por rol y mantiene GET sin e
 
   await login(page, driverEmail)
   await page.goto('/historial')
-  await expect(page.getByText(/Historial de mi bus asignado/i)).toBeVisible()
-  const driverResult = await getApi(page, `/historial/mi-bus?busId=${ids.foreignBus}`)
+  await expect(page.getByText(/Mis jornadas y reportes del bus seleccionado/i)).toBeVisible()
+  expect(
+    (
+      await page.request.get(`http://localhost:4000/historial/mi-bus?busId=${ids.foreignBus}`)
+    ).status(),
+  ).toBe(404)
+  const driverResult = await getApi(page, `/historial/mi-bus?busId=${ids.bus}`)
   expect(driverResult.status).toBe(200)
   expect(driverResult.body.data!.historial.bus.id).toBe(ids.bus)
   expect(driverResult.body.data!.historial.novedades).toHaveLength(1)

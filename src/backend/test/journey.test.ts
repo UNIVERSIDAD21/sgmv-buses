@@ -208,6 +208,148 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
     }
   }, 60_000)
 
+  it('recupera la programada vencida antes de la futura y confirma hechos una sola vez sin levantar bloqueos', async () => {
+    const owner = await createDriver('pendiente-y-futura')
+    const bus = await createBus()
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const driver = await loginAgent(owner.email)
+    const otherDriver = await loginAgent(fixture.conductorOtroEmail)
+    const expired = await programJourney(dispatcher, { busId: bus.id, conductorId: owner.id })
+    expect(expired.status).toBe(201)
+    const id = expired.body.data.jornada.id
+    const future = await programJourney(dispatcher, {
+      busId: bus.id,
+      conductorId: owner.id,
+      inicioProgramado: past(-60),
+      finProgramado: past(-120),
+    })
+    expect(future.status).toBe(201)
+    const before = await prisma.lecturaKilometraje.count({ where: { busId: bus.id } })
+    for (let i = 0; i < 2; i++) {
+      const own = (await driver.get('/jornadas/mi-jornada').expect(200)).body.data
+      expect(own.jornadaActual).toBeNull()
+      expect(own.jornadaPendiente.id).toBe(id)
+      expect(own.jornadaPendiente.acciones.puedeIniciar).toBe(true)
+      expect(own.proximaJornada.id).toBe(future.body.data.jornada.id)
+      expect(own.proximaJornada.acciones.puedeIniciar).toBe(false)
+    }
+    expect(await prisma.lecturaKilometraje.count({ where: { busId: bus.id } })).toBe(before)
+    const startBody = { fechaEvento: past(100).toISOString(), kilometraje: 100 }
+    await otherDriver.post(`/jornadas/${id}/iniciar`).send(startBody).expect(403)
+    await driver
+      .post(`/jornadas/${future.body.data.jornada.id}/iniciar`)
+      .send(startBody)
+      .expect(409)
+    await driver
+      .post(`/jornadas/${id}/iniciar`)
+      .send({ ...startBody, fechaEvento: past(-10).toISOString() })
+      .expect(400)
+    for (const kilometraje of [null, '', '   ', false]) {
+      await driver
+        .post(`/jornadas/${id}/iniciar`)
+        .send({ ...startBody, kilometraje })
+        .expect(400)
+    }
+    await prisma.bus.update({
+      where: { id: bus.id },
+      data: { estadoOperativo: 'EN_MANTENIMIENTO' },
+    })
+    await driver.post(`/jornadas/${id}/iniciar`).send(startBody).expect(409)
+    expect(await prisma.lecturaKilometraje.count({ where: { busId: bus.id } })).toBe(before)
+    await prisma.bus.update({ where: { id: bus.id }, data: { estadoOperativo: 'OPERATIVO' } })
+    const startKey = randomUUID()
+    for (let i = 0; i < 2; i++) {
+      await driver
+        .post(`/jornadas/${id}/iniciar`)
+        .set('Idempotency-Key', startKey)
+        .send(startBody)
+        .expect(200)
+    }
+    const own = (await driver.get('/jornadas/mi-jornada').expect(200)).body.data
+    expect(own.jornadaActual.id).toBe(id)
+    expect(own.jornadaActual.lecturaReferencia).toMatchObject({
+      kilometraje: 100,
+      fechaLectura: startBody.fechaEvento,
+    })
+    await prisma.bus.update({
+      where: { id: bus.id },
+      data: { estadoOperativo: 'EN_MANTENIMIENTO' },
+    })
+    const finishKey = randomUUID()
+    const finishBody = { fechaEvento: past(40).toISOString(), kilometraje: 130 }
+    for (let i = 0; i < 2; i++) {
+      const done = await driver
+        .post(`/jornadas/${id}/finalizar`)
+        .set('Idempotency-Key', finishKey)
+        .send(finishBody)
+        .expect(200)
+      expect(done.body.data.jornada.estado).toBe('FINALIZADA')
+      expect(done.body.data.jornada.bus.estadoOperativo).toBe('EN_MANTENIMIENTO')
+    }
+    expect(await prisma.lecturaKilometraje.count({ where: { jornadaOperativaId: id } })).toBe(2)
+    expect((await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } })).estadoOperativo).toBe(
+      'EN_MANTENIMIENTO',
+    )
+  }, 60000)
+
+  it('consulta dos buses históricos propios sin imponer la asignación legada ni revelar un bus ajeno', async () => {
+    const owner = await createDriver('historial-varios-buses')
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const driver = await loginAgent(owner.email)
+    const buses = [await createBus(), await createBus()]
+    const foreign = await createBus()
+    const dispatcherUser = await prisma.usuario.findUniqueOrThrow({
+      where: { email: fixture.despachadorEmail },
+    })
+    const ownIds: number[] = []
+    for (let index = 0; index < 2; index++) {
+      const programmed = await programJourney(dispatcher, {
+        busId: buses[index].id,
+        conductorId: owner.id,
+        inicioProgramado: past(240 - index * 120),
+        finProgramado: past(180 - index * 120),
+      })
+      expect(programmed.status).toBe(201)
+      const id = programmed.body.data.jornada.id
+      ownIds.push(id)
+      await driver
+        .post(`/jornadas/${id}/iniciar`)
+        .send({ fechaEvento: past(230 - index * 120).toISOString(), kilometraje: 100 })
+        .expect(200)
+      await driver
+        .post(`/jornadas/${id}/finalizar`)
+        .send({ fechaEvento: past(190 - index * 120).toISOString(), kilometraje: 150 })
+        .expect(200)
+    }
+    await prisma.asignacionConductor.create({
+      data: {
+        busId: buses[0].id,
+        conductorId: owner.id,
+        asignadoPorId: dispatcherUser.id,
+        motivo: 'Antecedente legado para comprobar prioridad de jornadas',
+      },
+    })
+    const automatic = (await driver.get('/historial/mi-bus').expect(200)).body.data
+    expect(automatic.historial.bus.id).toBe(buses[1].id)
+    expect(automatic.buses.map((bus: { id: number }) => bus.id).sort()).toEqual(
+      buses.map((bus) => bus.id).sort(),
+    )
+    for (let index = 0; index < 2; index++) {
+      const result = (
+        await driver
+          .get('/historial/mi-bus')
+          .query({ busId: buses[index].id, conductorId: fixture.conductorOtroId })
+          .expect(200)
+      ).body.data
+      expect(result.historial.jornadas.map((journey: { id: number }) => journey.id)).toEqual([
+        ownIds[index],
+      ])
+      expect(JSON.stringify(result)).not.toMatch(/costoTotal|diagnosticos|contrasenaHash/)
+    }
+    await driver.get('/historial/mi-bus').query({ busId: foreign.id }).expect(404)
+    expect((await driver.get('/historial/resumen').expect(200)).body.data.indicadores.buses).toBe(2)
+  }, 60000)
+
   it('aplica permisos por sesion y evita IDOR entre conductores', async () => {
     const bus = await createBus()
     const route = await createRoute()

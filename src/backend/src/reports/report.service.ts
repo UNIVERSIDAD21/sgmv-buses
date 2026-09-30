@@ -37,8 +37,8 @@ export class ReportService {
       return this.reportRepository.findMechanicBusIds(user.id)
     }
 
-    const history = await this.reportRepository.findDriverHistoryBus(user.id)
-    return history ? [history.busId] : []
+    const buses = await this.reportRepository.findDriverHistoryBuses(user.id)
+    return buses.map((bus) => bus.id)
   }
 
   private scopedQuery(query: ReportQuery, user: AuthenticatedUser): ReportQuery {
@@ -64,7 +64,7 @@ export class ReportService {
           ? 'Buses con órdenes asignadas o intervenciones propias'
           : user.rol.codigo === 'DESPACHADOR'
             ? 'Flota, disponibilidad, asignaciones y novedades operativas'
-            : 'Bus asignado actualmente y novedades propias'
+            : 'Jornadas, buses con vínculo propio y reportes personales'
 
     return {
       alcance,
@@ -144,15 +144,25 @@ export class ReportService {
   }
 
   async getMyBusHistory(query: ReportQuery, user: AuthenticatedUser) {
-    const history = await this.reportRepository.findDriverHistoryBus(user.id)
+    if (user.rol.codigo !== 'CONDUCTOR')
+      throw new AppError(403, 'FORBIDDEN', 'Consulta exclusiva del Conductor')
+    const buses = await this.reportRepository.findDriverHistoryBuses(user.id)
+    if (query.busId !== undefined && !buses.some((bus) => bus.id === query.busId)) {
+      throw new AppError(404, 'NOT_FOUND', 'No existe un vínculo propio con ese bus')
+    }
+    const history =
+      query.busId !== undefined
+        ? { assignment: null, busId: query.busId }
+        : await this.reportRepository.findDriverHistoryBus(user.id)
 
     if (!history) {
-      return { asignacion: null, historial: null }
+      return { asignacion: null, historial: null, buses }
     }
 
     const historial = await this.buildBusHistory(history.busId, this.scopedQuery(query, user), user)
 
     return {
+      buses,
       asignacion: history.assignment
         ? { fechaInicio: history.assignment.fechaInicio.toISOString(), id: history.assignment.id }
         : null,

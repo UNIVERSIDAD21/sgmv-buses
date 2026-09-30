@@ -69,6 +69,7 @@ export function getBusHistory(busId: number, filters?: HistoryFilters) {
 
 export function getMyBusHistory(filters?: HistoryFilters) {
   return apiRequest<{
+    buses: Array<{ id: number; codigoInterno: string; placa: string }>
     asignacion: { fechaInicio: string; id: number } | null
     historial: HistoryDetailDto | null
   }>(`/historial/mi-bus?${buildQuery(filters)}`)
