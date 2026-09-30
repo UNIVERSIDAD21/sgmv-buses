@@ -33,6 +33,18 @@ journeyRoutes.post(
   authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
   idempotent(controller.create),
 )
+journeyRoutes.post(
+  '/periodo/previsualizar',
+  enforceAllowedOrigin,
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
+  asyncHandler(controller.previewPeriod),
+)
+journeyRoutes.post(
+  '/periodo/confirmar',
+  enforceAllowedOrigin,
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
+  idempotent(controller.confirmPeriod),
+)
 journeyRoutes.get(
   '/:jornadaId',
   authorizeRoles('ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR'),

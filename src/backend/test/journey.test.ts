@@ -806,6 +806,154 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
     expect(await prisma.jornadaOperativa.count({ where: { id: journeyId } })).toBe(1)
   }, 60_000)
 
+  it('programa lunes a viernes por período, permite excepciones diarias y no duplica al reintentar', async () => {
+    const [bus, replacementBus, driver, replacementDriver, route] = await Promise.all([
+      createBus(),
+      createBus(),
+      createDriver('periodo'),
+      createDriver('periodo-relevo'),
+      createRoute(),
+    ])
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const mechanic = await loginAgent(fixture.mecanicoEmail)
+    const monday = new Date(Date.now() + 8 * 86_400_000)
+    monday.setUTCDate(monday.getUTCDate() + ((8 - monday.getUTCDay()) % 7))
+    const friday = new Date(monday.getTime() + 4 * 86_400_000)
+    const body = {
+      busId: bus.id,
+      conductorId: driver.id,
+      rutaId: route.id,
+      fechaInicio: monday.toISOString().slice(0, 10),
+      fechaFin: friday.toISOString().slice(0, 10),
+      diasSemana: [1, 2, 3, 4, 5],
+      horaInicio: '06:00',
+      horaFin: '14:00',
+      claveIdempotencia: randomUUID(),
+    }
+    await mechanic.post('/jornadas/periodo/previsualizar').send(body).expect(403)
+    await mechanic.post('/jornadas/periodo/confirmar').send(body).expect(403)
+    const preview = await dispatcher.post('/jornadas/periodo/previsualizar').send(body).expect(200)
+    expect(preview.body.data).toMatchObject({ total: 5, aptas: 5, puedeConfirmar: true })
+    expect(preview.body.data.jornadas.map((row: { fecha: string }) => row.fecha)).toEqual(
+      Array.from({ length: 5 }, (_, index) =>
+        new Date(monday.getTime() + index * 86_400_000).toISOString().slice(0, 10),
+      ),
+    )
+    const first = await dispatcher
+      .post('/jornadas/periodo/confirmar')
+      .set('Idempotency-Key', body.claveIdempotencia)
+      .send(body)
+      .expect(201)
+    expect(first.body.data.creadas).toBe(5)
+    const ids = first.body.data.jornadas.map((row: { id: number }) => row.id)
+    created.jornadas.push(...ids)
+    expect(new Set(ids).size).toBe(5)
+    const replay = await dispatcher
+      .post('/jornadas/periodo/confirmar')
+      .set('Idempotency-Key', body.claveIdempotencia)
+      .send(body)
+      .expect(201)
+    expect(replay.headers['idempotency-replayed']).toBe('true')
+    expect(replay.body).toEqual(first.body)
+    expect(await prisma.jornadaOperativa.count({ where: { id: { in: ids } } })).toBe(5)
+
+    const repeated = await dispatcher.post('/jornadas/periodo/previsualizar').send(body).expect(200)
+    expect(repeated.body.data.puedeConfirmar).toBe(false)
+    expect(
+      repeated.body.data.jornadas.every((row: { conflictos: Array<{ codigo: string }> }) =>
+        row.conflictos.some((conflict) => conflict.codigo === 'JORNADA_DUPLICADA'),
+      ),
+    ).toBe(true)
+    await dispatcher
+      .post('/jornadas/periodo/confirmar')
+      .send({ ...body, claveIdempotencia: randomUUID() })
+      .expect(409)
+
+    const tuesdayId = first.body.data.jornadas[1].id as number
+    const wednesdayId = first.body.data.jornadas[2].id as number
+    const busChange = await dispatcher
+      .post(`/jornadas/${tuesdayId}/reasignar`)
+      .send({
+        busId: replacementBus.id,
+        fechaEvento: new Date().toISOString(),
+        motivo: 'Bus sustituto solo para el martes',
+      })
+      .expect(201)
+    created.jornadas.push(busChange.body.data.jornadaSucesora.id)
+    const driverChange = await dispatcher
+      .post(`/jornadas/${wednesdayId}/reasignar`)
+      .send({
+        conductorId: replacementDriver.id,
+        fechaEvento: new Date().toISOString(),
+        motivo: 'Conductor sustituto solo para el miércoles',
+      })
+      .expect(201)
+    created.jornadas.push(driverChange.body.data.jornadaSucesora.id)
+    expect(busChange.body.data.jornadaSucesora.bus.id).toBe(replacementBus.id)
+    expect(driverChange.body.data.jornadaSucesora.conductor.id).toBe(replacementDriver.id)
+    const unchanged = await prisma.jornadaOperativa.findMany({
+      where: { id: { in: [ids[0], ids[3], ids[4]] } },
+    })
+    expect(unchanged).toHaveLength(3)
+    expect(
+      unchanged.every(
+        (row) =>
+          row.busId === bus.id && row.conductorId === driver.id && row.estado === 'PROGRAMADA',
+      ),
+    ).toBe(true)
+  }, 90_000)
+
+  it('previsualiza conflictos de bus y conductor y rechaza el lote completo sin altas parciales', async () => {
+    const [bus, otherBus, driver, otherDriver] = await Promise.all([
+      createBus(),
+      createBus(),
+      createDriver('periodo-conflicto'),
+      createDriver('periodo-otro'),
+    ])
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const day = new Date(Date.now() + 12 * 86_400_000)
+    const date = day.toISOString().slice(0, 10)
+    const secondDate = new Date(day.getTime() + 86_400_000).toISOString().slice(0, 10)
+    const weekday = day.getUTCDay() || 7
+    const body = {
+      busId: bus.id,
+      conductorId: driver.id,
+      fechaInicio: date,
+      fechaFin: secondDate,
+      diasSemana: [weekday, (weekday % 7) + 1],
+      horaInicio: '07:00',
+      horaFin: '15:00',
+    }
+    const clearPreview = await dispatcher
+      .post('/jornadas/periodo/previsualizar')
+      .send(body)
+      .expect(200)
+    expect(clearPreview.body.data).toMatchObject({ total: 2, aptas: 2, puedeConfirmar: true })
+    await programJourney(dispatcher, {
+      busId: bus.id,
+      conductorId: otherDriver.id,
+      inicioProgramado: new Date(`${secondDate}T07:00:00-05:00`),
+      finProgramado: new Date(`${secondDate}T15:00:00-05:00`),
+    })
+    await programJourney(dispatcher, {
+      busId: otherBus.id,
+      conductorId: driver.id,
+      inicioProgramado: new Date(`${secondDate}T07:00:00-05:00`),
+      finProgramado: new Date(`${secondDate}T15:00:00-05:00`),
+    })
+    const preview = await dispatcher.post('/jornadas/periodo/previsualizar').send(body).expect(200)
+    expect(preview.body.data).toMatchObject({ total: 2, aptas: 1, puedeConfirmar: false })
+    const codes = preview.body.data.jornadas[1].conflictos.map(
+      (item: { codigo: string }) => item.codigo,
+    )
+    expect(codes).toContain('BUS_OCUPADO')
+    expect(codes).toContain('CONDUCTOR_OCUPADO')
+    await dispatcher.post('/jornadas/periodo/confirmar').send(body).expect(409)
+    expect(
+      await prisma.jornadaOperativa.count({ where: { busId: bus.id, conductorId: driver.id } }),
+    ).toBe(0)
+  }, 90_000)
+
   it('serializa programaciones concurrentes y evita solapes por bus y conductor', async () => {
     const bus = await createBus()
     const otherBus = await createBus()

@@ -11,6 +11,7 @@ import { evaluateJourneyProjectionAlerts } from '../alerts/journey-projection-al
 import { buildAvailability } from '../availability/availability.policy.js'
 import type { AuthenticatedUser } from '../auth/auth.types.js'
 import { AppError } from '../shared/http.js'
+import { buildJourneyPeriodSlots } from './journey-period.js'
 import {
   JourneyRepository,
   type JourneyRecord,
@@ -19,6 +20,7 @@ import {
 import type {
   CancelJourneyInput,
   CreateJourneyInput,
+  JourneyPeriodInput,
   InterruptJourneyInput,
   JourneyReadingInput,
   ListJourneysQuery,
@@ -269,6 +271,188 @@ function translateJourneyError(error: unknown): never {
 
 export class JourneyService {
   constructor(private readonly repository = new JourneyRepository()) {}
+
+  private async evaluatePeriod(
+    input: JourneyPeriodInput,
+    tx: JourneyTransaction,
+    actor: AuthenticatedUser,
+  ) {
+    const slots = buildJourneyPeriodSlots(input)
+    if (!slots.length) {
+      throw new AppError(400, 'EMPTY_JOURNEY_PERIOD', 'Ningún día seleccionado cae en el período')
+    }
+    const context = await this.repository.findContext(
+      input.busId,
+      input.conductorId,
+      input.rutaId ?? null,
+      tx,
+    )
+    if (!context.bus) throw new AppError(404, 'BUS_NOT_FOUND', 'Bus no encontrado')
+    if (
+      !context.conductor ||
+      context.conductor.estado !== 'ACTIVO' ||
+      context.conductor.rol.codigo !== 'CONDUCTOR'
+    ) {
+      throw new AppError(409, 'DRIVER_NOT_AVAILABLE', 'El Conductor no existe o no está activo')
+    }
+    if (input.rutaId && (!context.ruta || !context.ruta.activa)) {
+      throw new AppError(409, 'ROUTE_INACTIVE', 'La ruta no existe o no está activa')
+    }
+
+    const existing = await tx.jornadaOperativa.findMany({
+      where: {
+        estado: { in: ['PROGRAMADA', 'EN_CURSO'] },
+        inicioProgramado: { lt: slots[slots.length - 1]!.finProgramado },
+        finProgramado: { gt: slots[0]!.inicioProgramado },
+        OR: [{ busId: input.busId }, { conductorId: input.conductorId }],
+      },
+      select: {
+        id: true,
+        busId: true,
+        conductorId: true,
+        rutaId: true,
+        inicioProgramado: true,
+        finProgramado: true,
+      },
+    })
+    const now = new Date()
+    const jornadas = [] as Array<{
+      fecha: string
+      inicioProgramado: string
+      finProgramado: string
+      conflictos: Array<{ codigo: string; mensaje: string }>
+    }>
+    for (const slot of slots) {
+      const conflicts: Array<{ codigo: string; mensaje: string }> = []
+      if (slot.inicioProgramado <= now) {
+        conflicts.push({ codigo: 'FECHA_PASADA', mensaje: 'La salida ya ocurrió' })
+      }
+      if (context.bus.estadoOperativo !== 'OPERATIVO') {
+        conflicts.push({ codigo: 'BUS_NO_OPERATIVO', mensaje: 'El bus no está operativo' })
+      }
+      for (const reservation of existing) {
+        if (
+          reservation.inicioProgramado >= slot.finProgramado ||
+          reservation.finProgramado <= slot.inicioProgramado
+        )
+          continue
+        if (
+          reservation.busId === input.busId &&
+          reservation.conductorId === input.conductorId &&
+          reservation.rutaId === (input.rutaId ?? null) &&
+          reservation.inicioProgramado.getTime() === slot.inicioProgramado.getTime() &&
+          reservation.finProgramado.getTime() === slot.finProgramado.getTime()
+        ) {
+          conflicts.push({
+            codigo: 'JORNADA_DUPLICADA',
+            mensaje: `Ya existe el tramo #${reservation.id}`,
+          })
+          continue
+        }
+        if (reservation.busId === input.busId) {
+          conflicts.push({
+            codigo: 'BUS_OCUPADO',
+            mensaje: `Bus reservado en jornada #${reservation.id}`,
+          })
+        }
+        if (reservation.conductorId === input.conductorId) {
+          conflicts.push({
+            codigo: 'CONDUCTOR_OCUPADO',
+            mensaje: `Conductor reservado en jornada #${reservation.id}`,
+          })
+        }
+      }
+      const availability = buildAvailability(
+        await this.repository.getAvailabilityRecords(
+          input.busId,
+          input.conductorId,
+          null,
+          slot.inicioProgramado,
+          tx,
+        ),
+        slot.inicioProgramado,
+      )
+      for (const cause of availability.causas) {
+        if (cause.codigo === 'CONFLICTO_JORNADA' || cause.codigo.startsWith('BUS_')) continue
+        if (actor.rol.codigo === 'DESPACHADOR' && cause.codigo !== 'NOVEDAD_BLOQUEANTE') {
+          if (!conflicts.some((conflict) => conflict.codigo === 'RESTRICCION_TECNICA')) {
+            conflicts.push({
+              codigo: 'RESTRICCION_TECNICA',
+              mensaje: 'El bus requiere revisión administrativa antes de programarse',
+            })
+          }
+        } else {
+          conflicts.push({ codigo: cause.codigo, mensaje: cause.mensaje })
+        }
+      }
+      jornadas.push({
+        fecha: slot.fecha,
+        inicioProgramado: slot.inicioProgramado.toISOString(),
+        finProgramado: slot.finProgramado.toISOString(),
+        conflictos: conflicts,
+      })
+    }
+    return {
+      jornadas,
+      total: jornadas.length,
+      aptas: jornadas.filter((journey) => journey.conflictos.length === 0).length,
+      puedeConfirmar: jornadas.every((journey) => journey.conflictos.length === 0),
+    }
+  }
+
+  async previewPeriod(input: JourneyPeriodInput, actor: AuthenticatedUser) {
+    ensureDispatcherOrAdmin(actor)
+    return this.repository.transaction((tx) => this.evaluatePeriod(input, tx, actor))
+  }
+
+  async confirmPeriod(input: JourneyPeriodInput, actor: AuthenticatedUser) {
+    ensureDispatcherOrAdmin(actor)
+    try {
+      return await this.repository.transaction(async (tx) => {
+        await this.lockResources([input.busId], [input.conductorId], tx)
+        const preview = await this.evaluatePeriod(input, tx, actor)
+        if (!preview.puedeConfirmar) {
+          throw new AppError(
+            409,
+            'JOURNEY_PERIOD_CONFLICT',
+            'El período cambió o contiene conflictos; revise la vista previa',
+            {
+              jornadas: preview.jornadas.filter((journey) => journey.conflictos.length > 0),
+            },
+          )
+        }
+        const jornadas = [] as Array<{ id: number; fecha: string }>
+        for (const row of preview.jornadas) {
+          const created = await this.repository.create(
+            {
+              busId: input.busId,
+              conductorId: input.conductorId,
+              estado: 'PROGRAMADA',
+              finProgramado: new Date(row.finProgramado),
+              inicioProgramado: new Date(row.inicioProgramado),
+              programadaPorId: actor.id,
+              rutaId: input.rutaId ?? null,
+            },
+            tx,
+          )
+          jornadas.push({ id: created.id, fecha: row.fecha })
+          await createJourneyChangeAlert(
+            {
+              affectedDriverIds: [created.conductorId],
+              eventAt: created.createdAt,
+              journeyId: created.id,
+              occurrence: 'ALTA',
+            },
+            tx,
+          )
+        }
+        await evaluatePreventiveAlertsForBus(input.busId, tx)
+        return { creadas: jornadas.length, jornadas }
+      })
+    } catch (error) {
+      translateJourneyError(error)
+    }
+  }
 
   async reportClosureProblem(id: number, motivo: string, actor: AuthenticatedUser) {
     if (actor.rol.codigo !== 'CONDUCTOR')

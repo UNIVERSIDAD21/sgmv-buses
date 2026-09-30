@@ -5,6 +5,7 @@ import {
   cancelJourneySchema,
   reportClosureProblemSchema,
   createJourneySchema,
+  journeyPeriodSchema,
   journeyIdParamSchema,
   journeyReadingSchema,
   interruptJourneySchema,
@@ -17,6 +18,22 @@ import { JourneyService } from './journey.service.js'
 
 export class JourneyController {
   constructor(private readonly service = new JourneyService()) {}
+  previewPeriod: RequestHandler = async (request, response) => {
+    const input = journeyPeriodSchema.parse(request.body)
+    sendData(
+      response,
+      await this.service.previewPeriod(input, request.user!),
+      'Período previsualizado',
+    )
+  }
+
+  confirmPeriod: RequestHandler = async (request, response) => {
+    const input = journeyPeriodSchema.parse(request.body)
+    const result = await this.service.confirmPeriod(input, request.user!)
+    response.status(201)
+    sendData(response, result, 'Jornadas del período programadas')
+  }
+
   reconcileFinalReading: RequestHandler = async (request, response) => {
     const { jornadaId } = journeyIdParamSchema.parse(request.params)
     const input = reconcileFinalReadingSchema.parse(request.body)

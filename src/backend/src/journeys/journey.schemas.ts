@@ -71,6 +71,37 @@ export const createJourneySchema = z
     path: ['finProgramado'],
   })
 
+const localHour = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+export const journeyPeriodSchema = z
+  .object({
+    busId: entityIdSchema,
+    conductorId: entityIdSchema,
+    rutaId: entityIdSchema.optional(),
+    fechaInicio: z.iso.date(),
+    fechaFin: z.iso.date(),
+    diasSemana: z.array(z.number().int().min(1).max(7)).min(1).max(7),
+    horaInicio: localHour,
+    horaFin: localHour,
+    claveIdempotencia: z.uuid().optional(),
+  })
+  .strict()
+  .refine((value) => new Set(value.diasSemana).size === value.diasSemana.length, {
+    message: 'No repita días de la semana',
+    path: ['diasSemana'],
+  })
+  .refine((value) => value.horaInicio !== value.horaFin, {
+    message: 'El horario debe ser menor a 24 horas',
+    path: ['horaFin'],
+  })
+  .refine(
+    (value) => {
+      const days =
+        (Date.parse(`${value.fechaFin}T00:00:00Z`) - Date.parse(`${value.fechaInicio}T00:00:00Z`)) /
+        86_400_000
+      return days >= 0 && days < 31
+    },
+    { message: 'Seleccione un período de 1 a 31 días', path: ['fechaFin'] },
+  )
 export const journeyReadingSchema = z
   .object({
     fechaEvento: eventDate,
@@ -144,6 +175,7 @@ export const reassignJourneySchema = z
 
 export type CancelJourneyInput = z.infer<typeof cancelJourneySchema>
 export type CreateJourneyInput = z.infer<typeof createJourneySchema>
+export type JourneyPeriodInput = z.infer<typeof journeyPeriodSchema>
 export type JourneyReadingInput = z.infer<typeof journeyReadingSchema>
 export type InterruptJourneyInput = z.infer<typeof interruptJourneySchema>
 export type ReconcileFinalReadingInput = z.infer<typeof reconcileFinalReadingSchema>

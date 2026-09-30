@@ -6,6 +6,7 @@ import { BUS_STATUS_LABELS } from '../../domain/labels'
 import JourneyCard from './JourneyCard'
 import JourneyConfirmationDialog from './JourneyConfirmationDialog'
 import JourneyInterruptionDialog from './JourneyInterruptionDialog'
+import JourneyPeriodForm from './JourneyPeriodForm'
 import { JOURNEY_LABELS, closureOverdue, type JourneyAction } from './journey.view'
 import Button from '../../components/ui/Button'
 import ContextHint from '../../components/ui/ContextHint'
@@ -1012,14 +1013,23 @@ export default function JourneyPage() {
         </section>
       )}
 
-      {!loading && !error && !isDriver && options && (
-        <ScheduleForm
-          onCreated={async () => {
-            setFeedback('Jornada programada')
-            await refresh()
-          }}
-          options={options}
-        />
+      {!error && !isDriver && options && (
+        <div className="space-y-4">
+          <ScheduleForm
+            onCreated={async () => {
+              setFeedback('Jornada programada')
+              await refresh()
+            }}
+            options={options}
+          />
+          <JourneyPeriodForm
+            onCreated={async (count) => {
+              setFeedback(`${count} jornadas programadas por período`)
+              await refresh()
+            }}
+            options={options}
+          />
+        </div>
       )}
       {!loading && !error && focusedJourneyError?.journeyId === focusedJourneyId && (
         <StatePanel

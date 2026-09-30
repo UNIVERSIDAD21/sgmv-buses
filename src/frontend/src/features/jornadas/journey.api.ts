@@ -16,6 +16,44 @@ export interface JourneyScheduleInput {
   rutaId?: number
 }
 
+export interface JourneyPeriodInput {
+  busId: number
+  conductorId: number
+  rutaId?: number
+  fechaInicio: string
+  fechaFin: string
+  diasSemana: number[]
+  horaInicio: string
+  horaFin: string
+  claveIdempotencia: string
+}
+
+export interface JourneyPeriodPreview {
+  total: number
+  aptas: number
+  puedeConfirmar: boolean
+  jornadas: Array<{
+    fecha: string
+    inicioProgramado: string
+    finProgramado: string
+    conflictos: Array<{ codigo: string; mensaje: string }>
+  }>
+}
+
+export function previewJourneyPeriod(input: JourneyPeriodInput) {
+  return apiRequest<JourneyPeriodPreview>('/jornadas/periodo/previsualizar', {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function confirmJourneyPeriod(input: JourneyPeriodInput) {
+  return apiRequest<{ creadas: number; jornadas: Array<{ id: number; fecha: string }> }>(
+    '/jornadas/periodo/confirmar',
+    { body: JSON.stringify(input), method: 'POST' },
+  )
+}
+
 export interface JourneyReassignInput {
   simulacion?: JourneyScheduleInput['simulacion']
   busId?: number
