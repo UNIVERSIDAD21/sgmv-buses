@@ -119,3 +119,46 @@ export function reassignJourney(journeyId: number, input: JourneyReassignInput) 
     { body: JSON.stringify(input), method: 'POST' },
   )
 }
+
+export function interruptJourney(
+  journeyId: number,
+  input: {
+    fechaEvento: string
+    motivo: string
+    kilometrajeFinal?: number
+    motivoSinLectura?: string
+    observadoPorId?: number
+    motivoRespaldo?: string
+  },
+) {
+  return apiRequest<{ jornada: JourneyDto }>(`/jornadas/${journeyId}/interrumpir`, {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function reconcileJourneyReading(
+  journeyId: number,
+  input: {
+    kilometraje: number
+    observadoPorId: number
+    motivoRespaldo?: string
+    declaracionObservacion: string
+    confirmadaEnInterrupcion: true
+  },
+) {
+  return apiRequest<{ jornada: JourneyDto }>(`/jornadas/${journeyId}/conciliar-lectura-final`, {
+    body: JSON.stringify(input),
+    method: 'POST',
+  })
+}
+
+export function markJourneyReadingUnrecoverable(journeyId: number, motivo: string) {
+  return apiRequest<{ jornada: JourneyDto }>(
+    `/jornadas/${journeyId}/declarar-lectura-no-recuperable`,
+    {
+      body: JSON.stringify({ motivo }),
+      method: 'POST',
+    },
+  )
+}

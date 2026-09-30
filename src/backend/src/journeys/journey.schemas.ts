@@ -14,6 +14,7 @@ const simulationSchema = z
 export const journeyStateValues = [
   'PROGRAMADA',
   'EN_CURSO',
+  'INTERRUMPIDA',
   'FINALIZADA',
   'CANCELADA',
   'REASIGNADA',
@@ -82,6 +83,39 @@ export const journeyReadingSchema = z
   })
   .strict()
 
+export const interruptJourneySchema = z
+  .object({
+    fechaEvento: eventDate,
+    motivo: trimmedText(10, 500),
+    kilometrajeFinal: z.coerce.number().int().min(0).optional(),
+    motivoSinLectura: trimmedText(3, 500).optional(),
+    observadoPorId: entityIdSchema.optional(),
+    motivoRespaldo: trimmedText(3, 500).optional(),
+  })
+  .strict()
+  .refine(
+    (value) => (value.kilometrajeFinal === undefined) !== (value.motivoSinLectura === undefined),
+    {
+      message: 'Indique lectura física final o motivo de ausencia, nunca ambos',
+    },
+  )
+
+export const reconcileFinalReadingSchema = z
+  .object({
+    kilometraje: z.number().int().min(0),
+    observadoPorId: entityIdSchema,
+    motivoRespaldo: trimmedText(3, 500).optional(),
+    declaracionObservacion: trimmedText(20, 500),
+    confirmadaEnInterrupcion: z.literal(true),
+  })
+  .strict()
+
+export const markReadingUnrecoverableSchema = z
+  .object({
+    motivo: trimmedText(10, 500),
+  })
+  .strict()
+
 export const cancelJourneySchema = z
   .object({
     fechaEvento: eventDate,
@@ -111,5 +145,8 @@ export const reassignJourneySchema = z
 export type CancelJourneyInput = z.infer<typeof cancelJourneySchema>
 export type CreateJourneyInput = z.infer<typeof createJourneySchema>
 export type JourneyReadingInput = z.infer<typeof journeyReadingSchema>
+export type InterruptJourneyInput = z.infer<typeof interruptJourneySchema>
+export type ReconcileFinalReadingInput = z.infer<typeof reconcileFinalReadingSchema>
+export type MarkReadingUnrecoverableInput = z.infer<typeof markReadingUnrecoverableSchema>
 export type ListJourneysQuery = z.infer<typeof listJourneysQuerySchema>
 export type ReassignJourneyInput = z.infer<typeof reassignJourneySchema>

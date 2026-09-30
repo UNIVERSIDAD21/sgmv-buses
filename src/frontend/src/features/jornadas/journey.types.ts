@@ -1,6 +1,7 @@
 import type { BusStatus, RutaDto } from '../flota/fleet.types'
 
-export type JourneyStatus = 'PROGRAMADA' | 'EN_CURSO' | 'FINALIZADA' | 'CANCELADA' | 'REASIGNADA'
+export type JourneyStatus =
+  'PROGRAMADA' | 'EN_CURSO' | 'INTERRUMPIDA' | 'FINALIZADA' | 'CANCELADA' | 'REASIGNADA'
 
 export interface JourneyUserRefDto {
   id: number
@@ -29,6 +30,15 @@ export interface AvailabilityCauseDto {
 }
 
 export interface JourneyDto {
+  interrupcion?: {
+    interrumpidaPor?: JourneyUserRefDto | null
+    estadoConciliacion: 'PENDIENTE' | 'LECTURA_FINAL_REGISTRADA' | 'NO_RECUPERABLE'
+    motivoAusenciaLectura: string | null
+    motivoNoRecuperable: string | null
+    conciliadaAt: string | null
+    conciliadaPor: JourneyUserRefDto | null
+    detalleConciliacion: string | null
+  } | null
   lecturaReferencia?: { kilometraje: number; fechaLectura: string } | null
   cierrePendiente?: { reportadoAt: string; motivo: string; reportadoPor: JourneyUserRefDto } | null
   proyeccionDemo?: {
@@ -50,6 +60,9 @@ export interface JourneyDto {
     puedeFinalizar: boolean
     puedeIniciar: boolean
     puedeReasignar: boolean
+    puedeInterrumpir?: boolean
+    puedeConciliarLectura?: boolean
+    puedeMarcarNoRecuperable?: boolean
   }
   bus: {
     codigoInterno: string
@@ -74,6 +87,7 @@ export interface JourneyDto {
   lecturaFinal: JourneyReadingDto | null
   lecturaInicial: JourneyReadingDto | null
   motivoCambio: string | null
+  motivoSucesion?: string | null
   programadaPor: JourneyUserRefDto
   ruta: JourneyRouteRef | null
   updatedAt: string

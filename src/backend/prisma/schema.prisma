@@ -113,11 +113,20 @@ enum TipoMovimientoInventario {
 enum EstadoJornada {
   PROGRAMADA
   EN_CURSO
+  INTERRUMPIDA
   FINALIZADA
   CANCELADA
   REASIGNADA
 
   @@map("estado_jornada")
+}
+
+enum EstadoConciliacionLectura {
+  PENDIENTE
+  LECTURA_FINAL_REGISTRADA
+  NO_RECUPERABLE
+
+  @@map("estado_conciliacion_lectura")
 }
 
 enum TipoLectura {
@@ -264,6 +273,7 @@ model Usuario {
   jornadasCambiadas                 JornadaOperativa[]             @relation("JornadaCambioPor")
   jornadasIniciadas                 JornadaOperativa[]             @relation("JornadaIniciadaPor")
   jornadasFinalizadas               JornadaOperativa[]             @relation("JornadaFinalizadaPor")
+  jornadasConciliadas               JornadaOperativa[]             @relation("JornadaConciliadaPor")
   planesPreventivosCreados          PlanMantenimientoPreventivo[]  @relation("PlanCreadoPor")
   compatibilidadesDefinidas         CompatibilidadRepuesto[]       @relation("CompatibilidadDefinidaPor")
   consumosAutorizados               ConsumoRepuesto[]              @relation("ConsumoAutorizadoPor")
@@ -803,6 +813,13 @@ model Ruta {
 }
 
 model JornadaOperativa {
+  estadoConciliacionLectura EstadoConciliacionLectura? @map("estado_conciliacion_lectura")
+  motivoAusenciaLectura    String?                     @map("motivo_ausencia_lectura") @db.Text
+  conciliadaPorId          Int?                        @map("conciliada_por_id")
+  conciliadaAt             DateTime?                   @map("conciliada_at") @db.Timestamptz(6)
+  motivoNoRecuperable      String?                     @map("motivo_no_recuperable") @db.Text
+  detalleConciliacion      String?                     @map("detalle_conciliacion") @db.Text
+  motivoSucesion           String?                     @map("motivo_sucesion") @db.Text
   cierreReportadoAt DateTime? @map("cierre_reportado_at") @db.Timestamptz(6)
   motivoCierrePendiente String? @map("motivo_cierre_pendiente") @db.VarChar(500)
   ciclosCompletosSimulados Int? @map("ciclos_completos_simulados")
@@ -835,6 +852,7 @@ model JornadaOperativa {
   cambioPor       Usuario?          @relation("JornadaCambioPor", fields: [cambioPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   iniciadaPor     Usuario?          @relation("JornadaIniciadaPor", fields: [iniciadaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   finalizadaPor   Usuario?          @relation("JornadaFinalizadaPor", fields: [finalizadaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  conciliadaPor   Usuario?          @relation("JornadaConciliadaPor", fields: [conciliadaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   jornadaAnterior JornadaOperativa? @relation("JornadaSucesion", fields: [jornadaAnteriorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   jornadaSucesora JornadaOperativa? @relation("JornadaSucesion")
 
@@ -846,6 +864,7 @@ model JornadaOperativa {
   @@unique([id, busId])
   @@unique([id, busId, conductorId])
   @@index([busId, inicioProgramado, finProgramado])
+  @@index([estado, estadoConciliacionLectura])
   @@index([conductorId, inicioProgramado, finProgramado])
   @@index([rutaId])
   @@index([estado])

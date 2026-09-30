@@ -35,6 +35,7 @@ const journeyInclude = {
     },
   },
   cambioPor: { select: userRefSelect },
+  conciliadaPor: { select: userRefSelect },
   conductor: { select: userRefSelect },
   finalizadaPor: { select: userRefSelect },
   iniciadaPor: { select: userRefSelect },

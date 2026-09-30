@@ -16,6 +16,7 @@ const created = {
   buses: [] as string[],
   jornadas: [] as string[],
   lecturas: [] as string[],
+  ordenes: [] as string[],
   rutas: [] as string[],
   usuarios: [] as string[],
 }
@@ -28,6 +29,7 @@ interface JourneyFixture {
   conductorOtroId: number
   despachadorEmail: string
   mecanicoEmail: string
+  mecanicoId: number
 }
 
 function code(prefix: string) {
@@ -86,6 +88,7 @@ async function createFixture(): Promise<JourneyFixture> {
     conductorOtroId: otherDriver.id,
     despachadorEmail: dispatcher.email,
     mecanicoEmail: mechanic.email,
+    mecanicoId: mechanic.id,
   }
 }
 
@@ -160,6 +163,7 @@ async function cleanup() {
       where: {
         OR: [
           { busId: { in: created.buses } },
+          { ordenTrabajoId: { in: created.ordenes } },
           { jornadaOperativaId: { in: created.jornadas } },
           { novedad: { jornadaOperativaId: { in: created.jornadas } } },
           { ordenTrabajo: { jornadaOperativaId: { in: created.jornadas } } },
@@ -174,10 +178,24 @@ async function cleanup() {
     })
     await tx.alertaInterna.deleteMany({ where: { id: { in: alertIds } } })
     await tx.novedad.deleteMany({ where: { jornadaOperativaId: { in: created.jornadas } } })
-    await tx.ordenTrabajo.deleteMany({ where: { jornadaOperativaId: { in: created.jornadas } } })
     await tx.lecturaKilometraje.deleteMany({
       where: {
-        OR: [{ id: { in: created.lecturas } }, { jornadaOperativaId: { in: created.jornadas } }],
+        OR: [
+          { id: { in: created.lecturas } },
+          { jornadaOperativaId: { in: created.jornadas } },
+          { ordenTrabajoId: { in: created.ordenes } },
+        ],
+      },
+    })
+    await tx.actividadOrden.deleteMany({
+      where: { intervencion: { ordenTrabajoId: { in: created.ordenes } } },
+    })
+    await tx.intervencion.deleteMany({ where: { ordenTrabajoId: { in: created.ordenes } } })
+    await tx.ordenReasignacion.deleteMany({ where: { ordenTrabajoId: { in: created.ordenes } } })
+    await tx.ordenEstadoHistorial.deleteMany({ where: { ordenTrabajoId: { in: created.ordenes } } })
+    await tx.ordenTrabajo.deleteMany({
+      where: {
+        OR: [{ jornadaOperativaId: { in: created.jornadas } }, { id: { in: created.ordenes } }],
       },
     })
     await tx.jornadaOperativa.deleteMany({ where: { id: { in: created.jornadas } } })
@@ -894,5 +912,320 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
       .send({ conductorId: fixture.conductorId })
       .expect(404)
     await dispatcher.get(`/flota/buses/${bus.id}/asignaciones`).expect(200)
+  }, 60_000)
+
+  it('interrumpe antes del fin con lectura real y permite una sucesora con otro bus', async () => {
+    const original = await createBus()
+    const replacement = await createBus()
+    const operator = await createDriver('interrupcion-lectura')
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const driver = await loginAgent(operator.email)
+    const startAt = past(100)
+    const interruptAt = past(60)
+    const programmedEnd = past(20)
+    const scheduled = await programJourney(dispatcher, {
+      busId: original.id,
+      conductorId: operator.id,
+      inicioProgramado: past(110),
+      finProgramado: programmedEnd,
+    })
+    expect(scheduled.status).toBe(201)
+    const id = scheduled.body.data.jornada.id as string
+    await driver
+      .post(`/jornadas/${id}/iniciar`)
+      .send({ fechaEvento: startAt.toISOString(), kilometraje: 1000 })
+      .expect(200)
+    await dispatcher
+      .post(`/jornadas/${id}/interrumpir`)
+      .send({
+        fechaEvento: interruptAt.toISOString(),
+        motivo: 'El bus perdió potencia durante el recorrido',
+        kilometrajeFinal: 1025,
+      })
+      .expect(400)
+    const interrupted = await dispatcher
+      .post(`/jornadas/${id}/interrumpir`)
+      .send({
+        fechaEvento: interruptAt.toISOString(),
+        motivo: 'El bus perdió potencia durante el recorrido',
+        kilometrajeFinal: 1025,
+        observadoPorId: operator.id,
+        motivoRespaldo: 'Lectura comunicada por el Conductor al detenerse',
+      })
+      .expect(200)
+    expect(interrupted.body.data.jornada).toMatchObject({
+      estado: 'INTERRUMPIDA',
+      finReal: interruptAt.toISOString(),
+      lecturaFinal: { kilometraje: 1025, observadoPor: { id: operator.id } },
+      interrupcion: { estadoConciliacion: 'LECTURA_FINAL_REGISTRADA' },
+    })
+    expect(
+      (await prisma.bus.findUniqueOrThrow({ where: { id: original.id } })).estadoOperativo,
+    ).toBe('FUERA_DE_SERVICIO')
+    await dispatcher
+      .post(`/jornadas/${id}/reasignar`)
+      .send({
+        busId: original.id,
+        fechaEvento: past(55).toISOString(),
+        motivo: 'Continuidad del servicio',
+      })
+      .expect(400)
+    const successor = await dispatcher
+      .post(`/jornadas/${id}/reasignar`)
+      .send({
+        busId: replacement.id,
+        conductorId: operator.id,
+        fechaEvento: past(55).toISOString(),
+        inicioProgramado: past(45).toISOString(),
+        finProgramado: past(5).toISOString(),
+        motivo: 'Continuidad con bus sustituto',
+      })
+      .expect(201)
+    created.jornadas.push(successor.body.data.jornadaSucesora.id as string)
+    expect(successor.body.data.jornadaAnterior.estado).toBe('INTERRUMPIDA')
+    expect(successor.body.data.jornadaSucesora.jornadaAnteriorId).toBe(id)
+    expect(successor.body.data.jornadaSucesora.bus.id).toBe(replacement.id)
+    expect(successor.body.data.jornadaSucesora.motivoSucesion).toBe('Continuidad con bus sustituto')
+    await dispatcher
+      .post(`/jornadas/${id}/reasignar`)
+      .send({
+        busId: replacement.id,
+        fechaEvento: past(54).toISOString(),
+        motivo: 'Duplicado de reemplazo',
+      })
+      .expect(409)
+  }, 60_000)
+
+  it('interrumpe sin lectura, conserva motivo y concilia solo un dato observado al detenerse', async () => {
+    const bus = await createBus()
+    const operator = await createDriver('interrupcion-sin-lectura')
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const driver = await loginAgent(operator.email)
+    const mechanic = await loginAgent(fixture.mecanicoEmail)
+    const startAt = past(100)
+    const interruptAt = past(55)
+    const scheduled = await programJourney(dispatcher, {
+      busId: bus.id,
+      conductorId: operator.id,
+      inicioProgramado: past(110),
+      finProgramado: past(10),
+    })
+    expect(scheduled.status).toBe(201)
+    const id = scheduled.body.data.jornada.id as string
+    await driver
+      .post(`/jornadas/${id}/iniciar`)
+      .send({ fechaEvento: startAt.toISOString(), kilometraje: 2000 })
+      .expect(200)
+    await driver
+      .post(`/jornadas/${id}/interrumpir`)
+      .send({
+        fechaEvento: interruptAt.toISOString(),
+        motivo: 'El bus se detuvo por falla',
+        motivoSinLectura: 'Odómetro inaccesible',
+      })
+      .expect(403)
+    const interrupted = await dispatcher
+      .post(`/jornadas/${id}/interrumpir`)
+      .send({
+        fechaEvento: interruptAt.toISOString(),
+        motivo: 'El bus se detuvo por falla',
+        motivoSinLectura: 'Odómetro inaccesible',
+      })
+      .expect(200)
+    expect(interrupted.body.data.jornada).toMatchObject({
+      estado: 'INTERRUMPIDA',
+      lecturaFinal: null,
+      interrupcion: {
+        estadoConciliacion: 'PENDIENTE',
+        motivoAusenciaLectura: 'Odómetro inaccesible',
+      },
+    })
+    await mechanic
+      .post(`/jornadas/${id}/conciliar-lectura-final`)
+      .send({
+        kilometraje: 2010,
+        observadoPorId: operator.id,
+        declaracionObservacion: 'Se observó al detenerse',
+      })
+      .expect(403)
+    await dispatcher
+      .post(`/jornadas/${id}/conciliar-lectura-final`)
+      .send({
+        kilometraje: 2010,
+        observadoPorId: operator.id,
+        declaracionObservacion: 'El Conductor anotó la lectura al detenerse y la comunicó después',
+        motivoRespaldo: 'El Conductor entregó después su anotación física del momento',
+      })
+      .expect(400)
+    await dispatcher
+      .post(`/jornadas/${id}/conciliar-lectura-final`)
+      .send({
+        kilometraje: 2010,
+        observadoPorId: operator.id,
+        declaracionObservacion: 'El Conductor anotó la lectura al detenerse y la comunicó después',
+        motivoRespaldo: 'El Conductor entregó después su anotación física del momento',
+        confirmadaEnInterrupcion: true,
+      })
+      .expect(200)
+    const reading = await prisma.lecturaKilometraje.findFirstOrThrow({
+      where: { jornadaOperativaId: Number(id), tipo: 'FIN_JORNADA' },
+    })
+    expect(reading.fechaLectura).toEqual(interruptAt)
+    expect(reading.observadoPorId).toBe(operator.id)
+    const reconciled = await prisma.jornadaOperativa.findUniqueOrThrow({
+      where: { id: Number(id) },
+    })
+    expect(reconciled.motivoAusenciaLectura).toBe('Odómetro inaccesible')
+    await dispatcher
+      .post(`/jornadas/${id}/declarar-lectura-no-recuperable`)
+      .send({ motivo: 'Otro cierre' })
+      .expect(403)
+  }, 60_000)
+
+  it('declara la lectura no recuperable sin alterar el odómetro ni rehabilitar el bus', async () => {
+    const bus = await createBus()
+    const operator = await createDriver('dato-irrecuperable')
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const admin = await loginAgent(fixture.adminEmail)
+    const driver = await loginAgent(operator.email)
+    const scheduled = await programJourney(dispatcher, {
+      busId: bus.id,
+      conductorId: operator.id,
+      inicioProgramado: past(100),
+      finProgramado: past(10),
+    })
+    expect(scheduled.status).toBe(201)
+    const id = scheduled.body.data.jornada.id as string
+    await driver
+      .post(`/jornadas/${id}/iniciar`)
+      .send({ fechaEvento: past(90).toISOString(), kilometraje: 3000 })
+      .expect(200)
+    await dispatcher
+      .post(`/jornadas/${id}/interrumpir`)
+      .send({
+        fechaEvento: past(50).toISOString(),
+        motivo: 'Avería del tablero de instrumentos',
+        motivoSinLectura: 'Pantalla del odómetro apagada',
+      })
+      .expect(200)
+    const before = await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } })
+    await dispatcher
+      .post(`/jornadas/${id}/declarar-lectura-no-recuperable`)
+      .send({
+        motivo: 'El tablero averiado no conservó la lectura del tramo',
+      })
+      .expect(403)
+    const closed = await admin
+      .post(`/jornadas/${id}/declarar-lectura-no-recuperable`)
+      .send({
+        motivo: 'El tablero averiado no conservó la lectura del tramo',
+      })
+      .expect(200)
+    expect(closed.body.data.jornada.interrupcion.estadoConciliacion).toBe('NO_RECUPERABLE')
+    await admin
+      .post(`/jornadas/${id}/declarar-lectura-no-recuperable`)
+      .send({
+        motivo: 'Repetición administrativa',
+      })
+      .expect(409)
+    await dispatcher
+      .post(`/jornadas/${id}/conciliar-lectura-final`)
+      .send({
+        kilometraje: 3020,
+        observadoPorId: operator.id,
+        motivoRespaldo: 'Valor comunicado después',
+        declaracionObservacion: 'Se encontró una lectura en taller más tarde',
+        confirmadaEnInterrupcion: true,
+      })
+      .expect(409)
+    const after = await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } })
+    expect(after.kilometrajeActual).toBe(before.kilometrajeActual)
+    expect(after.estadoOperativo).toBe('FUERA_DE_SERVICIO')
+    expect(
+      await prisma.lecturaKilometraje.count({
+        where: { jornadaOperativaId: Number(id), tipo: 'FIN_JORNADA' },
+      }),
+    ).toBe(0)
+    await expect(
+      prisma.jornadaOperativa.update({
+        where: { id: Number(id) },
+        data: { motivoNoRecuperable: 'Cambio encubierto de la decisión' },
+      }),
+    ).rejects.toThrow()
+
+    const order = await admin
+      .post('/ordenes-trabajo')
+      .send({
+        busId: bus.id,
+        descripcion: 'Revisar tablero y odómetro después de la interrupción',
+        prioridad: 'ALTA',
+      })
+      .expect(201)
+    const orderId = order.body.data.orden.id as string
+    created.ordenes.push(orderId)
+    const mechanic = await loginAgent(fixture.mecanicoEmail)
+    await admin
+      .post(`/ordenes-trabajo/${orderId}/asignar`)
+      .send({ tecnicoId: fixture.mecanicoId })
+      .expect(200)
+    await mechanic.post(`/ordenes-trabajo/${orderId}/iniciar`).send({}).expect(200)
+    const workshopAt = new Date()
+    await mechanic
+      .post(`/ordenes-trabajo/${orderId}/lecturas`)
+      .send({
+        fechaEvento: workshopAt.toISOString(),
+        kilometraje: 3020,
+        motivo: 'Lectura física posterior en el taller',
+        tipo: 'INGRESO_TALLER',
+      })
+      .expect(201)
+    const workshopReading = await prisma.lecturaKilometraje.findFirstOrThrow({
+      where: { ordenTrabajoId: Number(orderId), tipo: 'INGRESO_TALLER' },
+    })
+    expect(workshopReading.fechaLectura).toEqual(workshopAt)
+    expect(workshopReading.jornadaOperativaId).toBeNull()
+    await mechanic
+      .patch(`/ordenes-trabajo/${orderId}/intervencion`)
+      .send({
+        diagnostico: 'Se reparó el tablero de instrumentos y se verificó el odómetro',
+        observaciones: 'La lectura histórica del tramo no pudo reconstruirse',
+      })
+      .expect(200)
+    await mechanic
+      .post(`/ordenes-trabajo/${orderId}/actividades`)
+      .send({
+        descripcion: 'Reparación y verificación física del odómetro',
+      })
+      .expect(201)
+    await mechanic.post(`/ordenes-trabajo/${orderId}/completar`).send({}).expect(200)
+    await admin
+      .post(`/ordenes-trabajo/${orderId}/cerrar`)
+      .send({
+        observacion: 'Reparación validada; no se imputa kilometraje al tramo interrumpido',
+      })
+      .expect(200)
+    await admin
+      .post(`/flota/buses/${bus.id}/estado`)
+      .send({
+        estadoNuevo: 'OPERATIVO',
+        motivo: 'Tablero reparado y orden técnica cerrada',
+      })
+      .expect(200)
+    const next = await programJourney(dispatcher, {
+      busId: bus.id,
+      conductorId: operator.id,
+      inicioProgramado: new Date(Date.now() + 3_600_000),
+      finProgramado: new Date(Date.now() + 3 * 3_600_000),
+    })
+    expect(next.status).toBe(201)
+    expect(
+      await prisma.lecturaKilometraje.count({
+        where: { jornadaOperativaId: Number(id), tipo: 'FIN_JORNADA' },
+      }),
+    ).toBe(0)
+    expect(
+      (await prisma.jornadaOperativa.findUniqueOrThrow({ where: { id: Number(id) } }))
+        .estadoConciliacionLectura,
+    ).toBe('NO_RECUPERABLE')
   }, 60_000)
 })

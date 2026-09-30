@@ -7,6 +7,9 @@ import {
   createJourneySchema,
   journeyIdParamSchema,
   journeyReadingSchema,
+  interruptJourneySchema,
+  reconcileFinalReadingSchema,
+  markReadingUnrecoverableSchema,
   listJourneysQuerySchema,
   reassignJourneySchema,
 } from './journey.schemas.js'
@@ -14,6 +17,33 @@ import { JourneyService } from './journey.service.js'
 
 export class JourneyController {
   constructor(private readonly service = new JourneyService()) {}
+  reconcileFinalReading: RequestHandler = async (request, response) => {
+    const { jornadaId } = journeyIdParamSchema.parse(request.params)
+    const input = reconcileFinalReadingSchema.parse(request.body)
+    sendData(
+      response,
+      await this.service.reconcileFinalReading(jornadaId, input, request.user!),
+      'Lectura final conciliada',
+    )
+  }
+  markReadingUnrecoverable: RequestHandler = async (request, response) => {
+    const { jornadaId } = journeyIdParamSchema.parse(request.params)
+    const input = markReadingUnrecoverableSchema.parse(request.body)
+    sendData(
+      response,
+      await this.service.markReadingUnrecoverable(jornadaId, input, request.user!),
+      'Lectura final declarada no recuperable',
+    )
+  }
+  interrupt: RequestHandler = async (request, response) => {
+    const { jornadaId } = journeyIdParamSchema.parse(request.params)
+    const input = interruptJourneySchema.parse(request.body)
+    sendData(
+      response,
+      await this.service.interrupt(jornadaId, input, request.user!),
+      'Jornada interrumpida',
+    )
+  }
   reportClosureProblem: RequestHandler = async (request, response) => {
     const { jornadaId } = journeyIdParamSchema.parse(request.params)
     const { motivo } = reportClosureProblemSchema.parse(request.body)

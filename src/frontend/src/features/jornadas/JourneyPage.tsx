@@ -5,6 +5,7 @@ import Badge from '../../components/ui/Badge'
 import { BUS_STATUS_LABELS } from '../../domain/labels'
 import JourneyCard from './JourneyCard'
 import JourneyConfirmationDialog from './JourneyConfirmationDialog'
+import JourneyInterruptionDialog from './JourneyInterruptionDialog'
 import { JOURNEY_LABELS, closureOverdue, type JourneyAction } from './journey.view'
 import Button from '../../components/ui/Button'
 import ContextHint from '../../components/ui/ContextHint'
@@ -371,7 +372,7 @@ function ActionDialog({
   onCompleted,
   options,
 }: {
-  action: Exclude<JourneyAction, 'start' | 'finish'>
+  action: Exclude<JourneyAction, 'start' | 'finish' | 'interrupt' | 'reconcile' | 'unrecoverable'>
   journey: JourneyDto
   onClose: () => void
   onCompleted: (message: string) => Promise<void>
@@ -387,11 +388,13 @@ function ActionDialog({
   const [observerChoice, setObserverChoice] = useState<'self' | 'driver' | ''>('')
   const [backupReason, setBackupReason] = useState('')
   const [motivo, setMotivo] = useState('')
-  const [busId, setBusId] = useState(String(journey.bus.id))
+  const [busId, setBusId] = useState(
+    journey.estado === 'INTERRUMPIDA' ? '' : String(journey.bus.id),
+  )
   const [conductorId, setConductorId] = useState(String(journey.conductor.id))
   const [rutaId, setRutaId] = useState(journey.ruta?.id ?? '')
   const [inicioProgramado, setInicioProgramado] = useState(
-    journey.estado === 'EN_CURSO'
+    journey.estado === 'EN_CURSO' || journey.estado === 'INTERRUMPIDA'
       ? toLocalInput(now)
       : toLocalInput(new Date(journey.inicioProgramado)),
   )
@@ -478,6 +481,10 @@ function ActionDialog({
           setError('Seleccione bus, conductor y un horario válido para el nuevo tramo.')
           return
         }
+        if (journey.estado === 'INTERRUMPIDA' && Number(busId) === journey.bus.id) {
+          setError('Seleccione un bus sustituto distinto del bus interrumpido.')
+          return
+        }
         await reassignJourney(journey.id, {
           busId: Number(busId),
           conductorId: Number(conductorId),
@@ -497,7 +504,11 @@ function ActionDialog({
               }
             : {}),
         })
-        await onCompleted('Cambio de bus o conductor registrado sin perder el historial')
+        await onCompleted(
+          journey.estado === 'INTERRUMPIDA'
+            ? 'Tramo sucesor creado con bus sustituto, sin alterar la interrupción'
+            : 'Cambio de bus o conductor registrado sin perder el historial',
+        )
       }
       onClose()
     } catch (submitError) {
@@ -510,7 +521,10 @@ function ActionDialog({
   const title = {
     report: 'Informar cierre pendiente',
     cancel: 'Cancelar jornada',
-    reassign: 'Cambiar bus o conductor',
+    reassign:
+      journey.estado === 'INTERRUMPIDA'
+        ? 'Crear tramo con bus sustituto'
+        : 'Cambiar bus o conductor',
   }[action]
 
   return (
@@ -615,9 +629,11 @@ function ActionDialog({
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
               <p className="font-semibold text-slate-900">Estado del tramo actual</p>
               <p className="mt-1">
-                {journey.estado === 'EN_CURSO'
-                  ? 'Está en curso: se cerrará con la lectura final que registre ahora.'
-                  : 'Aún no inició: se conservará como tramo programado reemplazado.'}
+                {journey.estado === 'INTERRUMPIDA'
+                  ? 'El tramo interrumpido conserva su estado y su conciliación. Se creará un tramo sucesor con otro bus.'
+                  : journey.estado === 'EN_CURSO'
+                    ? 'Está en curso: se cerrará con la lectura final que registre ahora.'
+                    : 'Aún no inició: se conservará como tramo programado reemplazado.'}
               </p>
             </div>
           </>
@@ -641,13 +657,19 @@ function ActionDialog({
               <select
                 className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
                 onChange={(event) => setBusId(event.target.value)}
+                required
                 value={busId}
               >
-                {options.buses.map((bus) => (
-                  <option key={bus.id} value={bus.id}>
-                    {bus.codigoInterno} · {bus.placa}
-                  </option>
-                ))}
+                {journey.estado === 'INTERRUMPIDA' && (
+                  <option value="">Seleccione bus sustituto</option>
+                )}
+                {options.buses
+                  .filter((bus) => journey.estado !== 'INTERRUMPIDA' || bus.id !== journey.bus.id)
+                  .map((bus) => (
+                    <option key={bus.id} value={bus.id}>
+                      {bus.codigoInterno} · {bus.placa}
+                    </option>
+                  ))}
               </select>
             </label>
             <label className="text-sm font-medium text-slate-700">
@@ -740,7 +762,9 @@ function ActionDialog({
             <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950 sm:col-span-2">
               <h3 className="font-semibold">Resumen antes de confirmar</h3>
               <p className="mt-1">
-                El tramo actual quedará registrado como reemplazado por:{' '}
+                {journey.estado === 'INTERRUMPIDA'
+                  ? 'El tramo interrumpido tendrá sucesor en:'
+                  : 'El tramo actual quedará registrado como reemplazado por:'}{' '}
                 {selectedReplacementBus?.codigoInterno ?? 'bus pendiente'} ·{' '}
                 {selectedReplacementDriver?.nombre ?? 'conductor pendiente'}.
               </p>
@@ -1106,7 +1130,17 @@ export default function JourneyPage() {
         </section>
       )}
 
-      {operation && (operation.action === 'start' || operation.action === 'finish') ? (
+      {operation &&
+      (operation.action === 'interrupt' ||
+        operation.action === 'reconcile' ||
+        operation.action === 'unrecoverable') ? (
+        <JourneyInterruptionDialog
+          action={operation.action}
+          journey={operation.journey}
+          onClose={() => setOperation(null)}
+          onCompleted={completeOperation}
+        />
+      ) : operation && (operation.action === 'start' || operation.action === 'finish') ? (
         <JourneyConfirmationDialog
           action={operation.action}
           journey={operation.journey}
@@ -1116,7 +1150,12 @@ export default function JourneyPage() {
       ) : (
         operation && (
           <ActionDialog
-            action={operation.action as Exclude<JourneyAction, 'start' | 'finish'>}
+            action={
+              operation.action as Exclude<
+                JourneyAction,
+                'start' | 'finish' | 'interrupt' | 'reconcile' | 'unrecoverable'
+              >
+            }
             journey={operation.journey}
             onClose={() => setOperation(null)}
             onCompleted={completeOperation}

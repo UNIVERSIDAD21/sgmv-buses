@@ -56,6 +56,24 @@ journeyRoutes.post(
   idempotent(controller.finish),
 )
 journeyRoutes.post(
+  '/:jornadaId/interrumpir',
+  enforceAllowedOrigin,
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
+  idempotent(controller.interrupt),
+)
+journeyRoutes.post(
+  '/:jornadaId/conciliar-lectura-final',
+  enforceAllowedOrigin,
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
+  idempotent(controller.reconcileFinalReading),
+)
+journeyRoutes.post(
+  '/:jornadaId/declarar-lectura-no-recuperable',
+  enforceAllowedOrigin,
+  authorizeRoles('ADMINISTRADOR'),
+  idempotent(controller.markReadingUnrecoverable),
+)
+journeyRoutes.post(
   '/:jornadaId/cancelar',
   enforceAllowedOrigin,
   authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),

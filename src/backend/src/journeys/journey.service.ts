@@ -19,8 +19,11 @@ import {
 import type {
   CancelJourneyInput,
   CreateJourneyInput,
+  InterruptJourneyInput,
   JourneyReadingInput,
   ListJourneysQuery,
+  MarkReadingUnrecoverableInput,
+  ReconcileFinalReadingInput,
   ReassignJourneyInput,
 } from './journey.schemas.js'
 import type {
@@ -31,7 +34,12 @@ import type {
   JourneyUserRefDto,
 } from './journey.types.js'
 
-const TERMINAL_STATES = new Set<EstadoJornada>(['FINALIZADA', 'CANCELADA', 'REASIGNADA'])
+const TERMINAL_STATES = new Set<EstadoJornada>([
+  'FINALIZADA',
+  'CANCELADA',
+  'REASIGNADA',
+  'INTERRUMPIDA',
+])
 
 function ensureDispatcherOrAdmin(actor: AuthenticatedUser) {
   if (actor.rol.codigo !== 'ADMINISTRADOR' && actor.rol.codigo !== 'DESPACHADOR') {
@@ -140,7 +148,19 @@ function buildActions(
       journey.inicioProgramado <= new Date() &&
       availability.disponible,
     puedeReasignar:
-      dispatcher && (journey.estado === 'PROGRAMADA' || journey.estado === 'EN_CURSO'),
+      dispatcher &&
+      (journey.estado === 'PROGRAMADA' ||
+        journey.estado === 'EN_CURSO' ||
+        (journey.estado === 'INTERRUMPIDA' && !journey.jornadaSucesora)),
+    puedeInterrumpir: dispatcher && journey.estado === 'EN_CURSO',
+    puedeConciliarLectura:
+      dispatcher &&
+      journey.estado === 'INTERRUMPIDA' &&
+      journey.estadoConciliacionLectura === 'PENDIENTE',
+    puedeMarcarNoRecuperable:
+      actor.rol.codigo === 'ADMINISTRADOR' &&
+      journey.estado === 'INTERRUMPIDA' &&
+      journey.estadoConciliacionLectura === 'PENDIENTE',
   }
 }
 
@@ -155,6 +175,18 @@ function mapJourney(
   const lecturaFinal = journey.lecturasKilometraje.find((reading) => reading.tipo === 'FIN_JORNADA')
 
   return {
+    interrupcion:
+      journey.estado === 'INTERRUMPIDA' && journey.estadoConciliacionLectura
+        ? {
+            interrumpidaPor: journey.cambioPor ? mapUser(journey.cambioPor) : null,
+            estadoConciliacion: journey.estadoConciliacionLectura,
+            motivoAusenciaLectura: journey.motivoAusenciaLectura,
+            motivoNoRecuperable: journey.motivoNoRecuperable,
+            conciliadaAt: journey.conciliadaAt?.toISOString() ?? null,
+            conciliadaPor: journey.conciliadaPor ? mapUser(journey.conciliadaPor) : null,
+            detalleConciliacion: journey.detalleConciliacion,
+          }
+        : null,
     acciones: buildActions(journey, actor, availability),
     cierrePendiente:
       journey.cierreReportadoAt && journey.motivoCierrePendiente
@@ -201,6 +233,7 @@ function mapJourney(
     lecturaFinal: lecturaFinal ? mapReading(lecturaFinal) : null,
     lecturaInicial: lecturaInicial ? mapReading(lecturaInicial) : null,
     motivoCambio: journey.motivoCambio,
+    motivoSucesion: journey.motivoSucesion,
     programadaPor: mapUser(journey.programadaPor),
     ruta: journey.ruta ? mapRouteReference(journey.ruta) : null,
     updatedAt: journey.updatedAt.toISOString(),
@@ -398,7 +431,6 @@ export class JourneyService {
             'El fin no puede preceder al inicio real',
           )
         }
-
         await this.repository.update(
           id,
           {
@@ -444,6 +476,207 @@ export class JourneyService {
     } catch (error) {
       translateJourneyError(error)
     }
+  }
+
+  async interrupt(id: number, input: InterruptJourneyInput, actor: AuthenticatedUser) {
+    ensureDispatcherOrAdmin(actor)
+    const eventDate = new Date(input.fechaEvento)
+    ensureEventDate(eventDate)
+    if (input.kilometrajeFinal === undefined && (input.observadoPorId || input.motivoRespaldo)) {
+      throw new AppError(
+        400,
+        'UNEXPECTED_MILEAGE_PROVENANCE',
+        'Sin lectura no se declara observador ni respaldo',
+      )
+    }
+
+    try {
+      return await this.repository.transaction(async (tx) => {
+        const snapshot = await this.repository.findById(id, tx)
+        if (!snapshot) throw new AppError(404, 'JOURNEY_NOT_FOUND', 'Jornada no encontrada')
+        await this.lockResources([snapshot.busId], [snapshot.conductorId], tx)
+        await this.repository.lockJourney(id, tx)
+        const journey = await this.repository.findById(id, tx)
+        if (!journey || journey.estado !== 'EN_CURSO') {
+          throw new AppError(
+            409,
+            'INVALID_JOURNEY_TRANSITION',
+            'Solo se interrumpe una jornada en curso',
+          )
+        }
+        if (!journey.inicioReal || eventDate < journey.inicioReal) {
+          throw new AppError(
+            409,
+            'INVALID_EVENT_SEQUENCE',
+            'La interrupción no puede preceder al inicio real',
+          )
+        }
+
+        const hasReading = input.kilometrajeFinal !== undefined
+        const observer = hasReading ? resolveJourneyObserver(input, journey, actor) : null
+        if (hasReading && !observer?.observerId) {
+          throw new AppError(
+            400,
+            'MILEAGE_OBSERVER_REQUIRED',
+            'Identifique quién observó físicamente el odómetro al interrumpir',
+          )
+        }
+        await this.repository.update(
+          id,
+          {
+            estado: 'INTERRUMPIDA',
+            finReal: eventDate,
+            finalizadaPorId: actor.id,
+            cambioPorId: actor.id,
+            fechaCambio: eventDate,
+            motivoCambio: input.motivo.trim(),
+            estadoConciliacionLectura: hasReading ? 'LECTURA_FINAL_REGISTRADA' : 'PENDIENTE',
+            motivoAusenciaLectura: hasReading ? null : input.motivoSinLectura!.trim(),
+            ...(hasReading ? { conciliadaPorId: actor.id, conciliadaAt: new Date() } : {}),
+          },
+          tx,
+        )
+        if (hasReading) {
+          await this.repository.registerJourneyReading(
+            {
+              actorId: actor.id,
+              ...observer!,
+              busId: journey.busId,
+              eventDate,
+              journeyId: journey.id,
+              mileage: input.kilometrajeFinal!,
+              type: 'FIN_JORNADA',
+            },
+            tx,
+          )
+        }
+
+        if (journey.bus.estadoOperativo === 'OPERATIVO') {
+          await tx.bus.update({
+            where: { id: journey.busId },
+            data: { estadoOperativo: 'FUERA_DE_SERVICIO' },
+          })
+          await tx.busEstadoHistorial.create({
+            data: {
+              busId: journey.busId,
+              cambiadoPorId: actor.id,
+              estadoAnterior: 'OPERATIVO',
+              estadoNuevo: 'FUERA_DE_SERVICIO',
+              motivo: `Interrupción operativa de jornada #${journey.id}: ${input.motivo.trim()}`,
+            },
+          })
+        }
+
+        const updated = await this.repository.findById(id, tx)
+        await evaluateJourneyProjectionAlerts(id, tx)
+        return { jornada: await this.toDto(updated!, actor, eventDate, tx) }
+      })
+    } catch (error) {
+      translateJourneyError(error)
+    }
+  }
+
+  async reconcileFinalReading(
+    id: number,
+    input: ReconcileFinalReadingInput,
+    actor: AuthenticatedUser,
+  ) {
+    ensureDispatcherOrAdmin(actor)
+    try {
+      return await this.repository.transaction(async (tx) => {
+        const snapshot = await this.repository.findById(id, tx)
+        if (!snapshot) throw new AppError(404, 'JOURNEY_NOT_FOUND', 'Jornada no encontrada')
+        await this.lockResources([snapshot.busId], [snapshot.conductorId], tx)
+        await this.repository.lockJourney(id, tx)
+        const journey = await this.repository.findById(id, tx)
+        if (
+          !journey ||
+          journey.estado !== 'INTERRUMPIDA' ||
+          journey.estadoConciliacionLectura !== 'PENDIENTE' ||
+          !journey.finReal
+        ) {
+          throw new AppError(
+            409,
+            'INVALID_RECONCILIATION',
+            'Solo se concilia una interrupción con lectura pendiente',
+          )
+        }
+        const observer = resolveJourneyObserver(input, journey, actor)
+        if (!observer.observerId) {
+          throw new AppError(
+            400,
+            'MILEAGE_OBSERVER_REQUIRED',
+            'Identifique quién observó físicamente el odómetro al interrumpir',
+          )
+        }
+        await this.repository.update(
+          id,
+          {
+            estadoConciliacionLectura: 'LECTURA_FINAL_REGISTRADA',
+            conciliadaPorId: actor.id,
+            conciliadaAt: new Date(),
+            detalleConciliacion: input.declaracionObservacion.trim(),
+          },
+          tx,
+        )
+        await this.repository.registerJourneyReading(
+          {
+            actorId: actor.id,
+            ...observer,
+            busId: journey.busId,
+            eventDate: journey.finReal,
+            journeyId: journey.id,
+            mileage: input.kilometraje,
+            type: 'FIN_JORNADA',
+          },
+          tx,
+        )
+        const updated = await this.repository.findById(id, tx)
+        await evaluateJourneyProjectionAlerts(id, tx)
+        return { jornada: await this.toDto(updated!, actor, new Date(), tx) }
+      })
+    } catch (error) {
+      translateJourneyError(error)
+    }
+  }
+
+  async markReadingUnrecoverable(
+    id: number,
+    input: MarkReadingUnrecoverableInput,
+    actor: AuthenticatedUser,
+  ) {
+    if (actor.rol.codigo !== 'ADMINISTRADOR') {
+      throw new AppError(
+        403,
+        'FORBIDDEN',
+        'Solo Administración puede cerrar la conciliación sin lectura',
+      )
+    }
+    return this.repository.transaction(async (tx) => {
+      await this.repository.lockJourney(id, tx)
+      const journey = await this.repository.findById(id, tx)
+      if (!journey) throw new AppError(404, 'JOURNEY_NOT_FOUND', 'Jornada no encontrada')
+      if (journey.estado !== 'INTERRUMPIDA' || journey.estadoConciliacionLectura !== 'PENDIENTE') {
+        throw new AppError(
+          409,
+          'INVALID_RECONCILIATION',
+          'La conciliación ya se cerró o no corresponde a una interrupción',
+        )
+      }
+      await this.repository.update(
+        id,
+        {
+          estadoConciliacionLectura: 'NO_RECUPERABLE',
+          conciliadaPorId: actor.id,
+          conciliadaAt: new Date(),
+          motivoNoRecuperable: input.motivo.trim(),
+          detalleConciliacion: input.motivo.trim(),
+        },
+        tx,
+      )
+      const updated = await this.repository.findById(id, tx)
+      return { jornada: await this.toDto(updated!, actor, new Date(), tx) }
+    })
   }
 
   async create(input: CreateJourneyInput, actor: AuthenticatedUser) {
@@ -659,7 +892,11 @@ export class JourneyService {
       return await this.repository.transaction(async (tx) => {
         const snapshot = await this.repository.findById(id, tx)
         if (!snapshot) throw new AppError(404, 'JOURNEY_NOT_FOUND', 'Jornada no encontrada')
-        if (snapshot.estado !== 'PROGRAMADA' && snapshot.estado !== 'EN_CURSO') {
+        if (
+          snapshot.estado !== 'PROGRAMADA' &&
+          snapshot.estado !== 'EN_CURSO' &&
+          snapshot.estado !== 'INTERRUMPIDA'
+        ) {
           throw new AppError(
             409,
             'INVALID_JOURNEY_TRANSITION',
@@ -668,11 +905,18 @@ export class JourneyService {
         }
 
         const busId = input.busId ?? snapshot.busId
+        if (snapshot.estado === 'INTERRUMPIDA' && busId === snapshot.busId) {
+          throw new AppError(
+            400,
+            'REPLACEMENT_BUS_REQUIRED',
+            'La sucesora necesita un bus sustituto',
+          )
+        }
         const conductorId = input.conductorId ?? snapshot.conductorId
         const rutaId = input.rutaId === undefined ? snapshot.rutaId : input.rutaId
         const inicioProgramado = input.inicioProgramado
           ? new Date(input.inicioProgramado)
-          : snapshot.estado === 'EN_CURSO'
+          : snapshot.estado === 'EN_CURSO' || snapshot.estado === 'INTERRUMPIDA'
             ? eventDate
             : snapshot.inicioProgramado
         const finProgramado = input.finProgramado
@@ -686,7 +930,11 @@ export class JourneyService {
             'El inicio programado debe ser anterior al fin programado',
           )
         }
-        if (snapshot.estado === 'EN_CURSO' && inicioProgramado < eventDate) {
+        if (
+          (snapshot.estado === 'EN_CURSO' && inicioProgramado < eventDate) ||
+          (snapshot.estado === 'INTERRUMPIDA' &&
+            (!snapshot.finReal || inicioProgramado < snapshot.finReal))
+        ) {
           throw new AppError(
             400,
             'INVALID_SUCCESSOR_START',
@@ -707,6 +955,13 @@ export class JourneyService {
             'Debe cerrar el tramo en curso con kilometraje final',
           )
         }
+        if (snapshot.estado === 'INTERRUMPIDA' && input.kilometrajeFinal !== undefined) {
+          throw new AppError(
+            400,
+            'UNEXPECTED_FINAL_MILEAGE',
+            'La sucesora no declara la lectura del tramo interrumpido',
+          )
+        }
 
         await this.lockResources([snapshot.busId, busId], [snapshot.conductorId, conductorId], tx)
         await this.repository.lockJourney(id, tx)
@@ -718,6 +973,13 @@ export class JourneyService {
             'La jornada cambio mientras se procesaba la solicitud',
           )
         }
+        if (journey.estado === 'INTERRUMPIDA' && journey.jornadaSucesora) {
+          throw new AppError(
+            409,
+            'SUCCESSOR_ALREADY_EXISTS',
+            'La jornada interrumpida ya tiene sucesora',
+          )
+        }
         if (journey.inicioReal && eventDate < journey.inicioReal) {
           throw new AppError(
             409,
@@ -725,21 +987,30 @@ export class JourneyService {
             'El cambio no puede preceder al inicio real',
           )
         }
+        if (journey.estado === 'INTERRUMPIDA' && journey.finReal && eventDate < journey.finReal) {
+          throw new AppError(
+            409,
+            'INVALID_EVENT_SEQUENCE',
+            'El reemplazo no puede preceder a la interrupción',
+          )
+        }
 
         await this.ensureContext(busId, conductorId, rutaId, tx)
-        await this.repository.update(
-          id,
-          {
-            cambioPorId: actor.id,
-            estado: 'REASIGNADA',
-            fechaCambio: eventDate,
-            ...(journey.estado === 'EN_CURSO'
-              ? { finReal: eventDate, finalizadaPorId: actor.id }
-              : {}),
-            motivoCambio: input.motivo.trim(),
-          },
-          tx,
-        )
+        if (journey.estado !== 'INTERRUMPIDA') {
+          await this.repository.update(
+            id,
+            {
+              cambioPorId: actor.id,
+              estado: 'REASIGNADA',
+              fechaCambio: eventDate,
+              ...(journey.estado === 'EN_CURSO'
+                ? { finReal: eventDate, finalizadaPorId: actor.id }
+                : {}),
+              motivoCambio: input.motivo.trim(),
+            },
+            tx,
+          )
+        }
         if (journey.estado === 'EN_CURSO') {
           await this.repository.registerJourneyReading(
             {
@@ -764,6 +1035,7 @@ export class JourneyService {
             finProgramado,
             inicioProgramado,
             jornadaAnteriorId: journey.id,
+            ...(journey.estado === 'INTERRUMPIDA' ? { motivoSucesion: input.motivo.trim() } : {}),
             programadaPorId: actor.id,
             rutaId,
           },

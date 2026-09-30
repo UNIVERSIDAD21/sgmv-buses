@@ -42,6 +42,11 @@ export default function JourneyProjection({ journey }: { journey: JourneyDto }) 
           Recorrido por odómetro: <strong>{formatNumber(projection.kmReal!)} km</strong>. Diferencia
           real − proyección: {formatNumber(projection.diferenciaKm!)} km. Prevalece la lectura real.
         </p>
+      ) : journey.estado === 'INTERRUMPIDA' ? (
+        <p className="mt-2 text-xs">
+          Proyección archivada. Sin lectura final física no se determina la distancia del tramo
+          interrumpido.
+        </p>
       ) : ['CANCELADA', 'REASIGNADA'].includes(journey.estado) ? (
         <p className="mt-2 text-xs">Proyección anulada; sin recorrido registrado.</p>
       ) : (

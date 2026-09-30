@@ -38,9 +38,21 @@ export interface JourneyActionsDto {
   puedeFinalizar: boolean
   puedeIniciar: boolean
   puedeReasignar: boolean
+  puedeInterrumpir: boolean
+  puedeConciliarLectura: boolean
+  puedeMarcarNoRecuperable: boolean
 }
 
 export interface JourneyDto {
+  interrupcion: {
+    interrumpidaPor: JourneyUserRefDto | null
+    estadoConciliacion: 'PENDIENTE' | 'LECTURA_FINAL_REGISTRADA' | 'NO_RECUPERABLE'
+    motivoAusenciaLectura: string | null
+    motivoNoRecuperable: string | null
+    conciliadaAt: string | null
+    conciliadaPor: JourneyUserRefDto | null
+    detalleConciliacion: string | null
+  } | null
   lecturaReferencia: { kilometraje: number; fechaLectura: string } | null
   cierrePendiente: { reportadoAt: string; motivo: string; reportadoPor: JourneyUserRefDto } | null
   proyeccionDemo: JourneyProjectionDto
@@ -63,6 +75,7 @@ export interface JourneyDto {
   lecturaFinal: JourneyReadingDto | null
   lecturaInicial: JourneyReadingDto | null
   motivoCambio: string | null
+  motivoSucesion: string | null
   programadaPor: JourneyUserRefDto
   ruta: JourneyRouteRefDto | null
   updatedAt: string

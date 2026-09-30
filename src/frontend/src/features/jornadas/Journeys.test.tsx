@@ -14,6 +14,65 @@ afterEach(() => {
 })
 
 describe('P4 journey frontend', () => {
+  it('permite a Despacho interrumpir sin inventar kilometraje y muestra la conciliación pendiente', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    const handler = journeyHandler('DESPACHADOR')
+    let interrupted = false
+    const active = {
+      ...journeyFixture('EN_CURSO'),
+      acciones: { ...journeyFixture('EN_CURSO').acciones, puedeInterrumpir: true },
+    }
+    const interruptedJourney = {
+      ...active,
+      estado: 'INTERRUMPIDA',
+      finReal: new Date().toISOString(),
+      bus: { ...active.bus, estadoOperativo: 'FUERA_DE_SERVICIO' },
+      motivoCambio: 'El bus perdió potencia durante el recorrido',
+      interrupcion: {
+        estadoConciliacion: 'PENDIENTE',
+        motivoAusenciaLectura: 'Odómetro inaccesible',
+        motivoNoRecuperable: null,
+        conciliadaAt: null,
+        conciliadaPor: null,
+        detalleConciliacion: null,
+      },
+      acciones: { ...active.acciones, puedeInterrumpir: false, puedeConciliarLectura: true },
+    }
+    const fetchMock = mockApi(async (path, init, query) => {
+      if (path === '/jornadas' && !init?.method) {
+        const jornadas =
+          query?.get('cierreAtrasado') === 'true' ? [] : [interrupted ? interruptedJourney : active]
+        return ok({
+          jornadas,
+          paginacion: { limite: 12, pagina: 1, paginas: 1, total: jornadas.length },
+        })
+      }
+      if (path === '/jornadas/2029/interrumpir' && init?.method === 'POST') {
+        interrupted = true
+        return ok({ jornada: interruptedJourney })
+      }
+      return handler(path, init, query)
+    })
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Interrumpir jornada' }))
+    const dialog = screen.getByRole('dialog', { name: 'Interrumpir jornada' })
+    fireEvent.change(within(dialog).getByLabelText('Motivo operacional'), {
+      target: { value: 'El bus perdió potencia durante el recorrido' },
+    })
+    fireEvent.change(within(dialog).getByLabelText('Por qué falta la lectura'), {
+      target: { value: 'Odómetro inaccesible' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar' }))
+    expect(await screen.findByText(/Lectura final: Pendiente/)).toBeInTheDocument()
+    const call = fetchMock.mock.calls.find(
+      ([input, init]) => getPath(input) === '/jornadas/2029/interrumpir' && init?.method === 'POST',
+    )
+    expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
+      motivo: 'El bus perdió potencia durante el recorrido',
+      motivoSinLectura: 'Odómetro inaccesible',
+    })
+    expect(JSON.parse(String(call?.[1]?.body))).not.toHaveProperty('kilometrajeFinal')
+  })
   it('prioriza el pendiente sobre una jornada futura y confirma desde Inicio sin precargar odómetro', async () => {
     window.history.pushState({}, '', '/inicio')
     const handler = journeyHandler('CONDUCTOR')

@@ -12,6 +12,7 @@ import type { JourneyDto, JourneyStatus } from './journey.types'
 const JOURNEY_TONES: Record<JourneyStatus, 'amber' | 'emerald' | 'red' | 'slate' | 'teal'> = {
   CANCELADA: 'red',
   EN_CURSO: 'teal',
+  INTERRUMPIDA: 'red',
   FINALIZADA: 'emerald',
   PROGRAMADA: 'amber',
   REASIGNADA: 'slate',
@@ -104,7 +105,9 @@ export default function JourneyCard({
             Fin:{' '}
             {journey.lecturaFinal
               ? `${formatNumber(journey.lecturaFinal.kilometraje)} km`
-              : 'Pendiente'}
+              : journey.interrupcion?.estadoConciliacion === 'NO_RECUPERABLE'
+                ? 'No recuperable'
+                : 'Pendiente'}
           </p>
           {[journey.lecturaInicial, journey.lecturaFinal]
             .filter((reading) => reading !== null)
@@ -133,7 +136,51 @@ export default function JourneyCard({
       )}
 
       {journey.motivoCambio && (
-        <p className="mt-3 text-xs text-slate-500">Cambio: {journey.motivoCambio}</p>
+        <p className="mt-3 text-xs text-slate-500">
+          {journey.estado === 'INTERRUMPIDA' ? 'Motivo de interrupción' : 'Cambio'}:{' '}
+          {journey.motivoCambio}
+        </p>
+      )}
+      {journey.motivoSucesion && (
+        <p className="mt-3 text-xs text-slate-500">
+          Motivo del bus sustituto: {journey.motivoSucesion}
+        </p>
+      )}
+      {journey.estado === 'INTERRUMPIDA' && journey.interrupcion && (
+        <section className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+          <p className="font-semibold">Tramo interrumpido el {formatDateTime(journey.finReal)}</p>
+          {journey.interrupcion.interrumpidaPor && (
+            <p>Registrado por {journey.interrupcion.interrumpidaPor.nombre}</p>
+          )}
+          <p>
+            Lectura final:{' '}
+            {journey.interrupcion.estadoConciliacion === 'PENDIENTE'
+              ? 'Pendiente'
+              : journey.interrupcion.estadoConciliacion === 'NO_RECUPERABLE'
+                ? 'No recuperable'
+                : 'Registrada físicamente'}
+          </p>
+          {journey.interrupcion.motivoAusenciaLectura && (
+            <p>Ausencia inicial: {journey.interrupcion.motivoAusenciaLectura}</p>
+          )}
+          {journey.interrupcion.motivoNoRecuperable && (
+            <p>Decisión administrativa: {journey.interrupcion.motivoNoRecuperable}</p>
+          )}
+          {journey.interrupcion.conciliadaPor && (
+            <p>
+              Conciliada por {journey.interrupcion.conciliadaPor.nombre} el{' '}
+              {formatDateTime(journey.interrupcion.conciliadaAt)}
+            </p>
+          )}
+          {journey.interrupcion.detalleConciliacion &&
+            journey.interrupcion.estadoConciliacion === 'LECTURA_FINAL_REGISTRADA' && (
+              <p>Declaración: {journey.interrupcion.detalleConciliacion}</p>
+            )}
+          <p>
+            La interrupción no habilita automáticamente este bus. La disponibilidad depende de sus
+            causas operativas y técnicas.
+          </p>
+        </section>
       )}
       {(journey.jornadaAnteriorId || journey.jornadaSucesoraId) && (
         <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
@@ -215,7 +262,24 @@ export default function JourneyCard({
         )}
         {journey.acciones.puedeReasignar && (
           <Button onClick={() => onAction('reassign', journey)} size="sm" variant="outline">
-            Cambiar bus o conductor
+            {journey.estado === 'INTERRUMPIDA'
+              ? 'Crear tramo con bus sustituto'
+              : 'Cambiar bus o conductor'}
+          </Button>
+        )}
+        {journey.acciones.puedeInterrumpir && (
+          <Button onClick={() => onAction('interrupt', journey)} size="sm" variant="danger">
+            Interrumpir jornada
+          </Button>
+        )}
+        {journey.acciones.puedeConciliarLectura && (
+          <Button onClick={() => onAction('reconcile', journey)} size="sm" variant="outline">
+            Conciliar lectura observada
+          </Button>
+        )}
+        {journey.acciones.puedeMarcarNoRecuperable && (
+          <Button onClick={() => onAction('unrecoverable', journey)} size="sm" variant="outline">
+            Declarar lectura no recuperable
           </Button>
         )}
         {journey.acciones.puedeCancelar && (

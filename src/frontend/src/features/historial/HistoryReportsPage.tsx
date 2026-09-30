@@ -550,7 +550,15 @@ function JourneyHistory({ journeys }: { journeys: HistoryDetailDto['jornadas'] }
                   : 'Sin ruta asociada'}
               </p>
             </div>
-            <Badge tone={journey.estado === 'FINALIZADA' ? 'emerald' : 'teal'}>
+            <Badge
+              tone={
+                journey.estado === 'FINALIZADA'
+                  ? 'emerald'
+                  : journey.estado === 'INTERRUMPIDA'
+                    ? 'red'
+                    : 'teal'
+              }
+            >
               {journey.estado.replaceAll('_', ' ')}
             </Badge>
           </div>
@@ -564,6 +572,12 @@ function JourneyHistory({ journeys }: { journeys: HistoryDetailDto['jornadas'] }
               {journey.lecturas.map((item) => formatNumber(item.kilometraje)).join(' → ')} km
             </p>
           )}
+          {journey.estado === 'INTERRUMPIDA' &&
+            !journey.lecturas.some((item) => item.tipo === 'FIN_JORNADA') && (
+              <p className="mt-2 text-xs text-amber-800">
+                Sin lectura final física del tramo; no se calcula su distancia exacta.
+              </p>
+            )}
         </article>
       ))}
     </div>
