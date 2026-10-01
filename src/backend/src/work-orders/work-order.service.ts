@@ -1046,6 +1046,10 @@ export class WorkOrderService {
   ): Promise<WorkOrderListDto> {
     ensureMechanic(actor)
 
+    if (query.requiereReasignacion === 'true') {
+      throw new AppError(403, 'FORBIDDEN', 'No puede consultar la cola de reasignación')
+    }
+
     if (query.ordenarPor === 'costoTotal') {
       throw new AppError(403, 'FORBIDDEN', 'No tiene permisos para ordenar por costo')
     }
@@ -1239,6 +1243,14 @@ export class WorkOrderService {
 
   private createWhere(query: ListWorkOrdersQuery, tecnicoId?: number): WorkOrderWhere {
     const filters: Prisma.OrdenTrabajoWhereInput[] = []
+
+    if (query.requiereReasignacion === 'true') {
+      filters.push({
+        estado: { in: reassignableWorkOrderStates },
+        tecnicoAsignadoId: { not: null },
+        NOT: { tecnicoAsignado: { is: { estado: 'ACTIVO', rol: { is: { codigo: 'MECANICO' } } } } },
+      })
+    }
 
     if (tecnicoId) {
       filters.push({ tecnicoAsignadoId: tecnicoId })

@@ -2477,6 +2477,8 @@ export default function WorkOrderPage() {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [listData, setListData] = useState<WorkOrderListResponse | null>(null)
+  const [reassignment, setReassignment] = useState<WorkOrderListResponse | null>(null)
+  const [reassignmentPage, setReassignmentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [mechanics, setMechanics] = useState<MechanicOptionDto[]>([])
@@ -2523,13 +2525,17 @@ export default function WorkOrderPage() {
   )
 
   const refreshData = useCallback(async () => {
-    const [summaryData, listResponse] = await Promise.all([
+    const [summaryData, listResponse, reassignmentQueue] = await Promise.all([
       getWorkOrderSummary(),
       isAdmin ? listWorkOrders(listParams) : listMyWorkOrders(listParams),
+      isAdmin
+        ? listWorkOrders({ limite: 8, pagina: reassignmentPage, requiereReasignacion: true })
+        : Promise.resolve(null),
     ])
 
     setSummary(summaryData)
     setListData(listResponse)
+    setReassignment(reassignmentQueue)
 
     if (isAdmin) {
       const [busResponse, mechanicResponse] = await Promise.all([
@@ -2540,7 +2546,7 @@ export default function WorkOrderPage() {
       setBuses(busResponse.buses)
       setMechanics(mechanicResponse.mecanicos)
     }
-  }, [isAdmin, listParams])
+  }, [isAdmin, listParams, reassignmentPage])
 
   useEffect(() => {
     let active = true
@@ -2769,6 +2775,44 @@ export default function WorkOrderPage() {
           </div>
         )}
         <SummaryMetrics isAdmin={Boolean(isAdmin)} summary={summary} />
+
+        {isAdmin && reassignment && reassignment.paginacion.total > 0 && (
+          <section
+            aria-label="Órdenes por reasignar"
+            className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/40 p-4"
+          >
+            <h2 className="font-bold text-amber-950">
+              Órdenes por reasignar ({reassignment.paginacion.total})
+            </h2>
+            <p className="text-sm text-amber-900">
+              El Mecánico asignado ya no tiene acceso o cambió de rol. Administración decide el
+              nuevo responsable; las intervenciones y autores históricos se conservan.
+            </p>
+            <div className="grid gap-3 md:grid-cols-2">
+              {reassignment.ordenes.map((order) => (
+                <WorkOrderCard key={order.id} onOpen={openDetail} order={order} />
+              ))}
+            </div>
+            {reassignment.paginacion.totalPaginas > 1 && (
+              <div className="flex gap-2">
+                <Button
+                  disabled={reassignmentPage === 1}
+                  onClick={() => setReassignmentPage(reassignmentPage - 1)}
+                  variant="outline"
+                >
+                  Anteriores
+                </Button>
+                <Button
+                  disabled={reassignmentPage === reassignment.paginacion.totalPaginas}
+                  onClick={() => setReassignmentPage(reassignmentPage + 1)}
+                  variant="outline"
+                >
+                  Más pendientes
+                </Button>
+              </div>
+            )}
+          </section>
+        )}
 
         <section className="surface p-4">
           <div className="grid gap-3 lg:grid-cols-[1fr_160px_160px_170px_120px]">

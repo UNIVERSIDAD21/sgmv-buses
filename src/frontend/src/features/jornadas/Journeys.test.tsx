@@ -14,6 +14,28 @@ afterEach(() => {
 })
 
 describe('P4 journey frontend', () => {
+  it('muestra a Despacho la cola de jornadas con Conductor no disponible', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    const handler = journeyHandler('DESPACHADOR')
+    const fetchMock = mockApi(async (path, init, query) => {
+      if (path === '/jornadas' && query?.get('requiereReasignacion') === 'true') {
+        return ok({
+          jornadas: [journeyFixture('PROGRAMADA')],
+          paginacion: { limite: 12, pagina: 1, paginas: 1, total: 1 },
+        })
+      }
+      return handler(path, init, query)
+    })
+    render(<App />)
+    const queue = await screen.findByRole('region', { name: 'Jornadas por reasignar' })
+    expect(within(queue).getByText(/Jornadas por reasignar \(1\)/)).toBeInTheDocument()
+    expect(within(queue).getByText(/no tiene acceso o cambió de rol/i)).toBeInTheDocument()
+    expect(
+      fetchMock.mock.calls.some(
+        ([input]) => new URL(String(input)).searchParams.get('requiereReasignacion') === 'true',
+      ),
+    ).toBe(true)
+  })
   it('permite a Despacho interrumpir sin inventar kilometraje y muestra la conciliación pendiente', async () => {
     window.history.pushState({}, '', '/jornadas')
     const handler = journeyHandler('DESPACHADOR')
@@ -41,7 +63,9 @@ describe('P4 journey frontend', () => {
     const fetchMock = mockApi(async (path, init, query) => {
       if (path === '/jornadas' && !init?.method) {
         const jornadas =
-          query?.get('cierreAtrasado') === 'true' ? [] : [interrupted ? interruptedJourney : active]
+          query?.get('cierreAtrasado') === 'true' || query?.get('requiereReasignacion') === 'true'
+            ? []
+            : [interrupted ? interruptedJourney : active]
         return ok({
           jornadas,
           paginacion: { limite: 12, pagina: 1, paginas: 1, total: jornadas.length },

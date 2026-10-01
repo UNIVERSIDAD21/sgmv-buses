@@ -34,3 +34,18 @@ export interface UserListResponse {
   paginas: number
   total: number
 }
+
+export interface UserImpact {
+  jornadas: Array<{
+    id: number
+    estado: 'PROGRAMADA' | 'EN_CURSO'
+    inicioProgramado: string
+    bus: { codigoInterno: string }
+  }>
+  ordenes: Array<{
+    id: number
+    codigo: string
+    estado: 'ASIGNADA' | 'EN_EJECUCION' | 'DEVUELTA_CORRECCION'
+    bus: { codigoInterno: string }
+  }>
+}

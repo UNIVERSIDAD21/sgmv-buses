@@ -17,6 +17,9 @@ const activatedPassword = 'Clave-Activada-Segura-2026!'
 const changedPassword = 'Clave-Actualizada-Segura-2026!'
 const suffix = randomUUID().slice(0, 8)
 const createdUserIds: number[] = []
+const createdBusIds: number[] = []
+const createdJourneyIds: number[] = []
+const createdOrderIds: number[] = []
 
 async function createActiveUser(roleCode: RolCodigo, label: string) {
   const role = await prisma.rol.findUniqueOrThrow({ where: { codigo: roleCode } })
@@ -63,6 +66,9 @@ describe('Gestion administrativa y activacion de usuarios', () => {
 
   afterAll(async () => {
     try {
+      await prisma.ordenTrabajo.deleteMany({ where: { id: { in: createdOrderIds } } })
+      await prisma.jornadaOperativa.deleteMany({ where: { id: { in: createdJourneyIds } } })
+      await prisma.bus.deleteMany({ where: { id: { in: createdBusIds } } })
       await prisma.tokenActivacionCuenta.deleteMany({
         where: {
           OR: [{ usuarioId: { in: createdUserIds } }, { creadoPorId: { in: createdUserIds } }],
@@ -310,6 +316,110 @@ describe('Gestion administrativa y activacion de usuarios', () => {
       .send({ estado: 'ACTIVO' })
       .expect(200)
     expect(response.body.data.id).toBe(managedUserId)
+  })
+
+  it('previsualiza pendientes y bloquea de inmediato al Conductor sin perder la jornada', async () => {
+    const dispatcher = await createActiveUser('DESPACHADOR', 'despacho-continuidad')
+    const dispatcherAgent = await authenticatedAgent(dispatcher.email)
+    const bus = await prisma.bus.create({
+      data: {
+        anio: 2024,
+        codigoInterno: `P10-BUS-${suffix}`.toUpperCase(),
+        kilometrajeActual: 10_000,
+        marca: 'Prueba',
+        modelo: 'Continuidad',
+        placa: `P10${suffix.slice(0, 5)}`.toUpperCase(),
+      },
+    })
+    createdBusIds.push(bus.id)
+    const journey = await prisma.jornadaOperativa.create({
+      data: {
+        busId: bus.id,
+        conductorId: conductor.id,
+        estado: 'PROGRAMADA',
+        inicioProgramado: new Date(Date.now() + 86_400_000),
+        finProgramado: new Date(Date.now() + 90_000_000),
+        programadaPorId: dispatcher.id,
+      },
+    })
+    createdJourneyIds.push(journey.id)
+
+    const preview = await adminAgent.get(`/usuarios/${conductor.id}/impacto`).expect(200)
+    expect(preview.body.data.jornadas.map((item: { id: number }) => item.id)).toContain(journey.id)
+    expect(preview.body.data.ordenes).toHaveLength(0)
+    await conductorAgent.get(`/usuarios/${conductor.id}/impacto`).expect(403)
+
+    await adminAgent
+      .patch(`/usuarios/${conductor.id}/estado`)
+      .send({ estado: 'BLOQUEADO' })
+      .expect(200)
+    await conductorAgent.get('/jornadas/mi-jornada').expect(401)
+    const queue = await dispatcherAgent.get('/jornadas?requiereReasignacion=true').expect(200)
+    expect(queue.body.data.jornadas.map((item: { id: number }) => item.id)).toContain(journey.id)
+    expect(
+      await prisma.jornadaOperativa.findUniqueOrThrow({ where: { id: journey.id } }),
+    ).toMatchObject({
+      conductorId: conductor.id,
+      programadaPorId: dispatcher.id,
+    })
+  })
+
+  it('conserva la OT de Mecánico bloqueado y la muestra en cola administrativa', async () => {
+    const mechanic = await createActiveUser('MECANICO', 'mecanico-continuidad')
+    const mechanicAgent = await authenticatedAgent(mechanic.email)
+    const assignedAt = new Date()
+    const order = await prisma.ordenTrabajo.create({
+      data: {
+        busId: createdBusIds[0]!,
+        codigo: `P10-OT-${suffix}`.toUpperCase(),
+        creadaPorId: admin.id,
+        descripcion: 'Orden asignada para verificar continuidad al bloquear cuenta',
+        estado: 'ASIGNADA',
+        fechaAsignacion: assignedAt,
+        fechaCreacion: assignedAt,
+        origen: 'CORRECTIVO_DIRECTO',
+        prioridad: 'MEDIA',
+        tecnicoAsignadoId: mechanic.id,
+        tipo: 'CORRECTIVA',
+      },
+    })
+    createdOrderIds.push(order.id)
+    const preview = await adminAgent.get(`/usuarios/${mechanic.id}/impacto`).expect(200)
+    expect(preview.body.data.ordenes.map((item: { id: number }) => item.id)).toContain(order.id)
+    await adminAgent
+      .patch(`/usuarios/${mechanic.id}/estado`)
+      .send({ estado: 'BLOQUEADO' })
+      .expect(200)
+    await mechanicAgent.get('/ordenes-trabajo/mis-ordenes').expect(401)
+    const queue = await adminAgent.get('/ordenes-trabajo?requiereReasignacion=true').expect(200)
+    expect(queue.body.data.ordenes.map((item: { id: number }) => item.id)).toContain(order.id)
+    expect(await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: order.id } })).toMatchObject({
+      creadaPorId: admin.id,
+      tecnicoAsignadoId: mechanic.id,
+    })
+    await adminAgent.patch(`/usuarios/${mechanic.id}/estado`).send({ estado: 'ACTIVO' }).expect(200)
+    await adminAgent.patch(`/usuarios/${mechanic.id}/rol`).send({ rol: 'DESPACHADOR' }).expect(200)
+    const afterRoleChange = await adminAgent
+      .get('/ordenes-trabajo?requiereReasignacion=true')
+      .expect(200)
+    expect(afterRoleChange.body.data.ordenes.map((item: { id: number }) => item.id)).toContain(
+      order.id,
+    )
+  })
+
+  it('permite cambiar rol cuando no hay compromisos pendientes', async () => {
+    const account = await createActiveUser('CONDUCTOR', 'sin-pendientes')
+    const preview = await adminAgent.get(`/usuarios/${account.id}/impacto`).expect(200)
+    expect(preview.body.data).toMatchObject({ jornadas: [], ordenes: [] })
+    await adminAgent.patch(`/usuarios/${account.id}/rol`).send({ rol: 'DESPACHADOR' }).expect(200)
+    expect(
+      (
+        await prisma.usuario.findUniqueOrThrow({
+          where: { id: account.id },
+          include: { rol: true },
+        })
+      ).rol.codigo,
+    ).toBe('DESPACHADOR')
   })
 
   it('permite cambiar la propia contrasena verificando la anterior', async () => {

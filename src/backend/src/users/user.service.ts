@@ -91,6 +91,11 @@ export class UserService {
     return user
   }
 
+  async impact(usuarioId: number, actor: AuthenticatedUser) {
+    await this.get(usuarioId, actor)
+    return this.repository.impact(usuarioId)
+  }
+
   async create(input: CreateUserInput, actor: AuthenticatedUser) {
     assertAdministrator(actor)
     const activation = createActivationSecret()

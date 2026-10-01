@@ -1,6 +1,12 @@
 import type { RoleCode } from '../../domain/labels'
 import { apiRequest } from '../../lib/api'
-import type { ActivationDelivery, UserListResponse, UserRecord, UserState } from './user.types'
+import type {
+  ActivationDelivery,
+  UserImpact,
+  UserListResponse,
+  UserRecord,
+  UserState,
+} from './user.types'
 
 interface UserFilters {
   busqueda?: string
@@ -55,6 +61,10 @@ export function changeUserState(
     body: JSON.stringify({ estado }),
     method: 'PATCH',
   })
+}
+
+export function getUserImpact(usuarioId: number) {
+  return apiRequest<UserImpact>(`/usuarios/${usuarioId}/impacto`)
 }
 
 export function reissueActivation(usuarioId: number) {

@@ -805,6 +805,8 @@ export default function JourneyPage() {
   const [list, setList] = useState<JourneyListResponse | null>(null)
   const [pending, setPending] = useState<JourneyListResponse | null>(null)
   const [pendingPage, setPendingPage] = useState(1)
+  const [reassignment, setReassignment] = useState<JourneyListResponse | null>(null)
+  const [reassignmentPage, setReassignmentPage] = useState(1)
   const [own, setOwn] = useState<MyJourneyResponse | null>(null)
   const [options, setOptions] = useState<JourneyOptionsResponse | null>(null)
   const [buscar, setBuscar] = useState('')
@@ -834,18 +836,20 @@ export default function JourneyPage() {
         setOwn(await getMyJourney())
         return
       }
-      const [journeys, journeyOptions, pendingClosures] = await Promise.all([
+      const [journeys, journeyOptions, pendingClosures, reassignmentQueue] = await Promise.all([
         listJourneys({ buscar: busquedaEstable, estado, pagina }),
         getJourneyOptions(),
         listJourneys({ cierreAtrasado: true, pagina: pendingPage }),
+        listJourneys({ requiereReasignacion: true, pagina: reassignmentPage }),
       ])
       setList(journeys)
       setOptions(journeyOptions)
       setPending(pendingClosures)
+      setReassignment(reassignmentQueue)
     } finally {
       setLoading(false)
     }
-  }, [busquedaEstable, estado, isDriver, pagina, pendingPage])
+  }, [busquedaEstable, estado, isDriver, pagina, pendingPage, reassignmentPage])
 
   useEffect(() => {
     let active = true
@@ -1007,6 +1011,49 @@ export default function JourneyPage() {
                 onClick={() => setPendingPage(pendingPage + 1)}
               >
                 Más cierres pendientes
+              </Button>
+            </div>
+          )}
+        </section>
+      )}
+
+      {!loading && !error && !isDriver && reassignment && reassignment.paginacion.total > 0 && (
+        <section
+          aria-label="Jornadas por reasignar"
+          className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/40 p-4"
+        >
+          <h2 className="font-bold text-amber-950">
+            Jornadas por reasignar ({reassignment.paginacion.total})
+          </h2>
+          <p className="text-sm text-amber-900">
+            El Conductor asignado ya no tiene acceso o cambió de rol. Despacho debe decidir el
+            relevo; la asignación y la autoría anteriores permanecen en el historial. Si el tramo
+            comenzó, registre solo una lectura final física o su conciliación autorizada.
+          </p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {reassignment.jornadas.map((journey) => (
+              <JourneyCard
+                key={journey.id}
+                journey={journey}
+                onAction={(action, selected) => setOperation({ action, journey: selected })}
+              />
+            ))}
+          </div>
+          {reassignment.paginacion.paginas > 1 && (
+            <div className="flex gap-2">
+              <Button
+                disabled={reassignmentPage === 1}
+                onClick={() => setReassignmentPage(reassignmentPage - 1)}
+                variant="outline"
+              >
+                Anteriores
+              </Button>
+              <Button
+                disabled={reassignmentPage === reassignment.paginacion.paginas}
+                onClick={() => setReassignmentPage(reassignmentPage + 1)}
+                variant="outline"
+              >
+                Más pendientes
               </Button>
             </div>
           )}

@@ -36,6 +36,35 @@ export const safeUserSelect = {
 } satisfies Prisma.UsuarioSelect
 
 export class UserRepository {
+  async impact(usuarioId: number) {
+    const journeysWhere = {
+      conductorId: usuarioId,
+      estado: { in: ['EN_CURSO' as const, 'PROGRAMADA' as const] },
+    }
+    const ordersWhere: Prisma.OrdenTrabajoWhereInput = {
+      tecnicoAsignadoId: usuarioId,
+      estado: { in: ['ASIGNADA', 'EN_EJECUCION', 'DEVUELTA_CORRECCION'] },
+    }
+    const [jornadas, ordenes] = await Promise.all([
+      prisma.jornadaOperativa.findMany({
+        where: journeysWhere,
+        select: {
+          id: true,
+          estado: true,
+          inicioProgramado: true,
+          bus: { select: { codigoInterno: true } },
+        },
+        orderBy: { inicioProgramado: 'asc' },
+      }),
+      prisma.ordenTrabajo.findMany({
+        where: ordersWhere,
+        select: { id: true, codigo: true, estado: true, bus: { select: { codigoInterno: true } } },
+        orderBy: { fechaCreacion: 'asc' },
+      }),
+    ])
+    return { jornadas, ordenes }
+  }
+
   findById(id: number) {
     return prisma.usuario.findFirst({
       select: safeUserSelect,

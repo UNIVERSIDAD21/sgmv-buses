@@ -14,6 +14,7 @@ import type {
 } from './work-order.types'
 
 export interface ListWorkOrdersParams {
+  requiereReasignacion?: boolean
   busId?: number
   busqueda?: string
   direccion?: 'asc' | 'desc'
@@ -94,6 +95,7 @@ function buildWorkOrderQuery(params: ListWorkOrdersParams) {
   if (params.busId) {
     searchParams.set('busId', String(params.busId))
   }
+  if (params.requiereReasignacion) searchParams.set('requiereReasignacion', 'true')
 
   if (params.busqueda?.trim()) {
     searchParams.set('busqueda', params.busqueda.trim())

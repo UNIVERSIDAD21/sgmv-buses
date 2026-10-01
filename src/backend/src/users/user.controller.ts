@@ -24,6 +24,15 @@ export class UserController {
     sendData(response, await this.service.get(usuarioId, request.user!), 'Detalle de usuario')
   }
 
+  impact: RequestHandler = async (request, response) => {
+    const { usuarioId } = userIdParamSchema.parse(request.params)
+    sendData(
+      response,
+      await this.service.impact(usuarioId, request.user!),
+      'Pendientes del usuario',
+    )
+  }
+
   create: RequestHandler = async (request, response) => {
     const result = await this.service.create(createUserSchema.parse(request.body), request.user!)
     response.status(201)

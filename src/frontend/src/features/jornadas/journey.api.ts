@@ -70,6 +70,7 @@ export interface JourneyReassignInput {
 
 export function listJourneys(input: {
   cierreAtrasado?: boolean
+  requiereReasignacion?: boolean
   buscar?: string
   estado?: JourneyStatus | ''
   pagina?: number
@@ -78,6 +79,7 @@ export function listJourneys(input: {
   if (input.buscar?.trim()) query.set('buscar', input.buscar.trim())
   if (input.estado) query.set('estado', input.estado)
   if (input.cierreAtrasado) query.set('cierreAtrasado', 'true')
+  if (input.requiereReasignacion) query.set('requiereReasignacion', 'true')
   return apiRequest<JourneyListResponse>(`/jornadas?${query.toString()}`)
 }
 

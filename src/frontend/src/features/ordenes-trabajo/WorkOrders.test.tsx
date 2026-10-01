@@ -2,7 +2,15 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { getPath, mockApi, workOrderPart, workOrderHandler } from '../../test/app-test-helpers'
+import {
+  createWorkOrderDetail,
+  getPath,
+  mockApi,
+  ok,
+  workOrderList,
+  workOrderPart,
+  workOrderHandler,
+} from '../../test/app-test-helpers'
 import App from '../../App'
 
 beforeEach(() => {
@@ -14,6 +22,25 @@ afterEach(() => {
 })
 
 describe('RF-04 work order frontend', () => {
+  it('muestra a Administración la cola de OT cuyo Mecánico no puede continuar', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo')
+    const handler = workOrderHandler('ADMINISTRADOR')
+    const fetchMock = mockApi(async (path, init, query) => {
+      if (path === '/ordenes-trabajo' && query?.get('requiereReasignacion') === 'true') {
+        return ok(workOrderList(createWorkOrderDetail('ASIGNADA')))
+      }
+      return handler(path, init, query)
+    })
+    render(<App />)
+    const queue = await screen.findByRole('region', { name: 'Órdenes por reasignar' })
+    expect(within(queue).getByText(/Órdenes por reasignar \(1\)/)).toBeInTheDocument()
+    expect(within(queue).getByText(/Mecánico asignado ya no tiene acceso/i)).toBeInTheDocument()
+    expect(
+      fetchMock.mock.calls.some(
+        ([input]) => new URL(String(input)).searchParams.get('requiereReasignacion') === 'true',
+      ),
+    ).toBe(true)
+  })
   it('anula la orden administrativa sin trabajo y conserva motivo e historial visible', async () => {
     window.history.pushState({}, '', '/ordenes-trabajo')
     const fetchMock = mockApi(workOrderHandler('ADMINISTRADOR'))

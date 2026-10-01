@@ -37,6 +37,7 @@ export const listJourneysQuerySchema = z
   .object({
     buscar: z.string().trim().max(80).optional(),
     cierreAtrasado: z.enum(['true', 'false']).optional(),
+    requiereReasignacion: z.enum(['true', 'false']).optional(),
     busId: entityIdSchema.optional(),
     conductorId: entityIdSchema.optional(),
     direccion: z.enum(['asc', 'desc']).default('desc'),

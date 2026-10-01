@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -14,11 +15,12 @@ import {
   changeUserRole,
   changeUserState,
   createUser,
+  getUserImpact,
   listUsers,
   reissueActivation,
   updateUser,
 } from './user.api'
-import type { ActivationDelivery, UserRecord, UserState } from './user.types'
+import type { ActivationDelivery, UserImpact, UserRecord, UserState } from './user.types'
 
 const roles = ['ADMINISTRADOR', 'DESPACHADOR', 'MECANICO', 'CONDUCTOR'] as const
 const states = ['PENDIENTE_ACTIVACION', 'ACTIVO', 'BLOQUEADO', 'INACTIVO'] as const
@@ -248,13 +250,39 @@ function ManageUserDialog({
   )
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [impact, setImpact] = useState<UserImpact | null>(null)
+  const [impactError, setImpactError] = useState<string | null>(null)
   const isSelf = actorId === user.id
+
+  useEffect(() => {
+    let active = true
+    void getUserImpact(user.id)
+      .then((result) => {
+        if (active) {
+          setImpact(result)
+          setImpactError(null)
+        }
+      })
+      .catch((requestError) => {
+        if (active) setImpactError(errorMessage(requestError))
+      })
+    return () => {
+      active = false
+    }
+  }, [user.id])
 
   const run = async (operation: () => Promise<UserRecord>) => {
     setError(null)
     setSubmitting(true)
     try {
       onUpdated(await operation())
+      try {
+        setImpact(await getUserImpact(user.id))
+        setImpactError(null)
+      } catch (requestError) {
+        setImpact(null)
+        setImpactError(errorMessage(requestError))
+      }
     } catch (requestError) {
       setError(errorMessage(requestError))
     } finally {
@@ -332,6 +360,51 @@ function ManageUserDialog({
         </Button>
 
         <div className="grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2">
+          <section
+            className="sm:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-4"
+            aria-label="Impacto de cuenta"
+          >
+            <p className="text-sm font-semibold text-amber-950">
+              Trabajo pendiente antes del cambio
+            </p>
+            {impact ? (
+              <>
+                <p className="mt-1 text-sm text-amber-900">
+                  {impact.jornadas.length} jornadas activas o programadas pendientes;{' '}
+                  {impact.ordenes.length} órdenes asignadas sin terminar.
+                </p>
+                {impact.jornadas.map((item) => (
+                  <p className="mt-1 text-xs text-amber-900" key={`j-${item.id}`}>
+                    Jornada #{item.id} · {item.bus.codigoInterno} · {item.estado}
+                  </p>
+                ))}
+                {impact.ordenes.map((item) => (
+                  <p className="mt-1 text-xs text-amber-900" key={`o-${item.id}`}>
+                    OT {item.codigo} · {item.bus.codigoInterno} · {item.estado}
+                  </p>
+                ))}
+                {(impact.jornadas.length > 0 || impact.ordenes.length > 0) && (
+                  <p className="mt-2 text-xs text-amber-950">
+                    Cambiar acceso no reasigna tareas ni cambia autores históricos. Despacho atiende
+                    jornadas y Administración las OT.
+                  </p>
+                )}
+                <div className="mt-2 flex gap-3 text-xs font-semibold text-amber-950">
+                  <Link to="/jornadas">Ver jornadas</Link>
+                  <Link to="/ordenes-trabajo">Ver órdenes</Link>
+                </div>
+              </>
+            ) : (
+              <p className="mt-1 text-sm text-amber-900">
+                {impactError ?? 'Consultando pendientes…'}
+              </p>
+            )}
+            {impactError && (
+              <p className="mt-1 text-xs text-amber-950">
+                El bloqueo urgente continúa disponible aunque falle esta consulta.
+              </p>
+            )}
+          </section>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="editar-rol">
               Rol
@@ -351,7 +424,7 @@ function ManageUserDialog({
             </select>
             <Button
               className="mt-2 w-full"
-              disabled={isSelf || role === user.rol.codigo}
+              disabled={isSelf || role === user.rol.codigo || !impact}
               loading={submitting}
               onClick={() => run(() => changeUserRole(user.id, role))}
               variant="outline"
@@ -381,12 +454,12 @@ function ManageUserDialog({
             </select>
             <Button
               className="mt-2 w-full"
-              disabled={isSelf || state === user.estado}
+              disabled={isSelf || state === user.estado || (state !== 'BLOQUEADO' && !impact)}
               loading={submitting}
               onClick={() => run(() => changeUserState(user.id, state))}
               variant="outline"
             >
-              Cambiar estado
+              {state === 'BLOQUEADO' ? 'Bloquear acceso ahora' : 'Cambiar estado'}
             </Button>
           </div>
         </div>

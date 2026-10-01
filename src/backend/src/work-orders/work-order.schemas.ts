@@ -53,6 +53,7 @@ export const consumptionExceptionParamSchema = z.object({
 })
 
 export const listWorkOrdersQuerySchema = z.object({
+  requiereReasignacion: z.enum(['true', 'false']).optional(),
   busId: entityIdSchema.optional(),
   busqueda: optionalTrimmedText(120),
   direccion: z.enum(['asc', 'desc']).default('desc'),

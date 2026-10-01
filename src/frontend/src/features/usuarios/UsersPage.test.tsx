@@ -32,6 +32,71 @@ afterEach(() => {
 })
 
 describe('Administracion de usuarios y activacion', () => {
+  it('muestra jornadas y OT antes de inactivar o cambiar rol', async () => {
+    window.history.pushState({}, '', '/usuarios')
+    const account = { ...userRecord, estado: 'ACTIVO' as const }
+    mockApi(async (path) => {
+      if (path === '/auth/me') return ok({ user: userForRole('ADMINISTRADOR') })
+      if (path === '/usuarios') return ok(listResult([account]))
+      if (path === `/usuarios/${account.id}/impacto`)
+        return ok({
+          jornadas: [
+            {
+              id: 2401,
+              estado: 'PROGRAMADA',
+              inicioProgramado: '2026-10-02T13:00:00.000Z',
+              bus: { codigoInterno: 'BUS-01' },
+            },
+          ],
+          ordenes: [
+            { id: 2501, codigo: 'OT-2501', estado: 'ASIGNADA', bus: { codigoInterno: 'BUS-02' } },
+          ],
+        })
+      return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
+    })
+    render(<App />)
+    fireEvent.click((await screen.findAllByRole('button', { name: /Gestionar/i }))[0]!)
+    const dialog = screen.getByRole('dialog', { name: /Gestionar usuario/i })
+    expect(
+      await within(dialog).findByText(
+        /1 jornadas activas o programadas pendientes; 1 órdenes asignadas/i,
+      ),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByText(/Jornada #2401/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/OT OT-2501/)).toBeInTheDocument()
+    expect(
+      within(dialog).getByText(/no reasigna tareas ni cambia autores históricos/i),
+    ).toBeInTheDocument()
+  })
+
+  it('permite bloqueo urgente aunque falle la previsualización', async () => {
+    window.history.pushState({}, '', '/usuarios')
+    const account = { ...userRecord, estado: 'ACTIVO' as const }
+    const fetchMock = mockApi(async (path, init) => {
+      if (path === '/auth/me') return ok({ user: userForRole('ADMINISTRADOR') })
+      if (path === '/usuarios') return ok(listResult([account]))
+      if (path === `/usuarios/${account.id}/impacto`)
+        return apiError(500, 'PREVIEW_ERROR', 'No disponible')
+      if (path === `/usuarios/${account.id}/estado` && init?.method === 'PATCH')
+        return ok({ ...account, estado: 'BLOQUEADO' })
+      return apiError(404, 'NOT_FOUND', 'Ruta no encontrada')
+    })
+    render(<App />)
+    fireEvent.click((await screen.findAllByRole('button', { name: /Gestionar/i }))[0]!)
+    const dialog = screen.getByRole('dialog', { name: /Gestionar usuario/i })
+    expect(await within(dialog).findByText(/No disponible/i)).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Cambiar rol' })).toBeDisabled()
+    fireEvent.change(within(dialog).getByLabelText('Estado'), { target: { value: 'BLOQUEADO' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Bloquear acceso ahora' }))
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          ([input, init]) =>
+            getPath(input) === `/usuarios/${account.id}/estado` && init?.method === 'PATCH',
+        ),
+      ).toBe(true),
+    )
+  })
   it('lista, busca y filtra cuentas con los cuatro roles oficiales', async () => {
     window.history.pushState({}, '', '/usuarios')
     const fetchMock = mockApi(async (path) => {

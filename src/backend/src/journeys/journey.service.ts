@@ -1015,6 +1015,13 @@ export class JourneyService {
       where.finReal = null
       where.finProgramado = { lt: new Date() }
     }
+    if (query.requiereReasignacion === 'true') {
+      if (actor.rol.codigo === 'CONDUCTOR') {
+        throw new AppError(403, 'FORBIDDEN', 'No puede consultar la cola de reasignación')
+      }
+      where.estado = { in: ['PROGRAMADA', 'EN_CURSO'] }
+      where.NOT = { conductor: { is: { estado: 'ACTIVO', rol: { is: { codigo: 'CONDUCTOR' } } } } }
+    }
     if (query.desde || query.hasta) {
       where.AND = {
         inicioProgramado: query.hasta ? { lte: new Date(query.hasta) } : undefined,

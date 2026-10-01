@@ -937,7 +937,7 @@ export function workOrderHandler(
     }
   }
 
-  return async (path: string, init?: RequestInit) => {
+  return async (path: string, init?: RequestInit, query?: URLSearchParams) => {
     if (path === '/auth/me') {
       return ok({ user: userForRole(role) })
     }
@@ -1015,6 +1015,9 @@ export function workOrderHandler(
     }
 
     if ((path === '/ordenes-trabajo' || path === '/ordenes-trabajo/mis-ordenes') && !init?.method) {
+      if (query?.get('requiereReasignacion') === 'true') {
+        return ok({ ordenes: [], paginacion: { limite: 8, pagina: 1, total: 0, totalPaginas: 1 } })
+      }
       if (options.failList) {
         return apiError(500, 'INTERNAL_ERROR', 'Fallo RF-04 controlado')
       }
@@ -2106,6 +2109,7 @@ export function journeyHandler(
       if (options.fail) return apiError(500, 'INTERNAL_ERROR', 'Fallo controlado de jornadas')
       const jornadas =
         options.empty ||
+        query?.get('requiereReasignacion') === 'true' ||
         (query?.get('cierreAtrasado') === 'true' &&
           (!options.overdue || currentStatus !== 'EN_CURSO'))
           ? []

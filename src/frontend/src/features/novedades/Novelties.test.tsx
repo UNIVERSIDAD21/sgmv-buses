@@ -156,8 +156,8 @@ describe('RF-02 novelty frontend', () => {
     render(<App />)
 
     expect(
-      await screen.findByText(/Administración revisa el reporte. Consulte la jornada/i),
-    ).toBeInTheDocument()
+      (await screen.findAllByText(/Administración revisa el reporte. Consulte la jornada/i)).length,
+    ).toBeGreaterThan(0)
     expect(screen.getAllByText('En revisión').length).toBeGreaterThan(0)
     expect(screen.queryByText('Revisada por administrador')).not.toBeInTheDocument()
     expect(screen.queryByText('Falla mecanica')).not.toBeInTheDocument()
