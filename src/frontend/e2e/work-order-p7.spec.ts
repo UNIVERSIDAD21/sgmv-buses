@@ -36,11 +36,13 @@ async function openOrder(page: Page, search: string) {
 }
 
 function technicalReadingPanel(page: Page): Locator {
-  return page.getByRole('heading', { name: 'Kilometraje tecnico' }).locator('..')
+  return page.getByRole('heading', { name: 'Odómetro' }).locator('xpath=ancestor::section[1]')
 }
 
 async function registerReading(page: Page, input: { date: Date; mileage: string; type: string }) {
   const panel = technicalReadingPanel(page)
+  await panel.getByRole('button', { name: '+ Registrar lectura' }).click()
+  await expect(panel.getByLabel('Tipo')).toBeVisible()
   await panel.getByLabel('Tipo').selectOption(input.type)
   await panel.getByLabel('¿La lectura fue tomada antes?').check()
   await panel.getByLabel('Fecha del evento').fill(toLocalInput(input.date))
@@ -146,6 +148,18 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
   await expect(page.getByRole('option', { name: 'Costo' })).toHaveCount(0)
   await expect(mechanicDialog.getByText('Costo basico')).toHaveCount(0)
   await expect(mechanicDialog.getByText('Consumos y costo')).toHaveCount(0)
+  await expect(mechanicDialog.getByText('Ver instrucciones y antecedentes')).toBeVisible()
+  await expect(mechanicDialog.getByLabel('Fecha del evento')).toHaveCount(0)
+  await expect(mechanicDialog.getByLabel('Repuesto', { exact: true })).toHaveCount(0)
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    await testInfo.attach(`ux-mecanico-inicio-${width}`, {
+      body: await page.screenshot({ fullPage: true }),
+      contentType: 'image/png',
+    })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  }
+  await page.setViewportSize({ width: 1440, height: 900 })
 
   const mechanicResponses = await page.evaluate(async (id) => {
     const [listResponse, detailResponse] = await Promise.all([
@@ -170,23 +184,29 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
   await page.getByRole('button', { name: 'Iniciar' }).click()
   await expect(page.getByText('Ejecucion iniciada.')).toBeVisible()
 
-  await page.getByLabel('Diagnostico').fill(`Diagnostico tecnico ${marker}`)
-  await page.getByLabel('Observaciones tecnicas').fill('Intervencion activa verificada.')
-  await expect(page.getByText('Guardado automáticamente')).toBeVisible()
+  const draftSaved = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/intervencion') && response.request().method() === 'PATCH',
+  )
+  await page.getByLabel('Diagnóstico').fill(`Diagnostico tecnico ${marker}`)
+  await page.getByRole('button', { name: '+ Añadir observaciones técnicas' }).click()
+  await page.getByLabel('Observaciones técnicas (opcional)').fill('Intervencion activa verificada.')
+  await draftSaved
+  await expect(page.getByText('Guardado', { exact: true })).toBeVisible()
   await page.reload()
   await openOrder(page, marker)
-  await expect(page.getByLabel('Diagnostico')).toHaveValue(`Diagnostico tecnico ${marker}`)
-  await expect(page.getByLabel('Observaciones tecnicas')).toHaveValue(
+  await expect(page.getByLabel('Diagnóstico')).toHaveValue(`Diagnostico tecnico ${marker}`)
+  await expect(page.getByLabel('Observaciones técnicas (opcional)')).toHaveValue(
     'Intervencion activa verificada.',
   )
-  await page.getByLabel('Tipo de espera').selectOption('REPUESTO')
-  await page.getByLabel('Motivo de la espera').fill('Repuesto de frenos pendiente de entrega')
-  await page.getByRole('button', { name: 'Informar espera a Administración' }).click()
+  await page.getByRole('button', { name: 'No puedo continuar' }).click()
+  const waitDialog = page.getByRole('dialog', { name: 'No puedo continuar' })
+  await waitDialog.getByLabel('Falta un repuesto').check()
+  await waitDialog.getByLabel('Motivo de la espera').fill('Repuesto de frenos pendiente de entrega')
+  await waitDialog.getByRole('button', { name: 'Informar y pausar trabajo' }).click()
   await expect(page.getByText('Orden en espera; Administración fue informada.')).toBeVisible()
   await expect(page.getByText(/Siguiente responsable: Administración/)).toBeVisible()
-  await expect(
-    page.getByRole('button', { name: 'Terminar mantenimiento', exact: true }),
-  ).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Terminar trabajo', exact: true })).toHaveCount(0)
   await page.getByLabel('Motivo de reanudación').fill('Repuesto de frenos entregado al taller')
   await page.getByRole('button', { name: 'Reanudar trabajo' }).click()
   await expect(page.getByText('Ejecución de la orden reanudada.')).toBeVisible()
@@ -194,7 +214,7 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
   await page.getByRole('button', { name: 'Añadir actividad realizada' }).click()
   await page.getByRole('button', { name: 'Confirmar actividad', exact: true }).click()
   await expect(page.getByText('Actividad registrada.')).toBeVisible()
-  await page.getByText('Contexto e historial de la orden').click()
+  await page.getByText('Ver instrucciones y antecedentes').click()
   await page.getByRole('button', { name: 'Rectificar actividad' }).click()
   const rectifyDialog = page.getByRole('dialog', { name: 'Rectificar actividad' })
   await rectifyDialog
@@ -214,7 +234,7 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
     type: 'REVISION_TECNICA',
   })
 
-  await expect(page.getByRole('heading', { name: 'Qué debes hacer ahora' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Resumen de trabajo' })).toBeVisible()
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 })
     await testInfo.attach(`ux-mecanico-${width}`, {
@@ -224,7 +244,7 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   }
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.getByRole('button', { name: 'Terminar mantenimiento', exact: true }).click()
+  await page.getByRole('button', { name: 'Terminar trabajo', exact: true }).click()
   await page
     .getByRole('dialog', { name: 'Completar orden' })
     .getByRole('button', { name: 'Confirmar completado' })

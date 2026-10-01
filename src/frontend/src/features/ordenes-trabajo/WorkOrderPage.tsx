@@ -754,6 +754,7 @@ function TechnicalReadingPanel({
   const [motivo, setMotivo] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
   const [tipo, setTipo] = useState<TechnicalReadingType>(
     order.estado === 'COMPLETADA_TECNICO' ? 'CIERRE_MANTENIMIENTO' : 'INGRESO_TALLER',
   )
@@ -799,6 +800,7 @@ function TechnicalReadingPanel({
       setKilometraje('')
       setMotivo('')
       setConfirmReading(false)
+      setOpen(false)
     } catch (requestError) {
       setError(getErrorMessage(requestError))
     } finally {
@@ -808,88 +810,113 @@ function TechnicalReadingPanel({
 
   return (
     <section className="surface p-4">
-      <h3 className="text-xs font-semibold uppercase text-slate-500">Kilometraje tecnico</h3>
-      <p className="mt-2 text-sm text-slate-600">
-        Registra solo una lectura real del odómetro cuando corresponda. Al confirmar se añade al
-        historial y se actualizan los cálculos preventivos.
-      </p>
-      <label className="mt-3 flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={earlierReading}
-          onChange={(event) => setEarlierReading(event.target.checked)}
-        />
-        ¿La lectura fue tomada antes?
-      </label>
-      <form className="mt-3 grid gap-3 sm:grid-cols-2" onSubmit={submit}>
-        <label className="block text-sm font-medium text-slate-700">
-          Tipo
-          <select
-            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
-            onChange={(event) => setTipo(event.target.value as TechnicalReadingType)}
-            value={tipo}
-          >
-            {availableTypes.map((option) => (
-              <option key={option} value={option}>
-                {option === 'INGRESO_TALLER'
-                  ? 'Ingreso a taller'
-                  : option === 'REVISION_TECNICA'
-                    ? 'Revision tecnica'
-                    : 'Cierre de mantenimiento'}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm font-medium text-slate-700">
-          Fecha del evento
-          <input
-            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-            onChange={(event) => setFechaEvento(event.target.value)}
-            type="datetime-local"
-            readOnly={!earlierReading}
-            value={fechaEvento}
-          />
-        </label>
-        <label className="block text-sm font-medium text-slate-700">
-          Kilometraje
-          <input
-            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-            min="0"
-            onChange={(event) => setKilometraje(event.target.value)}
-            step="1"
-            type="number"
-            value={kilometraje}
-          />
-        </label>
-        <label className="block text-sm font-medium text-slate-700">
-          Motivo (opcional)
-          <input
-            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-            onChange={(event) => setMotivo(event.target.value)}
-            value={motivo}
-          />
-        </label>
-        {error && <p className="sm:col-span-2 text-sm text-red-700">{error}</p>}
-        <div className="sm:col-span-2 flex justify-end">
-          <Button icon={<Clock size={14} />} loading={submitting} size="sm" type="submit">
-            {confirmReading ? 'Confirmar lectura real' : 'Revisar lectura'}
-          </Button>
-        </div>
-        {confirmReading && (
-          <p role="status" className="sm:col-span-2 rounded-lg bg-amber-50 p-3 text-sm">
-            Vas a registrar {formatNumber(Number(kilometraje))} km, tomados el{' '}
-            {formatDateTimeValue(new Date(fechaEvento).toISOString())}. Confirma únicamente si
-            leíste ese valor en el bus.{' '}
-            <button
-              type="button"
-              className="font-semibold underline"
-              onClick={() => setConfirmReading(false)}
-            >
-              Volver a revisar
-            </button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="font-semibold text-slate-900">Odómetro</h3>
+          <p className="text-sm text-slate-600">
+            {order.lecturasTecnicas.length === 0
+              ? 'No registrado'
+              : `${order.lecturasTecnicas.length} lectura(s) · última: ${formatNumber(order.lecturasTecnicas.at(-1)!.kilometraje)} km`}
           </p>
+        </div>
+        {!open && (
+          <Button onClick={() => setOpen(true)} size="sm" variant="outline">
+            + Registrar lectura
+          </Button>
         )}
-      </form>
+      </div>
+      {open && (
+        <>
+          <label className="mt-3 flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={earlierReading}
+              onChange={(event) => setEarlierReading(event.target.checked)}
+            />
+            ¿La lectura fue tomada antes?
+          </label>
+          <form className="mt-3 grid gap-3 sm:grid-cols-2" onSubmit={submit}>
+            <label className="block text-sm font-medium text-slate-700">
+              Tipo
+              <select
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                onChange={(event) => setTipo(event.target.value as TechnicalReadingType)}
+                value={tipo}
+              >
+                {availableTypes.map((option) => (
+                  <option key={option} value={option}>
+                    {option === 'INGRESO_TALLER'
+                      ? 'Ingreso a taller'
+                      : option === 'REVISION_TECNICA'
+                        ? 'Revision tecnica'
+                        : 'Cierre de mantenimiento'}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-sm font-medium text-slate-700">
+              Fecha del evento
+              <input
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+                onChange={(event) => setFechaEvento(event.target.value)}
+                type="datetime-local"
+                readOnly={!earlierReading}
+                value={fechaEvento}
+              />
+            </label>
+            <label className="block text-sm font-medium text-slate-700">
+              Kilometraje
+              <input
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+                min="0"
+                onChange={(event) => setKilometraje(event.target.value)}
+                step="1"
+                type="number"
+                value={kilometraje}
+              />
+            </label>
+            <label className="block text-sm font-medium text-slate-700">
+              Motivo (opcional)
+              <input
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+                onChange={(event) => setMotivo(event.target.value)}
+                value={motivo}
+              />
+            </label>
+            {error && <p className="sm:col-span-2 text-sm text-red-700">{error}</p>}
+            <div className="sm:col-span-2 flex justify-end">
+              <Button icon={<Clock size={14} />} loading={submitting} size="sm" type="submit">
+                {confirmReading ? 'Confirmar lectura real' : 'Revisar lectura'}
+              </Button>
+            </div>
+            {confirmReading && (
+              <p role="status" className="sm:col-span-2 rounded-lg bg-amber-50 p-3 text-sm">
+                Vas a registrar {formatNumber(Number(kilometraje))} km, tomados el{' '}
+                {formatDateTimeValue(new Date(fechaEvento).toISOString())}. Confirma únicamente si
+                leíste ese valor en el bus.{' '}
+                <button
+                  type="button"
+                  className="font-semibold underline"
+                  onClick={() => setConfirmReading(false)}
+                >
+                  Volver a revisar
+                </button>
+              </p>
+            )}
+          </form>
+          <Button
+            onClick={() => {
+              setOpen(false)
+              setConfirmReading(false)
+              setError(null)
+            }}
+            size="sm"
+            variant="outline"
+          >
+            Cancelar lectura
+          </Button>
+        </>
+      )}
     </section>
   )
 }
@@ -908,6 +935,10 @@ function TechnicalPanel({
   const activeIntervention = order.intervenciones.find((intervention) => !intervention.fechaFin)
   const [actividad, setActividad] = useState('')
   const [cantidad, setCantidad] = useState('')
+  const [partsOpen, setPartsOpen] = useState(false)
+  const [observationsOpen, setObservationsOpen] = useState(
+    Boolean(activeIntervention?.observaciones),
+  )
   const [completeConfirmOpen, setCompleteConfirmOpen] = useState(false)
   const draft = useInterventionDraft(
     order.id,
@@ -917,9 +948,8 @@ function TechnicalPanel({
     order.acciones.puedeRegistrarTecnica,
   )
   const { diagnostico, observaciones, setDiagnostico, setObservaciones } = draft
-  const hasCurrentActivity = Boolean(
-    activeIntervention?.actividades.some((item) => !item.anuladaAt),
-  )
+  const currentActivities = activeIntervention?.actividades.filter((item) => !item.anuladaAt) ?? []
+  const hasCurrentActivity = currentActivities.length > 0
   const hasDiagnosis =
     Boolean(diagnostico.trim()) ||
     order.intervenciones.some(
@@ -943,7 +973,7 @@ function TechnicalPanel({
   )
 
   useEffect(() => {
-    if (!order.acciones.puedeRegistrarTecnica) {
+    if (!order.acciones.puedeRegistrarTecnica || !partsOpen) {
       return
     }
 
@@ -974,7 +1004,7 @@ function TechnicalPanel({
     return () => {
       active = false
     }
-  }, [order.acciones.puedeRegistrarTecnica, order.id, partsSearch])
+  }, [order.acciones.puedeRegistrarTecnica, order.id, partsOpen, partsSearch])
 
   async function runOperation(
     operation: Promise<{ orden: WorkOrderDetailDto }>,
@@ -1032,10 +1062,10 @@ function TechnicalPanel({
     <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Ejecucion tecnica</h3>
-          <p className="mt-1 text-sm text-slate-500">
-            {order.motivoDevolucionActual ?? 'Acciones disponibles para el mecanico asignado.'}
-          </p>
+          <h3 className="text-sm font-semibold text-slate-900">Trabajo en la orden</h3>
+          {order.motivoDevolucionActual && (
+            <p className="mt-1 text-sm text-amber-800">{order.motivoDevolucionActual}</p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           {order.acciones.puedeIniciar && (
@@ -1070,33 +1100,38 @@ function TechnicalPanel({
       {order.acciones.puedeRegistrarTecnica ? (
         <>
           <div className="grid gap-3">
-            <h4 className="font-semibold">1. Describe lo que encontraste</h4>
-            <p className="text-sm text-slate-600">
-              Diagnóstico y observaciones se guardan como borrador. Puedes corregirlos mientras la
-              orden esté en ejecución.
-            </p>
+            <h4 className="font-semibold">Diagnóstico</h4>
             <label className="block text-sm font-medium text-slate-700">
-              Diagnostico
+              Diagnóstico
               <textarea
                 className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setDiagnostico(event.target.value)}
+                placeholder="Describe brevemente lo encontrado…"
                 value={diagnostico}
                 maxLength={3000}
                 onBlur={() => void draft.flush().catch(() => undefined)}
               />
             </label>
-            <label className="block text-sm font-medium text-slate-700">
-              Observaciones tecnicas
-              <textarea
-                className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                onChange={(event) => setObservaciones(event.target.value)}
-                value={observaciones}
-                maxLength={3000}
-                onBlur={() => void draft.flush().catch(() => undefined)}
-              />
-            </label>
-            <p role="status" className="text-sm text-slate-600">
-              {draft.status}
+            {observationsOpen ? (
+              <label className="block text-sm font-medium text-slate-700">
+                Observaciones técnicas (opcional)
+                <textarea
+                  className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  onChange={(event) => setObservaciones(event.target.value)}
+                  value={observaciones}
+                  maxLength={3000}
+                  onBlur={() => void draft.flush().catch(() => undefined)}
+                />
+              </label>
+            ) : (
+              <Button onClick={() => setObservationsOpen(true)} size="sm" variant="outline">
+                + Añadir observaciones técnicas
+              </Button>
+            )}
+            <p role="status" className="text-xs font-medium text-slate-600">
+              {draft.status === 'Guardado automáticamente' || draft.status === 'Borrador guardado'
+                ? 'Guardado'
+                : draft.status}
             </p>
             {draft.status.startsWith('No guardado') && (
               <Button variant="outline" onClick={() => void draft.flush().catch(() => undefined)}>
@@ -1109,11 +1144,18 @@ function TechnicalPanel({
             className="grid gap-3 border-t border-slate-100 pt-4"
             onSubmit={handleActivitySubmit}
           >
-            <h4 className="font-semibold">2. Añade el trabajo realizado</h4>
-            <p className="text-sm text-slate-600">
-              Añade cada actividad cuando la hayas realizado. La confirmación crea un registro
-              permanente en el historial.
-            </p>
+            <h4 className="font-semibold">Trabajo realizado</h4>
+            {currentActivities.length === 0 ? (
+              <p className="text-sm text-slate-500">Ninguna actividad registrada todavía.</p>
+            ) : (
+              <ul aria-label="Actividades realizadas" className="space-y-1 text-sm text-slate-700">
+                {currentActivities.map((item) => (
+                  <li className="break-words rounded-lg bg-slate-50 px-3 py-2" key={item.id}>
+                    {item.descripcion}
+                  </li>
+                ))}
+              </ul>
+            )}
             <label className="block text-sm font-medium text-slate-700">
               Actividad realizada
               <textarea
@@ -1129,88 +1171,106 @@ function TechnicalPanel({
             </div>
           </form>
 
-          <form
-            className="grid gap-3 border-t border-slate-100 pt-4"
-            onSubmit={handleConsumptionSubmit}
-          >
-            <h4 className="font-semibold">3. Repuestos utilizados (solo si usaste alguno)</h4>
-            <p className="text-sm text-slate-600">
-              No es obligatorio usar repuestos. Confirmar el uso descuenta la cantidad del
-              inventario y conserva el movimiento.
-            </p>
-            <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
-              <label className="block text-sm font-medium text-slate-700">
-                Buscar repuesto
-                <input
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  onChange={(event) => setPartsSearch(event.target.value)}
-                  placeholder="Codigo, nombre o categoria"
-                  value={partsSearch}
-                />
-              </label>
-              <label className="block text-sm font-medium text-slate-700">
-                Cantidad
-                <input
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  min="0.01"
-                  onChange={(event) => setCantidad(event.target.value)}
-                  step="0.01"
-                  type="number"
-                  value={cantidad}
-                />
-              </label>
+          <section className="space-y-3 border-t border-slate-100 pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h4 className="font-semibold">Repuestos</h4>
+                <p className="text-sm text-slate-500">
+                  {order.consumosRepuesto.length === 0
+                    ? 'Ninguno registrado'
+                    : `${order.consumosRepuesto.length} uso(s) registrado(s)`}
+                </p>
+              </div>
+              {!partsOpen && (
+                <Button onClick={() => setPartsOpen(true)} size="sm" variant="outline">
+                  + Registrar repuesto
+                </Button>
+              )}
             </div>
-            <label className="block text-sm font-medium text-slate-700">
-              Repuesto
-              <select
-                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                onChange={(event) => setRepuestoId(event.target.value)}
-                value={repuestoId}
-              >
-                <option value="">{partsLoading ? 'Cargando...' : 'Seleccione repuesto'}</option>
-                {parts.map((part) => {
-                  const authorization = (order.autorizacionesExcepcion ?? []).find(
-                    (candidate) =>
-                      candidate.estado === 'VIGENTE' &&
-                      candidate.intervencionId === activeIntervention?.id &&
-                      candidate.repuesto.id === part.id &&
-                      (!candidate.fechaExpiracion ||
-                        new Date(candidate.fechaExpiracion) > new Date()),
-                  )
-                  const compatibilityResult = part.compatibilidad?.resultado ?? 'COMPATIBLE'
-                  const permitted = compatibilityResult === 'COMPATIBLE'
-                  return (
-                    <option disabled={!permitted && !authorization} key={part.id} value={part.id}>
-                      {part.codigo} - {part.nombre} - stock {part.stockActual} -{' '}
-                      {permitted
-                        ? `Compatible${part.compatibilidad?.condicionUso ? `: ${part.compatibilidad.condicionUso}` : ''}`
-                        : authorization
-                          ? `Excepcion autorizada hasta ${authorization.cantidadMaxima}`
-                          : compatibilityResult === 'INCOMPATIBLE'
-                            ? 'Incompatible'
-                            : 'Sin evidencia'}
-                    </option>
-                  )
-                })}
-              </select>
-            </label>
-            {selectedPart && applicableAuthorization && (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                Excepcion puntual autorizada por {applicableAuthorization.autorizadoPor.nombre}:{' '}
-                maximo {applicableAuthorization.cantidadMaxima}. Motivo:{' '}
-                {applicableAuthorization.motivo}
-              </p>
+            {partsOpen && (
+              <form className="grid gap-3" onSubmit={handleConsumptionSubmit}>
+                <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Buscar repuesto
+                    <input
+                      className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                      onChange={(event) => setPartsSearch(event.target.value)}
+                      placeholder="Codigo, nombre o categoria"
+                      value={partsSearch}
+                    />
+                  </label>
+                  <label className="block text-sm font-medium text-slate-700">
+                    Cantidad
+                    <input
+                      className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                      min="0.01"
+                      onChange={(event) => setCantidad(event.target.value)}
+                      step="0.01"
+                      type="number"
+                      value={cantidad}
+                    />
+                  </label>
+                </div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Repuesto
+                  <select
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    onChange={(event) => setRepuestoId(event.target.value)}
+                    value={repuestoId}
+                  >
+                    <option value="">{partsLoading ? 'Cargando...' : 'Seleccione repuesto'}</option>
+                    {parts.map((part) => {
+                      const authorization = (order.autorizacionesExcepcion ?? []).find(
+                        (candidate) =>
+                          candidate.estado === 'VIGENTE' &&
+                          candidate.intervencionId === activeIntervention?.id &&
+                          candidate.repuesto.id === part.id &&
+                          (!candidate.fechaExpiracion ||
+                            new Date(candidate.fechaExpiracion) > new Date()),
+                      )
+                      const compatibilityResult = part.compatibilidad?.resultado ?? 'COMPATIBLE'
+                      const permitted = compatibilityResult === 'COMPATIBLE'
+                      return (
+                        <option
+                          disabled={!permitted && !authorization}
+                          key={part.id}
+                          value={part.id}
+                        >
+                          {part.codigo} - {part.nombre} - stock {part.stockActual} -{' '}
+                          {permitted
+                            ? `Compatible${part.compatibilidad?.condicionUso ? `: ${part.compatibilidad.condicionUso}` : ''}`
+                            : authorization
+                              ? `Excepcion autorizada hasta ${authorization.cantidadMaxima}`
+                              : compatibilityResult === 'INCOMPATIBLE'
+                                ? 'Incompatible'
+                                : 'Sin evidencia'}
+                        </option>
+                      )
+                    })}
+                  </select>
+                </label>
+                {selectedPart && applicableAuthorization && (
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    Excepcion puntual autorizada por {applicableAuthorization.autorizadoPor.nombre}:{' '}
+                    maximo {applicableAuthorization.cantidadMaxima}. Motivo:{' '}
+                    {applicableAuthorization.motivo}
+                  </p>
+                )}
+                <div className="flex justify-end">
+                  <Button icon={<Package size={14} />} loading={isBusy} size="sm" type="submit">
+                    Registrar repuesto utilizado
+                  </Button>
+                </div>
+                <Button onClick={() => setPartsOpen(false)} size="sm" variant="outline">
+                  Cancelar registro de repuesto
+                </Button>
+              </form>
             )}
-            <div className="flex justify-end">
-              <Button icon={<Package size={14} />} loading={isBusy} size="sm" type="submit">
-                Registrar repuesto utilizado
-              </Button>
-            </div>
-          </form>
+          </section>
         </>
-      ) : (
-        <TimelineEmpty text="La orden no esta en un estado editable para el mecanico asignado." />
-      )}
+      ) : !order.acciones.puedeIniciar && !order.acciones.puedeReanudar ? (
+        <TimelineEmpty text="Trabajo técnico no editable en este estado." />
+      ) : null}
 
       <TechnicalReadingPanel order={order} onFeedback={onFeedback} onOrderChange={onOrderChange} />
 
@@ -1261,7 +1321,12 @@ function TechnicalPanel({
                       }),
                       'Repuesto utilizado registrado.',
                     ).then((ok) => {
-                      if (ok) setCantidad('')
+                      if (ok) {
+                        setCantidad('')
+                        setRepuestoId('')
+                        setPartsSearch('')
+                        setPartsOpen(false)
+                      }
                     })
                 }}
               >
@@ -1274,23 +1339,30 @@ function TechnicalPanel({
 
       {order.acciones.puedeCompletar && (
         <section className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-          <h3 className="font-semibold text-emerald-950">Paso final: terminar mantenimiento</h3>
-          <p className="text-sm">
-            {activeIntervention?.actividades.filter((item) => !item.anuladaAt).length ?? 0}{' '}
-            actividades vigentes en tu intervención actual · {order.consumosRepuesto.length} usos de
-            repuestos · {order.lecturasTecnicas.length} lecturas registradas.
+          <h3 className="font-semibold text-emerald-950">Resumen</h3>
+          <p className="text-sm text-emerald-950">
+            {currentActivities.length} actividad(es) realizada(s) · {order.consumosRepuesto.length}{' '}
+            repuesto(s) registrado(s)
           </p>
-          <p className="text-sm">
-            {!hasCurrentActivity
-              ? 'Falta añadir al menos una actividad realizada en esta intervención.'
-              : order.tipo === 'CORRECTIVA' && !hasDiagnosis
-                ? 'Falta escribir el diagnóstico de la falla.'
-                : 'Revisa que el trabajo realizado esté completo.'}{' '}
-            {draft.dirty && 'Espera a que se guarde el borrador.'}
+          <p className="text-sm text-emerald-950">
+            {order.lecturasTecnicas.length === 0
+              ? 'Odómetro: sin lectura técnica'
+              : `Última lectura técnica: ${formatNumber(order.lecturasTecnicas.at(-1)!.kilometraje)} km`}
           </p>
-          <p className="text-sm">
-            El Administrador revisará el trabajo. Solo podrás volver a editar si lo devuelve para
-            corrección. Terminar no libera automáticamente el bus.
+          {(!hasCurrentActivity ||
+            (order.tipo === 'CORRECTIVA' && !hasDiagnosis) ||
+            draft.dirty) && (
+            <p className="text-sm font-medium text-amber-900">
+              {!hasCurrentActivity
+                ? 'Falta registrar al menos una actividad realizada.'
+                : order.tipo === 'CORRECTIVA' && !hasDiagnosis
+                  ? 'Falta escribir el diagnóstico de la falla.'
+                  : 'Espera a que se guarde el borrador.'}
+            </p>
+          )}
+          <p className="text-xs text-emerald-900">
+            El Administrador revisará el trabajo antes del cierre administrativo. Terminar no libera
+            automáticamente el bus.
           </p>
           <Button
             disabled={
@@ -1301,7 +1373,7 @@ function TechnicalPanel({
             }
             onClick={() => setCompleteConfirmOpen(true)}
           >
-            Terminar mantenimiento
+            Terminar trabajo
           </Button>
         </section>
       )}
@@ -1543,6 +1615,7 @@ function WaitingPanel({
   const [motivo, setMotivo] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [open, setOpen] = useState(false)
   if (!order.espera && !order.acciones.puedeMarcarEspera) return null
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -1563,47 +1636,94 @@ function WaitingPanel({
           : 'Orden en espera; Administración fue informada.',
       )
       setMotivo('')
+      setOpen(false)
     } catch (caught) {
       setError(getErrorMessage(caught))
     } finally {
       setBusy(false)
     }
   }
+  if (!order.espera) {
+    return (
+      <>
+        <Button onClick={() => setOpen(true)} size="sm" variant="outline">
+          No puedo continuar
+        </Button>
+        {open && (
+          <ModalFrame
+            onClose={() => setOpen(false)}
+            subtitle={order.codigo}
+            title="No puedo continuar"
+          >
+            <form className="space-y-4 p-5" onSubmit={(event) => void submit(event)}>
+              <fieldset className="space-y-2 text-sm">
+                <legend className="font-semibold">¿Por qué no puedes continuar?</legend>
+                <label className="flex items-center gap-2">
+                  <input
+                    checked={tipo === 'REPUESTO'}
+                    name="tipoEspera"
+                    onChange={() => setTipo('REPUESTO')}
+                    type="radio"
+                  />
+                  Falta un repuesto
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    checked={tipo === 'AUTORIZACION'}
+                    name="tipoEspera"
+                    onChange={() => setTipo('AUTORIZACION')}
+                    type="radio"
+                  />
+                  Requiere autorización
+                </label>
+              </fieldset>
+              <label className="block text-sm font-medium">
+                Motivo de la espera
+                <textarea
+                  className="mt-1 min-h-20 w-full rounded-lg border bg-white p-2"
+                  maxLength={1000}
+                  onChange={(event) => setMotivo(event.target.value)}
+                  required
+                  value={motivo}
+                />
+              </label>
+              {error && (
+                <p role="alert" className="text-sm text-red-700">
+                  {error}
+                </p>
+              )}
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button onClick={() => setOpen(false)} type="button" variant="outline">
+                  Cancelar
+                </Button>
+                <Button loading={busy} type="submit">
+                  Informar y pausar trabajo
+                </Button>
+              </div>
+            </form>
+          </ModalFrame>
+        )}
+      </>
+    )
+  }
   return (
     <section className="rounded-xl border border-amber-300 bg-amber-50 p-4">
-      <h3 className="font-semibold text-amber-950">
-        {order.espera ? 'Trabajo técnico en espera' : '¿No puedes continuar el trabajo?'}
-      </h3>
-      {order.espera && (
-        <div className="mt-2 space-y-1 text-sm text-amber-950">
-          <p>
-            Espera de {order.espera.tipo === 'REPUESTO' ? 'repuesto' : 'autorización'} desde{' '}
-            {formatDateTimeValue(order.espera.desde)}.
-          </p>
-          <p>Motivo: {order.espera.motivo}</p>
-          <p>
-            Siguiente responsable: Administración. Después, el Mecánico asignado registra la
-            reanudación.
-          </p>
-        </div>
-      )}
-      {(order.acciones.puedeMarcarEspera || order.acciones.puedeReanudarEspera) && (
+      <h3 className="font-semibold text-amber-950">Trabajo en espera</h3>
+      <div className="mt-2 space-y-1 text-sm text-amber-950">
+        <p>
+          Espera de {order.espera.tipo === 'REPUESTO' ? 'repuesto' : 'autorización'} desde{' '}
+          {formatDateTimeValue(order.espera.desde)}.
+        </p>
+        <p>Motivo: {order.espera.motivo}</p>
+        <p>
+          Siguiente responsable: Administración. Después, el Mecánico asignado registra la
+          reanudación.
+        </p>
+      </div>
+      {order.acciones.puedeReanudarEspera && (
         <form className="mt-3 space-y-3" onSubmit={(event) => void submit(event)}>
-          {!order.espera && (
-            <label className="block text-sm">
-              Tipo de espera
-              <select
-                className="mt-1 block w-full rounded-lg border bg-white p-2"
-                value={tipo}
-                onChange={(event) => setTipo(event.target.value as 'REPUESTO' | 'AUTORIZACION')}
-              >
-                <option value="REPUESTO">En espera de repuesto</option>
-                <option value="AUTORIZACION">En espera de autorización</option>
-              </select>
-            </label>
-          )}
           <label className="block text-sm">
-            {order.espera ? 'Motivo de reanudación' : 'Motivo de la espera'}
+            Motivo de reanudación
             <textarea
               className="mt-1 min-h-20 w-full rounded-lg border bg-white p-2"
               value={motivo}
@@ -1618,7 +1738,7 @@ function WaitingPanel({
             </p>
           )}
           <Button type="submit" loading={busy}>
-            {order.espera ? 'Reanudar trabajo' : 'Informar espera a Administración'}
+            Reanudar trabajo
           </Button>
         </form>
       )}
@@ -1811,65 +1931,82 @@ function WorkOrderDetail({
   }
   return (
     <div className="space-y-5">
-      <WaitingPanel order={order} onOrderChange={onOrderChange} onFeedback={onFeedback} />
-      {isAdmin && (
-        <AnnulOrderPanel order={order} onOrderChange={onOrderChange} onFeedback={onFeedback} />
-      )}
       {isMechanic && (
-        <section className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-          <h2 className="text-lg font-bold text-emerald-950">Qué debes hacer ahora</h2>
-          <p className="font-semibold">
+        <section
+          aria-label="Resumen de trabajo"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 p-4"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+            Orden {order.codigo}
+          </p>
+          <h2 className="mt-1 text-lg font-bold text-emerald-950">
+            {order.bus.codigoInterno} · {order.bus.placa}
+          </h2>
+          <p className="mt-1 line-clamp-2 font-semibold text-slate-800">
             {order.programacionMantenimiento?.actividad ??
               order.novedad?.descripcion ??
               order.descripcion}
           </p>
-          <p className="text-sm">
-            <b>Bus:</b> {order.bus.codigoInterno} · {order.bus.placa}
-          </p>
-          <p className="text-sm">
-            <b>Motivo:</b>{' '}
-            {order.programacionMantenimiento
-              ? 'Mantenimiento preventivo programado para conservar el bus en condiciones de operación.'
-              : order.novedad
-                ? 'El Conductor reportó esta falla; inspecciona y registra qué encontraste.'
-                : 'El Administrador solicitó esta intervención correctiva.'}
-          </p>
-          {order.fechaObjetivoPreventivo && (
-            <p className="text-sm">
-              Fecha objetivo: {formatDateValue(order.fechaObjetivoPreventivo)}.
-            </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-slate-600">Tipo de orden:</span>
+            <TypeBadge type={order.tipo} />
+            <span className="ml-1 text-xs text-slate-600">Estado de orden:</span>
+            <StatusBadge status={order.estado} />
+          </div>
+          {(order.fechaObjetivoPreventivo || order.kilometrajeObjetivoPreventivo !== null) && (
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-emerald-950">
+              {order.fechaObjetivoPreventivo && (
+                <span>Fecha objetivo: {formatDateValue(order.fechaObjetivoPreventivo)}</span>
+              )}
+              {order.kilometrajeObjetivoPreventivo !== null && (
+                <span>
+                  Odómetro objetivo: {formatNumber(order.kilometrajeObjetivoPreventivo)} km
+                </span>
+              )}
+            </div>
           )}
-          {order.kilometrajeObjetivoPreventivo !== null && (
-            <p className="text-sm">
-              Objetivo del odómetro: {formatNumber(order.kilometrajeObjetivoPreventivo)} km.
-            </p>
-          )}
-          <p className="text-sm">
-            <b>Resultado esperado:</b> dejar documentado el trabajo y su resultado para que el
-            Administrador pueda revisarlo. Si la falla continúa, indícalo en el diagnóstico.
-          </p>
           {['COMPLETADA_TECNICO', 'CERRADA', 'ANULADA'].includes(order.estado) ? (
-            <p className="font-semibold">
+            <p className="mt-2 text-sm font-semibold text-emerald-950">
               {order.estado === 'ANULADA'
                 ? 'Orden anulada antes de ejecutar trabajo. Consulta el motivo en su historial.'
                 : order.estado === 'CERRADA'
                   ? 'Mantenimiento cerrado. Puedes consultar su historial.'
                   : 'Trabajo enviado. El siguiente paso corresponde al Administrador: revisar y cerrar o solicitar corrección.'}
             </p>
-          ) : (
-            <ol className="list-decimal space-y-1 pl-5 text-sm">
-              <li>Inicia o reanuda la orden y revisa el bus.</li>
-              <li>Describe el diagnóstico y añade las actividades realmente realizadas.</li>
-              <li>Registra repuestos y odómetro solo cuando corresponda.</li>
-              <li>Revisa el resumen final y envía el trabajo al Administrador.</li>
-            </ol>
-          )}
+          ) : null}
         </section>
+      )}
+      {order.espera && (
+        <WaitingPanel order={order} onOrderChange={onOrderChange} onFeedback={onFeedback} />
+      )}
+      {isAdmin && (
+        <AnnulOrderPanel order={order} onOrderChange={onOrderChange} onFeedback={onFeedback} />
       )}
       <details open={!isMechanic} className="space-y-4">
         <summary className="cursor-pointer rounded-lg bg-slate-100 p-3 text-sm font-semibold">
-          Contexto e historial de la orden
+          {isMechanic ? 'Ver instrucciones y antecedentes' : 'Contexto e historial de la orden'}
         </summary>
+        {isMechanic && (
+          <section className="surface space-y-2 p-4 text-sm text-slate-700">
+            <h3 className="font-semibold text-slate-900">Instrucciones de la orden</h3>
+            <p>
+              <strong>Motivo:</strong>{' '}
+              {order.programacionMantenimiento
+                ? 'Mantenimiento preventivo programado para conservar el bus en condiciones de operación.'
+                : order.novedad
+                  ? 'El Conductor reportó esta falla; inspecciona y registra qué encontraste.'
+                  : 'El Administrador solicitó esta intervención correctiva.'}
+            </p>
+            <p>
+              <strong>Resultado esperado:</strong> documentar el trabajo y su resultado para
+              revisión administrativa. Si la falla continúa, indícalo en el diagnóstico.
+            </p>
+            <p>
+              Revisa el bus, registra solo actividades realizadas y añade repuestos u odómetro
+              cuando correspondan.
+            </p>
+          </section>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <FieldValue label="Codigo">{order.codigo}</FieldValue>
           <FieldValue label="Estado">
@@ -2424,6 +2561,9 @@ function WorkOrderDetail({
           order={order}
           submitting={submitting}
         />
+      )}
+      {!order.espera && (
+        <WaitingPanel order={order} onOrderChange={onOrderChange} onFeedback={onFeedback} />
       )}
     </div>
   )

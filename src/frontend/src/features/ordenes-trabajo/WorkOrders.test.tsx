@@ -66,27 +66,26 @@ describe('RF-04 work order frontend', () => {
     const fetchMock = mockApi(workOrderHandler('MECANICO', { initialStatus: 'EN_EJECUCION' }))
     render(<App />)
     fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
-    fireEvent.change(await screen.findByLabelText('Tipo de espera'), {
-      target: { value: 'AUTORIZACION' },
-    })
-    fireEvent.change(screen.getByLabelText('Motivo de la espera'), {
+    expect(screen.queryByLabelText('Motivo de la espera')).not.toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: 'No puedo continuar' }))
+    const waitDialog = screen.getByRole('dialog', { name: 'No puedo continuar' })
+    fireEvent.click(within(waitDialog).getByLabelText('Requiere autorización'))
+    fireEvent.change(within(waitDialog).getByLabelText('Motivo de la espera'), {
       target: { value: 'Se requiere aval para continuar' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /Informar espera a Administración/i }))
+    fireEvent.click(within(waitDialog).getByRole('button', { name: 'Informar y pausar trabajo' }))
     expect(
       await screen.findByText(/Orden en espera; Administración fue informada/i),
     ).toBeInTheDocument()
     expect(screen.getByText(/Espera de autorización desde/i)).toBeInTheDocument()
     expect(screen.getByText(/Siguiente responsable: Administración/i)).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: /^Terminar mantenimiento$/i }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Terminar trabajo$/i })).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Motivo de reanudación'), {
       target: { value: 'Aval administrativo registrado' },
     })
     fireEvent.click(screen.getByRole('button', { name: /Reanudar trabajo/i }))
     expect(await screen.findByText(/Ejecución de la orden reanudada/i)).toBeInTheDocument()
-    expect(screen.getByText(/¿No puedes continuar el trabajo/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'No puedo continuar' })).toBeInTheDocument()
     expect(
       fetchMock.mock.calls.some(
         ([url, init]) => String(url).endsWith('/marcar-espera') && init?.method === 'POST',
@@ -109,8 +108,12 @@ describe('RF-04 work order frontend', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Añadir actividad realizada/i }))
     fireEvent.click(screen.getByRole('button', { name: /^Confirmar actividad$/i }))
-    expect(await screen.findByText(/Actividad registrada/i)).toBeInTheDocument()
-    fireEvent.click(await screen.findByText(/Contexto e historial de la orden/i))
+    expect(
+      within(await screen.findByRole('list', { name: 'Actividades realizadas' })).getByText(
+        'Actividad ingresada por error',
+      ),
+    ).toBeInTheDocument()
+    fireEvent.click(await screen.findByText(/Ver instrucciones y antecedentes/i))
     fireEvent.click(await screen.findByRole('button', { name: /Rectificar actividad/i }))
     const dialog = await screen.findByRole('dialog', { name: /Rectificar actividad/i })
     fireEvent.change(within(dialog).getByLabelText(/Motivo de la rectificación/i), {
@@ -380,7 +383,7 @@ describe('RF-04 work order frontend', () => {
     )
     render(<App />)
     fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
-    fireEvent.click(await screen.findByText(/Contexto e historial de la orden/i))
+    fireEvent.click(await screen.findByText(/Ver instrucciones y antecedentes/i))
     expect(await screen.findByText(/Saldo pendiente: 1.00/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Reversar consumo/i })).not.toBeInTheDocument()
     expect(screen.queryByText(/120.000/)).not.toBeInTheDocument()
@@ -396,11 +399,14 @@ describe('RF-04 work order frontend', () => {
     expect(screen.queryByRole('columnheader', { name: /^Costo$/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /^Costo$/i })).not.toBeInTheDocument()
     fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
-    expect(await screen.findByText(/Ejecucion tecnica/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Trabajo en la orden/i)).toBeInTheDocument()
     expect(screen.queryByText(/Costo basico/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/Consumos y costo/i)).not.toBeInTheDocument()
 
-    expect(screen.getByRole('heading', { name: 'Qué debes hacer ahora' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Resumen de trabajo' })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Fecha del evento$/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Repuesto$/i)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '+ Registrar lectura' }))
     expect(screen.getByLabelText(/^Fecha del evento$/i)).not.toHaveValue('')
     fireEvent.click(screen.getByLabelText('¿La lectura fue tomada antes?'))
     fireEvent.change(screen.getByLabelText(/^Fecha del evento$/i), {
@@ -417,18 +423,24 @@ describe('RF-04 work order frontend', () => {
     ).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: /Confirmar lectura real/i }))
     expect(await screen.findByText(/Lectura tecnica registrada/i)).toBeInTheDocument()
-    expect(await screen.findByText(/45\.201 km/i)).toBeInTheDocument()
+    expect((await screen.findAllByText(/45\.201 km/i)).length).toBeGreaterThan(0)
+    expect(screen.queryByLabelText(/^Fecha del evento$/i)).not.toBeInTheDocument()
 
     fireEvent.click(await screen.findByRole('button', { name: /^Iniciar$/i }))
     expect(await screen.findByText(/Ejecucion iniciada/i)).toBeInTheDocument()
 
-    fireEvent.change(await screen.findByLabelText(/^Diagnostico$/i), {
+    fireEvent.change(await screen.findByLabelText(/^Diagnóstico$/i), {
       target: { value: 'Diagnostico correctivo desde frontend.' },
     })
-    fireEvent.change(screen.getByLabelText(/Observaciones tecnicas/i), {
+    fireEvent.click(screen.getByRole('button', { name: '+ Añadir observaciones técnicas' }))
+    fireEvent.change(screen.getByLabelText(/Observaciones técnicas/i), {
       target: { value: 'Observaciones tecnicas desde frontend.' },
     })
-    expect(await screen.findByText(/Guardado automáticamente/i)).toBeInTheDocument()
+    expect(await screen.findByText(/^Guardado$/i)).toBeInTheDocument()
+    expect(
+      screen.getByText('Falta registrar al menos una actividad realizada.'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Terminar trabajo' })).toBeDisabled()
 
     fireEvent.change(screen.getByLabelText(/Actividad realizada/i), {
       target: { value: 'Revision y ajuste de frenos' },
@@ -440,8 +452,13 @@ describe('RF-04 work order frontend', () => {
       ),
     ).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: /^Confirmar actividad$/i }))
-    expect(await screen.findByText(/Actividad registrada/i)).toBeInTheDocument()
+    expect(
+      within(await screen.findByRole('list', { name: 'Actividades realizadas' })).getByText(
+        'Revision y ajuste de frenos',
+      ),
+    ).toBeInTheDocument()
 
+    fireEvent.click(screen.getByRole('button', { name: '+ Registrar repuesto' }))
     expect(await screen.findByText(/Pastilla de freno/i)).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText(/^Repuesto$/i), { target: { value: '2064' } })
     fireEvent.change(screen.getByLabelText(/^Cantidad$/i), { target: { value: '1' } })
@@ -453,8 +470,9 @@ describe('RF-04 work order frontend', () => {
     ).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: /^Confirmar uso de repuesto$/i }))
     expect(await screen.findByText(/Repuesto utilizado registrado/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Repuesto$/i)).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /^Terminar mantenimiento$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Terminar trabajo$/i }))
     const completeDialog = await screen.findByRole('dialog', { name: /Completar orden/i })
     fireEvent.click(within(completeDialog).getByRole('button', { name: /Confirmar completado/i }))
     expect(await screen.findByText(/Orden completada tecnicamente/i)).toBeInTheDocument()

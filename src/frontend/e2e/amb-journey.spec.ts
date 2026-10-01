@@ -113,17 +113,14 @@ test('AMB programa desde UI, avisa al Conductor y concilia odómetro sin costos'
   await page.getByLabel('Bus de jornada', { exact: true }).selectOption(String(busId))
   await page.getByLabel('Conductor de jornada').selectOption(String(driverId))
   await page.getByLabel('Ruta de jornada').selectOption(String(routeId))
-  await page
-    .getByLabel('Inicio programado', { exact: true })
-    .fill(localInput(new Date(Date.now() - 3600000)))
-  await page
-    .getByLabel('Fin programado', { exact: true })
-    .fill(localInput(new Date(Date.now() + 3600000)))
+  const start = localInput(new Date(Date.now() - 3600000))
+  const end = localInput(new Date(Date.now() + 3600000))
+  await page.getByLabel('Fecha de jornada').fill(start.slice(0, 10))
+  await page.getByLabel('Hora de salida').fill(start.slice(11))
+  await page.getByLabel('Hora de llegada').fill(end.slice(11))
   await page.getByLabel('Usar proyección simulada SGMV').check()
   await expect(page.getByText('Jornada proyectada:', { exact: false })).toContainText('290 km')
-  await expect(
-    page.getByText('La proyección simulada anticipa cercanía al objetivo.', { exact: false }),
-  ).toBeVisible()
+  await expect(page.getByText('No cambia el odómetro.', { exact: false })).toBeVisible()
   const created = page.waitForResponse(
     (r) => new URL(r.url()).pathname.endsWith('/jornadas') && r.request().method() === 'POST',
   )
@@ -175,22 +172,23 @@ test('AMB programa desde UI, avisa al Conductor y concilia odómetro sin costos'
   await page.getByRole('button', { name: 'Cerrar sesión' }).click()
   await login(page, 'despachador.demo@sgmv.local')
   await page.goto('/jornadas')
-  const closedCard = page
-    .locator('article')
-    .filter({ has: page.getByRole('heading', { name: new RegExp(code) }) })
-    .first()
-  await closedCard
+  await page.getByPlaceholder('Buscar bus, placa, conductor o ruta').fill(code)
+  const closedGroup = page.getByRole('article', { name: new RegExp(code) })
+  await expect(closedGroup).toBeVisible()
+  await closedGroup.getByLabel(`Acciones de jornada ${journeyId}`).click()
+  await closedGroup.getByRole('button', { name: 'Ver detalle' }).click()
+  await closedGroup
     .getByText('Referencia académica simulada (no es odómetro)', { exact: true })
     .click()
-  await expect(closedCard.getByText('Recorrido por odómetro:', { exact: false })).toContainText(
+  await expect(closedGroup.getByText('Recorrido por odómetro:', { exact: false })).toContainText(
     '275 km',
   )
   const directory = join(tmpdir(), 'sgmv-astra-amb-ui')
   await mkdir(directory, { recursive: true })
   for (const width of [390, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 })
-    await expect(closedCard).toBeVisible()
-    await closedCard.scrollIntoViewIfNeeded()
+    await expect(closedGroup).toBeVisible()
+    await closedGroup.scrollIntoViewIfNeeded()
     await page.screenshot({ path: join(directory, `conciliacion-${width}.png`), fullPage: true })
   }
 })

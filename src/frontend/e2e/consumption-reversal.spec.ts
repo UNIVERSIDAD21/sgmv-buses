@@ -175,7 +175,7 @@ test('Administrador revierte parcialmente; Mecánico ve saldo sin costo ni motiv
 
   await login(page, 'mecanico.demo@sgmv.local')
   await openOrder(page)
-  await page.getByText('Contexto e historial de la orden').click()
+  await page.getByText('Ver instrucciones y antecedentes').click()
   await expect(page.getByText(/Saldo pendiente: 1.25/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reversar consumo' })).toHaveCount(0)
   await expect(page.getByText(/Tres cuartos no se instalaron/)).toHaveCount(0)

@@ -205,6 +205,8 @@ test('administra reglas, rechaza incompatibilidad y registra consumo decimal tra
   await login(page, 'mecanico.demo@sgmv.local')
   await openOrder(page)
   let orderDetail = page.getByRole('dialog', { name: 'Detalle de orden' })
+  await orderDetail.getByRole('button', { name: '+ Registrar repuesto' }).click()
+  await expect(orderDetail.getByLabel('Buscar repuesto')).toBeVisible()
   await orderDetail.getByLabel('Buscar repuesto').fill(partCode!)
   let partOption = orderDetail.locator('option').filter({ hasText: partCode! })
   await expect(partOption).toHaveCount(1)
@@ -266,6 +268,8 @@ test('administra reglas, rechaza incompatibilidad y registra consumo decimal tra
   await login(page, 'mecanico.demo@sgmv.local')
   await openOrder(page)
   orderDetail = page.getByRole('dialog', { name: 'Detalle de orden' })
+  await orderDetail.getByRole('button', { name: '+ Registrar repuesto' }).click()
+  await expect(orderDetail.getByLabel('Buscar repuesto')).toBeVisible()
   await orderDetail.getByLabel('Buscar repuesto').fill(partCode!)
   partOption = orderDetail.locator('option').filter({ hasText: partCode! })
   await expect(partOption).toHaveCount(1)
@@ -279,7 +283,7 @@ test('administra reglas, rechaza incompatibilidad y registra consumo decimal tra
   await consumeButton.click()
   await page.getByRole('button', { name: 'Confirmar uso de repuesto', exact: true }).click()
   await expect(page.getByText('Repuesto utilizado registrado.')).toBeVisible()
-  await orderDetail.getByText('Contexto e historial de la orden', { exact: true }).click()
+  await orderDetail.getByText('Ver instrucciones y antecedentes', { exact: true }).click()
   await expect(orderDetail.getByText('1.25', { exact: true })).toBeVisible()
 
   const persisted = await prisma.consumoRepuesto.findFirstOrThrow({
