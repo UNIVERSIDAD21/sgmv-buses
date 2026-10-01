@@ -114,12 +114,14 @@ interface ReviewNoveltyData {
   criticidad?: CriticidadNovedad
   estado?: EstadoNovedad
   observacionRevision?: string
+  respuestaOperativa?: string
   revisadaPorId: number
 }
 
 interface ConvertNoveltyData {
   descripcionOrden: string
   observacion: string | null
+  respuestaOperativa?: string
   prioridad: PrioridadOrden
 }
 
@@ -319,6 +321,7 @@ export class NoveltyRepository {
             estado: data.estado,
             fechaRevision: new Date(),
             observacionRevision: data.observacionRevision,
+            respuestaOperativa: data.respuestaOperativa,
             revisadaPorId: data.revisadaPorId,
           },
           include: noveltyInclude,
@@ -444,6 +447,7 @@ export class NoveltyRepository {
             estado: 'CONVERTIDA_A_ORDEN',
             fechaRevision: new Date(),
             observacionRevision: data.observacion ?? 'Convertida a orden correctiva',
+            respuestaOperativa: data.respuestaOperativa,
             revisadaPorId: actorId,
           },
           include: noveltyInclude,

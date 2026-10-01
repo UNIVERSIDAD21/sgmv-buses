@@ -95,10 +95,10 @@ function mapNovelty(novelty: NoveltyRecord, actor: AuthenticatedUser): NoveltyDt
       id: novelty.bus.id,
       placa: novelty.bus.placa,
     },
-    clasificacion: actor.rol.codigo === 'DESPACHADOR' ? null : novelty.clasificacion,
+    clasificacion: includeAdministrativeData ? novelty.clasificacion : null,
     continuidadInformada: novelty.continuidadInformada,
     conductor: mapUser(novelty.conductor, includeAdministrativeData),
-    criticidad: actor.rol.codigo === 'DESPACHADOR' ? null : novelty.criticidad,
+    criticidad: includeAdministrativeData ? novelty.criticidad : null,
     descripcion: novelty.descripcion,
     estado: novelty.estado,
     ...(actor.rol.codigo === 'ADMINISTRADOR' || actor.rol.codigo === 'CONDUCTOR'
@@ -133,6 +133,7 @@ function mapNovelty(novelty: NoveltyRecord, actor: AuthenticatedUser): NoveltyDt
         }
       : null,
     observacionRevision: includeAdministrativeData ? novelty.observacionRevision : null,
+    respuestaOperativa: novelty.respuestaOperativa,
     ordenTrabajo: mapWorkOrder(activeOrder ?? null, includeAdministrativeData),
     revisadaPor: novelty.revisadaPor
       ? mapUser(novelty.revisadaPor, includeAdministrativeData)
@@ -192,6 +193,9 @@ export class NoveltyService {
       const result = await this.noveltyRepository.convertToCorrectiveOrder(noveltyId, actor.id, {
         descripcionOrden: normalizeText(descripcionOrden),
         observacion: input.observacion ? normalizeText(input.observacion) : null,
+        respuestaOperativa: input.respuestaOperativa
+          ? normalizeText(input.respuestaOperativa)
+          : undefined,
         prioridad: input.prioridad as PrioridadOrden,
       })
 
@@ -338,6 +342,9 @@ export class NoveltyService {
       criticidad: input.criticidad,
       estado: stateByAction[input.accion],
       observacionRevision: input.observacion ? normalizeText(input.observacion) : undefined,
+      respuestaOperativa: input.respuestaOperativa
+        ? normalizeText(input.respuestaOperativa)
+        : undefined,
       revisadaPorId: actor.id,
     })
 

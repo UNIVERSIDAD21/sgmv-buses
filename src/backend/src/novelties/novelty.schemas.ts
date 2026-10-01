@@ -86,6 +86,7 @@ export const reviewNoveltySchema = z
     clasificacion: optionalTrimmedText(120),
     criticidad: z.enum(criticidadNovedadValues).optional(),
     observacion: optionalTrimmedText(1000),
+    respuestaOperativa: optionalTrimmedText(1000),
   })
   .strict()
   .superRefine((input, context) => {
@@ -156,6 +157,7 @@ export const convertNoveltySchema = z
   .object({
     descripcionOrden: optionalTrimmedText(2000),
     observacion: optionalTrimmedText(1000),
+    respuestaOperativa: optionalTrimmedText(1000),
     prioridad: z.enum(prioridadOrdenValues).default('MEDIA'),
   })
   .strict()

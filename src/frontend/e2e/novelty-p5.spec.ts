@@ -109,7 +109,12 @@ test('P5 enlaza reporte tardio, clasificacion critica y reaccion de despacho', a
   const dialog = page.getByRole('dialog', { name: 'Clasificar novedad' })
   await dialog.getByLabel('Clasificacion').fill('Falla critica E2E')
   await dialog.getByLabel('Criticidad').selectOption('CRITICA')
-  await dialog.getByLabel('Observacion').fill('Coordinacion operativa inmediata E2E')
+  await dialog
+    .getByLabel('Observación interna (no visible para el Conductor)')
+    .fill('Coordinacion operativa inmediata E2E')
+  await dialog
+    .getByLabel('Respuesta operativa para el Conductor')
+    .fill('Su reporte está en revisión. Coordine con Despacho antes de continuar.')
   await dialog.getByRole('button', { name: 'Guardar clasificacion' }).click()
   await expect(page.getByText('Novedad actualizada.')).toBeVisible()
   await expect(page.getByText('Bus bloqueado')).toBeVisible()
@@ -129,6 +134,17 @@ test('P5 enlaza reporte tardio, clasificacion critica y reaccion de despacho', a
     contentType: 'image/png',
   })
   await expect(page).toHaveURL(/\/novedades$/)
+  await logout(page)
+  await login(page, 'conductor.demo@sgmv.local')
+  await page.goto(`/novedades?detalle=${createdNoveltyId}`)
+  const driverDetail = page.getByRole('dialog', { name: 'Detalle de novedad' })
+  await expect(
+    driverDetail.getByText(
+      'Su reporte está en revisión. Coordine con Despacho antes de continuar.',
+    ),
+  ).toBeVisible()
+  await expect(driverDetail.getByText('Coordinacion operativa inmediata E2E')).toHaveCount(0)
+  await expect(driverDetail.getByText('Falla critica E2E')).toHaveCount(0)
   expect(
     consoleErrors.filter(
       (message) => !message.includes('server responded with a status of 401 (Unauthorized)'),

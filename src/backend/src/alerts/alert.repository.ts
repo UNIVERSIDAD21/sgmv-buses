@@ -10,17 +10,33 @@ import { prisma } from '../prisma/client.js'
 import type { ListAlertsQuery } from './alert.schemas.js'
 
 const alertSelect = {
+  bus: { select: { estadoOperativo: true } },
   busId: true,
   contextoEvento: true,
   fechaGeneracion: true,
   id: true,
   jornadaOperativaId: true,
+  jornadaOperativa: { select: { estado: true } },
   mensaje: true,
   novedadId: true,
+  novedad: {
+    select: {
+      estado: true,
+      ordenesTrabajo: {
+        orderBy: { id: 'desc' as const },
+        select: { estado: true },
+        take: 1,
+        where: { estado: { not: 'ANULADA' as const } },
+      },
+    },
+  },
   ordenTrabajoId: true,
+  ordenTrabajo: { select: { estado: true } },
   prioridad: true,
   programacionMantenimientoId: true,
+  programacionMantenimiento: { select: { activa: true } },
   repuestoId: true,
+  repuesto: { select: { stockActual: true, stockMinimo: true } },
   tipo: true,
   titulo: true,
 } as const

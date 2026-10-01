@@ -90,6 +90,7 @@ export interface NoveltyDto {
     tipo: 'NOVEDAD'
   } | null
   observacionRevision: string | null
+  respuestaOperativa: string | null
   ordenTrabajo: WorkOrderSummaryDto | null
   revisadaPor: NoveltyUserDto | null
   tipo: string

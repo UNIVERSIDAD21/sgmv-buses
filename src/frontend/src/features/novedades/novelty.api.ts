@@ -35,11 +35,13 @@ export interface ReviewNoveltyInput {
   clasificacion?: string
   criticidad?: 'ALTA' | 'BAJA' | 'CRITICA' | 'MEDIA'
   observacion?: string
+  respuestaOperativa?: string
 }
 
 export interface ConvertNoveltyInput {
   descripcionOrden?: string
   observacion?: string
+  respuestaOperativa?: string
   prioridad: OrderPriority
 }
 

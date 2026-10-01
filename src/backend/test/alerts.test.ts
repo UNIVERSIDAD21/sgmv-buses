@@ -373,7 +373,11 @@ describe('P9 alertas internas por destinatario', () => {
         materializeAlert(
           {
             claveDeduplicacion: key,
-            contextoEvento: { busCodigo: bus.codigoInterno, eventAt: new Date().toISOString() },
+            contextoEvento: {
+              busCodigo: bus.codigoInterno,
+              criticidad: 'CRITICA',
+              eventAt: new Date().toISOString(),
+            },
             destinatarios: { kind: 'USERS', userIds: [admin.id, dispatcher.id] },
             mensaje: 'Alerta compartida con estado individual',
             origen: { novedadId: noveltyId },
@@ -399,6 +403,25 @@ describe('P9 alertas internas por destinatario', () => {
       expect(
         inbox.body.data.items.some((item: { alertaId: number }) => item.alertaId === alert.id),
       ).toBe(true)
+      const before = {
+        bus: (await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } })).estadoOperativo,
+        novelty: (await prisma.novedad.findUniqueOrThrow({ where: { id: noveltyId } })).estado,
+      }
+      const ownAlert = inbox.body.data.items.find(
+        (item: { alertaId: number }) => item.alertaId === alert.id,
+      )
+      expect(ownAlert).toMatchObject({
+        estadoCausa: `Novedad: ${before.novelty}`,
+        responsableCausa: 'Administración',
+      })
+      expect(ownAlert.contextoEvento.criticidad).toBe('CRITICA')
+      const dispatchInbox = await dispatcherAgent
+        .get('/alertas?estado=NO_LEIDA&page=1&pageSize=100')
+        .expect(200)
+      const dispatchAlert = dispatchInbox.body.data.items.find(
+        (item: { alertaId: number }) => item.alertaId === alert.id,
+      )
+      expect(dispatchAlert.contextoEvento.criticidad).toBeUndefined()
       await mechanicAgent.patch(`/alertas/${adminRecipient.id}/leida`).send({}).expect(404)
       await dispatcherAgent.patch(`/alertas/${adminRecipient.id}/leida`).send({}).expect(404)
 
@@ -417,6 +440,12 @@ describe('P9 alertas internas por destinatario', () => {
         fechaAtencion: null,
         fechaLectura: null,
       })
+      expect((await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } })).estadoOperativo).toBe(
+        before.bus,
+      )
+      expect((await prisma.novedad.findUniqueOrThrow({ where: { id: noveltyId } })).estado).toBe(
+        before.novelty,
+      )
     },
     timeout,
   )

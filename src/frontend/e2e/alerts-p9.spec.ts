@@ -252,12 +252,12 @@ test('materializa evento crítico, opera bandeja propia y bloquea lectura ajena'
   await expect(article.getByText(`P9-BUS-${suffix}`, { exact: true })).toBeVisible()
   await expect(article.getByText('CRITICA', { exact: true })).toBeVisible()
 
-  await article.getByRole('button', { name: 'Marcar leída' }).click()
+  await article.getByRole('button', { name: 'Marcar vista por mí' }).click()
   await expect(
     page.getByRole('button', { name: 'Alertas internas, ninguna sin leer' }),
   ).toBeVisible()
-  await article.getByRole('button', { name: 'Marcar atendida' }).click()
-  await expect(article.getByText('Atendida', { exact: true })).toBeVisible()
+  await article.getByRole('button', { name: 'Marcar gestionada por mí' }).click()
+  await expect(article.getByText('Gestionada por mí', { exact: true })).toBeVisible()
   await article.getByRole('button', { name: 'Ver origen' }).click()
   await expect(page).toHaveURL(/\/novedades\?detalle=\d+&desde=alertas$/)
 

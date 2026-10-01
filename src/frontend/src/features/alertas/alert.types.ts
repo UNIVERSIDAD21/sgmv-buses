@@ -25,6 +25,7 @@ export interface AlertItemDto {
   alertaId: number
   contextoEvento: Record<string, unknown>
   destinatarioId: number
+  estadoCausa: string
   enlaceInterno: string | null
   origen: {
     busId?: number
@@ -40,6 +41,7 @@ export interface AlertItemDto {
   fechaLectura: string | null
   mensaje: string
   prioridad: AlertPriority
+  responsableCausa: string
   tipo: AlertType
   titulo: string
 }

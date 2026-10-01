@@ -31,8 +31,7 @@ export const alertCatalog = {
     defaultTitle: 'Mantenimiento preventivo próximo',
     internalRoutes: {
       ADMINISTRADOR: '/mantenimiento-preventivo',
-      DESPACHADOR: '/jornadas',
-      CONDUCTOR: '/jornadas',
+      DESPACHADOR: '/mantenimiento-preventivo',
     },
     originKind: 'programacionMantenimientoId',
     recipientStrategy: 'administradores, despacho y conductores con jornada vigente del bus',
@@ -46,7 +45,6 @@ export const alertCatalog = {
     internalRoutes: {
       ADMINISTRADOR: '/mantenimiento-preventivo',
       DESPACHADOR: '/mantenimiento-preventivo',
-      CONDUCTOR: '/jornadas',
     },
     originKind: 'programacionMantenimientoId',
     recipientStrategy: 'administradores, despacho y conductores con jornada vigente del bus',

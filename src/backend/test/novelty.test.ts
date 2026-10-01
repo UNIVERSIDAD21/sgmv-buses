@@ -907,10 +907,21 @@ describe('RF-02 Novelty API', () => {
         clasificacion: 'Requiere revision tecnica',
         criticidad: 'ALTA',
         observacion: 'Se clasifica antes de decidir',
+        respuestaOperativa:
+          'Administración revisa el reporte. Consulte la jornada antes de continuar.',
       })
       .expect(200)
     expect(classified.body.data.novedad.estado).toBe('PENDIENTE_REVISION')
     expect(classified.body.data.novedad.clasificacion).toBe('Requiere revision tecnica')
+    const conductor = await loginAgent(fixture.conductorEmail)
+    const driverReview = await conductor.get(`/novedades/mis-novedades/${novelty.id}`).expect(200)
+    expect(driverReview.body.data.novedad).toMatchObject({
+      clasificacion: null,
+      criticidad: null,
+      observacionRevision: null,
+      respuestaOperativa:
+        'Administración revisa el reporte. Consulte la jornada antes de continuar.',
+    })
 
     const resolved = await admin
       .post(`/novedades/${novelty.id}/revision`)
@@ -918,9 +929,17 @@ describe('RF-02 Novelty API', () => {
         accion: 'RESOLVER_SIN_ORDEN',
         clasificacion: 'Sin falla activa',
         observacion: 'Se resolvio en inspeccion de patio',
+        respuestaOperativa: 'El reporte fue resuelto sin necesidad de orden de trabajo.',
       })
       .expect(200)
     expect(resolved.body.data.novedad.estado).toBe('RESUELTA_SIN_ORDEN')
+    const driverResolution = await conductor
+      .get(`/novedades/mis-novedades/${novelty.id}`)
+      .expect(200)
+    expect(driverResolution.body.data.novedad.respuestaOperativa).toBe(
+      'El reporte fue resuelto sin necesidad de orden de trabajo.',
+    )
+    expect(driverResolution.body.data.novedad.observacionRevision).toBeNull()
 
     await admin
       .post(`/novedades/${novelty.id}/revision`)

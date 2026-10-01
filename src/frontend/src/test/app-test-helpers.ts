@@ -383,6 +383,7 @@ export const noveltyOne = {
     tipo: 'NOVEDAD',
   },
   observacionRevision: null,
+  respuestaOperativa: null,
   ordenTrabajo: null,
   revisadaPor: null,
   tipo: 'Ruido en frenos',
@@ -415,6 +416,7 @@ export const reviewedNovelty = {
   criticidad: 'CRITICA',
   fechaRevision: '2026-08-27T12:10:00.000Z',
   observacionRevision: 'Revisada por administrador',
+  respuestaOperativa: 'Administración revisa el reporte. Consulte la jornada antes de continuar.',
   revisadaPor: {
     id: 2002,
     nombre: 'Administrador Uno',
@@ -2184,7 +2186,20 @@ export function noveltyHandler(
 
   function visibleNovelty() {
     const novelty = converted ? convertedNovelty : reviewed ? reviewedNovelty : noveltyOne
-    return role === 'DESPACHADOR' ? novelty : { ...novelty, evidencias: evidences }
+    if (role === 'DESPACHADOR') return novelty
+    if (role === 'CONDUCTOR') {
+      return {
+        ...novelty,
+        clasificacion: null,
+        criticidad: null,
+        observacionRevision: null,
+        ordenTrabajo: novelty.ordenTrabajo
+          ? { ...novelty.ordenTrabajo, descripcion: undefined }
+          : null,
+        evidencias: evidences,
+      }
+    }
+    return { ...novelty, evidencias: evidences }
   }
 
   return async (path: string, init?: RequestInit) => {

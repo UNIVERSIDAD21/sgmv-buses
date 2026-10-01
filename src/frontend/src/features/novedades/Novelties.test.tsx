@@ -145,6 +145,22 @@ describe('RF-02 novelty frontend', () => {
     expect(await screen.findByText(/Detalle de novedad/i)).toBeInTheDocument()
     expect(screen.getAllByText(/Se escucha ruido al frenar/i).length).toBeGreaterThan(0)
     expect(screen.queryByText(/Acciones administrativas/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/Estado de su reporte:/i)).toBeInTheDocument()
+    expect(screen.getByText(/Responsable del siguiente paso:/i)).toBeInTheDocument()
+    expect(screen.getByText(/Aún no hay una respuesta de Administración/i)).toBeInTheDocument()
+  })
+
+  it('shows the operational response without administrative observations to the driver', async () => {
+    window.history.pushState({}, '', '/novedades?detalle=2040')
+    mockApi(noveltyHandler('CONDUCTOR', { reviewed: true }))
+    render(<App />)
+
+    expect(
+      await screen.findByText(/Administración revisa el reporte. Consulte la jornada/i),
+    ).toBeInTheDocument()
+    expect(screen.getAllByText('En revisión').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Revisada por administrador')).not.toBeInTheDocument()
+    expect(screen.queryByText('Falla mecanica')).not.toBeInTheDocument()
   })
 
   it('opens the exact authorized novelty received through a deep link', async () => {
@@ -280,9 +296,17 @@ describe('RF-02 novelty frontend', () => {
     fireEvent.change(within(convertDialog).getByLabelText(/Prioridad de la orden/i), {
       target: { value: 'MEDIA' },
     })
-    fireEvent.change(within(convertDialog).getByLabelText(/Observacion/i), {
+    fireEvent.change(within(convertDialog).getByLabelText(/Observación interna/i), {
       target: { value: 'Requiere orden correctiva.' },
     })
+    fireEvent.change(
+      within(convertDialog).getByLabelText(/Respuesta operativa para el Conductor/i),
+      {
+        target: {
+          value: 'Su reporte está en atención; Administración coordinará los siguientes pasos.',
+        },
+      },
+    )
     fireEvent.click(within(convertDialog).getByRole('button', { name: /Crear orden/i }))
 
     expect(

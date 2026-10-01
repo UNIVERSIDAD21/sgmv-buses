@@ -792,12 +792,52 @@ export async function persistJourneyConflictAlert(input: {
 
 function mapRecipientAlert(record: AlertRecipientRecord, actor: AuthenticatedUser) {
   const catalog = alertCatalogEntry(record.alertaInterna.tipo)
+  const source = record.alertaInterna
+  const orderStatus = source.ordenTrabajo?.estado ?? source.novedad?.ordenesTrabajo[0]?.estado
+  const causeStatus = source.novedad
+    ? orderStatus
+      ? `Orden: ${orderStatus}`
+      : `Novedad: ${source.novedad.estado}`
+    : source.ordenTrabajo
+      ? `Orden: ${source.ordenTrabajo.estado}`
+      : source.jornadaOperativa
+        ? `Jornada: ${source.jornadaOperativa.estado}`
+        : source.programacionMantenimiento
+          ? source.programacionMantenimiento.activa
+            ? 'Programación activa; consulte su vencimiento en el origen'
+            : 'Programación inactiva'
+          : source.repuesto
+            ? source.repuesto.stockActual.lessThanOrEqualTo(source.repuesto.stockMinimo)
+              ? 'Inventario en o bajo el mínimo'
+              : 'Inventario sobre el mínimo'
+            : source.bus
+              ? `Bus: ${source.bus.estadoOperativo}`
+              : 'Origen no disponible'
+  const responsible = source.novedad
+    ? orderStatus
+      ? orderStatus === 'CERRADA' || orderStatus === 'ANULADA'
+        ? 'Administración'
+        : 'Administración y taller'
+      : 'Administración'
+    : source.ordenTrabajo
+      ? orderStatus === 'ASIGNADA' ||
+        orderStatus === 'EN_EJECUCION' ||
+        orderStatus === 'DEVUELTA_CORRECCION'
+        ? 'Taller y Administración'
+        : 'Administración'
+      : source.jornadaOperativa
+        ? 'Despacho y Conductor'
+        : source.bus
+          ? 'Despacho y Administración'
+          : 'Administración'
   const contextoEvento = { ...(record.alertaInterna.contextoEvento as Record<string, unknown>) }
   delete contextoEvento.enlaceInterno
+  if (actor.rol.codigo !== 'ADMINISTRADOR') delete contextoEvento.criticidad
   return {
     alertaId: record.alertaInterna.id,
     contextoEvento,
     destinatarioId: record.id,
+    estadoCausa: causeStatus,
     enlaceInterno: catalog.internalRoutes[actor.rol.codigo as AlertRecipientRole] ?? null,
     origen: {
       ...(record.alertaInterna.busId ? { busId: record.alertaInterna.busId } : {}),
@@ -819,6 +859,7 @@ function mapRecipientAlert(record: AlertRecipientRecord, actor: AuthenticatedUse
     fechaLectura: record.fechaLectura?.toISOString() ?? null,
     mensaje: record.alertaInterna.mensaje,
     prioridad: record.alertaInterna.prioridad,
+    responsableCausa: responsible,
     tipo: record.alertaInterna.tipo,
     titulo: record.alertaInterna.titulo,
   }

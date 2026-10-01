@@ -47,9 +47,9 @@ const PRIORITY_LABELS: Record<AlertPriority, string> = {
 }
 
 const STATUS_LABELS: Record<AlertRecipientStatus, string> = {
-  ATENDIDA: 'Atendida',
-  LEIDA: 'Leída',
-  NO_LEIDA: 'No leída',
+  ATENDIDA: 'Gestionada por mí',
+  LEIDA: 'Vista por mí',
+  NO_LEIDA: 'No vista por mí',
 }
 
 const initialFilters: AlertFilters = {
@@ -130,7 +130,7 @@ function originLink(item: AlertItemDto) {
     '/repuestos': item.origen.repuestoId,
   }
   const detailId = detailIdByRoute[item.enlaceInterno]
-  if (!detailId) return item.enlaceInterno
+  if (!detailId) return null
 
   return `${item.enlaceInterno}?detalle=${detailId}&desde=alertas`
 }
@@ -144,7 +144,7 @@ function formatAlertDate(value: string) {
 function contextEntries(context: Record<string, unknown>) {
   const labels: Array<[string, string]> = [
     ['busCodigo', 'Bus'],
-    ['estado', 'Estado'],
+    ['estado', 'Estado al generar'],
     ['criticidad', 'Criticidad'],
     ['destino', 'Destino'],
     ['precedencia', 'Precedencia'],
@@ -232,7 +232,7 @@ export default function AlertsPage() {
         <p className="font-semibold">Las alertas son internas; revísalas al iniciar sesión.</p>
         <p>
           No se envían por correo, WhatsApp, SMS ni notificaciones push. Marcar una alerta como
-          atendida no cierra una jornada ni libera un bus.
+          gestionada por mí no resuelve la causa, cierra una jornada ni libera un bus.
         </p>
         <p>
           Destinatario de esta bandeja: {user?.nombre}. Cada persona conserva su propio estado de
@@ -392,6 +392,14 @@ export default function AlertsPage() {
                     <p className="mt-1 max-w-4xl text-sm leading-5 text-slate-600">
                       {item.mensaje}
                     </p>
+                    <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600">
+                      <p>
+                        <strong>Estado real de la causa:</strong> {item.estadoCausa}
+                      </p>
+                      <p>
+                        <strong>Responsable de la causa:</strong> {item.responsableCausa}
+                      </p>
+                    </div>
                     {context.length > 0 && (
                       <dl
                         aria-label="Contexto permitido del evento"
@@ -432,7 +440,7 @@ export default function AlertsPage() {
                         size="sm"
                         variant="outline"
                       >
-                        Marcar leída
+                        Marcar vista por mí
                       </Button>
                     )}
                     {item.estado !== 'ATENDIDA' && (
@@ -442,7 +450,7 @@ export default function AlertsPage() {
                         size="sm"
                         variant="secondary"
                       >
-                        Marcar atendida
+                        Marcar gestionada por mí
                       </Button>
                     )}
                     {originLink(item) && (

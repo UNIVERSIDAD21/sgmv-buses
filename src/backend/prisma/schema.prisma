@@ -449,6 +449,7 @@ model Novedad {
   revisadaPorId         Int?               @map("revisada_por_id")
   fechaRevision         DateTime?          @map("fecha_revision") @db.Timestamptz(6)
   observacionRevision   String?            @map("observacion_revision") @db.Text
+  respuestaOperativa    String?            @map("respuesta_operativa") @db.VarChar(1000)
   createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
   jornadaOperativaId    Int?               @map("jornada_operativa_id")

@@ -127,6 +127,15 @@ function getOrderStatusLabel(status: string) {
   return labels[status] ?? status
 }
 
+function driverVisibleStatus(novelty: NoveltyDto) {
+  if (novelty.estado === 'PENDIENTE_REVISION') {
+    return novelty.fechaRevision ? 'En revisión' : 'Recibido'
+  }
+  if (novelty.estado === 'RESUELTA_SIN_ORDEN') return 'Resuelto'
+  if (novelty.estado === 'DESCARTADA') return 'No requiere OT'
+  return novelty.ordenTrabajo?.estado === 'CERRADA' ? 'Resuelto' : 'En atención'
+}
+
 function StatusBadge({ status }: { status: NoveltyStatus }) {
   return <Badge tone={statusTone[status]}>{NOVELTY_STATUS_LABELS[status]}</Badge>
 }
@@ -166,7 +175,22 @@ function NoveltyDetail({
   onEvidenceChange?: (evidences: NonNullable<NoveltyDto['evidencias']>) => void
 }) {
   const { user } = useSession()
-  const restrictedTechnical = user?.rol.codigo === 'DESPACHADOR'
+  const restrictedTechnical = user?.rol.codigo !== 'ADMINISTRADOR'
+  const isDriver = user?.rol.codigo === 'CONDUCTOR'
+  const visibleStatus = driverVisibleStatus(novelty)
+  const nextResponsible =
+    novelty.estado === 'RESUELTA_SIN_ORDEN' || novelty.estado === 'DESCARTADA'
+      ? 'Sin gestión pendiente'
+      : novelty.estado === 'PENDIENTE_REVISION'
+        ? 'Administración'
+        : novelty.ordenTrabajo?.estado === 'CERRADA'
+          ? 'Administración'
+          : 'Administración y taller'
+  const driverAction =
+    novelty.continuidadInformada === 'NO' &&
+    (novelty.jornada?.estado === 'EN_CURSO' || novelty.jornada?.estado === 'PROGRAMADA')
+      ? 'No salga ni continúe la operación. Coordine con Despacho el estado de su jornada.'
+      : 'Consulte esta novedad para conocer los cambios; no necesita registrar una acción adicional.'
   const nextAction =
     novelty.estado === 'PENDIENTE_REVISION'
       ? 'Pendiente de clasificación administrativa.'
@@ -179,7 +203,11 @@ function NoveltyDetail({
       <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
         <p className="text-xs font-semibold uppercase text-amber-800">Situación actual</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <StatusBadge status={novelty.estado} />
+          {isDriver ? (
+            <Badge tone="teal">{visibleStatus}</Badge>
+          ) : (
+            <StatusBadge status={novelty.estado} />
+          )}
           {novelty.criticidad && (
             <Badge tone={novelty.criticidad === 'CRITICA' ? 'red' : 'amber'}>
               {novelty.criticidad}
@@ -191,6 +219,17 @@ function NoveltyDetail({
           )}
         </div>
         <p className="mt-2 text-sm font-medium text-amber-900">{nextAction}</p>
+        {isDriver && (
+          <div className="mt-3 space-y-1 text-sm text-amber-950">
+            <p>
+              Estado de su reporte: <strong>{visibleStatus}</strong>
+            </p>
+            <p>
+              Responsable del siguiente paso: <strong>{nextResponsible}</strong>
+            </p>
+            <p>Su acción: {driverAction}</p>
+          </div>
+        )}
       </section>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -220,7 +259,11 @@ function NoveltyDetail({
         </FieldValue>
         <FieldValue label="Tipo">{novelty.tipo}</FieldValue>
         <FieldValue label="Estado">
-          <StatusBadge status={novelty.estado} />
+          {isDriver ? (
+            <Badge tone="teal">{visibleStatus}</Badge>
+          ) : (
+            <StatusBadge status={novelty.estado} />
+          )}
         </FieldValue>
       </div>
 
@@ -231,64 +274,78 @@ function NoveltyDetail({
         </p>
       </section>
 
-      <section>
-        <h3 className="mb-2 text-xs font-semibold uppercase text-slate-500">
-          Decisión administrativa
-        </h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <FieldValue label="Clasificacion">
-            {restrictedTechnical
-              ? 'Reservada a Administración'
-              : (novelty.clasificacion ?? 'Pendiente de clasificar')}
-          </FieldValue>
-          <FieldValue label="Criticidad">
-            {restrictedTechnical
-              ? 'Reservada a Administración'
-              : (novelty.criticidad ?? 'Sin clasificar')}
-          </FieldValue>
-          <FieldValue label="Impacto operativo">
-            {novelty.afectaOperacion === null
-              ? 'Sin evaluar'
-              : novelty.afectaOperacion
-                ? 'Si afecta'
-                : 'No afecta'}
-          </FieldValue>
-          <FieldValue label="Disponibilidad">
-            {novelty.bloqueaDisponibilidad === null
-              ? 'Sin evaluar'
-              : novelty.bloqueaDisponibilidad
-                ? 'Bus bloqueado'
-                : 'No bloquea'}
-          </FieldValue>
-          <FieldValue label="Jornada">
-            {novelty.jornada
-              ? `${novelty.jornada.ruta?.codigo ?? 'Sin ruta'} - ${novelty.jornada.estado}`
-              : 'Novedad historica sin jornada'}
-          </FieldValue>
-          <FieldValue label="Kilometraje">
-            {novelty.lecturaKilometraje
-              ? `${formatNumber(novelty.lecturaKilometraje.kilometraje)} km`
-              : 'Sin lectura asociada'}
-          </FieldValue>
-          {novelty.motivoAusenciaLectura && (
-            <FieldValue label="Motivo sin lectura">{novelty.motivoAusenciaLectura}</FieldValue>
-          )}
-          <FieldValue label="Momento del reporte">
-            {novelty.reportadaAntesSalida
-              ? 'Antes de confirmar salida'
-              : 'Durante o después de la jornada'}
-          </FieldValue>
-          <FieldValue label="Responsable revision">
-            {novelty.revisadaPor?.nombre ?? 'Sin revision'}
-          </FieldValue>
-          <FieldValue label="Fecha revision">
-            {novelty.fechaRevision ? formatDateTimeValue(novelty.fechaRevision) : 'Sin revision'}
-          </FieldValue>
-          <FieldValue label="Observacion">
-            {novelty.observacionRevision ?? 'Sin observacion'}
-          </FieldValue>
-        </div>
-      </section>
+      {(isDriver || novelty.respuestaOperativa) && (
+        <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+          <h3 className="text-sm font-semibold text-emerald-950">
+            Respuesta operativa al Conductor
+          </h3>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-emerald-900">
+            {novelty.respuestaOperativa ??
+              'Aún no hay una respuesta de Administración para este reporte.'}
+          </p>
+        </section>
+      )}
+
+      {!isDriver && (
+        <section>
+          <h3 className="mb-2 text-xs font-semibold uppercase text-slate-500">
+            Decisión administrativa
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FieldValue label="Clasificacion">
+              {restrictedTechnical
+                ? 'Reservada a Administración'
+                : (novelty.clasificacion ?? 'Pendiente de clasificar')}
+            </FieldValue>
+            <FieldValue label="Criticidad">
+              {restrictedTechnical
+                ? 'Reservada a Administración'
+                : (novelty.criticidad ?? 'Sin clasificar')}
+            </FieldValue>
+            <FieldValue label="Impacto operativo">
+              {novelty.afectaOperacion === null
+                ? 'Sin evaluar'
+                : novelty.afectaOperacion
+                  ? 'Si afecta'
+                  : 'No afecta'}
+            </FieldValue>
+            <FieldValue label="Disponibilidad">
+              {novelty.bloqueaDisponibilidad === null
+                ? 'Sin evaluar'
+                : novelty.bloqueaDisponibilidad
+                  ? 'Bus bloqueado'
+                  : 'No bloquea'}
+            </FieldValue>
+            <FieldValue label="Jornada">
+              {novelty.jornada
+                ? `${novelty.jornada.ruta?.codigo ?? 'Sin ruta'} - ${novelty.jornada.estado}`
+                : 'Novedad historica sin jornada'}
+            </FieldValue>
+            <FieldValue label="Kilometraje">
+              {novelty.lecturaKilometraje
+                ? `${formatNumber(novelty.lecturaKilometraje.kilometraje)} km`
+                : 'Sin lectura asociada'}
+            </FieldValue>
+            {novelty.motivoAusenciaLectura && (
+              <FieldValue label="Motivo sin lectura">{novelty.motivoAusenciaLectura}</FieldValue>
+            )}
+            <FieldValue label="Momento del reporte">
+              {novelty.reportadaAntesSalida
+                ? 'Antes de confirmar salida'
+                : 'Durante o después de la jornada'}
+            </FieldValue>
+            <FieldValue label="Responsable revision">
+              {novelty.revisadaPor?.nombre ?? 'Sin revision'}
+            </FieldValue>
+            <FieldValue label="Fecha revision">
+              {novelty.fechaRevision ? formatDateTimeValue(novelty.fechaRevision) : 'Sin revision'}
+            </FieldValue>
+            <FieldValue label="Observacion">
+              {novelty.observacionRevision ?? 'Sin observacion'}
+            </FieldValue>
+          </div>
+        </section>
+      )}
 
       {novelty.ordenTrabajo ? (
         <section className="rounded-lg border border-cyan-200 bg-cyan-50 p-4">
@@ -352,6 +409,9 @@ function AdminActionDialog({
   )
   const [descripcionOrden, setDescripcionOrden] = useState('')
   const [observacion, setObservacion] = useState('')
+  const [respuestaOperativa, setRespuestaOperativa] = useState(
+    action.novelty.respuestaOperativa ?? '',
+  )
   const [prioridad, setPrioridad] = useState<OrderPriority>('MEDIA')
   const [validationError, setValidationError] = useState<string | null>(null)
 
@@ -392,6 +452,7 @@ function AdminActionDialog({
         clasificacion: value,
         criticidad,
         observacion: normalizeText(observacion) || undefined,
+        respuestaOperativa: normalizeText(respuestaOperativa) || undefined,
       })
       return
     }
@@ -408,6 +469,7 @@ function AdminActionDialog({
         accion: action.type === 'resolve' ? 'RESOLVER_SIN_ORDEN' : 'DESCARTAR',
         clasificacion: normalizeText(clasificacion) || undefined,
         observacion: value,
+        respuestaOperativa: normalizeText(respuestaOperativa) || undefined,
       })
       return
     }
@@ -415,6 +477,7 @@ function AdminActionDialog({
     onSubmit({
       descripcionOrden: normalizeText(descripcionOrden) || undefined,
       observacion: normalizeText(observacion) || undefined,
+      respuestaOperativa: normalizeText(respuestaOperativa) || undefined,
       prioridad,
     })
   }
@@ -530,12 +593,23 @@ function AdminActionDialog({
         )}
 
         <label className="block text-sm font-medium text-slate-700">
-          Observacion
+          Observación interna (no visible para el Conductor)
           <textarea
             className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
             onChange={(event) => setObservacion(event.target.value)}
             required={action.type === 'resolve' || action.type === 'discard'}
             value={observacion}
+          />
+        </label>
+
+        <label className="block text-sm font-medium text-slate-700">
+          Respuesta operativa para el Conductor
+          <textarea
+            className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            maxLength={1000}
+            onChange={(event) => setRespuestaOperativa(event.target.value)}
+            placeholder="Explique el estado del reporte y qué debe hacer el Conductor, sin diagnósticos ni costos."
+            value={respuestaOperativa}
           />
         </label>
 
@@ -590,12 +664,12 @@ function DriverNoveltyCard({
             <p className="mt-1 text-xs font-semibold text-amber-800">No puede continuar</p>
           )}
         </div>
-        <StatusBadge status={novelty.estado} />
+        <Badge tone="teal">{driverVisibleStatus(novelty)}</Badge>
       </div>
       <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{novelty.descripcion}</p>
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-xs text-slate-500">
-          {novelty.clasificacion ?? 'Pendiente de revision'}
+          {novelty.respuestaOperativa ?? 'Administración aún no ha respondido al reporte.'}
         </span>
         <Button
           icon={<ClipboardList size={14} />}

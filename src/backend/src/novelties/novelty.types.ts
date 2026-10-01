@@ -80,6 +80,7 @@ export interface NoveltyDto {
   lecturaKilometraje: NoveltyReadingDto | null
   motivoAusenciaLectura: string | null
   observacionRevision: string | null
+  respuestaOperativa: string | null
   ordenTrabajo: WorkOrderSummaryDto | null
   revisadaPor: NoveltyUserDto | null
   tipo: string

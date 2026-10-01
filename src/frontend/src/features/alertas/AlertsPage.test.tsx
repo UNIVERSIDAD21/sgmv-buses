@@ -39,6 +39,7 @@ function alertItem(overrides: Partial<Record<string, unknown>> = {}) {
     alertaId: 2003,
     contextoEvento: { busId: 2006, enlaceInterno: '/novedades', schemaVersion: 1 },
     destinatarioId: 2063,
+    estadoCausa: 'Novedad: PENDIENTE_REVISION',
     enlaceInterno: '/novedades',
     origen: { novedadId: 2006 },
     estado: 'NO_LEIDA',
@@ -47,6 +48,7 @@ function alertItem(overrides: Partial<Record<string, unknown>> = {}) {
     fechaLectura: null,
     mensaje: 'La novedad requiere revisión prioritaria.',
     prioridad: 'CRITICA',
+    responsableCausa: 'Administración',
     tipo: 'NOVEDAD_CRITICA',
     titulo: 'Novedad crítica reportada',
     ...overrides,
@@ -145,7 +147,9 @@ describe('P9 AlertsPage', () => {
     renderAlertsPage()
 
     const article = await screen.findByRole('article')
-    expect(within(article).getByText('No leída')).toBeInTheDocument()
+    expect(within(article).getByText('No vista por mí')).toBeInTheDocument()
+    expect(within(article).getByText(/Novedad: PENDIENTE_REVISION/)).toBeInTheDocument()
+    expect(within(article).getByText(/Responsable de la causa:/)).toBeInTheDocument()
     expect(article.className).toContain('border-emerald-300')
     expect(within(article).getByText('Novedad crítica reportada')).toBeInTheDocument()
     expect(within(article).getByText('Crítica')).toBeInTheDocument()
@@ -179,14 +183,14 @@ describe('P9 AlertsPage', () => {
 
     renderAlertsPage()
     const article = await screen.findByRole('article')
-    fireEvent.click(within(article).getByRole('button', { name: 'Marcar leída' }))
+    fireEvent.click(within(article).getByRole('button', { name: 'Marcar vista por mí' }))
 
-    expect(await screen.findByText('Leída')).toBeInTheDocument()
+    expect(await screen.findByText('Vista por mí')).toBeInTheDocument()
     expect(state.items[0]?.estado).toBe('LEIDA')
     await waitFor(() => {
       expect(callsFor(calls, '/alertas/2063/leida')).toHaveLength(1)
     })
-    expect(screen.queryByRole('button', { name: 'Marcar leída' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Marcar vista por mí' })).not.toBeInTheDocument()
   })
 
   it('marks an alert attended and preserves an individual terminal state', async () => {
@@ -194,12 +198,14 @@ describe('P9 AlertsPage', () => {
 
     renderAlertsPage()
     const article = await screen.findByRole('article')
-    fireEvent.click(within(article).getByRole('button', { name: 'Marcar atendida' }))
+    fireEvent.click(within(article).getByRole('button', { name: 'Marcar gestionada por mí' }))
 
-    expect(await screen.findByText('Atendida')).toBeInTheDocument()
+    expect(await screen.findByText('Gestionada por mí')).toBeInTheDocument()
     expect(state.items[0]?.estado).toBe('ATENDIDA')
     expect(callsFor(calls, '/alertas/2063/atendida')).toHaveLength(1)
-    expect(screen.queryByRole('button', { name: 'Marcar atendida' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Marcar gestionada por mí' }),
+    ).not.toBeInTheDocument()
   })
 
   it('shows a recoverable API error and retries the list', async () => {
@@ -276,16 +282,34 @@ describe('P9 AlertsPage', () => {
     expect(state.items[0]?.estado).toBe('LEIDA')
   })
 
+  it('does not offer a generic or unauthorized origin when the exact record is missing', async () => {
+    mockAlertApi({
+      initialItems: [
+        alertItem({ origen: {}, destinatarioId: 2077 }),
+        alertItem({
+          alertaId: 2078,
+          destinatarioId: 2078,
+          enlaceInterno: null,
+          origen: { programacionMantenimientoId: 2066 },
+          tipo: 'MANTENIMIENTO_PROXIMO',
+        }),
+      ],
+    })
+    renderAlertsPage()
+    expect(await screen.findAllByRole('article')).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: 'Ver origen' })).not.toBeInTheDocument()
+  })
+
   it('does not send duplicate mutations when the same action is clicked twice', async () => {
     const { calls } = mockAlertApi()
 
     renderAlertsPage()
     const article = await screen.findByRole('article')
-    const button = within(article).getByRole('button', { name: 'Marcar atendida' })
+    const button = within(article).getByRole('button', { name: 'Marcar gestionada por mí' })
     fireEvent.click(button)
     fireEvent.click(button)
 
-    await screen.findByText('Atendida')
+    await screen.findByText('Gestionada por mí')
     expect(callsFor(calls, '/alertas/2063/atendida')).toHaveLength(1)
   })
 })
@@ -329,7 +353,7 @@ describe('P9 campana, acceso y navegación por rol', () => {
     render(<App />)
 
     const article = await screen.findByRole('article')
-    fireEvent.click(within(article).getByRole('button', { name: 'Marcar leída' }))
+    fireEvent.click(within(article).getByRole('button', { name: 'Marcar vista por mí' }))
 
     await waitFor(() => {
       expect(
