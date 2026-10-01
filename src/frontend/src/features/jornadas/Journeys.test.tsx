@@ -283,16 +283,17 @@ describe('P4 journey frontend', () => {
       return handler(path, init, query)
     })
     render(<App />)
-    fireEvent.change(await screen.findByLabelText('Bus del período'), { target: { value: '2007' } })
-    fireEvent.change(screen.getByLabelText('Conductor del período'), { target: { value: '2071' } })
-    fireEvent.change(screen.getByLabelText('Ruta del período'), { target: { value: '2065' } })
+    fireEvent.change(await screen.findByLabelText('Frecuencia'), { target: { value: 'period' } })
+    fireEvent.change(screen.getByLabelText('Bus de jornada'), { target: { value: '2007' } })
+    fireEvent.change(screen.getByLabelText('Conductor de jornada'), { target: { value: '2071' } })
+    fireEvent.change(screen.getByLabelText('Ruta de jornada'), { target: { value: '2065' } })
     fireEvent.change(screen.getByLabelText('Inicio del período'), {
       target: { value: '2026-10-05' },
     })
     fireEvent.change(screen.getByLabelText('Fin del período'), { target: { value: '2026-10-06' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Previsualizar período' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Programar jornada' }))
     expect(await screen.findByText('2 jornadas propuestas · 2 sin conflictos')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar 2 jornadas' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar programación' }))
     expect(await screen.findByText('2 jornadas programadas por período')).toBeInTheDocument()
     const previewCall = fetchMock.mock.calls.find(
       ([input]) => getPath(input) === '/jornadas/periodo/previsualizar',
@@ -337,13 +338,97 @@ describe('P4 journey frontend', () => {
       return handler(path, init, query)
     })
     render(<App />)
-    fireEvent.change(await screen.findByLabelText('Bus del período'), { target: { value: '2007' } })
-    fireEvent.change(screen.getByLabelText('Conductor del período'), { target: { value: '2071' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Previsualizar período' }))
+    fireEvent.change(await screen.findByLabelText('Frecuencia'), { target: { value: 'period' } })
+    fireEvent.change(screen.getByLabelText('Bus de jornada'), { target: { value: '2007' } })
+    fireEvent.change(screen.getByLabelText('Conductor de jornada'), { target: { value: '2071' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Programar jornada' }))
     expect(await screen.findByText('Bus reservado en otra jornada')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Confirmar 1 jornadas' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Confirmar programación' })).toBeDisabled()
     fireEvent.change(screen.getByLabelText('Fin del período'), { target: { value: '2026-10-10' } })
-    expect(screen.queryByRole('button', { name: 'Confirmar 1 jornadas' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Confirmar programación' })).not.toBeInTheDocument()
+  })
+
+  it('cambia frecuencia sin duplicar campos ni conservar una confirmación obsoleta', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    const handler = journeyHandler('DESPACHADOR')
+    const fetchMock = mockApi(async (path, init, query) => {
+      if (path === '/jornadas/periodo/previsualizar')
+        return ok({
+          total: 1,
+          aptas: 1,
+          puedeConfirmar: true,
+          jornadas: [
+            {
+              fecha: '2026-10-05',
+              inicioProgramado: '2026-10-05T11:00:00.000Z',
+              finProgramado: '2026-10-05T19:00:00.000Z',
+              conflictos: [],
+            },
+          ],
+        })
+      return handler(path, init, query)
+    })
+    render(<App />)
+    const frequency = await screen.findByLabelText('Frecuencia')
+    expect(screen.getAllByRole('heading', { name: 'Programar jornada' })).toHaveLength(1)
+    expect(screen.getByLabelText('Fecha de jornada')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Inicio del período')).not.toBeInTheDocument()
+    fireEvent.change(frequency, { target: { value: 'period' } })
+    expect(screen.queryByLabelText('Fecha de jornada')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Inicio del período')).toBeInTheDocument()
+    for (const day of ['Lun', 'Mar', 'Mié', 'Jue', 'Vie']) {
+      fireEvent.click(screen.getByRole('checkbox', { name: day }))
+    }
+    fireEvent.change(screen.getByLabelText('Bus de jornada'), { target: { value: '2007' } })
+    fireEvent.change(screen.getByLabelText('Conductor de jornada'), {
+      target: { value: '2071' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Programar jornada' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('al menos un día')
+    expect(
+      fetchMock.mock.calls.some(([input]) => getPath(input) === '/jornadas/periodo/previsualizar'),
+    ).toBe(false)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Sáb' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Programar jornada' }))
+    expect(
+      await screen.findByRole('region', { name: 'Confirmar programación' }),
+    ).toBeInTheDocument()
+    const weekendCall = fetchMock.mock.calls.find(
+      ([input]) => getPath(input) === '/jornadas/periodo/previsualizar',
+    )
+    expect(JSON.parse(String(weekendCall?.[1]?.body)).diasSemana).toEqual([6])
+    expect(screen.getByRole('button', { name: 'Confirmar programación' })).toBeEnabled()
+    fireEvent.change(frequency, { target: { value: 'single' } })
+    expect(screen.queryByRole('region', { name: 'Confirmar programación' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Fecha de jornada')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Inicio del período')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Programar jornada' })).toHaveLength(1)
+  })
+
+  it('mantiene una jornada nocturna de un día con llegada al día siguiente en Bogotá', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    const fetchMock = mockApi(journeyHandler('DESPACHADOR'))
+    render(<App />)
+    fireEvent.change(await screen.findByLabelText('Bus de jornada'), {
+      target: { value: '2007' },
+    })
+    fireEvent.change(screen.getByLabelText('Conductor de jornada'), {
+      target: { value: '2071' },
+    })
+    fireEvent.change(screen.getByLabelText('Fecha de jornada'), {
+      target: { value: '2026-10-05' },
+    })
+    fireEvent.change(screen.getByLabelText('Hora de salida'), { target: { value: '22:00' } })
+    fireEvent.change(screen.getByLabelText('Hora de llegada'), { target: { value: '06:00' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Programar jornada' }))
+    expect(await screen.findByText('Jornada programada')).toBeInTheDocument()
+    const call = fetchMock.mock.calls.find(
+      ([input, init]) => getPath(input) === '/jornadas' && init?.method === 'POST',
+    )
+    expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
+      inicioProgramado: '2026-10-06T03:00:00.000Z',
+      finProgramado: '2026-10-06T11:00:00.000Z',
+    })
   })
 
   it('lets the conductor start only the journey returned by the own-session endpoint', async () => {

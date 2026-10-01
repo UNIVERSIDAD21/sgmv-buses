@@ -2,11 +2,10 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
-import { BUS_STATUS_LABELS } from '../../domain/labels'
 import JourneyCard from './JourneyCard'
 import JourneyConfirmationDialog from './JourneyConfirmationDialog'
 import JourneyInterruptionDialog from './JourneyInterruptionDialog'
-import JourneyPeriodForm from './JourneyPeriodForm'
+import JourneyScheduleForm from './JourneyScheduleForm'
 import { JOURNEY_LABELS, closureOverdue, type JourneyAction } from './journey.view'
 import Button from '../../components/ui/Button'
 import ContextHint from '../../components/ui/ContextHint'
@@ -16,11 +15,9 @@ import StatePanel from '../../components/ui/StatePanel'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { useCurrentTime } from '../../hooks/useCurrentTime'
 import { ApiError } from '../../lib/api'
-import { formatNumber } from '../../lib/format'
 import { useSession } from '../auth/session.context'
 import {
   cancelJourney,
-  createJourney,
   getJourney,
   getJourneyOptions,
   getMyJourney,
@@ -52,10 +49,6 @@ function toLocalInput(date: Date) {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
 }
 
-function defaultSchedule(hours: number) {
-  return toLocalInput(new Date(Date.now() + hours * 60 * 60_000))
-}
-
 function toIso(value: string) {
   return new Date(value).toISOString()
 }
@@ -64,306 +57,6 @@ function getJourneyIdFromSearch(value: string | null) {
   if (!value || !/^\d+$/.test(value)) return null
   const journeyId = Number(value)
   return Number.isSafeInteger(journeyId) && journeyId > 0 ? journeyId : null
-}
-
-function ScheduleForm({
-  onCreated,
-  options,
-}: {
-  onCreated: () => Promise<void>
-  options: JourneyOptionsResponse
-}) {
-  const [busId, setBusId] = useState('')
-  const [conductorId, setConductorId] = useState('')
-  const [rutaId, setRutaId] = useState('')
-  const [simulate, setSimulate] = useState(false)
-  const [cycles, setCycles] = useState('6')
-  const [nonCommercial, setNonCommercial] = useState('8')
-  const selectedRoute = options.rutas.find((route) => route.id === Number(rutaId))
-  const selectedBus = options.buses.find((bus) => bus.id === Number(busId))
-  const cyclesNumber = Number(cycles)
-  const nonCommercialNumber = Number(nonCommercial)
-  const projectedKm =
-    (selectedRoute?.longitudKmOficial ?? 0) * (Number.isFinite(cyclesNumber) ? cyclesNumber : 0) +
-    (Number.isFinite(nonCommercialNumber) ? nonCommercialNumber : 0)
-  const nextMaintenance = selectedBus?.mantenimientos?.[0]
-  const [inicio, setInicio] = useState(defaultSchedule(1))
-  const [fin, setFin] = useState(defaultSchedule(9))
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (submitting) {
-      return
-    }
-
-    setError(null)
-    if (!busId || !conductorId) {
-      setError('Seleccione bus y conductor.')
-      return
-    }
-    if (new Date(inicio) >= new Date(fin)) {
-      setError('El inicio debe ser anterior al fin programado.')
-      return
-    }
-    if (
-      simulate &&
-      (!Number.isInteger(cyclesNumber) ||
-        cyclesNumber < 1 ||
-        cyclesNumber > 100 ||
-        !Number.isFinite(nonCommercialNumber) ||
-        nonCommercialNumber < 0 ||
-        nonCommercialNumber > 1000)
-    ) {
-      setError('Ingrese entre 1 y 100 ciclos y entre 0 y 1.000 km no comerciales.')
-      return
-    }
-
-    setSubmitting(true)
-    try {
-      await createJourney({
-        busId: Number(busId),
-        conductorId: Number(conductorId),
-        finProgramado: toIso(fin),
-        inicioProgramado: toIso(inicio),
-        ...(rutaId ? { rutaId: Number(rutaId) } : {}),
-        ...(simulate && selectedRoute?.longitudKmOficial
-          ? {
-              simulacion: {
-                ciclosCompletosSimulados: cyclesNumber,
-                kmNoComercialesSimulados: nonCommercialNumber,
-              },
-            }
-          : {}),
-      })
-      setBusId('')
-      setConductorId('')
-      setRutaId('')
-      await onCreated()
-    } catch (submitError) {
-      setError(getErrorMessage(submitError))
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <form className="surface overflow-hidden" onSubmit={handleSubmit}>
-      <div className="border-b border-slate-100 px-4 py-3.5 md:px-5">
-        <h3 className="text-base font-semibold text-slate-950">Programar jornada</h3>
-        <p className="mt-1 text-xs leading-5 text-slate-500">
-          El responsable se deriva de la sesion y la agenda queda protegida contra solapamientos.
-        </p>
-      </div>
-      <div className="p-4 md:p-5">
-        <p className="page-eyebrow">Asignación y ruta</p>
-        <div className="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <label className="field-label">
-            Bus
-            <select
-              aria-label="Bus de jornada"
-              className="field-control"
-              onChange={(event) => setBusId(event.target.value)}
-              value={busId}
-            >
-              <option value="">Seleccione bus</option>
-              {options.buses.map((bus) => (
-                <option
-                  key={bus.id}
-                  value={bus.id}
-                  disabled={bus.disponibilidadTecnica?.disponible === false}
-                >
-                  {bus.codigoInterno} · {bus.placa} · {BUS_STATUS_LABELS[bus.estadoOperativo]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field-label">
-            Conductor
-            <select
-              aria-label="Conductor de jornada"
-              className="field-control"
-              onChange={(event) => setConductorId(event.target.value)}
-              value={conductorId}
-            >
-              <option value="">Seleccione conductor</option>
-              {options.conductores.map((driver) => (
-                <option key={driver.id} value={driver.id}>
-                  {driver.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field-label">
-            Ruta contextual
-            <select
-              aria-label="Ruta de jornada"
-              className="field-control"
-              onChange={(event) => setRutaId(event.target.value)}
-              value={rutaId}
-            >
-              <option value="">Sin ruta</option>
-              {options.rutas.map((route) => (
-                <option key={route.id} value={route.id}>
-                  {route.codigo} · {route.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field-label">
-            Inicio programado
-            <input
-              aria-label="Inicio programado"
-              className="field-control"
-              onChange={(event) => setInicio(event.target.value)}
-              type="datetime-local"
-              value={inicio}
-            />
-          </label>
-          <label className="field-label">
-            Fin programado
-            <input
-              aria-label="Fin programado"
-              className="field-control"
-              onChange={(event) => setFin(event.target.value)}
-              type="datetime-local"
-              value={fin}
-            />
-          </label>
-        </div>
-        {selectedBus && (
-          <dl className="mt-4 grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm sm:grid-cols-3">
-            <div>
-              <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Disponibilidad
-              </dt>
-              <dd
-                className={`mt-1 font-semibold ${selectedBus.disponibilidadTecnica?.disponible === false ? 'text-amber-700' : 'text-emerald-700'}`}
-              >
-                {selectedBus.disponibilidadTecnica?.disponible === false
-                  ? 'Restringido'
-                  : 'Disponible'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Odómetro actual
-              </dt>
-              <dd className="mt-1 font-semibold tabular-nums text-slate-900">
-                {formatNumber(selectedBus.kilometrajeActual)} km
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Próximo preventivo
-              </dt>
-              <dd className="mt-1 font-semibold text-slate-900">
-                {nextMaintenance
-                  ? `${nextMaintenance.estado} · ${nextMaintenance.kilometrajeObjetivo === null ? nextMaintenance.fechaObjetivo : `${formatNumber(nextMaintenance.kilometrajeObjetivo)} km`}`
-                  : 'Sin objetivo próximo'}
-              </dd>
-            </div>
-            {selectedBus.disponibilidadTecnica?.causas.map((cause) => (
-              <p
-                className="text-xs text-amber-700 sm:col-span-3"
-                key={`${cause.codigo}-${cause.origenId}`}
-              >
-                {cause.mensaje}
-              </p>
-            ))}
-            {nextMaintenance &&
-              simulate &&
-              selectedRoute?.longitudKmOficial &&
-              nextMaintenance.kilometrajeObjetivo !== null &&
-              selectedBus.kilometrajeActual + projectedKm >=
-                nextMaintenance.kilometrajeObjetivo - nextMaintenance.anticipacionKm && (
-                <p className="text-xs font-medium text-amber-700 sm:col-span-3">
-                  La proyección simulada anticipa cercanía al objetivo.
-                </p>
-              )}
-          </dl>
-        )}
-        {selectedRoute?.longitudKmOficial && (
-          <fieldset className="mt-3 rounded-xl border border-cyan-200 bg-cyan-50/60 p-3 text-sm text-slate-700">
-            <legend className="px-1 text-xs font-bold uppercase tracking-wide text-cyan-800">
-              Ruta y proyección
-            </legend>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p>
-                <strong className="text-slate-900">
-                  {formatNumber(selectedRoute.longitudKmOficial)} km oficiales
-                </strong>{' '}
-                · {selectedRoute.operador} · semántica no determinada
-              </p>
-              <label className="flex min-h-10 items-center gap-2 rounded-lg bg-white px-3 font-semibold text-cyan-900 shadow-sm">
-                <input
-                  type="checkbox"
-                  checked={simulate}
-                  onChange={(event) => setSimulate(event.target.checked)}
-                />{' '}
-                Usar proyección simulada SGMV
-              </label>
-            </div>
-            {simulate && (
-              <div className="mt-3 border-t border-cyan-200 pt-3">
-                <p className="text-xs text-cyan-900">
-                  Convención demo: circuito completo. Ciclos y kilómetros no comerciales son
-                  simulados.
-                </p>
-                <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                  <label className="field-label">
-                    Ciclos completos simulados
-                    <input
-                      aria-label="Ciclos completos simulados"
-                      className="field-control"
-                      type="number"
-                      min="1"
-                      max="100"
-                      step="1"
-                      value={cycles}
-                      onChange={(event) => setCycles(event.target.value)}
-                      required
-                    />
-                  </label>
-                  <label className="field-label">
-                    Km no comerciales simulados
-                    <input
-                      aria-label="Km no comerciales simulados"
-                      className="field-control"
-                      type="number"
-                      min="0"
-                      max="1000"
-                      step="0.001"
-                      value={nonCommercial}
-                      onChange={(event) => setNonCommercial(event.target.value)}
-                      onBlur={() => {
-                        if (!nonCommercial.trim()) setNonCommercial('0')
-                      }}
-                      required
-                    />
-                  </label>
-                </div>
-                <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs leading-5 text-slate-600">
-                  Jornada proyectada: <strong>{formatNumber(projectedKm)} km</strong>
-                  {selectedBus
-                    ? ` · Cierre estimado: ${formatNumber(selectedBus.kilometrajeActual + projectedKm)} km`
-                    : ''}
-                  . No cambia el odómetro.
-                </p>
-              </div>
-            )}
-          </fieldset>
-        )}
-        {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
-        <div className="mt-4 flex justify-end">
-          <Button loading={submitting} type="submit">
-            Programar jornada
-          </Button>
-        </div>
-      </div>
-    </form>
-  )
 }
 
 function ActionDialog({
@@ -1061,22 +754,15 @@ export default function JourneyPage() {
       )}
 
       {!error && !isDriver && options && (
-        <div className="space-y-4">
-          <ScheduleForm
-            onCreated={async () => {
-              setFeedback('Jornada programada')
-              await refresh()
-            }}
-            options={options}
-          />
-          <JourneyPeriodForm
-            onCreated={async (count) => {
-              setFeedback(`${count} jornadas programadas por período`)
-              await refresh()
-            }}
-            options={options}
-          />
-        </div>
+        <JourneyScheduleForm
+          onCreated={async (count) => {
+            setFeedback(
+              count === 1 ? 'Jornada programada' : `${count} jornadas programadas por período`,
+            )
+            await refresh()
+          }}
+          options={options}
+        />
       )}
       {!loading && !error && focusedJourneyError?.journeyId === focusedJourneyId && (
         <StatePanel
