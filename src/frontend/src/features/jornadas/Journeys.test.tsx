@@ -14,6 +14,111 @@ afterEach(() => {
 })
 
 describe('P4 journey frontend', () => {
+  it('mantiene búsqueda, filtro y paginación sobre la agenda compacta', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    const handler = journeyHandler('DESPACHADOR')
+    const base = journeyFixture('PROGRAMADA')
+    const journeys = Array.from({ length: 12 }, (_, index) => ({
+      ...base,
+      id: 3000 + index,
+    }))
+    journeys.push({
+      ...base,
+      id: 3099,
+      estado: 'EN_CURSO',
+      bus: { ...base.bus, id: 3099, codigoInterno: 'BUS-BUSCADO', placa: 'BUS099' },
+    })
+    const fetchMock = mockApi(async (path, init, query) => {
+      if (path === '/jornadas' && !init?.method) {
+        const isQueue = query?.has('cierreAtrasado') || query?.has('requiereReasignacion')
+        const filtered = isQueue
+          ? []
+          : journeys.filter(
+              (journey) =>
+                (!query?.get('buscar') ||
+                  `${journey.bus.codigoInterno} ${journey.bus.placa}`
+                    .toLowerCase()
+                    .includes(query.get('buscar')!.toLowerCase())) &&
+                (!query?.get('estado') || journey.estado === query.get('estado')),
+            )
+        const page = Number(query?.get('pagina') ?? 1)
+        return ok({
+          jornadas: filtered.slice((page - 1) * 12, page * 12),
+          paginacion: {
+            limite: 12,
+            pagina: page,
+            paginas: Math.max(1, Math.ceil(filtered.length / 12)),
+            total: filtered.length,
+          },
+        })
+      }
+      return handler(path, init, query)
+    })
+    render(<App />)
+    expect(await screen.findByText('Pagina 1 de 2')).toBeInTheDocument()
+    expect(screen.getByText(/12 jornadas en esta página/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(await screen.findByText('Pagina 2 de 2')).toBeInTheDocument()
+    expect(
+      screen.getByRole('article', { name: 'Jornadas de BUS-BUSCADO · BUS099' }),
+    ).toBeInTheDocument()
+    fireEvent.change(screen.getByPlaceholderText('Buscar bus, placa, conductor o ruta'), {
+      target: { value: 'BUS-BUSCADO' },
+    })
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          ([input]) => new URL(String(input)).searchParams.get('buscar') === 'BUS-BUSCADO',
+        ),
+      ).toBe(true),
+    )
+    expect(screen.getByLabelText('Acciones de jornada 3099')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Filtrar estado de jornada'), {
+      target: { value: 'EN_CURSO' },
+    })
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([input]) => {
+          const query = new URL(String(input)).searchParams
+          return query.get('buscar') === 'BUS-BUSCADO' && query.get('estado') === 'EN_CURSO'
+        }),
+      ).toBe(true),
+    )
+    expect(
+      within(screen.getByRole('article', { name: 'Jornadas de BUS-BUSCADO · BUS099' })).getByText(
+        'En curso',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Pagina 2 de 2')).not.toBeInTheDocument()
+  })
+
+  it('cancela desde el menú contextual sin omitir la confirmación', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    const fetchMock = mockApi(journeyHandler('DESPACHADOR'))
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver jornadas' }))
+    fireEvent.click(screen.getByLabelText('Acciones de jornada 2029'))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar jornada' }))
+    const dialog = screen.getByRole('dialog', { name: 'Cancelar jornada' })
+    expect(
+      fetchMock.mock.calls.some(
+        ([input, init]) => getPath(input) === '/jornadas/2029/cancelar' && init?.method === 'POST',
+      ),
+    ).toBe(false)
+    fireEvent.change(within(dialog).getByLabelText('Motivo'), {
+      target: { value: 'Bus reservado para mantenimiento' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar' }))
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          ([input, init]) =>
+            getPath(input) === '/jornadas/2029/cancelar' && init?.method === 'POST',
+        ),
+      ).toBe(true),
+    )
+  })
+
   it('muestra a Despacho la cola de jornadas con Conductor no disponible', async () => {
     window.history.pushState({}, '', '/jornadas')
     const handler = journeyHandler('DESPACHADOR')
@@ -78,6 +183,8 @@ describe('P4 journey frontend', () => {
       return handler(path, init, query)
     })
     render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver jornadas' }))
+    fireEvent.click(screen.getByText('Acciones ···'))
     fireEvent.click(await screen.findByRole('button', { name: 'Interrumpir jornada' }))
     const dialog = screen.getByRole('dialog', { name: 'Interrumpir jornada' })
     fireEvent.change(within(dialog).getByLabelText('Motivo operacional'), {
@@ -87,7 +194,8 @@ describe('P4 journey frontend', () => {
       target: { value: 'Odómetro inaccesible' },
     })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar' }))
-    expect(await screen.findByText(/Lectura final: Pendiente/)).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver detalle' }))
+    expect(await screen.findByText(/Conciliación: Pendiente/)).toBeInTheDocument()
     const call = fetchMock.mock.calls.find(
       ([input, init]) => getPath(input) === '/jornadas/2029/interrumpir' && init?.method === 'POST',
     )
@@ -221,7 +329,7 @@ describe('P4 journey frontend', () => {
       (await screen.findAllByRole('heading', { name: /Jornadas operativas/i })).length,
     ).toBeGreaterThan(0)
     expect(
-      await screen.findByText(/Recordatorio: el Conductor debe registrar la lectura observada/i),
+      await screen.findByText(/El Conductor registra las lecturas de su jornada/i),
     ).toBeInTheDocument()
     fireEvent.change(await screen.findByLabelText(/Bus de jornada/i), {
       target: { value: '2007' },
@@ -499,6 +607,8 @@ describe('P4 journey frontend', () => {
 
     render(<App />)
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver jornadas' }))
+    fireEvent.click(screen.getByText('Acciones ···'))
     fireEvent.click(await screen.findByRole('button', { name: /Cambiar bus o conductor/i }))
     const dialog = screen.getByRole('dialog', { name: /Cambiar bus o conductor/i })
 

@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
 import JourneyCard from './JourneyCard'
+import JourneyAgenda from './JourneyAgenda'
+import type { JourneyGroupBy } from './JourneyAgenda'
 import JourneyConfirmationDialog from './JourneyConfirmationDialog'
 import JourneyInterruptionDialog from './JourneyInterruptionDialog'
 import JourneyScheduleForm from './JourneyScheduleForm'
@@ -506,6 +508,7 @@ export default function JourneyPage() {
   const busquedaEstable = useDebouncedValue(buscar)
   const [estado, setEstado] = useState<JourneyStatus | ''>('')
   const [pagina, setPagina] = useState(1)
+  const [groupBy, setGroupBy] = useState<JourneyGroupBy>('bus')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
@@ -837,15 +840,15 @@ export default function JourneyPage() {
               tone="empty"
             />
           ) : (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {list?.jornadas.map((journey) => (
-                <JourneyCard
-                  journey={journey}
-                  key={journey.id}
-                  onAction={(action, selected) => setOperation({ action, journey: selected })}
-                />
-              ))}
-            </div>
+            <JourneyAgenda
+              key={`${pagina}:${busquedaEstable}:${estado}`}
+              journeys={list?.jornadas ?? []}
+              onAction={(action, selected) => setOperation({ action, journey: selected })}
+              page={pagina}
+              searchTerm={busquedaEstable}
+              groupBy={groupBy}
+              onGroupByChange={setGroupBy}
+            />
           )}
           {list && list.paginacion.paginas > 1 && (
             <div className="flex items-center justify-end gap-2">

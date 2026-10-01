@@ -80,6 +80,25 @@ test('la interrupción móvil no exige odómetro ficticio y conserva el bloqueo 
       })
     }
     if (url.pathname === '/jornadas' && request.method() === 'GET') {
+      const futureJourneys = Array.from({ length: 11 }, (_, index) => ({
+        ...journey,
+        id: 99020 + index,
+        estado: 'PROGRAMADA',
+        inicioProgramado: new Date(now.getTime() + (index + 1) * 86_400_000).toISOString(),
+        finProgramado: new Date(
+          now.getTime() + (index + 1) * 86_400_000 + 8 * 3_600_000,
+        ).toISOString(),
+        inicioReal: null,
+        lecturaInicial: null,
+        acciones: {
+          ...journey.acciones,
+          puedeIniciar: false,
+          puedeFinalizar: false,
+          puedeCancelar: false,
+          puedeReasignar: false,
+          puedeInterrumpir: false,
+        },
+      }))
       const items =
         url.searchParams.get('cierreAtrasado') === 'true'
           ? []
@@ -109,6 +128,7 @@ test('la interrupción móvil no exige odómetro ficticio y conserva el bloqueo 
                     },
                   }
                 : journey,
+              ...futureJourneys,
             ]
       return route.fulfill({
         headers,
@@ -134,13 +154,43 @@ test('la interrupción móvil no exige odómetro ficticio y conserva el bloqueo 
   })
 
   await page.goto('/jornadas')
-  await page.getByRole('button', { name: 'Interrumpir jornada' }).click()
+  const agenda = page.getByRole('region', { name: 'Agenda compacta de jornadas' })
+  await agenda.getByLabel('Agrupar por').selectOption('conductor')
+  await expect(
+    agenda.getByRole('article', { name: 'Jornadas de Conductor de prueba' }),
+  ).toBeVisible()
+  await agenda.getByLabel('Agrupar por').selectOption('fecha')
+  await expect(agenda.getByRole('article')).toHaveCount(12)
+  await agenda.getByLabel('Agrupar por').selectOption('bus')
+  const group = agenda.getByRole('article', { name: 'Jornadas de BUS-INTERRUPCION · INT001' })
+  await expect(group.getByText('Operativo')).toBeVisible()
+  await expect(group).toContainText('12 jornadas en esta página')
+  await group.getByRole('button', { name: 'Ver jornadas' }).click()
+  await expect(group.getByLabel(/Acciones de jornada/)).toHaveCount(12)
+  await group.getByLabel('Acciones de jornada 99007').click()
+  await group.getByRole('button', { name: 'Interrumpir jornada' }).click()
   const dialog = page.getByRole('dialog', { name: 'Interrumpir jornada' })
   await dialog.getByLabel('Motivo operacional').fill('Falla operacional durante el recorrido')
   await dialog.getByLabel('Por qué falta la lectura').fill('Odómetro inaccesible')
   await dialog.getByRole('button', { name: 'Confirmar' }).click()
-  await expect(page.getByText('Lectura final: Pendiente')).toBeVisible()
-  await expect(page.getByText(/La interrupción no habilita automáticamente este bus/)).toBeVisible()
+  await expect(group.getByText('Fuera de servicio')).toBeVisible()
+  await group.getByRole('button', { name: 'Ver jornadas' }).click()
+  await expect(group.getByText('Interrumpida')).toBeVisible()
+  await group.getByLabel('Acciones de jornada 99007').click()
+  await group.getByRole('button', { name: 'Ver detalle' }).click()
+  await expect(group.getByText(/Conciliación: Pendiente/)).toBeVisible()
+  await expect(group.getByText(/La interrupción no habilita automáticamente el bus/)).toBeVisible()
+  const mobileOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  )
+  expect(mobileOverflow).toBeLessThanOrEqual(1)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  const firstRow = group.getByLabel('Acciones de jornada 99007').locator('xpath=../..')
+  await firstRow.scrollIntoViewIfNeeded()
+  const desktopColumns = await firstRow.evaluate(
+    (row) => getComputedStyle(row).gridTemplateColumns.split(' ').length,
+  )
+  expect(desktopColumns).toBe(5)
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   )
