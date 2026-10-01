@@ -89,6 +89,7 @@ const movementLabels: Record<InventoryMovementType, string> = {
   AJUSTE_ENTRADA: 'Corrección: aumento',
   AJUSTE_SALIDA: 'Corrección: disminución',
   CONSUMO: 'Consumo de orden',
+  REVERSO_CONSUMO: 'Reverso de consumo',
   ENTRADA: 'Entrada de inventario',
 }
 

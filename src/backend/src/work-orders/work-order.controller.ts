@@ -12,6 +12,8 @@ import {
   availablePartsQuerySchema,
   createActivitySchema,
   createConsumptionSchema,
+  consumptionIdParamSchema,
+  reverseConsumptionSchema,
   createTechnicalReadingSchema,
   createManualWorkOrderSchema,
   interventionUpdateSchema,
@@ -110,6 +112,19 @@ export class WorkOrderController {
     }
 
     sendData(response, result, result.yaExistia ? 'Consumo ya registrado' : 'Consumo registrado')
+  }
+
+  reverseConsumption: RequestHandler = async (request, response) => {
+    const { ordenId, consumoId } = consumptionIdParamSchema.parse(request.params)
+    const input = reverseConsumptionSchema.parse(request.body)
+    const result = await this.workOrderService.reverseConsumption(
+      ordenId,
+      consumoId,
+      input,
+      request.user!,
+    )
+    response.status(result.yaExistia ? 200 : 201)
+    sendData(response, result, result.yaExistia ? 'Reverso ya registrado' : 'Consumo revertido')
   }
 
   authorizeConsumptionException: RequestHandler = async (request, response) => {

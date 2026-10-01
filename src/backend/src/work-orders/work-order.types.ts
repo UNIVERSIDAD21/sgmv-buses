@@ -118,14 +118,27 @@ export interface WorkOrderSparePartDto {
   unidadMedida: string
 }
 
+export interface WorkOrderConsumptionReversalDto {
+  autorizadoPor?: WorkOrderUserDto
+  cantidad: string
+  costoUnitario?: string
+  fechaReverso: string
+  id: number
+  motivo?: string
+  movimientoInventario: WorkOrderInventoryMovementDto | null
+  subtotal?: string
+}
+
 export interface WorkOrderConsumptionDto {
   autorizadoPorId: number | null
   autorizacionExcepcionId: number | null
   cantidad: string
+  cantidadPendiente: string
   costoUnitario?: string
   fechaConsumo: string
   id: number
   movimientoInventario: WorkOrderInventoryMovementDto | null
+  reversos: WorkOrderConsumptionReversalDto[]
   repuesto: WorkOrderSparePartDto
   resultadoCompatibilidad: 'COMPATIBLE' | 'EXCEPCION_AUTORIZADA' | 'NO_EVALUADA_LEGADO' | null
   reglaCompatibilidadId: number | null

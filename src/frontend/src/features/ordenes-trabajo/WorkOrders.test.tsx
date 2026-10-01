@@ -83,7 +83,7 @@ describe('RF-04 work order frontend', () => {
     fireEvent.click(screen.getByRole('button', { name: /Añadir actividad realizada/i }))
     fireEvent.click(screen.getByRole('button', { name: /^Confirmar actividad$/i }))
     expect(await screen.findByText(/Actividad registrada/i)).toBeInTheDocument()
-    fireEvent.click(screen.getByText(/Contexto e historial de la orden/i))
+    fireEvent.click(await screen.findByText(/Contexto e historial de la orden/i))
     fireEvent.click(await screen.findByRole('button', { name: /Rectificar actividad/i }))
     const dialog = await screen.findByRole('dialog', { name: /Rectificar actividad/i })
     fireEvent.change(within(dialog).getByLabelText(/Motivo de la rectificación/i), {
@@ -307,6 +307,56 @@ describe('RF-04 work order frontend', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Revocar$/i }))
     expect(await screen.findByText(/Excepcion revocada/i)).toBeInTheDocument()
     expect(await screen.findByText(/REP-001 - max\. 1\.25 - REVOCADA/i)).toBeInTheDocument()
+  })
+
+  it('permite a Administración reversar parte del consumo y muestra el saldo e historial', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo')
+    const fetchMock = mockApi(
+      workOrderHandler('ADMINISTRADOR', {
+        initialStatus: 'EN_EJECUCION',
+        withConsumption: true,
+      }),
+    )
+    render(<App />)
+    fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
+    fireEvent.click(await screen.findByText(/Contexto e historial de la orden/i))
+    fireEvent.click(await screen.findByRole('button', { name: /Reversar consumo/i }))
+    fireEvent.change(screen.getByLabelText(/Cantidad a reversar/i), {
+      target: { value: '0.50' },
+    })
+    fireEvent.change(screen.getByLabelText(/Motivo del reverso/i), {
+      target: { value: 'Medio repuesto no utilizado' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar reverso/i }))
+    expect(
+      await screen.findByText(/Consumo revertido; stock y costo actualizados/i),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Saldo pendiente: 0.50/i)).toBeInTheDocument()
+    expect(screen.getByText(/Medio repuesto no utilizado/i)).toBeInTheDocument()
+    const call = fetchMock.mock.calls.find(
+      ([url, init]) => /\/consumos\/2010\/reversar$/.test(String(url)) && init?.method === 'POST',
+    )
+    expect(call).toBeTruthy()
+    expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
+      cantidad: '0.50',
+      motivo: 'Medio repuesto no utilizado',
+    })
+  })
+
+  it('no expone el reverso administrativo ni el costo al Mecánico', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo')
+    mockApi(
+      workOrderHandler('MECANICO', {
+        initialStatus: 'EN_EJECUCION',
+        withConsumption: true,
+      }),
+    )
+    render(<App />)
+    fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
+    fireEvent.click(await screen.findByText(/Contexto e historial de la orden/i))
+    expect(await screen.findByText(/Saldo pendiente: 1.00/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Reversar consumo/i })).not.toBeInTheDocument()
+    expect(screen.queryByText(/120.000/)).not.toBeInTheDocument()
   })
 
   it('lets the assigned mechanic execute, consume stock and complete technically', async () => {

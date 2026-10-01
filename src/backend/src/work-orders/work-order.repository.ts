@@ -94,6 +94,13 @@ export const workOrderDetailInclude = {
   consumosRepuesto: {
     include: {
       movimientoInventario: true,
+      reversosConsumo: {
+        include: {
+          autorizadoPor: { select: userSelect },
+          movimientoInventario: true,
+        },
+        orderBy: { fechaReverso: 'asc' as const },
+      },
       repuesto: {
         select: sparePartSelect,
       },
@@ -250,6 +257,12 @@ interface ConsumptionData {
   repuestoId: number
 }
 
+interface ConsumptionReversalData {
+  cantidad: Prisma.Decimal
+  claveIdempotencia: string
+  motivo: string
+}
+
 interface ConsumptionExceptionData {
   cantidadMaxima: Prisma.Decimal
   fechaExpiracion: Date | null
@@ -368,6 +381,13 @@ export class WorkOrderRepository {
       where: { claveIdempotencia },
       include: {
         movimientoInventario: true,
+        reversosConsumo: {
+          include: {
+            autorizadoPor: { select: userSelect },
+            movimientoInventario: true,
+          },
+          orderBy: { fechaReverso: 'asc' },
+        },
         repuesto: {
           select: sparePartSelect,
         },
@@ -1376,6 +1396,13 @@ export class WorkOrderRepository {
           },
           include: {
             movimientoInventario: true,
+            reversosConsumo: {
+              include: {
+                autorizadoPor: { select: userSelect },
+                movimientoInventario: true,
+              },
+              orderBy: { fechaReverso: 'asc' },
+            },
             repuesto: {
               select: sparePartSelect,
             },
@@ -1604,6 +1631,13 @@ export class WorkOrderRepository {
           where: { id: consumption.id },
           include: {
             movimientoInventario: true,
+            reversosConsumo: {
+              include: {
+                autorizadoPor: { select: userSelect },
+                movimientoInventario: true,
+              },
+              orderBy: { fechaReverso: 'asc' },
+            },
             repuesto: {
               select: sparePartSelect,
             },
@@ -1833,6 +1867,110 @@ export class WorkOrderRepository {
     )
   }
 
+  reverseConsumption(
+    orderId: number,
+    consumptionId: number,
+    actorId: number,
+    data: ConsumptionReversalData,
+  ) {
+    return prisma.$transaction(
+      async (tx) => {
+        await this.lockWorkOrder(tx, orderId)
+        const order = await this.findOrderByIdForTransaction(orderId, tx)
+        if (!order) return { orden: null, status: 'ORDER_NOT_FOUND' as const }
+
+        const existing = await tx.reversoConsumo.findUnique({
+          where: { claveIdempotencia: data.claveIdempotencia },
+          include: { consumoOriginal: true },
+        })
+        if (existing) {
+          if (
+            existing.consumoOriginalId !== consumptionId ||
+            existing.consumoOriginal.ordenTrabajoId !== orderId ||
+            existing.autorizadoPorId !== actorId ||
+            !existing.cantidad.equals(data.cantidad) ||
+            existing.motivo !== data.motivo
+          ) {
+            return { orden: order, status: 'IDEMPOTENCY_CONFLICT' as const }
+          }
+          return { orden: order, status: 'ALREADY_REVERSED' as const }
+        }
+
+        if (!['EN_EJECUCION', 'COMPLETADA_TECNICO', 'DEVUELTA_CORRECCION'].includes(order.estado)) {
+          return { orden: order, status: 'INVALID_STATE' as const }
+        }
+
+        const original = await tx.consumoRepuesto.findUnique({
+          where: { id: consumptionId },
+          include: { reversosConsumo: true },
+        })
+        if (!original || original.ordenTrabajoId !== orderId) {
+          return { orden: order, status: 'CONSUMPTION_NOT_FOUND' as const }
+        }
+
+        const reversedQuantity = original.reversosConsumo.reduce(
+          (total, reversal) => total.add(reversal.cantidad),
+          new Prisma.Decimal(0),
+        )
+        const reversedCost = original.reversosConsumo.reduce(
+          (total, reversal) => total.add(reversal.subtotal),
+          new Prisma.Decimal(0),
+        )
+        const remainingQuantity = original.cantidad.sub(reversedQuantity)
+        if (data.cantidad.greaterThan(remainingQuantity)) {
+          return { orden: order, status: 'REVERSAL_EXCEEDS_REMAINING' as const }
+        }
+
+        const part = await this.lockSparePart(tx, original.repuestoId)
+        if (!part) return { orden: order, status: 'SPARE_PART_NOT_FOUND' as const }
+
+        const remainingCost = original.subtotal.sub(reversedCost)
+        const proportionalCost = data.cantidad.mul(original.costoUnitario).toDecimalPlaces(2)
+        const subtotal = data.cantidad.equals(remainingQuantity)
+          ? remainingCost
+          : proportionalCost.greaterThan(remainingCost)
+            ? remainingCost
+            : proportionalCost
+        if (subtotal.greaterThan(order.costoTotal)) {
+          return { orden: order, status: 'INCONSISTENT_COST' as const }
+        }
+
+        const reversal = await tx.reversoConsumo.create({
+          data: {
+            autorizadoPorId: actorId,
+            cantidad: data.cantidad,
+            claveIdempotencia: data.claveIdempotencia,
+            consumoOriginalId: original.id,
+            costoUnitario: original.costoUnitario,
+            motivo: data.motivo,
+            subtotal,
+          },
+        })
+        await tx.movimientoInventario.create({
+          data: {
+            cantidad: data.cantidad,
+            costoUnitario: original.costoUnitario,
+            motivo: `Reverso del consumo ${original.id}: ${data.motivo}`,
+            repuestoId: original.repuestoId,
+            responsableId: actorId,
+            reversoConsumoId: reversal.id,
+            tipo: 'REVERSO_CONSUMO',
+          },
+        })
+        await tx.repuesto.update({
+          where: { id: original.repuestoId },
+          data: { stockActual: { increment: data.cantidad } },
+        })
+        // El trigger SQL deriva el costo neto desde consumos y reversos.
+        return {
+          orden: await this.findOrderByIdForTransaction(orderId, tx),
+          status: 'REVERSED' as const,
+        }
+      },
+      { maxWait: 15000, timeout: 60000 },
+    )
+  }
+
   closeOrder(orderId: number, actorId: number, observacion: string | null) {
     return prisma.$transaction(
       async (tx) => {
@@ -1860,46 +1998,56 @@ export class WorkOrderRepository {
           }
         }
 
-        const [activityCount, diagnosticCount, consumptionCount, movementCount, costRows] =
-          await Promise.all([
-            tx.actividadOrden.count({
-              where: {
-                intervencion: {
-                  ordenTrabajoId: orderId,
-                },
-                anuladaAt: null,
-              },
-            }),
-            tx.intervencion.count({
-              where: {
-                diagnostico: {
-                  not: null,
-                },
+        const [
+          activityCount,
+          diagnosticCount,
+          consumptionCount,
+          movementCount,
+          costRows,
+          reversalCosts,
+        ] = await Promise.all([
+          tx.actividadOrden.count({
+            where: {
+              intervencion: {
                 ordenTrabajoId: orderId,
               },
-            }),
-            tx.consumoRepuesto.count({
-              where: {
+              anuladaAt: null,
+            },
+          }),
+          tx.intervencion.count({
+            where: {
+              diagnostico: {
+                not: null,
+              },
+              ordenTrabajoId: orderId,
+            },
+          }),
+          tx.consumoRepuesto.count({
+            where: {
+              ordenTrabajoId: orderId,
+            },
+          }),
+          tx.movimientoInventario.count({
+            where: {
+              consumoRepuesto: {
                 ordenTrabajoId: orderId,
               },
-            }),
-            tx.movimientoInventario.count({
-              where: {
-                consumoRepuesto: {
-                  ordenTrabajoId: orderId,
-                },
-                tipo: 'CONSUMO',
-              },
-            }),
-            tx.consumoRepuesto.aggregate({
-              where: {
-                ordenTrabajoId: orderId,
-              },
-              _sum: {
-                subtotal: true,
-              },
-            }),
-          ])
+              tipo: 'CONSUMO',
+            },
+          }),
+          tx.consumoRepuesto.aggregate({
+            where: {
+              ordenTrabajoId: orderId,
+            },
+            _sum: {
+              subtotal: true,
+            },
+          }),
+          tx.reversoConsumo.aggregate({
+            where: { consumoOriginal: { ordenTrabajoId: orderId } },
+            _sum: { subtotal: true },
+          }),
+        ])
 
         if (activityCount === 0) {
           return {
@@ -1922,7 +2070,9 @@ export class WorkOrderRepository {
           }
         }
 
-        const expectedCost = costRows._sum.subtotal ?? new Prisma.Decimal(0)
+        const expectedCost = (costRows._sum.subtotal ?? new Prisma.Decimal(0)).sub(
+          reversalCosts._sum.subtotal ?? new Prisma.Decimal(0),
+        )
 
         if (!order.costoTotal.equals(expectedCost)) {
           return {

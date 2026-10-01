@@ -204,6 +204,13 @@ async function purgeStaleRf05Fixtures() {
         ],
       },
     })
+    await tx.reversoConsumo.deleteMany({
+      where: {
+        consumoOriginal: {
+          OR: [{ repuestoId: { in: partIds } }, { ordenTrabajoId: { in: orderIds } }],
+        },
+      },
+    })
     await tx.consumoRepuesto.deleteMany({
       where: { OR: [{ repuestoId: { in: partIds } }, { ordenTrabajoId: { in: orderIds } }] },
     })
@@ -309,6 +316,16 @@ async function cleanup() {
       await tx.alertaInterna.deleteMany({
         where: { id: { in: alertas.map((alerta) => alerta.id) } },
       })
+      await tx.reversoConsumo.deleteMany({
+        where: {
+          consumoOriginal: {
+            OR: [
+              { repuestoId: { in: created.repuestos } },
+              { ordenTrabajoId: { in: created.ordenes } },
+            ],
+          },
+        },
+      })
       await tx.consumoRepuesto.deleteMany({
         where: {
           OR: [
@@ -347,6 +364,9 @@ async function cleanup() {
             { busId: { in: created.buses } },
           ],
         },
+      })
+      await tx.actividadOrden.deleteMany({
+        where: { intervencionId: { in: created.intervenciones } },
       })
       await tx.intervencion.deleteMany({
         where: {
@@ -424,6 +444,189 @@ describe('RF-05 spare parts inventory API', () => {
       await prisma.$disconnect()
     }
   }, 60000)
+
+  it(
+    'revierte consumo parcialmente con stock, costo, auditoría e idempotencia sin alterar el original',
+    async () => {
+      const part = await createSparePart({ stockActual: '5.00', costoUnitario: '100.00' })
+      const order = await createExecutingOrder(fixture)
+      const busId = (await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: order.id } })).busId
+      await allowPartForBus(part.id, busId, fixture.adminId)
+
+      const consumed = await mecanicoAgent
+        .post(`/ordenes-trabajo/${order.id}/consumos`)
+        .send({ cantidad: '2.00', claveIdempotencia: randomUUID(), repuestoId: part.id })
+        .expect(201)
+      const consumptionId = consumed.body.data.consumo.id as number
+      const path = `/ordenes-trabajo/${order.id}/consumos/${consumptionId}/reversar`
+      const key = randomUUID()
+      const input = {
+        cantidad: '0.75',
+        claveIdempotencia: key,
+        motivo: 'Se registró una cantidad mayor a la usada',
+      }
+
+      await mecanicoAgent.post(path).send(input).expect(403)
+      await adminAgent
+        .post(path)
+        .send({ ...input, claveIdempotencia: randomUUID(), motivo: 'x' })
+        .expect(400)
+      const first = await adminAgent.post(path).send(input).expect(201)
+      expect(first.body.data.orden.consumosRepuesto[0].cantidadPendiente).toBe('1.25')
+      expect(first.body.data.orden.consumosRepuesto[0].reversos).toHaveLength(1)
+      expect(first.body.data.orden.costoTotal).toBe('125.00')
+      const replay = await adminAgent.post(path).send(input).expect(201)
+      expect(replay.headers['idempotency-replayed']).toBe('true')
+      await adminAgent
+        .post(path)
+        .send({ ...input, cantidad: '0.50' })
+        .expect(409)
+      await adminAgent
+        .post(path)
+        .send({ cantidad: '1.26', claveIdempotencia: randomUUID(), motivo: 'Exceso' })
+        .expect(409)
+
+      expect(
+        (await prisma.repuesto.findUniqueOrThrow({ where: { id: part.id } })).stockActual.toFixed(
+          2,
+        ),
+      ).toBe('3.75')
+      expect(
+        (
+          await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: order.id } })
+        ).costoTotal.toFixed(2),
+      ).toBe('125.00')
+      expect(await prisma.consumoRepuesto.count({ where: { id: consumptionId } })).toBe(1)
+      expect(
+        await prisma.reversoConsumo.count({ where: { consumoOriginalId: consumptionId } }),
+      ).toBe(1)
+      const movement = await prisma.movimientoInventario.findFirstOrThrow({
+        where: { reversoConsumo: { consumoOriginalId: consumptionId } },
+      })
+      expect(movement.tipo).toBe('REVERSO_CONSUMO')
+      expect(movement.cantidad.toFixed(2)).toBe('0.75')
+      const listed = await adminAgent
+        .get(`/repuestos/${part.id}/movimientos?tipo=REVERSO_CONSUMO`)
+        .expect(200)
+      expect(
+        listed.body.data.movimientos.some((item: { id: number }) => item.id === movement.id),
+      ).toBe(true)
+
+      const final = await adminAgent
+        .post(path)
+        .send({
+          cantidad: '1.25',
+          claveIdempotencia: randomUUID(),
+          motivo: 'Devolución física del saldo',
+        })
+        .expect(201)
+      expect(final.body.data.orden.consumosRepuesto[0].cantidadPendiente).toBe('0.00')
+      expect(final.body.data.orden.costoTotal).toBe('0.00')
+      expect(
+        (await prisma.repuesto.findUniqueOrThrow({ where: { id: part.id } })).stockActual.toFixed(
+          2,
+        ),
+      ).toBe('5.00')
+      await adminAgent
+        .post(path)
+        .send({ cantidad: '0.01', claveIdempotencia: randomUUID(), motivo: 'Exceso final' })
+        .expect(409)
+
+      const intervention = await prisma.intervencion.findFirstOrThrow({
+        where: { ordenTrabajoId: order.id },
+      })
+      const past = new Date(Date.now() - 60_000)
+      await prisma.ordenTrabajo.update({
+        where: { id: order.id },
+        data: {
+          fechaCreacion: past,
+          fechaAsignacion: new Date(past.getTime() + 1000),
+          fechaInicioEjecucion: new Date(past.getTime() + 2000),
+        },
+      })
+      await prisma.intervencion.update({
+        where: { id: intervention.id },
+        data: {
+          diagnostico: 'Revisión técnica completada',
+          fechaInicio: new Date(past.getTime() + 2000),
+        },
+      })
+      await prisma.actividadOrden.create({
+        data: {
+          descripcion: 'Verificación física del repuesto y ajuste',
+          intervencionId: intervention.id,
+          registradaPorId: fixture.mecanicoId,
+        },
+      })
+      await mecanicoAgent.post(`/ordenes-trabajo/${order.id}/completar`).send({}).expect(200)
+      await adminAgent.post(`/ordenes-trabajo/${order.id}/cerrar`).send({}).expect(200)
+      await adminAgent
+        .post(path)
+        .send({ cantidad: '0.01', claveIdempotencia: randomUUID(), motivo: 'Intento tardío' })
+        .expect(400)
+    },
+    rf05TestTimeout,
+  )
+
+  it(
+    'serializa reversos concurrentes y distribuye el costo redondeado sin saldos negativos',
+    async () => {
+      const part = await createSparePart({ stockActual: '1.00', costoUnitario: '0.51' })
+      const order = await createExecutingOrder(fixture)
+      const busId = (await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: order.id } })).busId
+      await allowPartForBus(part.id, busId, fixture.adminId)
+      const consumption = await mecanicoAgent
+        .post(`/ordenes-trabajo/${order.id}/consumos`)
+        .send({ cantidad: '0.03', claveIdempotencia: randomUUID(), repuestoId: part.id })
+        .expect(201)
+      const consumptionId = consumption.body.data.consumo.id as number
+      const path = `/ordenes-trabajo/${order.id}/consumos/${consumptionId}/reversar`
+      const first = await Promise.all([
+        adminAgent.post(path).send({
+          cantidad: '0.02',
+          claveIdempotencia: randomUUID(),
+          motivo: 'Primer retorno',
+        }),
+        adminAgent.post(path).send({
+          cantidad: '0.02',
+          claveIdempotencia: randomUUID(),
+          motivo: 'Segundo retorno',
+        }),
+      ])
+      expect(first.map((response) => response.status).sort()).toEqual([201, 409])
+      expect(
+        await prisma.reversoConsumo.count({ where: { consumoOriginalId: consumptionId } }),
+      ).toBe(1)
+      expect(
+        (await prisma.repuesto.findUniqueOrThrow({ where: { id: part.id } })).stockActual.toFixed(
+          2,
+        ),
+      ).toBe('0.99')
+      const remaining = await adminAgent
+        .post(path)
+        .send({
+          cantidad: '0.01',
+          claveIdempotencia: randomUUID(),
+          motivo: 'Último retorno',
+        })
+        .expect(201)
+      expect(remaining.body.data.orden.consumosRepuesto[0].cantidadPendiente).toBe('0.00')
+      expect(remaining.body.data.orden.costoTotal).toBe('0.00')
+      const reversals = await prisma.reversoConsumo.findMany({
+        where: { consumoOriginalId: consumptionId },
+        orderBy: { id: 'asc' },
+      })
+      expect(
+        reversals.reduce((sum, reversal) => sum + Number(reversal.subtotal), 0).toFixed(2),
+      ).toBe('0.02')
+      expect(
+        (await prisma.repuesto.findUniqueOrThrow({ where: { id: part.id } })).stockActual.toFixed(
+          2,
+        ),
+      ).toBe('1.00')
+    },
+    rf05TestTimeout,
+  )
 
   it(
     'versions compatibility rules, applies bus precedence and rejects without positive evidence',

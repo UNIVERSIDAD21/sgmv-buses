@@ -51,6 +51,7 @@ import {
   resumeWorkOrderWaiting,
   reassignWorkOrder,
   revokeWorkOrderConsumptionException,
+  reverseWorkOrderConsumption,
   resumeWorkOrder,
   returnWorkOrder,
   startWorkOrder,
@@ -1732,6 +1733,61 @@ function WorkOrderDetail({
   const [annulReason, setAnnulReason] = useState('')
   const [annulError, setAnnulError] = useState<string | null>(null)
   const [annulBusy, setAnnulBusy] = useState(false)
+  const [reversalConsumptionId, setReversalConsumptionId] = useState<number | null>(null)
+  const [reversalQuantity, setReversalQuantity] = useState('')
+  const [reversalReason, setReversalReason] = useState('')
+  const [reversalKey, setReversalKey] = useState<string | null>(null)
+  const [reversalBusy, setReversalBusy] = useState(false)
+  const [reversalError, setReversalError] = useState<string | null>(null)
+
+  async function submitReversal(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!reversalConsumptionId || reversalBusy) return
+    const original = order.consumosRepuesto.find(
+      (consumption) => consumption.id === reversalConsumptionId,
+    )
+    const quantity = Number(reversalQuantity)
+    if (
+      !original ||
+      !Number.isFinite(quantity) ||
+      quantity <= 0 ||
+      quantity > Number(original.cantidadPendiente) ||
+      !/^\d+(\.\d{1,2})?$/.test(reversalQuantity)
+    ) {
+      setReversalError('Indique una cantidad positiva, máxima la pendiente y con dos decimales.')
+      return
+    }
+    const reason = reversalReason.trim()
+    if (reason.length < 3) {
+      setReversalError('Indique el motivo del reverso (mínimo 3 caracteres).')
+      return
+    }
+    const key = reversalKey ?? crypto.randomUUID()
+    setReversalKey(key)
+    setReversalBusy(true)
+    setReversalError(null)
+    try {
+      const result = await reverseWorkOrderConsumption(order.id, reversalConsumptionId, {
+        cantidad: reversalQuantity,
+        claveIdempotencia: key,
+        motivo: reason,
+      })
+      onOrderChange(result.orden)
+      onFeedback(
+        result.yaExistia
+          ? 'Reverso ya registrado.'
+          : 'Consumo revertido; stock y costo actualizados.',
+      )
+      setReversalConsumptionId(null)
+      setReversalQuantity('')
+      setReversalReason('')
+      setReversalKey(null)
+    } catch (error) {
+      setReversalError(getErrorMessage(error))
+    } finally {
+      setReversalBusy(false)
+    }
+  }
   async function submitActivityAnnulment(event: FormEvent) {
     event.preventDefault()
     if (!activityToAnnul || annulBusy) return
@@ -2142,6 +2198,105 @@ function WorkOrderDetail({
                       {formatCurrency(consumption.subtotal ?? 0)}
                     </span>
                   )}
+                  <div className="col-span-full text-xs text-slate-600">
+                    Saldo pendiente: {consumption.cantidadPendiente ?? consumption.cantidad}
+                    {consumption.reversos?.length
+                      ? ` · ${consumption.reversos.length} reverso(s)`
+                      : ''}
+                  </div>
+                  {isAdmin &&
+                    consumption.reversos?.map((reversal) => (
+                      <div
+                        className="col-span-full rounded border border-emerald-200 bg-emerald-50 p-2 text-xs"
+                        key={reversal.id}
+                      >
+                        Reverso de {reversal.cantidad} ·{' '}
+                        {formatDateTimeValue(reversal.fechaReverso)}
+                        {' · '}
+                        {reversal.autorizadoPor?.nombre}: {reversal.motivo}
+                        {' · -'}
+                        {formatCurrency(reversal.subtotal ?? 0)}
+                      </div>
+                    ))}
+                  {isAdmin &&
+                    ['EN_EJECUCION', 'COMPLETADA_TECNICO', 'DEVUELTA_CORRECCION'].includes(
+                      order.estado,
+                    ) &&
+                    Number(consumption.cantidadPendiente ?? consumption.cantidad) > 0 && (
+                      <div className="col-span-full">
+                        {reversalConsumptionId !== consumption.id ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setReversalConsumptionId(consumption.id)
+                              setReversalQuantity('')
+                              setReversalReason('')
+                              setReversalKey(null)
+                              setReversalError(null)
+                            }}
+                          >
+                            Reversar consumo
+                          </Button>
+                        ) : (
+                          <form
+                            className="space-y-2"
+                            onSubmit={(event) => void submitReversal(event)}
+                          >
+                            <p className="text-xs">
+                              El consumo original permanece; el reverso devuelve stock y descuenta
+                              costo.
+                            </p>
+                            <label className="block">
+                              Cantidad a reversar
+                              <input
+                                className="mt-1 w-full rounded border bg-white p-2"
+                                type="number"
+                                min="0.01"
+                                max={consumption.cantidadPendiente ?? consumption.cantidad}
+                                step="0.01"
+                                required
+                                value={reversalQuantity}
+                                onChange={(event) => {
+                                  setReversalQuantity(event.target.value)
+                                  setReversalKey(null)
+                                }}
+                              />
+                            </label>
+                            <label className="block">
+                              Motivo del reverso
+                              <textarea
+                                className="mt-1 w-full rounded border bg-white p-2"
+                                maxLength={1000}
+                                required
+                                value={reversalReason}
+                                onChange={(event) => {
+                                  setReversalReason(event.target.value)
+                                  setReversalKey(null)
+                                }}
+                              />
+                            </label>
+                            {reversalError && (
+                              <p role="alert" className="text-red-700">
+                                {reversalError}
+                              </p>
+                            )}
+                            <div className="flex gap-2">
+                              <Button type="submit" loading={reversalBusy}>
+                                Confirmar reverso
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setReversalConsumptionId(null)}
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
+                          </form>
+                        )}
+                      </div>
+                    )}
                 </div>
               ))}
             </div>

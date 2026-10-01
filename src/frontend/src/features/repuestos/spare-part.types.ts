@@ -6,7 +6,8 @@ import type {
 
 export type SparePartAvailability = 'AGOTADO' | 'BAJO' | 'DISPONIBLE' | 'INACTIVO'
 export type SparePartStatus = 'ACTIVO' | 'INACTIVO'
-export type InventoryMovementType = 'AJUSTE_ENTRADA' | 'AJUSTE_SALIDA' | 'CONSUMO' | 'ENTRADA'
+export type InventoryMovementType =
+  'AJUSTE_ENTRADA' | 'AJUSTE_SALIDA' | 'CONSUMO' | 'ENTRADA' | 'REVERSO_CONSUMO'
 
 export interface SparePartUserDto {
   email: string

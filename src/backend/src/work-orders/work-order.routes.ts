@@ -134,6 +134,12 @@ workOrderRoutes.post(
   idempotent(workOrderController.createConsumption),
 )
 workOrderRoutes.post(
+  '/:ordenId/consumos/:consumoId/reversar',
+  enforceAllowedOrigin,
+  authorizeRoles('ADMINISTRADOR'),
+  idempotent(workOrderController.reverseConsumption),
+)
+workOrderRoutes.post(
   '/:ordenId/excepciones-consumo',
   enforceAllowedOrigin,
   authorizeRoles('ADMINISTRADOR'),

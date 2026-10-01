@@ -156,6 +156,18 @@ export const createTechnicalReadingSchema = z
   })
   .strict()
 
+export const consumptionIdParamSchema = orderIdParamSchema.extend({
+  consumoId: entityIdSchema,
+})
+
+export const reverseConsumptionSchema = z
+  .object({
+    cantidad: decimalQuantity,
+    claveIdempotencia: z.uuid(),
+    motivo: trimmedText(3, 1000),
+  })
+  .strict()
+
 export const createConsumptionSchema = z
   .object({
     autorizacionExcepcionId: entityIdSchema.optional(),
@@ -190,6 +202,7 @@ export type AvailableMechanicsQuery = z.infer<typeof availableMechanicsQuerySche
 export type AvailablePartsQuery = z.infer<typeof availablePartsQuerySchema>
 export type CreateActivityInput = z.infer<typeof createActivitySchema>
 export type CreateConsumptionInput = z.infer<typeof createConsumptionSchema>
+export type ReverseConsumptionInput = z.infer<typeof reverseConsumptionSchema>
 export type AuthorizeConsumptionExceptionInput = z.infer<typeof authorizeConsumptionExceptionSchema>
 export type CreateTechnicalReadingInput = z.infer<typeof createTechnicalReadingSchema>
 export type CreateManualWorkOrderInput = z.infer<typeof createManualWorkOrderSchema>

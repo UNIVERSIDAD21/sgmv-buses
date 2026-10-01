@@ -874,10 +874,37 @@ export function workOrderHandler(
     empty: boolean
     failList: boolean
     initialStatus: string
+    withConsumption: boolean
     withEvidence: boolean
   }> = {},
 ) {
   let order = createWorkOrderDetail(options.initialStatus ?? 'PENDIENTE_ASIGNACION')
+  if (options.withConsumption) {
+    order = {
+      ...order,
+      consumosRepuesto: [
+        {
+          cantidad: '1.00',
+          cantidadPendiente: '1.00',
+          costoUnitario: '120000.00',
+          fechaConsumo: '2026-08-28T12:25:00.000Z',
+          id: 2010,
+          movimientoInventario: {
+            cantidad: '1.00',
+            costoUnitario: '120000.00',
+            fechaMovimiento: '2026-08-28T12:25:00.000Z',
+            id: 2039,
+            motivo: 'Consumo asociado a orden OT-RF04-001',
+            tipo: 'CONSUMO',
+          },
+          repuesto: workOrderPart,
+          reversos: [],
+          subtotal: '120000.00',
+        },
+      ],
+      costoTotal: '120000.00',
+    }
+  }
   if (options.withEvidence && order.novedad) {
     order = {
       ...order,
@@ -1252,6 +1279,49 @@ export function workOrderHandler(
       return ok({ autorizacion: authorization })
     }
 
+    if (/^\/ordenes-trabajo\/\d+\/consumos\/\d+\/reversar$/.test(path) && init?.method === 'POST') {
+      const payload = JSON.parse(String(init.body ?? '{}')) as {
+        cantidad: string
+        claveIdempotencia: string
+        motivo: string
+      }
+      const original = order.consumosRepuesto[0]
+      const subtotal = (Number(payload.cantidad) * 120000).toFixed(2)
+      order = {
+        ...order,
+        consumosRepuesto: [
+          {
+            ...original,
+            cantidadPendiente: (
+              Number(original.cantidadPendiente) - Number(payload.cantidad)
+            ).toFixed(2),
+            reversos: [
+              ...original.reversos,
+              {
+                autorizadoPor: workOrderAdmin,
+                cantidad: payload.cantidad,
+                costoUnitario: '120000.00',
+                fechaReverso: '2026-08-28T12:35:00.000Z',
+                id: 2030,
+                motivo: payload.motivo,
+                movimientoInventario: {
+                  cantidad: payload.cantidad,
+                  costoUnitario: '120000.00',
+                  fechaMovimiento: '2026-08-28T12:35:00.000Z',
+                  id: 2040,
+                  motivo: payload.motivo,
+                  tipo: 'REVERSO_CONSUMO',
+                },
+                subtotal,
+              },
+            ],
+          },
+        ],
+        costoTotal: (Number(order.costoTotal) - Number(subtotal)).toFixed(2),
+      }
+      return ok({ orden: decoratedOrder(), yaExistia: false })
+    }
+
     if (path.endsWith('/consumos') && init?.method === 'POST') {
       order = {
         ...order,
@@ -1259,7 +1329,9 @@ export function workOrderHandler(
           ...order.consumosRepuesto,
           {
             cantidad: '1.00',
+            cantidadPendiente: '1.00',
             costoUnitario: '120000.00',
+            reversos: [],
             fechaConsumo: '2026-08-28T12:25:00.000Z',
             id: 2010,
             movimientoInventario: {

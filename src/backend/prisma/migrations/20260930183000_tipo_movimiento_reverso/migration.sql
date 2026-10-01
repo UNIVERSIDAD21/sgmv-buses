@@ -1,0 +1,1 @@
+ALTER TYPE "tipo_movimiento_inventario" ADD VALUE IF NOT EXISTS 'REVERSO_CONSUMO';

@@ -60,6 +60,17 @@ const movementInclude = {
       },
     },
   },
+  reversoConsumo: {
+    select: {
+      consumoOriginal: {
+        select: {
+          id: true,
+          intervencion: { select: { id: true } },
+          ordenTrabajo: { select: orderSelect },
+        },
+      },
+    },
+  },
   repuesto: {
     select: sparePartSelect,
   },
@@ -636,7 +647,7 @@ export class SparePartRepository {
   private async applyStockOperation(
     repuestoId: number,
     actorId: number,
-    tipo: Exclude<TipoMovimientoInventario, 'CONSUMO'>,
+    tipo: Exclude<TipoMovimientoInventario, 'CONSUMO' | 'REVERSO_CONSUMO'>,
     input: StockOperationData,
   ): Promise<OperationResult> {
     return prisma.$transaction(

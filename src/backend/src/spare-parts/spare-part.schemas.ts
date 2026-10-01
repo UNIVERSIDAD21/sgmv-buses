@@ -152,7 +152,9 @@ export const listInventoryMovementsQuerySchema = z
       .default('fechaMovimiento'),
     pagina: z.coerce.number().int().min(1).default(1),
     responsableId: entityIdSchema.optional(),
-    tipo: z.enum(['AJUSTE_ENTRADA', 'AJUSTE_SALIDA', 'CONSUMO', 'ENTRADA']).optional(),
+    tipo: z
+      .enum(['AJUSTE_ENTRADA', 'AJUSTE_SALIDA', 'CONSUMO', 'ENTRADA', 'REVERSO_CONSUMO'])
+      .optional(),
   })
   .strict()
 

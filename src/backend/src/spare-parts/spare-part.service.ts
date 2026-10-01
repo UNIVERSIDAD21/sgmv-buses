@@ -99,15 +99,16 @@ function movementDirection(tipo: TipoMovimientoInventario): 'ENTRADA' | 'SALIDA'
 }
 
 function mapMovement(movement: SparePartMovementRecord): SparePartMovementDto {
+  const originalConsumption = movement.consumoRepuesto ?? movement.reversoConsumo?.consumoOriginal
   return {
     cantidad: decimalToString(movement.cantidad),
-    consumo: movement.consumoRepuesto
+    consumo: originalConsumption
       ? {
-          id: movement.consumoRepuesto.id,
-          intervencion: movement.consumoRepuesto.intervencion
-            ? { id: movement.consumoRepuesto.intervencion.id }
+          id: originalConsumption.id,
+          intervencion: originalConsumption.intervencion
+            ? { id: originalConsumption.intervencion.id }
             : null,
-          orden: movement.consumoRepuesto.ordenTrabajo,
+          orden: originalConsumption.ordenTrabajo,
         }
       : null,
     costoUnitario: movement.costoUnitario ? decimalToString(movement.costoUnitario) : null,
@@ -438,7 +439,7 @@ export class SparePartService {
     claveIdempotencia: string,
     actorId: number,
     repuestoId: number,
-    tipo: Exclude<TipoMovimientoInventario, 'CONSUMO'>,
+    tipo: Exclude<TipoMovimientoInventario, 'CONSUMO' | 'REVERSO_CONSUMO'>,
   ) {
     try {
       return await operation()

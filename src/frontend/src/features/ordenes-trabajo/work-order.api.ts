@@ -64,6 +64,12 @@ export interface CreateConsumptionInput {
   repuestoId: number
 }
 
+export interface ReverseConsumptionInput {
+  cantidad: string
+  claveIdempotencia: string
+  motivo: string
+}
+
 export interface AuthorizeConsumptionExceptionInput {
   cantidadMaxima: string
   fechaExpiracion?: string
@@ -255,6 +261,17 @@ export function getAvailableSpareParts(ordenId: number, busqueda?: string) {
 
   return apiRequest<{ repuestos: AvailableSparePartDto[] }>(
     `/ordenes-trabajo/${ordenId}/repuestos-disponibles${query}`,
+  )
+}
+
+export function reverseWorkOrderConsumption(
+  ordenId: number,
+  consumoId: number,
+  input: ReverseConsumptionInput,
+) {
+  return apiRequest<{ orden: WorkOrderDetailDto; yaExistia: boolean }>(
+    `/ordenes-trabajo/${ordenId}/consumos/${consumoId}/reversar`,
+    { body: JSON.stringify(input), method: 'POST' },
   )
 }
 

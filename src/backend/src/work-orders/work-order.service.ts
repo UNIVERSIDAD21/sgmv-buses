@@ -18,6 +18,7 @@ import type {
   AssignWorkOrderInput,
   CreateActivityInput,
   CreateConsumptionInput,
+  ReverseConsumptionInput,
   CreateTechnicalReadingInput,
   CreateManualWorkOrderInput,
   InterventionUpdateInput,
@@ -314,10 +315,15 @@ function mapConsumption(
   consumption: ConsumptionRecord,
   includeEconomicFields: boolean,
 ): WorkOrderConsumptionDto {
+  const reversedQuantity = consumption.reversosConsumo.reduce(
+    (total, reversal) => total.add(reversal.cantidad),
+    new Prisma.Decimal(0),
+  )
   return {
     autorizadoPorId: consumption.autorizadoPorId,
     autorizacionExcepcionId: consumption.autorizacionExcepcionId,
     cantidad: decimalToString(consumption.cantidad),
+    cantidadPendiente: decimalToString(consumption.cantidad.sub(reversedQuantity)),
     ...(includeEconomicFields
       ? {
           costoUnitario: decimalToString(consumption.costoUnitario),
@@ -327,6 +333,22 @@ function mapConsumption(
     fechaConsumo: consumption.fechaConsumo.toISOString(),
     id: consumption.id,
     movimientoInventario: mapMovement(consumption.movimientoInventario, includeEconomicFields),
+    reversos: consumption.reversosConsumo.map((reversal) => ({
+      cantidad: decimalToString(reversal.cantidad),
+      ...(includeEconomicFields
+        ? {
+            autorizadoPor: mapUser(reversal.autorizadoPor),
+            costoUnitario: decimalToString(reversal.costoUnitario),
+            motivo: reversal.motivo,
+            subtotal: decimalToString(reversal.subtotal),
+          }
+        : {}),
+      fechaReverso: reversal.fechaReverso.toISOString(),
+      id: reversal.id,
+      movimientoInventario: includeEconomicFields
+        ? mapMovement(reversal.movimientoInventario, true)
+        : null,
+    })),
     repuesto: mapSparePart(consumption.repuesto, includeEconomicFields),
     resultadoCompatibilidad: consumption.resultadoCompatibilidad,
     reglaCompatibilidadId: consumption.reglaCompatibilidadId,
@@ -723,6 +745,43 @@ export class WorkOrderService {
         }
       }
 
+      translatePrismaError(error)
+    }
+  }
+
+  async reverseConsumption(
+    orderId: number,
+    consumptionId: number,
+    input: ReverseConsumptionInput,
+    actor: AuthenticatedUser,
+  ) {
+    ensureAdmin(actor)
+    try {
+      const result = await this.workOrderRepository.reverseConsumption(
+        orderId,
+        consumptionId,
+        actor.id,
+        {
+          cantidad: new Prisma.Decimal(input.cantidad),
+          claveIdempotencia: input.claveIdempotencia,
+          motivo: normalizeText(input.motivo),
+        },
+      )
+      if (result.status === 'CONSUMPTION_NOT_FOUND') {
+        throw new AppError(404, 'CONSUMPTION_NOT_FOUND', 'Consumo no encontrado en la orden')
+      }
+      if (result.status === 'REVERSAL_EXCEEDS_REMAINING') {
+        throw new AppError(
+          409,
+          'REVERSAL_EXCEEDS_REMAINING',
+          'El reverso supera la cantidad pendiente',
+        )
+      }
+      return {
+        orden: this.mapOperationResult(result, actor),
+        yaExistia: result.status === 'ALREADY_REVERSED',
+      }
+    } catch (error) {
       translatePrismaError(error)
     }
   }
