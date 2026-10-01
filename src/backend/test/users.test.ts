@@ -354,6 +354,7 @@ describe('Gestion administrativa y activacion de usuarios', () => {
       .send({ estado: 'BLOQUEADO' })
       .expect(200)
     await conductorAgent.get('/jornadas/mi-jornada').expect(401)
+    await conductorAgent.post(`/jornadas/${journey.id}/iniciar`).send({}).expect(401)
     const queue = await dispatcherAgent.get('/jornadas?requiereReasignacion=true').expect(200)
     expect(queue.body.data.jornadas.map((item: { id: number }) => item.id)).toContain(journey.id)
     expect(
@@ -391,6 +392,7 @@ describe('Gestion administrativa y activacion de usuarios', () => {
       .send({ estado: 'BLOQUEADO' })
       .expect(200)
     await mechanicAgent.get('/ordenes-trabajo/mis-ordenes').expect(401)
+    await mechanicAgent.post(`/ordenes-trabajo/${order.id}/iniciar`).send({}).expect(401)
     const queue = await adminAgent.get('/ordenes-trabajo?requiereReasignacion=true').expect(200)
     expect(queue.body.data.ordenes.map((item: { id: number }) => item.id)).toContain(order.id)
     expect(await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: order.id } })).toMatchObject({
