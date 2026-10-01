@@ -207,6 +207,13 @@ export function resumeWorkOrderWaiting(ordenId: number, motivo: string) {
   })
 }
 
+export function annulWorkOrder(ordenId: number, motivo: string) {
+  return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/anular`, {
+    body: JSON.stringify({ motivo }),
+    method: 'POST',
+  })
+}
+
 export function createWorkOrderActivity(ordenId: number, input: CreateActivityInput) {
   return apiRequest<{ orden: WorkOrderDetailDto }>(`/ordenes-trabajo/${ordenId}/actividades`, {
     body: JSON.stringify(input),

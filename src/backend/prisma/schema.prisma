@@ -98,6 +98,7 @@ enum EstadoOrdenTrabajo {
   COMPLETADA_TECNICO
   DEVUELTA_CORRECCION
   CERRADA
+  ANULADA
 
   @@map("estado_orden_trabajo")
 }
@@ -268,6 +269,7 @@ model Usuario {
   actividadesRegistradas            ActividadOrden[]               @relation("ActividadRegistradaPor")
   actividadesAnuladas               ActividadOrden[]               @relation("ActividadAnuladaPor")
   esperasOrdenRegistradas           OrdenTrabajo[]                @relation("OrdenEsperaRegistradaPor")
+  ordenesAnuladas                   OrdenTrabajo[]                @relation("OrdenAnuladaPor")
   asignacionesCreadas               AsignacionConductor[]          @relation("AsignacionAsignadaPor")
   asignacionesConductor             AsignacionConductor[]          @relation("AsignacionConductorUsuario")
   busEstadosCambiados               BusEstadoHistorial[]           @relation("BusEstadoCambiadoPor")
@@ -460,7 +462,7 @@ model Novedad {
   bus                Bus                 @relation(fields: [busId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   conductor          Usuario             @relation("NovedadConductor", fields: [conductorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   revisadaPor        Usuario?            @relation("NovedadRevisadaPor", fields: [revisadaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  ordenTrabajo       OrdenTrabajo?
+  ordenesTrabajo     OrdenTrabajo[]
   jornadaOperativa   JornadaOperativa?   @relation(fields: [jornadaOperativaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   lecturaKilometraje LecturaKilometraje? @relation(fields: [lecturaKilometrajeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   alertasInternas    AlertaInterna[]
@@ -553,7 +555,7 @@ model OrdenTrabajo {
   fechaCompletadaTecnico        DateTime?          @map("fecha_completada_tecnico") @db.Timestamptz(6)
   fechaCierre                   DateTime?          @map("fecha_cierre") @db.Timestamptz(6)
   cerradaPorId                  Int?               @map("cerrada_por_id")
-  novedadId                     Int?               @unique @map("novedad_id")
+  novedadId                     Int?               @map("novedad_id")
   programacionMantenimientoId   Int?               @map("programacion_mantenimiento_id")
   fechaObjetivoPreventivo       DateTime?          @map("fecha_objetivo_preventivo") @db.Date
   kilometrajeObjetivoPreventivo Int?               @map("kilometraje_objetivo_preventivo")
@@ -567,6 +569,9 @@ model OrdenTrabajo {
   esperaMotivo                  String?            @map("espera_motivo") @db.Text
   esperaDesde                   DateTime?          @map("espera_desde") @db.Timestamptz(6)
   esperaRegistradaPorId         Int?               @map("espera_registrada_por_id")
+  fechaAnulacion                DateTime?          @map("fecha_anulacion") @db.Timestamptz(6)
+  anuladaPorId                  Int?               @map("anulada_por_id")
+  motivoAnulacion               String?            @map("motivo_anulacion") @db.Text
 
   bus                       Bus                        @relation(fields: [busId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   cerradaPor                Usuario?                   @relation("OrdenCerradaPor", fields: [cerradaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -575,6 +580,7 @@ model OrdenTrabajo {
   programacionMantenimiento ProgramacionMantenimiento? @relation(fields: [programacionMantenimientoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   tecnicoAsignado           Usuario?                   @relation("OrdenTecnicoAsignado", fields: [tecnicoAsignadoId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   esperaRegistradaPor       Usuario?                   @relation("OrdenEsperaRegistradaPor", fields: [esperaRegistradaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  anuladaPor                 Usuario?                   @relation("OrdenAnuladaPor", fields: [anuladaPorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   jornadaOperativa          JornadaOperativa?          @relation(fields: [jornadaOperativaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   consumosRepuesto        ConsumoRepuesto[]

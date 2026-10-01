@@ -139,6 +139,8 @@ export const resumeOrderWaitingSchema = z
   })
   .strict()
 
+export const annulWorkOrderSchema = z.object({ motivo: trimmedText(3, 1000) }).strict()
+
 export const annulActivitySchema = z
   .object({
     motivo: trimmedText(3, 1000),
@@ -181,6 +183,7 @@ export const returnWorkOrderSchema = z
 
 export type MarkOrderWaitingInput = z.infer<typeof markOrderWaitingSchema>
 export type ResumeOrderWaitingInput = z.infer<typeof resumeOrderWaitingSchema>
+export type AnnulWorkOrderInput = z.infer<typeof annulWorkOrderSchema>
 export type AnnulActivityInput = z.infer<typeof annulActivitySchema>
 export type AssignWorkOrderInput = z.infer<typeof assignWorkOrderSchema>
 export type AvailableMechanicsQuery = z.infer<typeof availableMechanicsQuerySchema>

@@ -14,6 +14,26 @@ afterEach(() => {
 })
 
 describe('RF-04 work order frontend', () => {
+  it('anula la orden administrativa sin trabajo y conserva motivo e historial visible', async () => {
+    window.history.pushState({}, '', '/ordenes-trabajo')
+    const fetchMock = mockApi(workOrderHandler('ADMINISTRADOR'))
+    render(<App />)
+    fireEvent.click((await screen.findAllByRole('button', { name: /Detalle/i }))[0])
+    fireEvent.change(await screen.findByLabelText('Motivo de anulación'), {
+      target: { value: 'Orden creada por error' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^Anular orden$/i }))
+    expect(await screen.findByText(/Orden anulada; conserva el historial/i)).toBeInTheDocument()
+    expect(screen.getByText('Motivo: Orden creada por error')).toBeInTheDocument()
+    expect(screen.getByText(/La novedad asociada volvió a revisión/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Anular orden$/i })).not.toBeInTheDocument()
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) => String(url).endsWith('/anular') && init?.method === 'POST',
+      ),
+    ).toBe(true)
+  })
+
   it('muestra la espera, el siguiente responsable y permite reanudar sin crear otro estado', async () => {
     window.history.pushState({}, '', '/ordenes-trabajo')
     const fetchMock = mockApi(workOrderHandler('MECANICO', { initialStatus: 'EN_EJECUCION' }))

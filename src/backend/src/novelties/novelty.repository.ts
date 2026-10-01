@@ -84,8 +84,9 @@ export const noveltyInclude = {
       tipo: true,
     },
   },
-  ordenTrabajo: {
+  ordenesTrabajo: {
     include: orderSummaryInclude,
+    orderBy: { id: 'desc' as const },
   },
   revisadaPor: {
     select: userSelect,
@@ -131,6 +132,7 @@ export class NoveltyRepository {
     return prisma.ordenTrabajo.count({
       where: {
         origen: 'NOVEDAD',
+        estado: { not: 'ANULADA' },
         novedadId: {
           not: null,
         },
@@ -270,8 +272,8 @@ export class NoveltyRepository {
   }
 
   findExistingOrderByNovelty(novedadId: number) {
-    return prisma.ordenTrabajo.findUnique({
-      where: { novedadId },
+    return prisma.ordenTrabajo.findFirst({
+      where: { novedadId, estado: { not: 'ANULADA' } },
       include: orderSummaryInclude,
     })
   }
@@ -383,10 +385,11 @@ export class NoveltyRepository {
           }
         }
 
-        if (novelty.ordenTrabajo) {
+        const existingOrder = novelty.ordenesTrabajo.find((order) => order.estado !== 'ANULADA')
+        if (existingOrder) {
           return {
             novedad: novelty,
-            orden: novelty.ordenTrabajo,
+            orden: existingOrder,
             status: 'ALREADY_CONVERTED' as const,
           }
         }

@@ -56,7 +56,11 @@ export async function reconcilePreventiveObligationForTask(
     },
     include: {
       ordenesTrabajo: {
-        where: { estado: { not: 'CERRADA' }, origen: 'PREVENTIVO', tipo: 'PREVENTIVA' },
+        where: {
+          estado: { notIn: ['CERRADA', 'ANULADA'] },
+          origen: 'PREVENTIVO',
+          tipo: 'PREVENTIVA',
+        },
         select: { id: true },
         take: 1,
       },

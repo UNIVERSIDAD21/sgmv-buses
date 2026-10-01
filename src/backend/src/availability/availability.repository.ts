@@ -57,7 +57,7 @@ export async function getAvailabilityRecords(
         OR: [
           { estado: { in: ['EN_EJECUCION', 'COMPLETADA_TECNICO', 'DEVUELTA_CORRECCION'] } },
           {
-            estado: { not: 'CERRADA' },
+            estado: { notIn: ['CERRADA', 'ANULADA'] },
             novedad: { bloqueaDisponibilidad: true },
           },
         ],

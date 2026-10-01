@@ -58,7 +58,7 @@ export const preventiveScheduleInclude = {
     take: 1,
     where: {
       estado: {
-        not: 'CERRADA',
+        notIn: ['CERRADA', 'ANULADA'] as ['CERRADA', 'ANULADA'],
       },
       origen: 'PREVENTIVO',
       tipo: 'PREVENTIVA',
@@ -140,7 +140,7 @@ export class PreventiveRepository {
     return prisma.ordenTrabajo.count({
       where: {
         estado: {
-          not: 'CERRADA',
+          notIn: ['CERRADA', 'ANULADA'],
         },
         origen: 'PREVENTIVO',
         programacionMantenimientoId: {
@@ -239,7 +239,7 @@ export class PreventiveRepository {
     return prisma.ordenTrabajo.findFirst({
       where: {
         estado: {
-          not: 'CERRADA',
+          notIn: ['CERRADA', 'ANULADA'],
         },
         origen: 'PREVENTIVO',
         programacionMantenimientoId: programacionId,

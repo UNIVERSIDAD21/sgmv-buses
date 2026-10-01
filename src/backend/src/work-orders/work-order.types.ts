@@ -195,7 +195,14 @@ export interface WorkOrderWaitingDto {
   siguienteResponsable: 'ADMINISTRADOR'
 }
 
+export interface WorkOrderAnnulmentDto {
+  fecha: string
+  motivo: string
+  registradaPor: WorkOrderUserDto
+}
+
 export interface WorkOrderActionFlagsDto {
+  puedeAnular: boolean
   puedeMarcarEspera: boolean
   puedeReanudarEspera: boolean
   puedeAsignar: boolean
@@ -236,6 +243,7 @@ export interface WorkOrderTechnicalHistoryItemDto {
 }
 
 export interface WorkOrderDetailDto extends WorkOrderSummaryItemDto {
+  anulacion: WorkOrderAnnulmentDto | null
   espera: WorkOrderWaitingDto | null
   acciones: WorkOrderActionFlagsDto
   autorizacionesExcepcion: WorkOrderConsumptionAuthorizationDto[]

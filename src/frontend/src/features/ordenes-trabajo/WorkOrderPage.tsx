@@ -44,6 +44,7 @@ import {
   getWorkOrder,
   getWorkOrderAvailability,
   getWorkOrderSummary,
+  annulWorkOrder,
   listMyWorkOrders,
   listWorkOrders,
   markWorkOrderWaiting,
@@ -83,6 +84,7 @@ interface AssignmentAction {
 }
 
 const statusLabels: Record<WorkOrderStatus, string> = {
+  ANULADA: 'Anulada',
   ASIGNADA: 'Asignada',
   CERRADA: 'Cerrada',
   COMPLETADA_TECNICO: 'Completada tecnicamente',
@@ -109,6 +111,7 @@ const priorityLabels: Record<OrderPriority, string> = {
 }
 
 const statusTone: Record<WorkOrderStatus, BadgeTone> = {
+  ANULADA: 'slate',
   ASIGNADA: 'teal',
   CERRADA: 'slate',
   COMPLETADA_TECNICO: 'emerald',
@@ -1622,6 +1625,80 @@ function WaitingPanel({
   )
 }
 
+function AnnulOrderPanel({
+  order,
+  onOrderChange,
+  onFeedback,
+}: {
+  order: WorkOrderDetailDto
+  onOrderChange: (order: WorkOrderDetailDto) => void
+  onFeedback: (message: string) => void
+}) {
+  const [motivo, setMotivo] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  if (!order.acciones.puedeAnular && !order.anulacion) return null
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    if (busy || motivo.trim().length < 3) {
+      if (motivo.trim().length < 3) setError('Indique el motivo (mínimo 3 caracteres).')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await annulWorkOrder(order.id, motivo.trim())
+      onOrderChange(result.orden)
+      onFeedback('Orden anulada; conserva el historial y no cuenta como trabajo activo.')
+      setMotivo('')
+    } catch (caught) {
+      setError(getErrorMessage(caught))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <section className="rounded-xl border border-slate-300 bg-slate-50 p-4">
+      <h3 className="font-semibold text-slate-900">Anulación de orden sin ejecución</h3>
+      {order.anulacion ? (
+        <div className="mt-2 space-y-1 text-sm text-slate-700">
+          <p>Motivo: {order.anulacion.motivo}</p>
+          <p>
+            Registrada por {order.anulacion.registradaPor.nombre} el{' '}
+            {formatDateTimeValue(order.anulacion.fecha)}.
+          </p>
+          {order.origen === 'NOVEDAD' && <p>La novedad asociada volvió a revisión.</p>}
+          {order.origen === 'PREVENTIVO' && <p>La obligación preventiva permanece pendiente.</p>}
+        </div>
+      ) : (
+        <form className="mt-3 space-y-3" onSubmit={(event) => void submit(event)}>
+          <p className="text-sm text-slate-700">
+            Solo se admite antes de iniciar la intervención. La orden y su historial no se borran.
+          </p>
+          <label className="block text-sm">
+            Motivo de anulación
+            <textarea
+              className="mt-1 min-h-20 w-full rounded-lg border bg-white p-2"
+              value={motivo}
+              maxLength={1000}
+              required
+              onChange={(event) => setMotivo(event.target.value)}
+            />
+          </label>
+          {error && (
+            <p role="alert" className="text-sm text-red-700">
+              {error}
+            </p>
+          )}
+          <Button type="submit" loading={busy} variant="outline">
+            Anular orden
+          </Button>
+        </form>
+      )}
+    </section>
+  )
+}
+
 function WorkOrderDetail({
   closeAvailabilityComparison,
   isAdmin,
@@ -1679,6 +1756,9 @@ function WorkOrderDetail({
   return (
     <div className="space-y-5">
       <WaitingPanel order={order} onOrderChange={onOrderChange} onFeedback={onFeedback} />
+      {isAdmin && (
+        <AnnulOrderPanel order={order} onOrderChange={onOrderChange} onFeedback={onFeedback} />
+      )}
       {isMechanic && (
         <section className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
           <h2 className="text-lg font-bold text-emerald-950">Qué debes hacer ahora</h2>
@@ -1712,11 +1792,13 @@ function WorkOrderDetail({
             <b>Resultado esperado:</b> dejar documentado el trabajo y su resultado para que el
             Administrador pueda revisarlo. Si la falla continúa, indícalo en el diagnóstico.
           </p>
-          {['COMPLETADA_TECNICO', 'CERRADA'].includes(order.estado) ? (
+          {['COMPLETADA_TECNICO', 'CERRADA', 'ANULADA'].includes(order.estado) ? (
             <p className="font-semibold">
-              {order.estado === 'CERRADA'
-                ? 'Mantenimiento cerrado. Puedes consultar su historial.'
-                : 'Trabajo enviado. El siguiente paso corresponde al Administrador: revisar y cerrar o solicitar corrección.'}
+              {order.estado === 'ANULADA'
+                ? 'Orden anulada antes de ejecutar trabajo. Consulta el motivo en su historial.'
+                : order.estado === 'CERRADA'
+                  ? 'Mantenimiento cerrado. Puedes consultar su historial.'
+                  : 'Trabajo enviado. El siguiente paso corresponde al Administrador: revisar y cerrar o solicitar corrección.'}
             </p>
           ) : (
             <ol className="list-decimal space-y-1 pl-5 text-sm">

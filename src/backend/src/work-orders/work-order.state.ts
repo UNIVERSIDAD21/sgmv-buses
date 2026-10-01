@@ -9,6 +9,7 @@ export const workOrderStateValues = [
   'COMPLETADA_TECNICO',
   'DEVUELTA_CORRECCION',
   'CERRADA',
+  'ANULADA',
 ] as const satisfies readonly EstadoOrdenTrabajo[]
 
 export const workOrderTypeValues = ['PREVENTIVA', 'CORRECTIVA'] as const
@@ -30,12 +31,13 @@ export const reassignableWorkOrderStates: EstadoOrdenTrabajo[] = [
 ]
 
 const allowedTransitions: Record<EstadoOrdenTrabajo, EstadoOrdenTrabajo[]> = {
-  ASIGNADA: ['EN_EJECUCION'],
+  ANULADA: [],
+  ASIGNADA: ['EN_EJECUCION', 'ANULADA'],
   CERRADA: [],
   COMPLETADA_TECNICO: ['CERRADA', 'DEVUELTA_CORRECCION'],
   DEVUELTA_CORRECCION: ['EN_EJECUCION'],
   EN_EJECUCION: ['COMPLETADA_TECNICO'],
-  PENDIENTE_ASIGNACION: ['ASIGNADA'],
+  PENDIENTE_ASIGNACION: ['ASIGNADA', 'ANULADA'],
 }
 
 export function canTransitionWorkOrder(

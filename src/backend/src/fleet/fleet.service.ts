@@ -221,8 +221,9 @@ function mapBusDetail(bus: BusDetailRecord): BusDetailDto {
     estadosHistorial: bus.estadosHistorial.map(mapStateHistory),
     lecturasKilometraje: bus.lecturasKilometraje.map(mapMileageReading),
     mantenimiento: {
-      ordenesTecnicasActivas: bus.ordenesTrabajo.filter((order) => order.estado !== 'CERRADA')
-        .length,
+      ordenesTecnicasActivas: bus.ordenesTrabajo.filter(
+        (order) => !['CERRADA', 'ANULADA'].includes(order.estado),
+      ).length,
       requiereAtencion: scheduleRequiringAttention
         ? {
             actividad: scheduleRequiringAttention.schedule.actividad,

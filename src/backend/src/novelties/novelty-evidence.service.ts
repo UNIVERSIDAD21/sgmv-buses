@@ -40,7 +40,8 @@ export class NoveltyEvidenceService {
     const allowed =
       actor.rol.codigo === 'ADMINISTRADOR' ||
       (actor.rol.codigo === 'CONDUCTOR' && context.conductorId === actor.id) ||
-      (actor.rol.codigo === 'MECANICO' && context.ordenTrabajo?.tecnicoAsignadoId === actor.id)
+      (actor.rol.codigo === 'MECANICO' &&
+        context.ordenesTrabajo.some((order) => order.tecnicoAsignadoId === actor.id))
 
     if (!allowed) {
       throw new AppError(404, 'NOVELTY_NOT_FOUND', 'Novedad no encontrada')

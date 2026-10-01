@@ -20,7 +20,10 @@ export class NoveltyEvidenceRepository {
       select: {
         conductorId: true,
         id: true,
-        ordenTrabajo: { select: { tecnicoAsignadoId: true } },
+        ordenesTrabajo: {
+          where: { estado: { not: 'ANULADA' } },
+          select: { tecnicoAsignadoId: true },
+        },
       },
     })
   }

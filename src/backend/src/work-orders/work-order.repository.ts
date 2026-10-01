@@ -89,6 +89,7 @@ export const workOrderDetailInclude = {
   cerradaPor: {
     select: userSelect,
   },
+  anuladaPor: { select: userSelect },
   esperaRegistradaPor: { select: userSelect },
   consumosRepuesto: {
     include: {
@@ -726,6 +727,71 @@ export class WorkOrderRepository {
         maxWait: 15000,
         timeout: 60000,
       },
+    )
+  }
+
+  annulOrder(orderId: number, actorId: number, motivo: string) {
+    return prisma.$transaction(
+      async (tx) => {
+        await this.lockWorkOrder(tx, orderId)
+        const order = await this.findOrderByIdForTransaction(orderId, tx)
+        if (!order) return { orden: null, status: 'ORDER_NOT_FOUND' as const }
+        if (!['PENDIENTE_ASIGNACION', 'ASIGNADA'].includes(order.estado)) {
+          return { orden: order, status: 'INVALID_STATE' as const }
+        }
+        const [interventions, activities, consumptions] = await Promise.all([
+          tx.intervencion.count({ where: { ordenTrabajoId: orderId } }),
+          tx.actividadOrden.count({ where: { intervencion: { ordenTrabajoId: orderId } } }),
+          tx.consumoRepuesto.count({ where: { ordenTrabajoId: orderId } }),
+        ])
+        if (order.fechaInicioEjecucion || interventions || activities || consumptions) {
+          return { orden: order, status: 'EXECUTION_EXISTS' as const }
+        }
+        if (order.novedadId) {
+          const novelty = await tx.novedad.updateMany({
+            where: { id: order.novedadId, estado: 'CONVERTIDA_A_ORDEN' },
+            data: {
+              estado: 'PENDIENTE_REVISION',
+              fechaRevision: new Date(),
+              observacionRevision: `Orden ${order.codigo} anulada por error; requiere nueva revisión`,
+              revisadaPorId: actorId,
+            },
+          })
+          if (novelty.count !== 1) {
+            return { orden: order, status: 'NOVELTY_STATE_CONFLICT' as const }
+          }
+        }
+        const now = new Date()
+        const annulled = await tx.ordenTrabajo.updateMany({
+          where: { id: orderId, estado: order.estado, fechaInicioEjecucion: null },
+          data: {
+            estado: 'ANULADA',
+            fechaAnulacion: now,
+            anuladaPorId: actorId,
+            motivoAnulacion: motivo,
+          },
+        })
+        if (annulled.count !== 1) {
+          return {
+            orden: await this.findOrderByIdForTransaction(orderId, tx),
+            status: 'INVALID_STATE' as const,
+          }
+        }
+        await tx.ordenEstadoHistorial.create({
+          data: {
+            cambiadoPorId: actorId,
+            estadoAnterior: order.estado,
+            estadoNuevo: 'ANULADA',
+            observacion: `Anulación administrativa: ${motivo}`,
+            ordenTrabajoId: orderId,
+          },
+        })
+        return {
+          orden: await this.findOrderByIdForTransaction(orderId, tx),
+          status: 'ANNULLED' as const,
+        }
+      },
+      { maxWait: 15000, timeout: 60000 },
     )
   }
 

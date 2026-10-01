@@ -1141,6 +1141,161 @@ describe('RF-04 Work order tracking API', () => {
   )
 
   it(
+    'anula una OT sin intervención con motivo e impide anular trabajo ya iniciado',
+    async () => {
+      const admin = await loginAgent(fixture.adminEmail)
+      const mechanic = await loginAgent(fixture.mecanicoEmail)
+      const pending = await createPendingCorrectiveOrder(fixture)
+      const url = `/ordenes-trabajo/${pending.id}`
+      await mechanic.post(`${url}/anular`).send({ motivo: 'Creada por duplicado' }).expect(403)
+      await admin.post(`${url}/anular`).send({ motivo: ' ' }).expect(400)
+      const annulled = await admin
+        .post(`${url}/anular`)
+        .send({ motivo: 'Orden creada por duplicado' })
+        .expect(200)
+      expect(annulled.body.data.orden).toMatchObject({
+        estado: 'ANULADA',
+        anulacion: { motivo: 'Orden creada por duplicado' },
+        acciones: { puedeAnular: false, puedeAsignar: false },
+      })
+      expect(annulled.body.data.orden.historialEstados.at(-1)).toMatchObject({
+        estadoAnterior: 'PENDIENTE_ASIGNACION',
+        estadoNuevo: 'ANULADA',
+      })
+      await admin.post(`${url}/anular`).send({ motivo: 'Segundo intento' }).expect(400)
+      await admin.post(`${url}/asignar`).send({ tecnicoId: fixture.mecanicoId }).expect(400)
+      await expect(
+        prisma.ordenTrabajo.update({
+          where: { id: pending.id },
+          data: { estado: 'PENDIENTE_ASIGNACION' },
+        }),
+      ).rejects.toThrow()
+
+      const assigned = await createPendingCorrectiveOrder(fixture)
+      await admin
+        .post(`/ordenes-trabajo/${assigned.id}/asignar`)
+        .send({ tecnicoId: fixture.mecanicoId })
+        .expect(200)
+      const assignedAnnulment = await admin
+        .post(`/ordenes-trabajo/${assigned.id}/anular`)
+        .send({ motivo: 'Asignación hecha sobre la orden incorrecta' })
+        .expect(200)
+      expect(assignedAnnulment.body.data.orden).toMatchObject({
+        estado: 'ANULADA',
+        tecnicoAsignado: { id: fixture.mecanicoId },
+      })
+      await mechanic.post(`/ordenes-trabajo/${assigned.id}/iniciar`).send({}).expect(400)
+
+      const started = await prepareCompletableOrder(fixture)
+      const part = await createRepuesto({ stockActual: '2' })
+      await allowPartForBus(part.id, started.order.busId, fixture.adminId)
+      await started.mecanico
+        .post(`/ordenes-trabajo/${started.order.id}/consumos`)
+        .send({
+          cantidad: '1',
+          claveIdempotencia: randomUUID(),
+          repuestoId: part.id,
+        })
+        .expect(201)
+      await admin
+        .post(`/ordenes-trabajo/${started.order.id}/anular`)
+        .send({ motivo: 'Intento luego de actividad' })
+        .expect(400)
+      expect(
+        (await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: started.order.id } })).estado,
+      ).toBe('EN_EJECUCION')
+    },
+    rf04TestTimeout,
+  )
+
+  it(
+    'conserva la OT anulada y permite reemplazo de novedad y obligación preventiva sin desbloqueo ficticio',
+    async () => {
+      const admin = await loginAgent(fixture.adminEmail)
+      const noveltyBus = await createBus()
+      const novelty = await createNovelty(fixture, noveltyBus.id, {
+        afectaOperacion: true,
+        bloqueaDisponibilidad: true,
+      })
+      const noveltyUrl = `/novedades/${novelty.id}/convertir-orden`
+      const firstNovelty = await admin.post(noveltyUrl).send({ prioridad: 'ALTA' }).expect(200)
+      const firstNoveltyId = firstNovelty.body.data.orden.id as number
+      created.ordenes.push(firstNoveltyId)
+      await admin
+        .post(`/ordenes-trabajo/${firstNoveltyId}/anular`)
+        .send({ motivo: 'Se creó la orden con datos erróneos' })
+        .expect(200)
+      const pendingNovelty = await prisma.novedad.findUniqueOrThrow({ where: { id: novelty.id } })
+      expect(pendingNovelty.estado).toBe('PENDIENTE_REVISION')
+      const noveltyDetail = await admin.get(`/novedades/${novelty.id}`).expect(200)
+      expect(noveltyDetail.body.data.novedad).toMatchObject({
+        acciones: { puedeConvertir: true },
+        ordenTrabajo: null,
+      })
+      const availability = await admin
+        .get(`/ordenes-trabajo/${firstNoveltyId}/disponibilidad`)
+        .expect(200)
+      expect(availability.body.data.disponibilidad.disponible).toBe(false)
+      const secondNovelty = await admin.post(noveltyUrl).send({ prioridad: 'ALTA' }).expect(200)
+      const secondNoveltyId = secondNovelty.body.data.orden.id as number
+      created.ordenes.push(secondNoveltyId)
+      expect(secondNoveltyId).not.toBe(firstNoveltyId)
+      expect(
+        await prisma.ordenTrabajo.count({
+          where: { novedadId: novelty.id, estado: 'ANULADA' },
+        }),
+      ).toBe(1)
+      expect(
+        await prisma.ordenTrabajo.count({
+          where: { novedadId: novelty.id, estado: { not: 'ANULADA' } },
+        }),
+      ).toBe(1)
+
+      const preventiveBus = await createBus()
+      const schedule = await createEligibleSchedule(fixture, preventiveBus.id)
+      const preventiveUrl = `/mantenimiento-preventivo/programaciones/${schedule.id}/generar-orden`
+      const firstPreventive = await admin
+        .post(preventiveUrl)
+        .send({
+          descripcionOrden: 'Revisión preventiva inicial',
+          prioridad: 'MEDIA',
+        })
+        .expect(200)
+      const firstPreventiveId = firstPreventive.body.data.orden.id as number
+      created.ordenes.push(firstPreventiveId)
+      await admin
+        .post(`/ordenes-trabajo/${firstPreventiveId}/anular`)
+        .send({
+          motivo: 'Orden preventiva creada con error',
+        })
+        .expect(200)
+      expect(
+        (
+          await prisma.programacionMantenimiento.findUniqueOrThrow({
+            where: { id: schedule.id },
+          })
+        ).activa,
+      ).toBe(true)
+      const secondPreventive = await admin
+        .post(preventiveUrl)
+        .send({
+          descripcionOrden: 'Revisión preventiva corregida',
+          prioridad: 'MEDIA',
+        })
+        .expect(200)
+      const secondPreventiveId = secondPreventive.body.data.orden.id as number
+      created.ordenes.push(secondPreventiveId)
+      expect(secondPreventiveId).not.toBe(firstPreventiveId)
+      expect(
+        await prisma.ordenTrabajo.count({
+          where: { programacionMantenimientoId: schedule.id },
+        }),
+      ).toBe(2)
+    },
+    rf04TestTimeout,
+  )
+
+  it(
     'registers spare-part consumptions with stock, movement, cost and idempotency guarantees',
     async () => {
       const { mecanico, order } = await prepareCompletableOrder(fixture)

@@ -68,6 +68,7 @@ function mapWorkOrder(
 }
 
 function mapNovelty(novelty: NoveltyRecord, actor: AuthenticatedUser): NoveltyDto {
+  const activeOrder = novelty.ordenesTrabajo.find((order) => order.estado !== 'ANULADA')
   const includeAdministrativeData = actor.rol.codigo === 'ADMINISTRADOR'
   const operationalManager =
     actor.rol.codigo === 'ADMINISTRADOR' || actor.rol.codigo === 'DESPACHADOR'
@@ -77,7 +78,7 @@ function mapNovelty(novelty: NoveltyRecord, actor: AuthenticatedUser): NoveltyDt
       puedeConvertir:
         actor.rol.codigo === 'ADMINISTRADOR' &&
         novelty.estado === 'PENDIENTE_REVISION' &&
-        !novelty.ordenTrabajo,
+        !activeOrder,
       puedeCoordinarJornada:
         operationalManager &&
         (novelty.afectaOperacion === true || novelty.continuidadInformada === 'NO') &&
@@ -132,7 +133,7 @@ function mapNovelty(novelty: NoveltyRecord, actor: AuthenticatedUser): NoveltyDt
         }
       : null,
     observacionRevision: includeAdministrativeData ? novelty.observacionRevision : null,
-    ordenTrabajo: mapWorkOrder(novelty.ordenTrabajo, includeAdministrativeData),
+    ordenTrabajo: mapWorkOrder(activeOrder ?? null, includeAdministrativeData),
     revisadaPor: novelty.revisadaPor
       ? mapUser(novelty.revisadaPor, includeAdministrativeData)
       : null,
@@ -431,8 +432,8 @@ export class NoveltyService {
 
     if (query.prioridad) {
       filters.push({
-        ordenTrabajo: {
-          prioridad: query.prioridad,
+        ordenesTrabajo: {
+          some: { estado: { not: 'ANULADA' }, prioridad: query.prioridad },
         },
       })
     }
@@ -480,10 +481,12 @@ export class NoveltyService {
             },
           },
           {
-            ordenTrabajo: {
-              codigo: {
-                contains: query.busqueda,
-                mode: 'insensitive',
+            ordenesTrabajo: {
+              some: {
+                codigo: {
+                  contains: query.busqueda,
+                  mode: 'insensitive',
+                },
               },
             },
           },

@@ -1,0 +1,1 @@
+ALTER TYPE "estado_orden_trabajo" ADD VALUE IF NOT EXISTS 'ANULADA';

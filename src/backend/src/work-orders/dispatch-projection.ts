@@ -58,7 +58,10 @@ export function listDispatchProjections() {
             busId: { in: busIds },
             OR: [
               { estado: { in: ['EN_EJECUCION', 'COMPLETADA_TECNICO', 'DEVUELTA_CORRECCION'] } },
-              { estado: { not: 'CERRADA' }, novedad: { bloqueaDisponibilidad: true } },
+              {
+                estado: { notIn: ['CERRADA', 'ANULADA'] },
+                novedad: { bloqueaDisponibilidad: true },
+              },
             ],
           },
           select: { id: true, busId: true },

@@ -654,6 +654,7 @@ export function workOrderSummary() {
     pendientesAsignacion: 1,
     pendientesRevision: 1,
     porEstado: {
+      ANULADA: 0,
       ASIGNADA: 1,
       CERRADA: 1,
       COMPLETADA_TECNICO: 1,
@@ -703,6 +704,7 @@ export function workOrderActions(
   const assigned = Boolean(order.tecnicoAsignado)
 
   return {
+    puedeAnular: isAdmin && ['PENDIENTE_ASIGNACION', 'ASIGNADA'].includes(order.estado),
     puedeAsignar: isAdmin && order.estado === 'PENDIENTE_ASIGNACION',
     puedeCerrar: isAdmin && order.estado === 'COMPLETADA_TECNICO',
     puedeCompletar: isMechanic && order.estado === 'EN_EJECUCION' && assigned && !order.espera,
@@ -774,6 +776,8 @@ export function createWorkOrderDetail(status = 'PENDIENTE_ASIGNACION') {
 
   return {
     acciones: {},
+    anulacion: null as
+      import('../features/ordenes-trabajo/work-order.types').WorkOrderAnnulmentDto | null,
     autorizacionesExcepcion: [],
     bus: {
       anio: fleetBus.anio,
@@ -922,19 +926,20 @@ export function workOrderHandler(
         ordenes: [
           {
             disponibilidad: {
-              causaPrincipal: order.estado === 'CERRADA' ? null : 'ORDEN_TRABAJO_ACTIVA',
-              causas:
-                order.estado === 'CERRADA'
-                  ? []
-                  : [
-                      {
-                        codigo: 'ORDEN_TECNICA_ACTIVA',
-                        mensaje: 'El bus tiene una orden tecnica activa',
-                        origenId: order.id,
-                        origenTipo: 'ORDEN',
-                      },
-                    ],
-              disponible: order.estado === 'CERRADA',
+              causaPrincipal: ['CERRADA', 'ANULADA'].includes(order.estado)
+                ? null
+                : 'ORDEN_TRABAJO_ACTIVA',
+              causas: ['CERRADA', 'ANULADA'].includes(order.estado)
+                ? []
+                : [
+                    {
+                      codigo: 'ORDEN_TECNICA_ACTIVA',
+                      mensaje: 'El bus tiene una orden tecnica activa',
+                      origenId: order.id,
+                      origenTipo: 'ORDEN',
+                    },
+                  ],
+              disponible: ['CERRADA', 'ANULADA'].includes(order.estado),
               evaluadoAt: '2026-08-28T12:51:00.000Z',
             },
             orden: {
@@ -957,19 +962,20 @@ export function workOrderHandler(
     if (/^\/ordenes-trabajo\/\d+\/disponibilidad$/.test(path)) {
       return ok({
         disponibilidad: {
-          causaPrincipal: order.estado === 'CERRADA' ? null : 'ORDEN_TECNICA_ACTIVA',
-          causas:
-            order.estado === 'CERRADA'
-              ? []
-              : [
-                  {
-                    codigo: 'ORDEN_TECNICA_ACTIVA',
-                    mensaje: 'El bus tiene una orden tecnica activa',
-                    origenId: order.id,
-                    origenTipo: 'ORDEN',
-                  },
-                ],
-          disponible: order.estado === 'CERRADA',
+          causaPrincipal: ['CERRADA', 'ANULADA'].includes(order.estado)
+            ? null
+            : 'ORDEN_TECNICA_ACTIVA',
+          causas: ['CERRADA', 'ANULADA'].includes(order.estado)
+            ? []
+            : [
+                {
+                  codigo: 'ORDEN_TECNICA_ACTIVA',
+                  mensaje: 'El bus tiene una orden tecnica activa',
+                  origenId: order.id,
+                  origenTipo: 'ORDEN',
+                },
+              ],
+          disponible: ['CERRADA', 'ANULADA'].includes(order.estado),
           evaluadoAt: '2026-08-28T12:51:00.000Z',
         },
       })
@@ -1063,6 +1069,22 @@ export function workOrderHandler(
           siguienteResponsable: 'ADMINISTRADOR',
         },
       }
+      return ok({ orden: decoratedOrder() })
+    }
+    if (/^\/ordenes-trabajo\/\d+\/anular$/.test(path) && init?.method === 'POST') {
+      const payload = JSON.parse(String(init.body ?? '{}')) as { motivo: string }
+      const previousStatus = order.estado
+      order = {
+        ...order,
+        estado: 'ANULADA',
+        anulacion: {
+          fecha: '2026-08-28T12:30:00.000Z',
+          motivo: payload.motivo,
+          registradaPor: workOrderAdmin,
+        },
+        novedad: order.novedad ? { ...order.novedad, estado: 'PENDIENTE_REVISION' } : null,
+      }
+      appendHistory(previousStatus, 'ANULADA')
       return ok({ orden: decoratedOrder() })
     }
     if (path.endsWith('/reanudar-espera') && init?.method === 'POST') {

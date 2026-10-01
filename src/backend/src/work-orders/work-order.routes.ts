@@ -63,6 +63,12 @@ workOrderRoutes.post(
   idempotent(workOrderController.assign),
 )
 workOrderRoutes.post(
+  '/:ordenId/anular',
+  enforceAllowedOrigin,
+  authorizeRoles('ADMINISTRADOR'),
+  idempotent(workOrderController.annul),
+)
+workOrderRoutes.post(
   '/:ordenId/reasignar',
   enforceAllowedOrigin,
   authorizeRoles('ADMINISTRADOR'),

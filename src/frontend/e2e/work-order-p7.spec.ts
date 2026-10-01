@@ -297,3 +297,28 @@ test('P7 conserva trazabilidad tecnica y proyecta disponibilidad segura al despa
     ),
   ).toEqual([])
 })
+
+test('A07 anula una orden sin ejecución conservando motivo y registro histórico', async ({
+  page,
+}) => {
+  await login(page, 'administrador.demo@sgmv.local')
+  await page.goto('/ordenes-trabajo')
+  await page.getByRole('button', { name: 'Crear orden' }).click()
+  const createDialog = page.getByRole('dialog', { name: 'Nueva orden correctiva directa' })
+  await createDialog.getByLabel('Bus').selectOption(String(busId))
+  await createDialog.getByLabel('Descripcion').fill(`${marker} A07 orden creada por error.`)
+  await createDialog.getByRole('button', { name: 'Crear orden' }).click()
+  await expect(page.getByText('Orden de trabajo creada.')).toBeVisible()
+  const detail = page.getByRole('dialog', { name: 'Detalle de orden' })
+  await detail.getByLabel('Motivo de anulación').fill('Se duplicó la solicitud antes del taller')
+  await detail.getByRole('button', { name: 'Anular orden' }).click()
+  await expect(page.getByText(/Orden anulada; conserva el historial/)).toBeVisible()
+  await expect(detail.getByText('Motivo: Se duplicó la solicitud antes del taller')).toBeVisible()
+  await expect(detail.getByRole('button', { name: 'Anular orden' })).toHaveCount(0)
+  const cancelled = await prisma.ordenTrabajo.findFirstOrThrow({
+    where: { busId, descripcion: { contains: 'A07 orden creada por error' } },
+  })
+  expect(cancelled.estado).toBe('ANULADA')
+  expect(cancelled.fechaInicioEjecucion).toBeNull()
+  expect(cancelled.motivoAnulacion).toBe('Se duplicó la solicitud antes del taller')
+})

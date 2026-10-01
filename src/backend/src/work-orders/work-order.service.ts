@@ -14,6 +14,7 @@ import type {
   AvailablePartsQuery,
   AuthorizeConsumptionExceptionInput,
   AnnulActivityInput,
+  AnnulWorkOrderInput,
   AssignWorkOrderInput,
   CreateActivityInput,
   CreateConsumptionInput,
@@ -369,6 +370,12 @@ function buildActions(order: WorkOrderRecord, actor: AuthenticatedUser): WorkOrd
   const isAssignedMechanic = actor.rol.codigo === 'MECANICO' && order.tecnicoAsignadoId === actor.id
 
   return {
+    puedeAnular:
+      isAdmin &&
+      ['PENDIENTE_ASIGNACION', 'ASIGNADA'].includes(order.estado) &&
+      !order.fechaInicioEjecucion &&
+      order.intervenciones.length === 0 &&
+      order.consumosRepuesto.length === 0,
     puedeAsignar: isAdmin && order.estado === 'PENDIENTE_ASIGNACION',
     puedeCerrar: isAdmin && order.estado === 'COMPLETADA_TECNICO',
     puedeCompletar: isAssignedMechanic && order.estado === 'EN_EJECUCION' && !order.esperaTipo,
@@ -416,6 +423,14 @@ function mapDetailOrder(
 
   return {
     ...mapSummaryOrder(order, includeEconomicFields),
+    anulacion:
+      order.fechaAnulacion && order.anuladaPor && order.motivoAnulacion
+        ? {
+            fecha: order.fechaAnulacion.toISOString(),
+            motivo: order.motivoAnulacion,
+            registradaPor: mapUser(order.anuladaPor),
+          }
+        : null,
     espera:
       order.esperaTipo && order.esperaMotivo && order.esperaDesde && order.esperaRegistradaPor
         ? {
@@ -536,6 +551,20 @@ export class WorkOrderService {
       return {
         orden: this.mapOperationResult(result, actor),
       }
+    } catch (error) {
+      translatePrismaError(error)
+    }
+  }
+
+  async annul(orderId: number, input: AnnulWorkOrderInput, actor: AuthenticatedUser) {
+    ensureAdmin(actor)
+    try {
+      const result = await this.workOrderRepository.annulOrder(
+        orderId,
+        actor.id,
+        normalizeText(input.motivo),
+      )
+      return { orden: this.mapOperationResult(result, actor) }
     } catch (error) {
       translatePrismaError(error)
     }
@@ -1354,6 +1383,20 @@ export class WorkOrderService {
     }
     if (result.status === 'WAIT_NOT_ACTIVE') {
       throw new AppError(409, 'WAIT_NOT_ACTIVE', 'La orden no tiene una espera activa')
+    }
+    if (result.status === 'EXECUTION_EXISTS') {
+      throw new AppError(
+        409,
+        'EXECUTION_EXISTS',
+        'La orden ya tiene ejecución técnica y no puede anularse',
+      )
+    }
+    if (result.status === 'NOVELTY_STATE_CONFLICT') {
+      throw new AppError(
+        409,
+        'NOVELTY_STATE_CONFLICT',
+        'La novedad asociada cambió de estado; revise antes de anular',
+      )
     }
 
     if (result.status === 'ACTIVITY_NOT_FOUND') {

@@ -4,6 +4,7 @@ import { sendData } from '../shared/http.js'
 import {
   activityIdParamSchema,
   annulActivitySchema,
+  annulWorkOrderSchema,
   assignWorkOrderSchema,
   authorizeConsumptionExceptionSchema,
   consumptionExceptionParamSchema,
@@ -41,6 +42,13 @@ export class WorkOrderController {
     const result = await this.workOrderService.close(ordenId, input, request.user!)
 
     sendData(response, result, 'Orden cerrada administrativamente')
+  }
+
+  annul: RequestHandler = async (request, response) => {
+    const { ordenId } = orderIdParamSchema.parse(request.params)
+    const input = annulWorkOrderSchema.parse(request.body)
+    const result = await this.workOrderService.annul(ordenId, input, request.user!)
+    sendData(response, result, 'Orden anulada sin ejecución técnica')
   }
 
   complete: RequestHandler = async (request, response) => {
