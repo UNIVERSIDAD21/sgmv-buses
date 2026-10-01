@@ -605,6 +605,10 @@ describe('RF-02 Novelty API', () => {
 
       expect(response.body.error.code).toBe('MEDIA_STORAGE_UNAVAILABLE')
       expect(response.body.error.message).toMatch(/carga de fotos/i)
+      expect(await prisma.novedad.findUniqueOrThrow({ where: { id: novelty.id } })).toMatchObject({
+        busId: bus.id,
+        conductorId: fixture.conductorId,
+      })
     } finally {
       setMediaStorageForTests(fakeMediaStorage)
     }
