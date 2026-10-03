@@ -12,6 +12,7 @@ import { buildAvailability } from '../availability/availability.policy.js'
 import type { AuthenticatedUser } from '../auth/auth.types.js'
 import { AppError } from '../shared/http.js'
 import { buildJourneyPeriodSlots } from './journey-period.js'
+import { classifyJourneyAttention } from './journey-attention.js'
 import {
   JourneyRepository,
   type JourneyRecord,
@@ -142,7 +143,7 @@ function buildActions(
   const ownDriver = actor.rol.codigo === 'CONDUCTOR' && journey.conductorId === actor.id
 
   return {
-    puedeCancelar: dispatcher && (journey.estado === 'PROGRAMADA' || journey.estado === 'EN_CURSO'),
+    puedeCancelar: dispatcher && journey.estado === 'PROGRAMADA' && !journey.inicioReal,
     puedeFinalizar: (dispatcher || ownDriver) && journey.estado === 'EN_CURSO',
     puedeIniciar:
       (dispatcher || ownDriver) &&
@@ -586,33 +587,19 @@ export class JourneyService {
         await this.repository.lockJourney(id, tx)
         const journey = await this.repository.findById(id, tx)
         if (!journey) throw new AppError(404, 'JOURNEY_NOT_FOUND', 'Jornada no encontrada')
-        if (journey.estado !== 'PROGRAMADA' && journey.estado !== 'EN_CURSO') {
+        if (journey.estado !== 'PROGRAMADA' || journey.inicioReal) {
           throw new AppError(
             409,
             'INVALID_JOURNEY_TRANSITION',
-            'La jornada ya esta en estado terminal',
+            'Una jornada iniciada no puede cancelarse; use interrupción o cierre para conservar el recorrido',
           )
         }
 
-        if (journey.estado === 'PROGRAMADA' && input.kilometrajeFinal !== undefined) {
+        if (input.kilometrajeFinal !== undefined) {
           throw new AppError(
             400,
             'UNEXPECTED_FINAL_MILEAGE',
             'Una jornada no iniciada no admite kilometraje final',
-          )
-        }
-        if (journey.estado === 'EN_CURSO' && input.kilometrajeFinal === undefined) {
-          throw new AppError(
-            400,
-            'FINAL_MILEAGE_REQUIRED',
-            'Debe registrar el kilometraje final de la jornada en curso',
-          )
-        }
-        if (journey.inicioReal && eventDate < journey.inicioReal) {
-          throw new AppError(
-            409,
-            'INVALID_EVENT_SEQUENCE',
-            'El fin no puede preceder al inicio real',
           )
         }
         await this.repository.update(
@@ -621,28 +608,10 @@ export class JourneyService {
             cambioPorId: actor.id,
             estado: 'CANCELADA',
             fechaCambio: eventDate,
-            ...(journey.estado === 'EN_CURSO'
-              ? { finReal: eventDate, finalizadaPorId: actor.id }
-              : {}),
             motivoCambio: input.motivo.trim(),
           },
           tx,
         )
-
-        if (journey.estado === 'EN_CURSO') {
-          await this.repository.registerJourneyReading(
-            {
-              actorId: actor.id,
-              ...resolveJourneyObserver(input, journey, actor),
-              busId: journey.busId,
-              eventDate,
-              journeyId: journey.id,
-              mileage: input.kilometrajeFinal!,
-              type: 'FIN_JORNADA',
-            },
-            tx,
-          )
-        }
 
         const updated = await this.repository.findById(id, tx)
         await createJourneyChangeAlert(
@@ -1062,6 +1031,43 @@ export class JourneyService {
         pagina: query.pagina,
         paginas: Math.max(1, Math.ceil(total / query.limite)),
         total,
+      },
+    }
+  }
+
+  async listAttention(actor: AuthenticatedUser) {
+    ensureDispatcherOrAdmin(actor)
+    const now = new Date()
+    const candidates = await this.repository.listAttentionCandidates()
+    const items = await this.repository.transaction(async (tx) => {
+      const result = []
+      for (const record of candidates) {
+        const journey = await this.toDto(record, actor, now, tx)
+        const driverValid =
+          record.conductor.estado === 'ACTIVO' && record.conductor.rol.codigo === 'CONDUCTOR'
+        const category = classifyJourneyAttention(journey, driverValid, now)
+        if (category) result.push({ categoria: category, jornada: journey })
+      }
+      return result.sort((left, right) => {
+        const leftDate =
+          left.categoria === 'CIERRE_PENDIENTE'
+            ? left.jornada.finProgramado
+            : left.jornada.inicioProgramado
+        const rightDate =
+          right.categoria === 'CIERRE_PENDIENTE'
+            ? right.jornada.finProgramado
+            : right.jornada.inicioProgramado
+        return Date.parse(leftDate) - Date.parse(rightDate) || left.jornada.id - right.jornada.id
+      })
+    })
+    return {
+      jornadas: items,
+      conteos: {
+        cierrePendiente: items.filter((item) => item.categoria === 'CIERRE_PENDIENTE').length,
+        salidaSinConfirmar: items.filter((item) => item.categoria === 'SALIDA_SIN_CONFIRMAR')
+          .length,
+        reasignacion: items.filter((item) => item.categoria === 'REASIGNACION').length,
+        relevo: items.filter((item) => item.categoria === 'RELEVO').length,
       },
     }
   }

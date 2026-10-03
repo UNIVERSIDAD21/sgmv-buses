@@ -305,8 +305,8 @@ describe('AMB: procedencia, proyección y conciliación reales', () => {
       `El bus ${bus.codigoInterno} tiene mantenimiento preventivo proximo.`,
     )
     await dispatch
-      .post(`/jornadas/${id}/cancelar`)
-      .send({ fechaEvento: ago(0.1), motivo: 'Fin de prueba', kilometrajeFinal: 49050 })
+      .post(`/jornadas/${id}/finalizar`)
+      .send({ fechaEvento: ago(0.1), kilometraje: 49050 })
       .expect(200)
   }, 60000)
 })

@@ -29,9 +29,11 @@ function formatDateTime(value: string | null) {
 export default function JourneyCard({
   journey,
   onAction,
+  showActions = true,
 }: {
   journey: JourneyDto
   onAction: (action: JourneyAction, journey: JourneyDto) => void
+  showActions?: boolean
 }) {
   const { user } = useSession()
   const now = useCurrentTime()
@@ -240,54 +242,56 @@ export default function JourneyCard({
           Reportar problema antes de salir
         </Link>
       )}
-      <div className="mt-4 flex flex-wrap gap-2">
-        {journey.acciones.puedeIniciar && (
-          <Button onClick={() => onAction('start', journey)} size="sm">
-            Confirmar salida
-          </Button>
-        )}
-        {journey.acciones.puedeFinalizar && (
-          <Button onClick={() => onAction('finish', journey)} size="sm" variant="secondary">
-            {user?.rol.codigo === 'CONDUCTOR'
-              ? 'Confirmar llegada'
-              : overdue
-                ? 'Registrar cierre ahora'
-                : 'Confirmar llegada'}
-          </Button>
-        )}
-        {overdue && user?.rol.codigo === 'CONDUCTOR' && !journey.cierrePendiente && (
-          <Button onClick={() => onAction('report', journey)} size="sm" variant="outline">
-            Informar que no puedo registrar el cierre
-          </Button>
-        )}
-        {journey.acciones.puedeReasignar && (
-          <Button onClick={() => onAction('reassign', journey)} size="sm" variant="outline">
-            {journey.estado === 'INTERRUMPIDA'
-              ? 'Crear tramo con bus sustituto'
-              : 'Cambiar bus o conductor'}
-          </Button>
-        )}
-        {journey.acciones.puedeInterrumpir && (
-          <Button onClick={() => onAction('interrupt', journey)} size="sm" variant="danger">
-            Interrumpir jornada
-          </Button>
-        )}
-        {journey.acciones.puedeConciliarLectura && (
-          <Button onClick={() => onAction('reconcile', journey)} size="sm" variant="outline">
-            Conciliar lectura observada
-          </Button>
-        )}
-        {journey.acciones.puedeMarcarNoRecuperable && (
-          <Button onClick={() => onAction('unrecoverable', journey)} size="sm" variant="outline">
-            Declarar lectura no recuperable
-          </Button>
-        )}
-        {journey.acciones.puedeCancelar && (
-          <Button onClick={() => onAction('cancel', journey)} size="sm" variant="danger">
-            Cancelar jornada
-          </Button>
-        )}
-      </div>
+      {showActions && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {journey.acciones.puedeIniciar && (
+            <Button onClick={() => onAction('start', journey)} size="sm">
+              Confirmar salida
+            </Button>
+          )}
+          {journey.acciones.puedeFinalizar && (
+            <Button onClick={() => onAction('finish', journey)} size="sm" variant="secondary">
+              {user?.rol.codigo === 'CONDUCTOR'
+                ? 'Confirmar llegada'
+                : overdue
+                  ? 'Registrar cierre ahora'
+                  : 'Confirmar llegada'}
+            </Button>
+          )}
+          {overdue && user?.rol.codigo === 'CONDUCTOR' && !journey.cierrePendiente && (
+            <Button onClick={() => onAction('report', journey)} size="sm" variant="outline">
+              Informar que no puedo registrar el cierre
+            </Button>
+          )}
+          {journey.acciones.puedeReasignar && (
+            <Button onClick={() => onAction('reassign', journey)} size="sm" variant="outline">
+              {journey.estado === 'INTERRUMPIDA'
+                ? 'Crear tramo con bus sustituto'
+                : 'Cambiar bus o conductor'}
+            </Button>
+          )}
+          {journey.acciones.puedeInterrumpir && (
+            <Button onClick={() => onAction('interrupt', journey)} size="sm" variant="danger">
+              Interrumpir jornada
+            </Button>
+          )}
+          {journey.acciones.puedeConciliarLectura && (
+            <Button onClick={() => onAction('reconcile', journey)} size="sm" variant="outline">
+              Conciliar lectura observada
+            </Button>
+          )}
+          {journey.acciones.puedeMarcarNoRecuperable && (
+            <Button onClick={() => onAction('unrecoverable', journey)} size="sm" variant="outline">
+              Declarar lectura no recuperable
+            </Button>
+          )}
+          {journey.acciones.puedeCancelar && (
+            <Button onClick={() => onAction('cancel', journey)} size="sm" variant="danger">
+              Cancelar jornada
+            </Button>
+          )}
+        </div>
+      )}
       {journey.proyeccionDemo && (
         <details className="mt-4 text-xs text-slate-500">
           <summary className="cursor-pointer">

@@ -1,6 +1,7 @@
 import { apiRequest } from '../../lib/api'
 import type {
   JourneyDto,
+  JourneyAttentionResponse,
   JourneyListResponse,
   JourneyOptionsResponse,
   JourneyStatus,
@@ -81,6 +82,10 @@ export function listJourneys(input: {
   if (input.cierreAtrasado) query.set('cierreAtrasado', 'true')
   if (input.requiereReasignacion) query.set('requiereReasignacion', 'true')
   return apiRequest<JourneyListResponse>(`/jornadas?${query.toString()}`)
+}
+
+export function listJourneyAttention() {
+  return apiRequest<JourneyAttentionResponse>('/jornadas/atencion')
 }
 
 export function reportJourneyClosureProblem(journeyId: number, motivo: string) {

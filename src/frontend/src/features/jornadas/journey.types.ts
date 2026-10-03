@@ -103,6 +103,19 @@ export interface JourneyListResponse {
   }
 }
 
+export type JourneyAttentionCategory =
+  'CIERRE_PENDIENTE' | 'SALIDA_SIN_CONFIRMAR' | 'REASIGNACION' | 'RELEVO'
+
+export interface JourneyAttentionResponse {
+  jornadas: Array<{ categoria: JourneyAttentionCategory; jornada: JourneyDto }>
+  conteos: {
+    cierrePendiente: number
+    salidaSinConfirmar: number
+    reasignacion: number
+    relevo: number
+  }
+}
+
 export interface JourneyOptionsResponse {
   buses: Array<{
     disponibilidadTecnica?: { disponible: boolean; causas: AvailabilityCauseDto[] }

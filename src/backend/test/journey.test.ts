@@ -708,7 +708,7 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
       .expect(409)
   }, 60_000)
 
-  it('cierra con kilometraje los tramos activos cancelados o reasignados', async () => {
+  it('impide cancelar un tramo iniciado y conserva su recorrido mediante interrupción o relevo', async () => {
     const cancelBus = await createBus()
     const reassignBus = await createBus()
     const successorBus = await createBus()
@@ -729,17 +729,27 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
     await dispatcher
       .post(`/jornadas/${cancellableId}/cancelar`)
       .send({ fechaEvento: past(60).toISOString(), motivo: 'Cancelacion operativa activa' })
-      .expect(400)
-    const cancelled = await dispatcher
+      .expect(409)
+    await dispatcher
       .post(`/jornadas/${cancellableId}/cancelar`)
       .send({
         fechaEvento: past(60).toISOString(),
         kilometrajeFinal: 1040,
         motivo: 'Cancelacion operativa activa',
       })
+      .expect(409)
+    const interrupted = await dispatcher
+      .post(`/jornadas/${cancellableId}/interrumpir`)
+      .send({
+        fechaEvento: past(60).toISOString(),
+        kilometrajeFinal: 1040,
+        motivo: 'Incidencia operativa durante el recorrido',
+        observadoPorId: cancelDriver.id,
+        motivoRespaldo: 'Lectura comunicada por el Conductor al detenerse',
+      })
       .expect(200)
-    expect(cancelled.body.data.jornada).toMatchObject({
-      estado: 'CANCELADA',
+    expect(interrupted.body.data.jornada).toMatchObject({
+      estado: 'INTERRUMPIDA',
       lecturaFinal: { kilometraje: 1040 },
     })
 

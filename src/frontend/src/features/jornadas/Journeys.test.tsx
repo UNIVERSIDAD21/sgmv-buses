@@ -119,27 +119,25 @@ describe('P4 journey frontend', () => {
     )
   })
 
-  it('muestra a Despacho la cola de jornadas con Conductor no disponible', async () => {
+  it('muestra a Despacho una sola bandeja para un Conductor no disponible', async () => {
     window.history.pushState({}, '', '/jornadas')
     const handler = journeyHandler('DESPACHADOR')
     const fetchMock = mockApi(async (path, init, query) => {
-      if (path === '/jornadas' && query?.get('requiereReasignacion') === 'true') {
+      if (path === '/jornadas/atencion') {
         return ok({
-          jornadas: [journeyFixture('PROGRAMADA')],
-          paginacion: { limite: 12, pagina: 1, paginas: 1, total: 1 },
+          jornadas: [{ categoria: 'REASIGNACION', jornada: journeyFixture('PROGRAMADA') }],
+          conteos: { cierrePendiente: 0, salidaSinConfirmar: 0, reasignacion: 1, relevo: 0 },
         })
       }
       return handler(path, init, query)
     })
     render(<App />)
-    const queue = await screen.findByRole('region', { name: 'Jornadas por reasignar' })
-    expect(within(queue).getByText(/Jornadas por reasignar \(1\)/)).toBeInTheDocument()
-    expect(within(queue).getByText(/no tiene acceso o cambió de rol/i)).toBeInTheDocument()
-    expect(
-      fetchMock.mock.calls.some(
-        ([input]) => new URL(String(input)).searchParams.get('requiereReasignacion') === 'true',
-      ),
-    ).toBe(true)
+    const queue = await screen.findByRole('region', { name: 'Necesitan tu atención' })
+    expect(within(queue).getByRole('button', { name: 'Reasignar' })).toBeInTheDocument()
+    expect(within(queue).getAllByText('BUS-JORNADA-01 · JOR001')).toHaveLength(1)
+    expect(fetchMock.mock.calls.some(([input]) => getPath(input) === '/jornadas/atencion')).toBe(
+      true,
+    )
   })
   it('permite a Despacho interrumpir sin inventar kilometraje y muestra la conciliación pendiente', async () => {
     window.history.pushState({}, '', '/jornadas')
@@ -307,16 +305,133 @@ describe('P4 journey frontend', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('shows dispatch an independent overdue queue with bus, driver and real closure action', async () => {
+  it('muestra a Despacho el cierre atrasado y pregunta antes de registrar datos reales', async () => {
     window.history.pushState({}, '', '/jornadas')
     mockApi(journeyHandler('DESPACHADOR', { overdue: true }))
     render(<App />)
-    const queue = await screen.findByRole('region', { name: 'Jornadas pendientes de cierre' })
+    const queue = await screen.findByRole('region', { name: 'Necesitan tu atención' })
     expect(within(queue).getByText(/BUS-JORNADA-01/)).toBeInTheDocument()
-    expect(within(queue).getByText(/Atraso: 25 h/)).toBeInTheDocument()
+    fireEvent.click(within(queue).getByRole('button', { name: 'Resolver cierre' }))
+    const dialog = screen.getByRole('dialog', { name: 'Resolver cierre' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'No tengo la información' }))
+    expect(within(dialog).getByText(/No inventes la lectura/i)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Sí, registrar datos reales' }))
+    expect(screen.getByRole('dialog', { name: 'Confirmar llegada' })).toBeInTheDocument()
+  })
+
+  it('separa una salida vencida del cierre y permite declarar que el viaje no ocurrió', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    const handler = journeyHandler('DESPACHADOR')
+    const scheduled = {
+      ...journeyFixture('PROGRAMADA'),
+      inicioProgramado: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+      finProgramado: new Date(Date.now() - 86_400_000).toISOString(),
+    }
+    let cancelled = false
+    const fetchMock = mockApi(async (path, init, query) => {
+      if (path === '/jornadas/atencion') {
+        return ok({
+          jornadas: cancelled ? [] : [{ categoria: 'SALIDA_SIN_CONFIRMAR', jornada: scheduled }],
+          conteos: {
+            cierrePendiente: 0,
+            salidaSinConfirmar: cancelled ? 0 : 1,
+            reasignacion: 0,
+            relevo: 0,
+          },
+        })
+      }
+      if (path === '/jornadas/2029/cancelar' && init?.method === 'POST') cancelled = true
+      return handler(path, init, query)
+    })
+    render(<App />)
+    const queue = await screen.findByRole('region', { name: 'Necesitan tu atención' })
     expect(
-      within(queue).getByRole('button', { name: 'Registrar cierre ahora' }),
+      within(queue).getByRole('button', { name: 'Salida sin confirmar 1' }),
     ).toBeInTheDocument()
+    expect(within(queue).getByRole('button', { name: 'Resolver situación' })).toBeInTheDocument()
+    expect(within(queue).queryByRole('button', { name: 'Resolver cierre' })).not.toBeInTheDocument()
+    fireEvent.click(within(queue).getByRole('button', { name: 'Resolver situación' }))
+    const decision = screen.getByRole('dialog', { name: 'Resolver situación' })
+    fireEvent.click(within(decision).getByRole('button', { name: 'No puedo confirmarlo' }))
+    expect(within(decision).getByText(/No inventes la lectura ni la salida/)).toBeInTheDocument()
+    fireEvent.click(within(decision).getByRole('button', { name: 'El viaje no se realizó' }))
+    const cancel = screen.getByRole('dialog', { name: 'Cancelar jornada' })
+    fireEvent.change(within(cancel).getByLabelText('Motivo'), {
+      target: { value: 'El servicio no salió' },
+    })
+    fireEvent.click(within(cancel).getByRole('button', { name: 'Confirmar' }))
+    await waitFor(() =>
+      expect(
+        within(queue).getByText(/No hay jornadas que requieran una decisión/),
+      ).toBeInTheDocument(),
+    )
+    expect(
+      fetchMock.mock.calls.some(
+        ([input, init]) => getPath(input) === '/jornadas/2029/cancelar' && init?.method === 'POST',
+      ),
+    ).toBe(true)
+  })
+
+  it('una salida tardía confirmada exige lectura real y pasa a cierre pendiente', async () => {
+    window.history.pushState({}, '', '/jornadas')
+    const handler = journeyHandler('DESPACHADOR')
+    const scheduled = {
+      ...journeyFixture('PROGRAMADA'),
+      inicioProgramado: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+      finProgramado: new Date(Date.now() - 86_400_000).toISOString(),
+    }
+    let started = false
+    const fetchMock = mockApi(async (path, init, query) => {
+      if (path === '/jornadas/atencion') {
+        return ok({
+          jornadas: [
+            {
+              categoria: started ? 'CIERRE_PENDIENTE' : 'SALIDA_SIN_CONFIRMAR',
+              jornada: started
+                ? { ...journeyFixture('EN_CURSO'), finProgramado: scheduled.finProgramado }
+                : scheduled,
+            },
+          ],
+          conteos: {
+            cierrePendiente: started ? 1 : 0,
+            salidaSinConfirmar: started ? 0 : 1,
+            reasignacion: 0,
+            relevo: 0,
+          },
+        })
+      }
+      if (path === '/jornadas/2029/iniciar' && init?.method === 'POST') {
+        started = true
+        return ok({ jornada: journeyFixture('EN_CURSO') })
+      }
+      return handler(path, init, query)
+    })
+    render(<App />)
+    const queue = await screen.findByRole('region', { name: 'Necesitan tu atención' })
+    fireEvent.click(within(queue).getByRole('button', { name: 'Resolver situación' }))
+    fireEvent.click(screen.getByRole('button', { name: 'El bus sí salió' }))
+    expect(
+      fetchMock.mock.calls.filter(
+        ([input, init]) => getPath(input) === '/jornadas/2029/iniciar' && init?.method === 'POST',
+      ),
+    ).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar salida con datos reales' }))
+    const dialog = screen.getByRole('dialog', { name: 'Confirmar salida' })
+    expect(within(dialog).getByLabelText('Lectura observada del odómetro')).toHaveValue(null)
+    fireEvent.change(within(dialog).getByLabelText('Lectura observada del odómetro'), {
+      target: { value: '45000' },
+    })
+    fireEvent.change(within(dialog).getByLabelText(/¿Quién observó físicamente/), {
+      target: { value: 'self' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar salida' }))
+    await waitFor(() =>
+      expect(within(queue).getByRole('button', { name: 'Resolver cierre' })).toBeInTheDocument(),
+    )
+    const startCall = fetchMock.mock.calls.find(
+      ([input, init]) => getPath(input) === '/jornadas/2029/iniciar' && init?.method === 'POST',
+    )
+    expect(JSON.parse(String(startCall?.[1]?.body))).toMatchObject({ kilometraje: 45000 })
   })
 
   it('lets the dispatcher program a journey from controlled options and session authorship', async () => {
@@ -328,9 +443,7 @@ describe('P4 journey frontend', () => {
     expect(
       (await screen.findAllByRole('heading', { name: /Jornadas operativas/i })).length,
     ).toBeGreaterThan(0)
-    expect(
-      await screen.findByText(/El Conductor registra las lecturas de su jornada/i),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'Necesitan tu atención' })).toBeInTheDocument()
     fireEvent.change(await screen.findByLabelText(/Bus de jornada/i), {
       target: { value: '2007' },
     })

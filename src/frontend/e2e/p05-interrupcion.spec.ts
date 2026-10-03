@@ -79,6 +79,17 @@ test('la interrupción móvil no exige odómetro ficticio y conserva el bloqueo 
         json: { data: { buses: [bus], conductores: [driver], rutas: [] } },
       })
     }
+    if (url.pathname === '/jornadas/atencion') {
+      return route.fulfill({
+        headers,
+        json: {
+          data: {
+            jornadas: [],
+            conteos: { cierrePendiente: 0, salidaSinConfirmar: 0, reasignacion: 0, relevo: 0 },
+          },
+        },
+      })
+    }
     if (url.pathname === '/jornadas' && request.method() === 'GET') {
       const futureJourneys = Array.from({ length: 11 }, (_, index) => ({
         ...journey,

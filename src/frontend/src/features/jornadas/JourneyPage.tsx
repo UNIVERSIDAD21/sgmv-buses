@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import Badge from '../../components/ui/Badge'
 import JourneyCard from './JourneyCard'
+import JourneyAttentionQueue from './JourneyAttentionQueue'
+import JourneyDecisionDialog from './JourneyDecisionDialog'
 import JourneyAgenda from './JourneyAgenda'
 import type { JourneyGroupBy } from './JourneyAgenda'
 import JourneyConfirmationDialog from './JourneyConfirmationDialog'
@@ -23,12 +25,15 @@ import {
   getJourney,
   getJourneyOptions,
   getMyJourney,
+  listJourneyAttention,
   listJourneys,
   reassignJourney,
   reportJourneyClosureProblem,
 } from './journey.api'
 import type {
   JourneyDto,
+  JourneyAttentionCategory,
+  JourneyAttentionResponse,
   JourneyListResponse,
   JourneyOptionsResponse,
   JourneyStatus,
@@ -100,7 +105,7 @@ function ActionDialog({
   const [kmNoComerciales, setKmNoComerciales] = useState('0')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const needsMileage = action !== 'report' && journey.estado === 'EN_CURSO'
+  const needsMileage = action === 'reassign' && journey.estado === 'EN_CURSO'
   const provenance =
     needsMileage && observerChoice
       ? {
@@ -167,8 +172,6 @@ function ActionDialog({
       } else if (action === 'cancel') {
         await cancelJourney(journey.id, {
           fechaEvento: toIso(fechaEvento),
-          ...(journey.estado === 'EN_CURSO' ? { kilometrajeFinal: mileageValue } : {}),
-          ...provenance,
           motivo: motivo.trim(),
         })
         await onCompleted('Jornada cancelada sin borrar su historial')
@@ -498,10 +501,7 @@ export default function JourneyPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const isDriver = user?.rol.codigo === 'CONDUCTOR'
   const [list, setList] = useState<JourneyListResponse | null>(null)
-  const [pending, setPending] = useState<JourneyListResponse | null>(null)
-  const [pendingPage, setPendingPage] = useState(1)
-  const [reassignment, setReassignment] = useState<JourneyListResponse | null>(null)
-  const [reassignmentPage, setReassignmentPage] = useState(1)
+  const [attention, setAttention] = useState<JourneyAttentionResponse | null>(null)
   const [own, setOwn] = useState<MyJourneyResponse | null>(null)
   const [options, setOptions] = useState<JourneyOptionsResponse | null>(null)
   const [buscar, setBuscar] = useState('')
@@ -523,6 +523,10 @@ export default function JourneyPage() {
   const [operation, setOperation] = useState<{ action: JourneyAction; journey: JourneyDto } | null>(
     null,
   )
+  const [decision, setDecision] = useState<{
+    category: JourneyAttentionCategory
+    journey: JourneyDto
+  } | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -532,20 +536,18 @@ export default function JourneyPage() {
         setOwn(await getMyJourney())
         return
       }
-      const [journeys, journeyOptions, pendingClosures, reassignmentQueue] = await Promise.all([
+      const [journeys, journeyOptions, attentionQueue] = await Promise.all([
         listJourneys({ buscar: busquedaEstable, estado, pagina }),
         getJourneyOptions(),
-        listJourneys({ cierreAtrasado: true, pagina: pendingPage }),
-        listJourneys({ requiereReasignacion: true, pagina: reassignmentPage }),
+        listJourneyAttention(),
       ])
       setList(journeys)
       setOptions(journeyOptions)
-      setPending(pendingClosures)
-      setReassignment(reassignmentQueue)
+      setAttention(attentionQueue)
     } finally {
       setLoading(false)
     }
-  }, [busquedaEstable, estado, isDriver, pagina, pendingPage, reassignmentPage])
+  }, [busquedaEstable, estado, isDriver, pagina])
 
   useEffect(() => {
     let active = true
@@ -619,12 +621,12 @@ export default function JourneyPage() {
         title={isDriver ? 'Mi jornada' : 'Jornadas operativas'}
       />
 
-      <ContextHint title="Quién registra las lecturas">
-        {isDriver
-          ? 'Usted registra la lectura observada del odómetro al iniciar y finalizar su jornada.'
-          : 'El Conductor registra las lecturas de su jornada. Despacho solo actúa como respaldo cuando el flujo lo autoriza y el sistema conserva quién realizó la acción.'}{' '}
-        La hora programada organiza la agenda, pero no prueba el recorrido ni reemplaza el odómetro.
-      </ContextHint>
+      {isDriver && (
+        <ContextHint title="Quién registra las lecturas">
+          Usted registra la lectura observada del odómetro al iniciar y finalizar su jornada. La
+          hora programada organiza la agenda, pero no prueba el recorrido ni reemplaza el odómetro.
+        </ContextHint>
+      )}
 
       {feedback && (
         <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
@@ -669,91 +671,15 @@ export default function JourneyPage() {
         </div>
       )}
 
-      {!loading && !error && !isDriver && pending && pending.paginacion.total > 0 && (
-        <section
-          aria-label="Jornadas pendientes de cierre"
-          className="space-y-3 rounded-xl border border-red-200 bg-red-50/30 p-4"
-        >
-          <h2 className="font-bold text-red-950">
-            Jornadas pendientes de cierre ({pending.paginacion.total})
-          </h2>
-          <p className="text-sm text-slate-700">
-            Primero las más antiguas. Contacta al Conductor por los medios habituales para confirmar
-            el odómetro y la hora real. Puedes registrar el cierre autorizado, cancelar con motivo o
-            cambiar tramo; las jornadas iniciadas exigen lectura final real también al cancelar o
-            reasignar.
-          </p>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {pending.jornadas.map((journey) => (
-              <JourneyCard
-                key={journey.id}
-                journey={journey}
-                onAction={(action, selected) => setOperation({ action, journey: selected })}
-              />
-            ))}
-          </div>
-          {pending.paginacion.paginas > 1 && (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                disabled={pendingPage === 1}
-                onClick={() => setPendingPage(pendingPage - 1)}
-              >
-                Cierres anteriores
-              </Button>
-              <Button
-                variant="outline"
-                disabled={pendingPage === pending.paginacion.paginas}
-                onClick={() => setPendingPage(pendingPage + 1)}
-              >
-                Más cierres pendientes
-              </Button>
-            </div>
-          )}
-        </section>
-      )}
-
-      {!loading && !error && !isDriver && reassignment && reassignment.paginacion.total > 0 && (
-        <section
-          aria-label="Jornadas por reasignar"
-          className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/40 p-4"
-        >
-          <h2 className="font-bold text-amber-950">
-            Jornadas por reasignar ({reassignment.paginacion.total})
-          </h2>
-          <p className="text-sm text-amber-900">
-            El Conductor asignado ya no tiene acceso o cambió de rol. Despacho debe decidir el
-            relevo; la asignación y la autoría anteriores permanecen en el historial. Si el tramo
-            comenzó, registre solo una lectura final física o su conciliación autorizada.
-          </p>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {reassignment.jornadas.map((journey) => (
-              <JourneyCard
-                key={journey.id}
-                journey={journey}
-                onAction={(action, selected) => setOperation({ action, journey: selected })}
-              />
-            ))}
-          </div>
-          {reassignment.paginacion.paginas > 1 && (
-            <div className="flex gap-2">
-              <Button
-                disabled={reassignmentPage === 1}
-                onClick={() => setReassignmentPage(reassignmentPage - 1)}
-                variant="outline"
-              >
-                Anteriores
-              </Button>
-              <Button
-                disabled={reassignmentPage === reassignment.paginacion.paginas}
-                onClick={() => setReassignmentPage(reassignmentPage + 1)}
-                variant="outline"
-              >
-                Más pendientes
-              </Button>
-            </div>
-          )}
-        </section>
+      {!loading && !error && !isDriver && attention && (
+        <JourneyAttentionQueue
+          data={attention}
+          onAction={(action, journey) => setOperation({ action, journey })}
+          onResolve={(category, journey) => {
+            if (category === 'REASIGNACION') setOperation({ action: 'reassign', journey })
+            else setDecision({ category, journey })
+          }}
+        />
       )}
 
       {!error && !isDriver && options && (
@@ -876,6 +802,14 @@ export default function JourneyPage() {
         </section>
       )}
 
+      {decision && (
+        <JourneyDecisionDialog
+          category={decision.category}
+          journey={decision.journey}
+          onAction={(action, journey) => setOperation({ action, journey })}
+          onClose={() => setDecision(null)}
+        />
+      )}
       {operation &&
       (operation.action === 'interrupt' ||
         operation.action === 'reconcile' ||

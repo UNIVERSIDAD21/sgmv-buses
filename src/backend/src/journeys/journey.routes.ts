@@ -23,6 +23,11 @@ journeyRoutes.get(
   asyncHandler(controller.getOptions),
 )
 journeyRoutes.get(
+  '/atencion',
+  authorizeRoles('ADMINISTRADOR', 'DESPACHADOR'),
+  asyncHandler(controller.listAttention),
+)
+journeyRoutes.get(
   '/',
   authorizeRoles('ADMINISTRADOR', 'DESPACHADOR', 'CONDUCTOR'),
   asyncHandler(controller.list),

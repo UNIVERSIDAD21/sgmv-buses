@@ -114,6 +114,11 @@ export class JourneyController {
     sendData(response, result, 'Jornadas consultadas')
   }
 
+  listAttention: RequestHandler = async (request, response) => {
+    const result = await this.service.listAttention(request.user!)
+    sendData(response, result, 'Pendientes operativos consultados')
+  }
+
   listReadings: RequestHandler = async (request, response) => {
     const { jornadaId } = journeyIdParamSchema.parse(request.params)
     const result = await this.service.listReadings(jornadaId, request.user!)

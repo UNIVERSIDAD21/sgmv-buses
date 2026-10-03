@@ -264,14 +264,19 @@ test('cierre atrasado: Conductor informa, Despacho coordina lectura real y Admin
   await capture(page, info, 'alertas-internas')
   await login(page, 'despachador')
   await page.goto('/jornadas')
-  const queue = page.getByRole('region', { name: 'Jornadas pendientes de cierre' })
+  const queue = page.getByRole('region', { name: 'Necesitan tu atención' })
   await expect(queue).toBeVisible({ timeout: 30_000 })
   const card = queue.locator('article').filter({ hasText: `${marker}-2` })
+  await capture(page, info, 'despacho-cola-cierres')
+  await card.getByRole('button', { name: 'Ver detalles' }).click()
   await expect(
     card.getByText(`Necesito ayuda para leer el odómetro ${marker}.`, { exact: false }),
   ).toBeVisible()
-  await capture(page, info, 'despacho-cola-cierres')
-  await card.getByRole('button', { name: 'Registrar cierre ahora' }).click()
+  await card.getByRole('button', { name: 'Resolver cierre' }).click()
+  await page
+    .getByRole('dialog', { name: 'Resolver cierre' })
+    .getByRole('button', { name: 'Sí, registrar datos reales' })
+    .click()
   const finish = page.getByRole('dialog', { name: 'Confirmar llegada' })
   await expect(finish.getByLabel(/Lectura observada del odómetro/)).toBeEmpty()
   await finish.getByLabel(/Lectura observada del odómetro/).fill('3015')

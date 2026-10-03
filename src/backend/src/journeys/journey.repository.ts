@@ -11,6 +11,7 @@ import { prisma } from '../prisma/client.js'
 const userRefSelect = {
   id: true,
   nombre: true,
+  estado: true,
   rol: { select: { codigo: true } },
 } satisfies Prisma.UsuarioSelect
 
@@ -58,6 +59,14 @@ const optionUserSelect = {
 } satisfies Prisma.UsuarioSelect
 
 export class JourneyRepository {
+  listAttentionCandidates() {
+    return prisma.jornadaOperativa.findMany({
+      where: { estado: { in: ['PROGRAMADA', 'EN_CURSO', 'INTERRUMPIDA'] } },
+      include: journeyInclude,
+      orderBy: [{ inicioProgramado: 'asc' }, { id: 'asc' }],
+    })
+  }
+
   count(where: Prisma.JornadaOperativaWhereInput) {
     return prisma.jornadaOperativa.count({ where })
   }

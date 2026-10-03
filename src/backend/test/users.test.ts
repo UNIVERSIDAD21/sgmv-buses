@@ -357,6 +357,18 @@ describe('Gestion administrativa y activacion de usuarios', () => {
     await conductorAgent.post(`/jornadas/${journey.id}/iniciar`).send({}).expect(401)
     const queue = await dispatcherAgent.get('/jornadas?requiereReasignacion=true').expect(200)
     expect(queue.body.data.jornadas.map((item: { id: number }) => item.id)).toContain(journey.id)
+    const attention = await dispatcherAgent.get('/jornadas/atencion').expect(200)
+    expect(
+      attention.body.data.jornadas.filter(
+        (item: { jornada: { id: number } }) => item.jornada.id === journey.id,
+      ),
+    ).toHaveLength(1)
+    expect(
+      attention.body.data.jornadas.find(
+        (item: { jornada: { id: number } }) => item.jornada.id === journey.id,
+      ).categoria,
+    ).toBe('REASIGNACION')
+    await conductorAgent.get('/jornadas/atencion').expect(401)
     expect(
       await prisma.jornadaOperativa.findUniqueOrThrow({ where: { id: journey.id } }),
     ).toMatchObject({

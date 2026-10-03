@@ -2097,6 +2097,22 @@ export function journeyHandler(
         ? apiError(500, 'INTERNAL_ERROR', 'Fallo controlado de jornadas')
         : ok(journeyOptions())
     }
+    if (path === '/jornadas/atencion') {
+      if (options.fail) return apiError(500, 'INTERNAL_ERROR', 'Fallo controlado de jornadas')
+      const jornadas =
+        options.overdue && currentStatus === 'EN_CURSO'
+          ? [{ categoria: 'CIERRE_PENDIENTE', jornada: currentJourney() }]
+          : []
+      return ok({
+        jornadas,
+        conteos: {
+          cierrePendiente: jornadas.length,
+          salidaSinConfirmar: 0,
+          reasignacion: 0,
+          relevo: 0,
+        },
+      })
+    }
     if (path === '/jornadas/mi-jornada') {
       if (options.fail) return apiError(500, 'INTERNAL_ERROR', 'Fallo controlado de jornadas')
       const journey = options.empty ? null : currentJourney()
