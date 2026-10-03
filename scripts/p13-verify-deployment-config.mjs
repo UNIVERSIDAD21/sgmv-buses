@@ -49,7 +49,7 @@ requireCondition(
 
 for (const fragment of [
   'name: sgmv-backend',
-  'branch: realineacion/trazabilidad-operativa-tecnica',
+  'branch: mejora/ux-funcional-retroalimentacion',
   'buildCommand: npm ci --include=dev && npm run build:render',
   'startCommand: npm --workspace @sgmv/backend run start',
   'healthCheckPath: /ready',

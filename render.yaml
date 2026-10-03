@@ -5,7 +5,7 @@ services:
     plan: free
     region: virginia
     repo: https://github.com/UNIVERSIDAD21/sgmv-buses
-    branch: realineacion/trazabilidad-operativa-tecnica
+    branch: mejora/ux-funcional-retroalimentacion
     autoDeployTrigger: commit
     buildCommand: npm ci --include=dev && npm run build:render
     startCommand: npm --workspace @sgmv/backend run start
