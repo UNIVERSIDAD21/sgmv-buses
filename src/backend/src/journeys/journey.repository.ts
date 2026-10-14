@@ -3,7 +3,11 @@ import { Prisma, PrismaClient } from '@prisma/client'
 import { buildAvailability } from '../availability/availability.policy.js'
 import { classifyPreventiveCycle } from '../preventive/preventive-cycle.js'
 
-import { getAvailabilityRecords } from '../availability/availability.repository.js'
+import {
+  getAvailabilityRecords,
+  getAvailabilityRecordsBatch,
+  type AvailabilityQuery,
+} from '../availability/availability.repository.js'
 import type { AvailabilityRecords } from '../availability/availability.types.js'
 import { registerContextualMileageReading } from '../mileage/mileage.repository.js'
 import { prisma } from '../prisma/client.js'
@@ -130,6 +134,10 @@ export class JourneyRepository {
     tx: JourneyTransaction,
   ): Promise<AvailabilityRecords> {
     return getAvailabilityRecords({ busId, conductorId, eventDate, journeyId }, tx)
+  }
+
+  getAvailabilityRecordsBatch(inputs: AvailabilityQuery[], tx: JourneyTransaction) {
+    return getAvailabilityRecordsBatch(inputs, tx)
   }
 
   async listOptions() {

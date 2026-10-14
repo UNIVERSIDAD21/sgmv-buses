@@ -1020,9 +1020,35 @@ export class JourneyService {
       this.repository.list(where, orderBy, skip, query.limite),
     ])
     const now = new Date()
-    const mapped = await this.repository.transaction((tx) =>
-      Promise.all(journeys.map((journey) => this.toDto(journey, actor, now, tx))),
-    )
+    const mapped = await this.repository.transaction(async (tx) => {
+      const active = journeys.filter((journey) => !TERMINAL_STATES.has(journey.estado))
+      const records = await this.repository.getAvailabilityRecordsBatch(
+        active.map((journey) => ({
+          busId: journey.busId,
+          conductorId: journey.conductorId,
+          journeyId: journey.id,
+          eventDate: now,
+        })),
+        tx,
+      )
+      const byJourney = new Map(active.map((journey, index) => [journey.id, records[index]!]))
+      return journeys.map((journey) =>
+        mapJourney(
+          journey,
+          actor,
+          buildAvailability(
+            byJourney.get(journey.id) ?? {
+              bus: null,
+              conflictingJourney: null,
+              novelty: null,
+              order: null,
+              preventive: [],
+            },
+            now,
+          ),
+        ),
+      )
+    })
 
     return {
       jornadas: mapped,

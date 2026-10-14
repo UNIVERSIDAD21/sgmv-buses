@@ -8,6 +8,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createApp } from '../src/app.js'
 import { evaluateJourneyMileageAlerts } from '../src/alerts/alert.service.js'
+import {
+  getAvailabilityRecords,
+  getAvailabilityRecordsBatch,
+} from '../src/availability/availability.repository.js'
+import { buildAvailability } from '../src/availability/availability.policy.js'
 import { createCsrfAgent } from './http-test-client.js'
 
 const prisma = new PrismaClient()
@@ -225,6 +230,149 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
       await prisma.$disconnect()
     }
   }, 60_000)
+
+  it('conserva disponibilidad por bus, conductor, fecha y exclusión propia al consultar por lotes', async () => {
+    const owner = await createDriver('disponibilidad-lote')
+    const bus = await createBus()
+    const otherBus = await createBus('EN_MANTENIMIENTO')
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const response = await programJourney(dispatcher, {
+      busId: bus.id,
+      conductorId: owner.id,
+      inicioProgramado: past(60),
+      finProgramado: past(-60),
+    })
+    expect(response.status).toBe(201)
+    const now = new Date()
+    const inputs = [
+      {
+        busId: bus.id,
+        conductorId: owner.id,
+        journeyId: Number(response.body.data.jornada.id),
+        eventDate: now,
+      },
+      { busId: otherBus.id, conductorId: owner.id, eventDate: now },
+      { busId: bus.id, conductorId: fixture.conductorOtroId, eventDate: now },
+      { busId: bus.id, conductorId: fixture.conductorOtroId, eventDate: past(120) },
+    ]
+    const batch = await getAvailabilityRecordsBatch(inputs, prisma)
+    for (const [index, input] of inputs.entries())
+      expect(buildAvailability(batch[index]!, input.eventDate)).toEqual(
+        buildAvailability(await getAvailabilityRecords(input, prisma), input.eventDate),
+      )
+    expect(batch[0]!.conflictingJourney).toBeNull()
+    expect(batch[1]!.conflictingJourney?.id).toBe(Number(response.body.data.jornada.id))
+    expect(batch[2]!.conflictingJourney?.id).toBe(Number(response.body.data.jornada.id))
+    expect(batch[3]!.conflictingJourney).toBeNull()
+  })
+
+  it('mantiene una jornada real abierta como conflicto fuera del horario previsto y excluye su propia fila', async () => {
+    const owner = await createDriver('abierta-lote')
+    const bus = await createBus()
+    const otherBus = await createBus()
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const driver = await loginAgent(owner.email)
+    const response = await programJourney(dispatcher, { busId: bus.id, conductorId: owner.id })
+    expect(response.status).toBe(201)
+    const id = Number(response.body.data.jornada.id)
+    await driver
+      .post(`/jornadas/${id}/iniciar`)
+      .send({ fechaEvento: past(90).toISOString(), kilometraje: 0 })
+      .expect(200)
+    const eventDate = new Date(Date.now() + 86_400_000)
+    const results = await getAvailabilityRecordsBatch(
+      [
+        { busId: bus.id, conductorId: owner.id, journeyId: id, eventDate },
+        { busId: otherBus.id, conductorId: owner.id, eventDate },
+      ],
+      prisma,
+    )
+    expect(results[0]!.conflictingJourney).toBeNull()
+    expect(results[1]!.conflictingJourney?.id).toBe(id)
+  })
+
+  it('no añade causas técnicas a estados terminales al paginar junto a jornadas futuras bloqueadas', async () => {
+    const owner = await createDriver('terminal-lote')
+    const bus = await createBus()
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const expired = await programJourney(dispatcher, { busId: bus.id, conductorId: owner.id })
+    expect(expired.status).toBe(201)
+    const terminalId = Number(expired.body.data.jornada.id)
+    await dispatcher
+      .post(`/jornadas/${terminalId}/cancelar`)
+      .send({
+        fechaEvento: new Date().toISOString(),
+        motivo: 'Cancelación controlada para comprobar consulta de historial',
+      })
+      .expect(200)
+    const future = await programJourney(dispatcher, {
+      busId: bus.id,
+      conductorId: owner.id,
+      inicioProgramado: past(-60),
+      finProgramado: past(-120),
+    })
+    expect(future.status).toBe(201)
+    await prisma.bus.update({
+      where: { id: bus.id },
+      data: { estadoOperativo: 'EN_MANTENIMIENTO' },
+    })
+    const body = (await dispatcher.get(`/jornadas?busId=${bus.id}`).expect(200)).body.data
+    expect(
+      body.jornadas.find((row: { id: number }) => row.id === terminalId).causasDisponibilidad,
+    ).toEqual([])
+    expect(
+      body.jornadas
+        .find((row: { id: number }) => row.id === Number(future.body.data.jornada.id))
+        .causasDisponibilidad.map((cause: { codigo: string }) => cause.codigo),
+    ).toContain('BUS_EN_MANTENIMIENTO')
+  })
+
+  it('consulta cien jornadas sin efectos laterales y mantiene la propiedad del Conductor en la página grande', async () => {
+    const owner = await createDriver('pagina-cien')
+    const bus = await createBus()
+    const dispatcher = await prisma.usuario.findUniqueOrThrow({
+      where: { email: fixture.despachadorEmail },
+    })
+    const data = Array.from({ length: 100 }, (_, index) => {
+      const id = testEntityId()
+      created.jornadas.push(id)
+      const start = Date.now() + (index + 1) * 86_400_000
+      return {
+        id,
+        busId: bus.id,
+        conductorId: owner.id,
+        programadaPorId: dispatcher.id,
+        estado: 'PROGRAMADA' as const,
+        inicioProgramado: new Date(start),
+        finProgramado: new Date(start + 3_600_000),
+      }
+    })
+    await prisma.jornadaOperativa.createMany({ data })
+    const driver = await loginAgent(owner.email)
+    const other = await loginAgent(fixture.conductorOtroEmail)
+    const before = await prisma.lecturaKilometraje.count({ where: { busId: bus.id } })
+    const result = (
+      await driver
+        .get(`/jornadas?busId=${bus.id}&limite=100&conductorId=${fixture.conductorOtroId}`)
+        .expect(200)
+    ).body.data
+    expect(result.paginacion.total).toBe(100)
+    expect(result.jornadas).toHaveLength(100)
+    expect(
+      result.jornadas.every(
+        (row: { conductor: { id: number }; estado: string }) =>
+          row.conductor.id === owner.id && row.estado === 'PROGRAMADA',
+      ),
+    ).toBe(true)
+    expect(JSON.stringify(result)).not.toMatch(/"(?:costoTotal|fuenteDatos)"\s*:/)
+    expect(
+      (await other.get(`/jornadas?busId=${bus.id}&limite=100`).expect(200)).body.data.jornadas,
+    ).toEqual([])
+    expect(await prisma.lecturaKilometraje.count({ where: { busId: bus.id } })).toBe(before)
+    expect((await prisma.bus.findUniqueOrThrow({ where: { id: bus.id } })).kilometrajeActual).toBe(
+      0,
+    )
+  })
 
   it('recupera la programada vencida antes de la futura y confirma hechos una sola vez sin levantar bloqueos', async () => {
     const owner = await createDriver('pendiente-y-futura')
