@@ -501,7 +501,7 @@ function AdminActionDialog({
           <label className="block text-sm font-medium text-slate-700">
             Clasificacion
             <input
-              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
               onChange={(event) => setClasificacion(event.target.value)}
               placeholder="Ej. Falla electrica"
               value={clasificacion}
@@ -514,7 +514,7 @@ function AdminActionDialog({
             <label className="block text-sm font-medium text-slate-700">
               Criticidad
               <select
-                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   const value = event.target.value as NoveltyCriticality
                   setCriticidad(value)
@@ -536,7 +536,7 @@ function AdminActionDialog({
               <label className="flex items-start gap-3 text-sm text-slate-700">
                 <input
                   checked={afectaOperacion}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-700"
+                  className="mt-0.5 h-4 w-4 rounded-sm border-slate-300 text-emerald-700"
                   onChange={(event) => {
                     const checked = event.target.checked
                     setAfectaOperacion(checked)
@@ -549,7 +549,7 @@ function AdminActionDialog({
               <label className="flex items-start gap-3 text-sm text-slate-700">
                 <input
                   checked={bloqueaDisponibilidad}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-700"
+                  className="mt-0.5 h-4 w-4 rounded-sm border-slate-300 text-emerald-700"
                   disabled={!afectaOperacion || criticidad === 'CRITICA'}
                   onChange={(event) => setBloqueaDisponibilidad(event.target.checked)}
                   type="checkbox"
@@ -569,7 +569,7 @@ function AdminActionDialog({
             <label className="block text-sm font-medium text-slate-700">
               Prioridad de la orden
               <select
-                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setPrioridad(event.target.value as OrderPriority)}
                 value={prioridad}
               >
@@ -583,7 +583,7 @@ function AdminActionDialog({
             <label className="block text-sm font-medium text-slate-700">
               Descripcion de la orden
               <textarea
-                className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setDescripcionOrden(event.target.value)}
                 placeholder="Opcional. Si se omite, se usara la descripcion de la novedad."
                 value={descripcionOrden}
@@ -595,7 +595,7 @@ function AdminActionDialog({
         <label className="block text-sm font-medium text-slate-700">
           Observación interna (no visible para el Conductor)
           <textarea
-            className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
             onChange={(event) => setObservacion(event.target.value)}
             required={action.type === 'resolve' || action.type === 'discard'}
             value={observacion}
@@ -605,7 +605,7 @@ function AdminActionDialog({
         <label className="block text-sm font-medium text-slate-700">
           Respuesta operativa para el Conductor
           <textarea
-            className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
             maxLength={1000}
             onChange={(event) => setRespuestaOperativa(event.target.value)}
             placeholder="Explique el estado del reporte y qué debe hacer el Conductor, sin diagnósticos ni costos."
@@ -1106,7 +1106,7 @@ function DriverView() {
                 <label className="block text-sm font-medium text-slate-700">
                   Fecha y hora de ocurrencia
                   <input
-                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                     max={formatLocalDateTimeInput()}
                     onChange={(event) => {
                       setFechaOcurrencia(event.target.value)
@@ -1185,7 +1185,7 @@ function DriverView() {
                 <label className="block text-sm font-medium text-slate-700">
                   Tipo de novedad
                   <input
-                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                     onChange={(event) => {
                       setTipo(event.target.value)
                       setFieldErrors((current) => {
@@ -1205,7 +1205,7 @@ function DriverView() {
                 <label className="block text-sm font-medium text-slate-700">
                   Descripcion
                   <textarea
-                    className="mt-1.5 min-h-32 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    className="mt-1.5 min-h-32 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                     onChange={(event) => {
                       setDescripcion(event.target.value)
                       setFieldErrors((current) => {
@@ -1642,7 +1642,7 @@ function AdminView() {
                 size={15}
               />
               <input
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setPagina(1)
                   setBusqueda(event.target.value)
@@ -1656,7 +1656,7 @@ function AdminView() {
               <label className="block">
                 <span className="sr-only">Clasificacion</span>
                 <input
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => {
                     setPagina(1)
                     setClasificacion(event.target.value)
@@ -1670,7 +1670,7 @@ function AdminView() {
               <span className="mb-1 block text-xs font-medium text-slate-600">Prioridad</span>
               <select
                 aria-label="Prioridad"
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setPagina(1)
                   setPrioridad(event.target.value as OrderPriority | '')

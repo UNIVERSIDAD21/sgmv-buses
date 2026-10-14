@@ -50,7 +50,7 @@ for (const packagePath of packagePaths) {
   try {
     const packageJson = JSON.parse(readFileSync(`${packagePath}/package.json`, 'utf8'))
     if (packageJson.private === true) continue
-    const license =
+    let license =
       typeof packageJson.license === 'string'
         ? packageJson.license
         : typeof packageJson.license?.type === 'string'
@@ -58,6 +58,25 @@ for (const packagePath of packagePaths) {
           : Array.isArray(packageJson.licenses)
             ? packageJson.licenses.map((item) => item.type ?? item).join(' OR ')
             : null
+    if (!license) {
+      // Algunos paquetes publican la licencia completa sin el campo de metadatos.
+      // Verificar el texto MIT evita tanto omitir el control como un falso negativo.
+      for (const filename of ['LICENSE', 'LICENSE.md', 'LICENSE.txt']) {
+        try {
+          const text = readFileSync(`${packagePath}/${filename}`, 'utf8')
+          if (
+            /Permission is hereby granted, free of charge/i.test(text) &&
+            /THE SOFTWARE IS PROVIDED ["“]AS IS["”]/i.test(text) &&
+            /to deal in the Software without restriction/i.test(text)
+          ) {
+            license = 'MIT'
+            break
+          }
+        } catch {
+          // Probar el siguiente nombre de archivo, sin aceptar licencias desconocidas.
+        }
+      }
+    }
     if (!license) {
       unlicensedPackages.push(packageJson.name ?? packagePath)
       continue
@@ -99,13 +118,15 @@ for (const file of files) {
     // Deleted or non-text files are not secret evidence for this source scan.
   }
 }
-if (secretHits.length > 0) throw new Error(`Posibles secretos detectados en: ${secretHits.join(', ')}`)
+if (secretHits.length > 0)
+  throw new Error(`Posibles secretos detectados en: ${secretHits.join(', ')}`)
 
 console.log(
   JSON.stringify({
     p12Audit: {
       npmAuditHighCritical: highOrCritical,
-      packagesWithLicense: licenses.size,
+      packagesWithLicense: [...licenses.values()].reduce((total, count) => total + count, 0),
+      licenseTypes: licenses.size,
       unknownLicenses: unknownLicenses.length + unlicensedPackages.length,
       secretFiles: secretHits.length,
       status: 'PASS',

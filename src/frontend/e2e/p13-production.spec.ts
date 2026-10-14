@@ -23,6 +23,7 @@ const roleAccess = {
 
 const accounts = ACADEMIC_DEMO_ACCOUNTS.map((account) => ({
   ...account,
+  email: process.env[`SGMV_PROD_TEST_EMAIL_${account.role}`] ?? account.email,
   ...roleAccess[account.role],
 }))
 

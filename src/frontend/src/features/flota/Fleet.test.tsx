@@ -265,6 +265,12 @@ describe('RF-01 fleet frontend', () => {
     expect(await screen.findByText(/La placa es obligatoria/i)).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText(/Placa/i), { target: { value: 'abc123' } })
+    fireEvent.change(screen.getByLabelText(/Empresa operadora/i), {
+      target: { value: 'UNITRANSA S.A.' },
+    })
+    fireEvent.change(screen.getByLabelText(/Procedencia del registro del bus/i), {
+      target: { value: 'SIMULADO_SGMV' },
+    })
     fireEvent.change(screen.getByLabelText(/^Marca$/i), { target: { value: 'Mercedes' } })
     fireEvent.change(screen.getByLabelText(/^Modelo$/i), { target: { value: 'Padron' } })
     fireEvent.change(await screen.findByLabelText(/Configuración técnica del vehículo/i), {
@@ -278,7 +284,11 @@ describe('RF-01 fleet frontend', () => {
     const createCall = fetchMock.mock.calls.find(
       ([input, init]) => getPath(input) === '/flota/buses' && init?.method === 'POST',
     )
-    expect(JSON.parse(String(createCall?.[1]?.body))).toMatchObject({ modeloBusId: 2033 })
+    expect(JSON.parse(String(createCall?.[1]?.body))).toMatchObject({
+      modeloBusId: 2033,
+      empresaOperadora: 'UNITRANSA S.A.',
+      origenDatos: 'SIMULADO_SGMV',
+    })
 
     fireEvent.click(screen.getByRole('button', { name: /Guardar/i }))
     expect(await screen.findByText(/La placa ya esta registrada/i)).toBeInTheDocument()

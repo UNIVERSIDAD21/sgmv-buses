@@ -89,6 +89,9 @@ export interface RutaDto {
 }
 
 export interface BusSummaryDto {
+  empresaOperadora?: string | null
+  origenDatos?: 'NO_VERIFICADO' | 'SIMULADO_SGMV' | 'REAL_DOCUMENTADO'
+  fuenteDatos?: string | null
   anio: number
   codigoInterno: string
   conductorAsignado: ResponsibleDto | null

@@ -68,7 +68,7 @@ export default function ActivationPage() {
       />
       <section className="relative w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-sm shadow-emerald-950/20">
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-xs shadow-emerald-950/20">
             <Bus size={24} />
           </div>
           <h1 className="text-xl font-semibold text-slate-900">Activar cuenta SGMV</h1>
@@ -77,7 +77,7 @@ export default function ActivationPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-white/80 bg-white/95 p-6 shadow-[0_18px_60px_-30px_rgba(15,23,42,0.35)] backdrop-blur">
+        <div className="rounded-xl border border-white/80 bg-white/95 p-6 shadow-[0_18px_60px_-30px_rgba(15,23,42,0.35)] backdrop-blur-sm">
           {activated ? (
             <div className="text-center" role="status">
               <CheckCircle className="mx-auto text-emerald-700" size={42} />

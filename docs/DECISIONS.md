@@ -657,3 +657,22 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 **Límites:** no hay escrituras RF-06, exportación, analítica predictiva, contabilidad avanzada, nuevas tablas ni nuevos RF. RF-01 a RF-05 permanecen como fuentes de verdad operativas.
 
 **Estado:** IMPLEMENTADA COMO RF-06.
+
+
+---
+
+## 2026-10-14 — Empresa de referencia, procedencia y programación mensual simulada
+
+**Autorización:** el propietario solicitó incluir las empresas del AMB, preparar el horizonte hasta enero de 2027 y, tras confirmar que no existe acceso empresarial, autorizó expresamente simular la operación. La publicación solicitada previamente queda condicionada a verificar este corte.
+
+**Datos:** empresa operadora y procedencia son atributos del bus, no un nuevo tenant ni un rol. La migración aditiva `20261014120000_empresa_y_procedencia_bus` incorpora `empresa_operadora`, `origen_datos` y `fuente_datos`. API y SQL exigen referencia para `REAL_DOCUMENTADO`; el valor inicial `NO_VERIFICADO` no convierte el historial en información real. El Conductor no recibe la fuente documental administrativa.
+
+**Fuentes:** once rutas de referencia conservan acto, página, URL y SHA-256 de los PDFs públicos del AMB de 2026. Los códigos `AMB-2026-*` son aditivos: no sobrescriben rutas históricas. Longitud oficial no acredita odómetros ni resuelve por sí sola la semántica de circuito. Capacidad autorizada expresa vehículos, no pasajeros o placas.
+
+**Simulación autorizada:** dos buses (principal/reserva) por empresa, dos conductores por empresa, once mecánicos y dos cuentas de coordinación, todos rotulados como simulados. Se programan 2.046 jornadas de lunes a sábado desde el 15-10-2026 al 31-01-2027, separadas por mes. Se incorporan cuatro referencias de repuesto con saldo inicial trazable y 44 planes preventivos académicos; las cadencias de 7/30 días no se atribuyen al fabricante. Las fechas futuras no generan lecturas, recorridos, consumos ni intervenciones ejecutadas. Repetir la carga no duplica jornadas ni reinicia stock o credenciales.
+
+**Interfaz:** el selector de mes solo prepara fechas de un período; se conserva previsualización y confirmación explícita con revalidación de disponibilidad. El horizonte se carga mediante mantenimiento controlado y no como cron de operaciones ficticias.
+
+**Dependencias:** Tailwind CSS 4.3.3 sustituye la versión 3 con compatibilidad visual verificada; no cambia React/Vite ni el stack aprobado. El smoke productivo admite cuentas dedicadas por rol mediante entorno protegido sin modificar las cuentas históricas.
+
+**Preservación:** la limpieza de datos de prueba se ensaya desde una copia Neon. Solo son elegibles componentes enteros con firmas de prueba exactas, autores reservados inactivos y sin fotografías ni relaciones compartidas. Los datos de validación manual se conservan y se identifican como archivo; no se renombran como operación real. Usuarios y eventos de auditoría no se borran. Los detalles de respaldo, ensayo y publicación quedan en el checkpoint externo del corte.

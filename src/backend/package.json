@@ -27,7 +27,11 @@
     "maintenance:cleanup-test-data:local": "dotenv -e ../../.env.local -- tsx scripts/cleanup-test-data.ts",
     "demo:credentials": "tsx prisma/align-demo-credentials.ts",
     "prisma:studio:local": "dotenv -e ../../.env.local -- prisma studio --schema prisma/schema.prisma",
-    "prisma:validate": "dotenv -e ../../.env -- prisma validate --schema prisma/schema.prisma"
+    "prisma:validate": "dotenv -e ../../.env -- prisma validate --schema prisma/schema.prisma",
+    "demo:amb:mes:local": "dotenv -e ../../.env.local -v SGMV_LOCAL_RUNTIME=true -- tsx scripts/prepare-amb-month.ts",
+    "plan:amb:meses": "tsx scripts/preview-monthly-horizon.ts",
+    "references:amb:local": "dotenv -e ../../.env.local -- tsx scripts/register-documented-routes.ts",
+    "demo:amb:horizonte:local": "dotenv -e ../../.env.local -v SGMV_LOCAL_RUNTIME=true -- tsx scripts/prepare-amb-horizon.ts"
   },
   "prisma": {
     "seed": "dotenv -e ../../.env -- tsx prisma/seed.ts"

@@ -257,6 +257,78 @@ describe('RF-01 Fleet API', () => {
     expect(response.body.data.bus.estadosHistorial[0].estadoNuevo).toBe('OPERATIVO')
   }, 60000)
 
+  it('persists company and provenance and finds buses by company without widening role access', async () => {
+    const admin = await loginAgent(fixture.adminEmail)
+    const empresa = `UNITRANSA S.A. ${shortCode()}`
+    const response = await admin
+      .post('/flota/buses')
+      .send({
+        anio: 2023,
+        marca: 'SGMV',
+        modelo: 'Escenario local',
+        placa: uniquePlate('C'),
+        empresaOperadora: empresa,
+        origenDatos: 'SIMULADO_SGMV',
+        fuenteDatos: 'Escenario de integración local; no corresponde a una flota real',
+      })
+      .expect(201)
+    const id = response.body.data.bus.id
+    created.buses.push(id)
+    expect(response.body.data.bus).toMatchObject({
+      empresaOperadora: empresa,
+      origenDatos: 'SIMULADO_SGMV',
+    })
+    const filtered = await admin
+      .get('/flota/buses')
+      .query({ empresaOperadora: empresa.toLowerCase() })
+      .expect(200)
+    expect(filtered.body.data.buses.map((bus: { id: string }) => bus.id)).toEqual([id])
+    const searched = await admin.get('/flota/buses').query({ busqueda: empresa }).expect(200)
+    expect(searched.body.data.buses.map((bus: { id: string }) => bus.id)).toContain(id)
+    const driver = await loginAgent(fixture.conductorEmail)
+    await driver.get('/flota/buses').query({ empresaOperadora: empresa }).expect(403)
+    const assignment = await prisma.asignacionConductor.create({
+      data: { busId: id, conductorId: fixture.conductorId, asignadoPorId: fixture.adminId },
+    })
+    try {
+      const own = await driver.get('/flota/mi-bus').expect(200)
+      expect(own.body.data.bus.empresaOperadora).toBe(empresa)
+      expect(own.body.data.bus).not.toHaveProperty('fuenteDatos')
+      const detail = await driver.get(`/flota/buses/${id}`).expect(200)
+      expect(detail.body.data.bus).not.toHaveProperty('fuenteDatos')
+    } finally {
+      await prisma.asignacionConductor.delete({ where: { id: assignment.id } })
+    }
+  }, 60000)
+
+  it('requires a reference when declaring a real bus and cannot clear it through PATCH or SQL', async () => {
+    const admin = await loginAgent(fixture.adminEmail)
+    const input = {
+      anio: 2023,
+      marca: 'SGMV',
+      modelo: 'Validación aislada',
+      placa: uniquePlate('R'),
+      origenDatos: 'REAL_DOCUMENTADO',
+    }
+    await admin.post('/flota/buses').send(input).expect(400)
+    const source = 'Referencia sintética exclusivamente para comprobar la restricción SQL y API'
+    const response = await admin
+      .post('/flota/buses')
+      .send({ ...input, fuenteDatos: source })
+      .expect(201)
+    const id = response.body.data.bus.id
+    created.buses.push(id)
+    await admin.patch(`/flota/buses/${id}`).send({ fuenteDatos: null }).expect(400)
+    await expect(
+      prisma.bus.update({ where: { id }, data: { fuenteDatos: null } }),
+    ).rejects.toThrow()
+    expect((await prisma.bus.findUniqueOrThrow({ where: { id } })).fuenteDatos).toBe(source)
+    await admin
+      .patch(`/flota/buses/${id}`)
+      .send({ origenDatos: 'SIMULADO_SGMV', fuenteDatos: null })
+      .expect(200)
+  }, 60000)
+
   it('rejects duplicate plates and does not accept a manually supplied internal code', async () => {
     const admin = await loginAgent(fixture.adminEmail)
     const existing = await createBus({

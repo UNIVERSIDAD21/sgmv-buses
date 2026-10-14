@@ -81,7 +81,7 @@ function Field({
       {label}
       <input
         maxLength={maxLength}
-        className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+        className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
         onChange={(event) => onChange(event.target.value)}
         required={required}
         value={value}

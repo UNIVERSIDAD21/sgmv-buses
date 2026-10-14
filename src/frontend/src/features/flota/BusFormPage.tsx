@@ -16,6 +16,9 @@ import type {
 } from './fleet.types'
 
 interface FormState {
+  empresaOperadora: string
+  origenDatos: 'NO_VERIFICADO' | 'SIMULADO_SGMV' | 'REAL_DOCUMENTADO'
+  fuenteDatos: string
   anio: string
   estadoOperativo: BusStatus
   kilometrajeActual: string
@@ -31,6 +34,9 @@ const currentYear = new Date().getFullYear()
 
 function emptyForm(): FormState {
   return {
+    empresaOperadora: '',
+    origenDatos: 'NO_VERIFICADO',
+    fuenteDatos: '',
     anio: String(currentYear),
     estadoOperativo: 'OPERATIVO',
     kilometrajeActual: '0',
@@ -60,6 +66,9 @@ function getErrorMessage(error: unknown) {
 
 function formFromBus(bus: BusDetailDto): FormState {
   return {
+    empresaOperadora: bus.empresaOperadora ?? '',
+    origenDatos: bus.origenDatos ?? 'NO_VERIFICADO',
+    fuenteDatos: bus.fuenteDatos ?? '',
     anio: String(bus.anio),
     estadoOperativo: bus.estadoOperativo,
     kilometrajeActual: String(bus.kilometrajeActual),
@@ -189,6 +198,9 @@ export default function BusFormPage() {
       errors.motivoEstado = 'Indique el motivo del estado inicial.'
     }
 
+    if (form.origenDatos === 'REAL_DOCUMENTADO' && form.fuenteDatos.trim().length < 10)
+      errors.fuenteDatos = 'Indique la fuente verificable del registro del bus.'
+
     setFieldErrors(errors)
 
     return Object.keys(errors).length === 0
@@ -204,6 +216,9 @@ export default function BusFormPage() {
     }
 
     const baseInput = {
+      empresaOperadora: form.empresaOperadora.trim() || (isEditing ? null : undefined),
+      origenDatos: form.origenDatos,
+      fuenteDatos: form.fuenteDatos.trim() || (isEditing ? null : undefined),
       anio: Number(form.anio),
       marca: normalized.marca,
       modelo: normalized.modelo,
@@ -306,10 +321,72 @@ export default function BusFormPage() {
             </legend>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
+                Empresa operadora
+                <input
+                  aria-label="Empresa operadora"
+                  className="field-control"
+                  list="empresas-amb"
+                  maxLength={160}
+                  onChange={(event) => updateField('empresaOperadora', event.target.value)}
+                  value={form.empresaOperadora}
+                />
+                <datalist id="empresas-amb">
+                  {[
+                    'UNITRANSA S.A.',
+                    'TRANSCOLOMBIA S.A.',
+                    'COTRANDER',
+                    'TRANSPORTES GIRÓN S.A.',
+                    'ORIENTAL DE TRANSPORTES S.A.',
+                    'COOTRAGAS CTA.',
+                    'LUSITANIA S.A.',
+                    'METROPOLITANA DE SERVICIOS S.A.',
+                    'TRANSPORTES SAN JUAN S.A.',
+                    'TRANSPORTES PIEDECUESTA S.A.',
+                    'TRANSPORTES VILLA DE SAN CARLOS S.A.',
+                  ].map((empresa) => (
+                    <option key={empresa} value={empresa} />
+                  ))}
+                </datalist>
+                <span className="mt-1 block text-xs text-slate-500">
+                  La empresa identifica la flota; no sustituye la marca ni el modelo técnico del
+                  bus.
+                </span>
+              </label>
+              <label className="block text-sm font-medium text-slate-700">
+                Procedencia del registro del bus
+                <select
+                  aria-label="Procedencia del registro del bus"
+                  className="field-control"
+                  onChange={(event) => updateField('origenDatos', event.target.value)}
+                  value={form.origenDatos}
+                >
+                  <option value="NO_VERIFICADO">Pendiente de verificar</option>
+                  <option value="SIMULADO_SGMV">Simulado para demostración</option>
+                  <option value="REAL_DOCUMENTADO">Real documentado</option>
+                </select>
+              </label>
+              <label className="block text-sm font-medium text-slate-700">
+                Fuente del registro
+                <input
+                  aria-label="Fuente del registro"
+                  className="field-control"
+                  maxLength={1000}
+                  onChange={(event) => updateField('fuenteDatos', event.target.value)}
+                  value={form.fuenteDatos}
+                />
+                <span className="mt-1 block text-xs text-slate-500">
+                  Documento o referencia que respalda este bus. Una empresa real no acredita por sí
+                  sola todos los datos del vehículo.
+                </span>
+                {fieldErrors.fuenteDatos && (
+                  <span className="mt-1 block text-xs text-red-600">{fieldErrors.fuenteDatos}</span>
+                )}
+              </label>
+              <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
                 Configuración técnica del vehículo
                 <select
                   aria-label="Configuración técnica del vehículo"
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => updateField('modeloBusId', event.target.value)}
                   value={form.modeloBusId}
                 >
@@ -351,7 +428,7 @@ export default function BusFormPage() {
               <label className="block text-sm font-medium text-slate-700">
                 Placa
                 <input
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => updateField('placa', event.target.value)}
                   maxLength={15}
                   value={form.placa}
@@ -375,7 +452,7 @@ export default function BusFormPage() {
                 Marca
                 <input
                   aria-label="Marca"
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => updateField('marca', event.target.value)}
                   value={form.marca}
                 />
@@ -388,7 +465,7 @@ export default function BusFormPage() {
                 Modelo
                 <input
                   aria-label="Modelo"
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => updateField('modelo', event.target.value)}
                   value={form.modelo}
                 />
@@ -400,7 +477,7 @@ export default function BusFormPage() {
               <label className="block text-sm font-medium text-slate-700">
                 Anio
                 <input
-                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => updateField('anio', event.target.value)}
                   type="number"
                   value={form.anio}

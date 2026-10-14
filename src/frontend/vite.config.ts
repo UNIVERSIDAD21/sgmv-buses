@@ -1,12 +1,13 @@
 /// <reference types="vitest" />
 
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { configDefaults, defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
   envDir: '../..',
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   build: {
     manifest: true,
     rollupOptions: {

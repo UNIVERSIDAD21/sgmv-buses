@@ -549,7 +549,7 @@ export default function UserManagementPage() {
         title="Usuarios"
       />
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_180px_180px] xl:grid-cols-[minmax(0,1fr)_220px_220px]">
           <label className="relative block sm:col-span-2 lg:col-span-1">
             <span className="sr-only">Buscar usuarios</span>
@@ -636,7 +636,7 @@ export default function UserManagementPage() {
           title="No hay usuarios para mostrar"
         />
       ) : (
-        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
           <ul className="divide-y divide-slate-100 lg:hidden" data-testid="user-card-list">
             {items.map((item) => (
               <li className="p-4" key={item.id}>

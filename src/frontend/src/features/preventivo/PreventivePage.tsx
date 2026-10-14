@@ -243,7 +243,7 @@ function ScheduleFormDialog({
           <label className="block text-sm font-medium text-slate-700">
             Bus
             <select
-              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
               disabled={Boolean(initial)}
               onChange={(event) => setBusId(event.target.value)}
               value={busId}
@@ -259,7 +259,7 @@ function ScheduleFormDialog({
           <label className="block text-sm font-medium text-slate-700">
             Criterio
             <select
-              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
               onChange={(event) => setCriterio(event.target.value as PreventiveCriterion)}
               value={criterio}
             >
@@ -293,7 +293,7 @@ function ScheduleFormDialog({
           <label className="block text-sm font-medium text-slate-700">
             Tipo
             <input
-              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
               onChange={(event) => setTipo(event.target.value)}
               placeholder="Ej. Cambio de aceite"
               value={tipo}
@@ -303,7 +303,7 @@ function ScheduleFormDialog({
             <label className="block text-sm font-medium text-slate-700">
               Fecha programada
               <input
-                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setFechaProgramada(event.target.value)}
                 type="date"
                 value={fechaProgramada}
@@ -314,7 +314,7 @@ function ScheduleFormDialog({
             <label className="block text-sm font-medium text-slate-700">
               Kilometraje objetivo
               <input
-                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 inputMode="numeric"
                 onChange={(event) => setKilometrajeObjetivo(event.target.value)}
                 type="text"
@@ -330,7 +330,7 @@ function ScheduleFormDialog({
         <label className="block text-sm font-medium text-slate-700">
           Actividad
           <textarea
-            className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
             onChange={(event) => setActividad(event.target.value)}
             placeholder="Detalle de la actividad preventiva."
             value={actividad}
@@ -341,7 +341,7 @@ function ScheduleFormDialog({
           <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
             <input
               checked={activa}
-              className="h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-100"
+              className="h-4 w-4 rounded-sm border-slate-300 text-emerald-700 focus:ring-emerald-100"
               onChange={(event) => setActiva(event.target.checked)}
               type="checkbox"
             />
@@ -415,7 +415,7 @@ function GenerateOrderDialog({
         <label className="block text-sm font-medium text-slate-700">
           Prioridad
           <select
-            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
             onChange={(event) => setPrioridad(event.target.value as OrderPriority)}
             value={prioridad}
           >
@@ -429,7 +429,7 @@ function GenerateOrderDialog({
         <label className="block text-sm font-medium text-slate-700">
           Descripcion de la orden
           <textarea
-            className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
             onChange={(event) => setDescripcionOrden(event.target.value)}
             value={descripcionOrden}
           />
@@ -437,7 +437,7 @@ function GenerateOrderDialog({
         <label className="block text-sm font-medium text-slate-700">
           Observacion
           <textarea
-            className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
             onChange={(event) => setObservacion(event.target.value)}
             value={observacion}
           />
@@ -978,7 +978,7 @@ export default function PreventivePage() {
                     size={15}
                   />
                   <input
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                     onChange={(event) => {
                       setPagina(1)
                       setBusqueda(event.target.value)
@@ -992,7 +992,7 @@ export default function PreventivePage() {
                   <span className="mb-1 block text-xs font-medium text-slate-600">Bus</span>
                   <select
                     aria-label="Bus"
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                     onChange={(event) => {
                       setPagina(1)
                       setBusId(event.target.value)
@@ -1011,7 +1011,7 @@ export default function PreventivePage() {
                   <span className="mb-1 block text-xs font-medium text-slate-600">Criterio</span>
                   <select
                     aria-label="Criterio"
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                     onChange={(event) => {
                       setPagina(1)
                       setCriterio(event.target.value as PreventiveCriterion | '')
@@ -1030,7 +1030,7 @@ export default function PreventivePage() {
                   <span className="mb-1 block text-xs font-medium text-slate-600">Ordenar por</span>
                   <select
                     aria-label="Ordenar por"
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                     onChange={(event) => setOrdenarPor(event.target.value as SortField)}
                     value={ordenarPor}
                   >
@@ -1045,7 +1045,7 @@ export default function PreventivePage() {
                   <span className="mb-1 block text-xs font-medium text-slate-600">Direccion</span>
                   <select
                     aria-label="Direccion"
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                     onChange={(event) => setDireccion(event.target.value as 'asc' | 'desc')}
                     value={direccion}
                   >

@@ -43,7 +43,7 @@ function ModuleList({ items }: { items: NavigationItem[] }) {
     <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
       {items.map((item) => (
         <Link
-          className="group rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition hover:border-emerald-700/40 hover:shadow-sm"
+          className="group rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition hover:border-emerald-700/40 hover:shadow-xs"
           key={item.path}
           to={item.path}
         >

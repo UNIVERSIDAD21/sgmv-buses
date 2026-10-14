@@ -345,7 +345,7 @@ function ManualOrderDialog({
           <label className="block text-sm font-medium text-slate-700">
             Bus
             <select
-              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
               onChange={(event) => setBusId(event.target.value)}
               value={busId}
             >
@@ -360,7 +360,7 @@ function ManualOrderDialog({
           <label className="block text-sm font-medium text-slate-700">
             Prioridad
             <select
-              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
               onChange={(event) => setPrioridad(event.target.value as OrderPriority)}
               value={prioridad}
             >
@@ -393,7 +393,7 @@ function ManualOrderDialog({
         <label className="block text-sm font-medium text-slate-700">
           Descripcion
           <textarea
-            className="mt-1.5 min-h-28 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            className="mt-1.5 min-h-28 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
             onChange={(event) => setDescripcion(event.target.value)}
             placeholder="Motivo de la orden correctiva directa."
             value={descripcion}
@@ -469,7 +469,7 @@ function AssignmentDialog({
         <label className="block text-sm font-medium text-slate-700">
           Mecanico
           <select
-            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
             onChange={(event) => setTecnicoId(event.target.value)}
             value={tecnicoId}
           >
@@ -485,7 +485,7 @@ function AssignmentDialog({
         <label className="block text-sm font-medium text-slate-700">
           {action.mode === 'assign' ? 'Observacion' : 'Motivo de reasignacion'}
           <textarea
-            className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
             aria-required={action.mode === 'reassign'}
             onChange={(event) => setMotivo(event.target.value)}
             value={motivo}
@@ -550,7 +550,7 @@ function ReturnDialog({
         <label className="block text-sm font-medium text-slate-700">
           Motivo de devolucion
           <textarea
-            className="mt-1.5 min-h-28 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            className="mt-1.5 min-h-28 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
             onChange={(event) => setMotivo(event.target.value)}
             value={motivo}
           />
@@ -657,7 +657,7 @@ function CloseDialog({
         <label className="block text-sm font-medium text-slate-700">
           Observacion de cierre
           <textarea
-            className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
             onChange={(event) => setObservacion(event.target.value)}
             value={observacion}
           />
@@ -665,7 +665,7 @@ function CloseDialog({
         <label className="flex items-start gap-2 text-sm font-medium text-slate-700">
           <input
             checked={confirm}
-            className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-100"
+            className="mt-1 h-4 w-4 rounded-sm border-slate-300 text-emerald-700 focus:ring-emerald-100"
             onChange={(event) => setConfirm(event.target.checked)}
             type="checkbox"
           />
@@ -1104,7 +1104,7 @@ function TechnicalPanel({
             <label className="block text-sm font-medium text-slate-700">
               Diagnóstico
               <textarea
-                className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setDiagnostico(event.target.value)}
                 placeholder="Describe brevemente lo encontrado…"
                 value={diagnostico}
@@ -1116,7 +1116,7 @@ function TechnicalPanel({
               <label className="block text-sm font-medium text-slate-700">
                 Observaciones técnicas (opcional)
                 <textarea
-                  className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => setObservaciones(event.target.value)}
                   value={observaciones}
                   maxLength={3000}
@@ -1159,7 +1159,7 @@ function TechnicalPanel({
             <label className="block text-sm font-medium text-slate-700">
               Actividad realizada
               <textarea
-                className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setActividad(event.target.value)}
                 value={actividad}
               />
@@ -1193,7 +1193,7 @@ function TechnicalPanel({
                   <label className="block text-sm font-medium text-slate-700">
                     Buscar repuesto
                     <input
-                      className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                      className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                       onChange={(event) => setPartsSearch(event.target.value)}
                       placeholder="Codigo, nombre o categoria"
                       value={partsSearch}
@@ -1202,7 +1202,7 @@ function TechnicalPanel({
                   <label className="block text-sm font-medium text-slate-700">
                     Cantidad
                     <input
-                      className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                      className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                       min="0.01"
                       onChange={(event) => setCantidad(event.target.value)}
                       step="0.01"
@@ -1214,7 +1214,7 @@ function TechnicalPanel({
                 <label className="block text-sm font-medium text-slate-700">
                   Repuesto
                   <select
-                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                     onChange={(event) => setRepuestoId(event.target.value)}
                     value={repuestoId}
                   >
@@ -2399,7 +2399,7 @@ function WorkOrderDetail({
                   {isAdmin &&
                     consumption.reversos?.map((reversal) => (
                       <div
-                        className="col-span-full rounded border border-emerald-200 bg-emerald-50 p-2 text-xs"
+                        className="col-span-full rounded-sm border border-emerald-200 bg-emerald-50 p-2 text-xs"
                         key={reversal.id}
                       >
                         Reverso de {reversal.cantidad} ·{' '}
@@ -2442,7 +2442,7 @@ function WorkOrderDetail({
                             <label className="block">
                               Cantidad a reversar
                               <input
-                                className="mt-1 w-full rounded border bg-white p-2"
+                                className="mt-1 w-full rounded-sm border bg-white p-2"
                                 type="number"
                                 min="0.01"
                                 max={consumption.cantidadPendiente ?? consumption.cantidad}
@@ -2458,7 +2458,7 @@ function WorkOrderDetail({
                             <label className="block">
                               Motivo del reverso
                               <textarea
-                                className="mt-1 w-full rounded border bg-white p-2"
+                                className="mt-1 w-full rounded-sm border bg-white p-2"
                                 maxLength={1000}
                                 required
                                 value={reversalReason}
@@ -3018,7 +3018,7 @@ export default function WorkOrderPage() {
                 size={15}
               />
               <input
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setPagina(1)
                   setBusqueda(event.target.value)
@@ -3032,7 +3032,7 @@ export default function WorkOrderPage() {
               <span className="mb-1 block text-xs font-medium text-slate-600">Tipo</span>
               <select
                 aria-label="Tipo"
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setPagina(1)
                   setTipo(event.target.value as WorkOrderType | '')
@@ -3051,7 +3051,7 @@ export default function WorkOrderPage() {
               <span className="mb-1 block text-xs font-medium text-slate-600">Origen</span>
               <select
                 aria-label="Origen"
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setPagina(1)
                   setOrigen(event.target.value as WorkOrderOrigin | '')
@@ -3070,7 +3070,7 @@ export default function WorkOrderPage() {
               <span className="mb-1 block text-xs font-medium text-slate-600">Ordenar por</span>
               <select
                 aria-label="Ordenar por"
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setOrdenarPor(event.target.value as SortField)}
                 value={ordenarPor}
               >
@@ -3085,7 +3085,7 @@ export default function WorkOrderPage() {
               <span className="mb-1 block text-xs font-medium text-slate-600">Direccion</span>
               <select
                 aria-label="Direccion"
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setDireccion(event.target.value as 'asc' | 'desc')}
                 value={direccion}
               >
@@ -3101,7 +3101,7 @@ export default function WorkOrderPage() {
                 <span className="mb-1 block text-xs font-medium text-slate-600">Bus</span>
                 <select
                   aria-label="Bus"
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => {
                     setPagina(1)
                     setBusId(event.target.value)
@@ -3120,7 +3120,7 @@ export default function WorkOrderPage() {
                 <span className="mb-1 block text-xs font-medium text-slate-600">Mecanico</span>
                 <select
                   aria-label="Mecanico"
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => {
                     setPagina(1)
                     setTecnicoId(event.target.value)

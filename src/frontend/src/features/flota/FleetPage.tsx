@@ -892,12 +892,12 @@ export default function FleetPage() {
             <span className="sr-only">Buscar buses</span>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
             <input
-              className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
               onChange={(event) => {
                 setPagina(1)
                 setBusqueda(event.target.value)
               }}
-              placeholder="Buscar por codigo o placa"
+              placeholder="Buscar por codigo o placa, o por empresa"
               type="search"
               value={busqueda}
             />
@@ -969,6 +969,7 @@ export default function FleetPage() {
                   <tr>
                     <th className="px-4 py-3">Codigo</th>
                     <th className="px-4 py-3">Placa</th>
+                    <th className="px-4 py-3">Empresa</th>
                     <th className="px-4 py-3">Vehiculo</th>
                     <th className="px-4 py-3">Estado</th>
                     <th className="px-4 py-3 text-right">Kilometraje</th>
@@ -983,6 +984,17 @@ export default function FleetPage() {
                         {bus.codigoInterno}
                       </td>
                       <td className="px-4 py-3 text-slate-600">{bus.placa}</td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {bus.empresaOperadora ?? 'Sin registrar'}
+                        {bus.origenDatos === 'SIMULADO_SGMV' && (
+                          <span className="mt-1 block text-xs text-slate-500">Bus simulado</span>
+                        )}
+                        {bus.origenDatos === 'REAL_DOCUMENTADO' && (
+                          <span className="mt-1 block text-xs text-emerald-700">
+                            Registro documentado
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-slate-600">
                         {bus.marca} {bus.modelo} ({bus.anio})
                       </td>
@@ -1062,6 +1074,23 @@ export default function FleetPage() {
             <div className="space-y-5">
               <div className="grid gap-3 sm:grid-cols-2">
                 <FieldValue label="Marca" value={selectedBus.marca} />
+                <FieldValue
+                  label="Empresa operadora"
+                  value={selectedBus.empresaOperadora ?? 'Sin registrar'}
+                />
+                <FieldValue
+                  label="Procedencia del bus"
+                  value={
+                    selectedBus.origenDatos === 'SIMULADO_SGMV'
+                      ? 'Simulado para demostración'
+                      : selectedBus.origenDatos === 'REAL_DOCUMENTADO'
+                        ? 'Declarado real con referencia documental'
+                        : 'Pendiente de verificar'
+                  }
+                />
+                {selectedBus.fuenteDatos && (
+                  <FieldValue label="Fuente del registro" value={selectedBus.fuenteDatos} />
+                )}
                 <FieldValue label="Modelo" value={selectedBus.modelo} />
                 <FieldValue
                   label="Configuración técnica"

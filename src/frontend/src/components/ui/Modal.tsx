@@ -44,7 +44,7 @@ export default function Modal({
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
           <div className="min-w-0">
             <h2
-              className="text-base font-semibold text-slate-900 focus:outline-none"
+              className="text-base font-semibold text-slate-900 focus:outline-hidden"
               id={titleId}
               ref={titleRef}
               tabIndex={-1}

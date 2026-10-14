@@ -532,7 +532,7 @@ function TextInput({
     <label className="block text-sm font-medium text-slate-700">
       {label}
       <input
-        className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+        className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
         onChange={(event) => onChange(event.target.value)}
         required={required}
         type={type}
@@ -659,7 +659,7 @@ function CreateForm({
         <label className="block text-sm font-medium text-slate-700">
           Motivo de stock inicial
           <textarea
-            className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
             onChange={(event) => setMotivoStockInicial(event.target.value)}
             value={motivoStockInicial}
           />
@@ -849,7 +849,7 @@ function EntryForm({
       <label className="block text-sm font-medium text-slate-700">
         Motivo
         <textarea
-          className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+          className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
           onChange={(event) => setMotivo(event.target.value)}
           required
           value={motivo}
@@ -939,7 +939,7 @@ function AdjustmentForm({
       <label className="block text-sm font-medium text-slate-700">
         Cómo cambia la existencia
         <select
-          className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+          className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
           onChange={(event) => {
             setDireccion(event.target.value as 'DISMINUCION' | 'INCREMENTO')
             setConfirmDecrease(false)
@@ -966,7 +966,7 @@ function AdjustmentForm({
       <label className="block text-sm font-medium text-slate-700">
         Motivo
         <textarea
-          className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+          className="mt-1.5 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
           onChange={(event) => setMotivo(event.target.value)}
           required
           value={motivo}
@@ -1611,7 +1611,7 @@ export default function SparePartsPage() {
                   size={15}
                 />
                 <input
-                  className="min-h-10 w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  className="min-h-10 w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => {
                     setBusqueda(event.target.value)
                     setPagina(1)
@@ -1623,7 +1623,7 @@ export default function SparePartsPage() {
             <label className="block text-sm font-medium text-slate-700">
               Categoria
               <input
-                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setCategoria(event.target.value)
                   setPagina(1)
@@ -1634,7 +1634,7 @@ export default function SparePartsPage() {
             <label className="block text-sm font-medium text-slate-700">
               Disponibilidad
               <select
-                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setDisponibilidad(event.target.value as SparePartAvailability | '')
                   setPagina(1)
@@ -1652,7 +1652,7 @@ export default function SparePartsPage() {
             <label className="block text-sm font-medium text-slate-700">
               Estado
               <select
-                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setEstado(event.target.value as SparePartStatus | '')
                   setPagina(1)
@@ -1667,7 +1667,7 @@ export default function SparePartsPage() {
             <label className="block text-sm font-medium text-slate-700">
               Ordenar
               <select
-                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setOrdenarPor(event.target.value as SortField)}
                 value={ordenarPor}
               >
@@ -1733,7 +1733,7 @@ export default function SparePartsPage() {
             <label className="block text-sm font-medium text-slate-700">
               Buscar
               <input
-                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setMovementBusquedas(event.target.value)
                   setMovementPagina(1)
@@ -1744,7 +1744,7 @@ export default function SparePartsPage() {
             <label className="block text-sm font-medium text-slate-700">
               Tipo
               <select
-                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setMovementTipo(event.target.value as InventoryMovementType | '')
                   setMovementPagina(1)
@@ -1762,7 +1762,7 @@ export default function SparePartsPage() {
             <label className="block text-sm font-medium text-slate-700">
               Ordenar
               <select
-                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setMovementOrdenarPor(event.target.value as MovementSortField)}
                 value={movementOrdenarPor}
               >
@@ -1855,7 +1855,7 @@ export default function SparePartsPage() {
                 ) : (
                   compatibilityRules.map((rule) => (
                     <div
-                      className="rounded border border-cyan-200 bg-white p-3 text-sm"
+                      className="rounded-sm border border-cyan-200 bg-white p-3 text-sm"
                       key={rule.id}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">

@@ -12,6 +12,7 @@ import {
   type JourneyPeriodPreview,
 } from './journey.api'
 import type { JourneyOptionsResponse } from './journey.types'
+import { getMonthlyPeriod } from './journey-month'
 
 const weekdays = [
   { number: 1, name: 'Lun' },
@@ -60,6 +61,7 @@ export default function JourneyScheduleForm({
   const [fecha, setFecha] = useState(bogotaDate(1))
   const [fechaInicio, setFechaInicio] = useState(bogotaDate(1))
   const [fechaFin, setFechaFin] = useState(bogotaDate(7))
+  const [calendarMonth, setCalendarMonth] = useState('')
   const [diasSemana, setDiasSemana] = useState([1, 2, 3, 4, 5])
   const [horaInicio, setHoraInicio] = useState('06:00')
   const [horaFin, setHoraFin] = useState('14:00')
@@ -287,6 +289,29 @@ export default function JourneyScheduleForm({
           ) : (
             <>
               <label className="field-label">
+                Mes a programar
+                <input
+                  aria-label="Mes a programar"
+                  className="field-control"
+                  type="month"
+                  min={bogotaDate(1).slice(0, 7)}
+                  value={calendarMonth}
+                  onChange={(event) => {
+                    const month = event.target.value
+                    const period = getMonthlyPeriod(month, bogotaDate(1))
+                    setCalendarMonth(month)
+                    if (period) {
+                      setFechaInicio(period.fechaInicio)
+                      setFechaFin(period.fechaFin)
+                    }
+                    invalidate()
+                  }}
+                />
+                <span className="text-xs font-normal text-slate-500">
+                  Cada mes se revisa y confirma por separado. No registra viajes realizados.
+                </span>
+              </label>
+              <label className="field-label">
                 Desde
                 <input
                   aria-label="Inicio del período"
@@ -295,6 +320,7 @@ export default function JourneyScheduleForm({
                   required
                   value={fechaInicio}
                   onChange={(event) => {
+                    setCalendarMonth('')
                     setFechaInicio(event.target.value)
                     invalidate()
                   }}
@@ -309,6 +335,7 @@ export default function JourneyScheduleForm({
                   required
                   value={fechaFin}
                   onChange={(event) => {
+                    setCalendarMonth('')
                     setFechaFin(event.target.value)
                     invalidate()
                   }}

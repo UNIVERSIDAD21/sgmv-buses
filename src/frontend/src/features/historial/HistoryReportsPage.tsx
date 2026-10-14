@@ -109,7 +109,7 @@ function Filters({
             <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
             <input
               aria-label="Buscar bus"
-              className="min-h-10 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-sm outline-none focus:border-emerald-600"
+              className="min-h-10 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-sm outline-hidden focus:border-emerald-600"
               onChange={(event) => onChange({ ...draft, busqueda: event.target.value })}
               placeholder="Código, placa, marca o modelo"
               value={draft.busqueda ?? ''}

@@ -377,7 +377,7 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
         <div
           className={`flex h-14 items-center gap-2.5 border-b border-slate-100 px-3 ${expanded ? 'md:justify-center xl:justify-start' : 'justify-center'}`}
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-sm">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-xs">
             <Bus size={18} />
           </div>
           {expanded && (
@@ -459,7 +459,7 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
               </div>
               <div>
                 <p
-                  className="text-sm font-semibold text-slate-900 focus:outline-none"
+                  className="text-sm font-semibold text-slate-900 focus:outline-hidden"
                   id="menu-movil-titulo"
                   ref={mobileMenuTitleRef}
                   tabIndex={-1}
@@ -545,7 +545,7 @@ export default function AppShell({ onLogout, user }: AppShellProps) {
         </header>
 
         <main
-          className="scrollbar-thin min-h-0 flex-1 overflow-y-auto focus:outline-none"
+          className="scrollbar-thin min-h-0 flex-1 overflow-y-auto focus:outline-hidden"
           id="contenido-principal"
           ref={mainRef}
           tabIndex={-1}

@@ -343,6 +343,9 @@ model Bus {
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   modeloBusId       Int?      @map("modelo_bus_id")
+  empresaOperadora  String?   @map("empresa_operadora") @db.VarChar(160)
+  origenDatos       String    @default("NO_VERIFICADO") @map("origen_datos") @db.VarChar(24)
+  fuenteDatos       String?   @map("fuente_datos") @db.VarChar(1000)
 
   modeloBus ModeloBus? @relation(fields: [modeloBusId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 

@@ -80,7 +80,7 @@ export default function KeyValueFields({
               Nombre del dato {index + 1}
             </label>
             <input
-              className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
               id={`${label}-campo-${index}`}
               onChange={(event) => update(index, 'campo', event.target.value)}
               placeholder="Dato, por ejemplo: Voltaje"
@@ -90,7 +90,7 @@ export default function KeyValueFields({
               Valor del dato {index + 1}
             </label>
             <input
-              className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100"
               id={`${label}-valor-${index}`}
               onChange={(event) => update(index, 'valor', event.target.value)}
               placeholder="Valor, por ejemplo: 24 V"

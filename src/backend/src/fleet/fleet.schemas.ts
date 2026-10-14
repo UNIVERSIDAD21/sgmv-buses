@@ -31,6 +31,7 @@ export const busIdParamSchema = z.object({
 
 export const listBusesQuerySchema = z.object({
   busqueda: optionalTrimmedText(80),
+  empresaOperadora: optionalTrimmedText(160),
   estado: z.enum(estadoBusValues).optional(),
   sinConductor: z
     .enum(['true', 'false'])
@@ -57,6 +58,11 @@ export const createBusSchema = z
       .max(currentYear + 1),
     estadoOperativo: z.enum(estadoBusValues).default('OPERATIVO'),
     kilometrajeActual: z.coerce.number().int().min(0).default(0),
+    empresaOperadora: optionalTrimmedText(160),
+    origenDatos: z
+      .enum(['NO_VERIFICADO', 'SIMULADO_SGMV', 'REAL_DOCUMENTADO'])
+      .default('NO_VERIFICADO'),
+    fuenteDatos: optionalTrimmedText(1000),
     marca: trimmedText(100),
     modelo: trimmedText(100),
     modeloBusId: entityIdSchema.optional(),
@@ -73,6 +79,9 @@ export const updateBusSchema = z
       .min(1980)
       .max(currentYear + 1)
       .optional(),
+    empresaOperadora: z.string().trim().min(1).max(160).nullable().optional(),
+    origenDatos: z.enum(['NO_VERIFICADO', 'SIMULADO_SGMV', 'REAL_DOCUMENTADO']).optional(),
+    fuenteDatos: z.string().trim().min(1).max(1000).nullable().optional(),
     marca: trimmedText(100).optional(),
     modelo: trimmedText(100).optional(),
     modeloBusId: entityIdSchema.nullable().optional(),

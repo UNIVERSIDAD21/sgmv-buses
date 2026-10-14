@@ -153,6 +153,9 @@ function mapBusSummary(bus: BusSummaryRecord | BusDetailRecord): BusSummaryDto {
   return {
     anio: bus.anio,
     codigoInterno: bus.codigoInterno,
+    empresaOperadora: bus.empresaOperadora,
+    origenDatos: bus.origenDatos as BusSummaryDto['origenDatos'],
+    fuenteDatos: bus.fuenteDatos,
     conductorAsignado: activeAssignment ? mapResponsible(activeAssignment.conductor) : null,
     estadoOperativo: bus.estadoOperativo,
     id: bus.id,
@@ -335,6 +338,16 @@ export class FleetService {
   async createBus(input: CreateBusInput, actor: AuthenticatedUser) {
     ensureAdmin(actor)
 
+    if (
+      input.origenDatos === 'REAL_DOCUMENTADO' &&
+      (!input.fuenteDatos || input.fuenteDatos.trim().length < 10)
+    )
+      throw new AppError(
+        400,
+        'REAL_BUS_SOURCE_REQUIRED',
+        'Indique una fuente verificable para identificar este bus como real documentado',
+      )
+
     if (input.modeloBusId) {
       await this.ensureActiveModeloBus(input.modeloBusId)
     }
@@ -343,6 +356,9 @@ export class FleetService {
       const bus = await this.fleetRepository.createBusWithInitialState(
         {
           anio: input.anio,
+          empresaOperadora: input.empresaOperadora ? normalizeText(input.empresaOperadora) : null,
+          origenDatos: input.origenDatos,
+          fuenteDatos: input.fuenteDatos ?? null,
           estadoOperativo: input.estadoOperativo,
           kilometrajeActual: input.kilometrajeActual,
           marca: normalizeText(input.marca),
@@ -405,6 +421,7 @@ export class FleetService {
       }),
       bus: {
         ...bus,
+        fuenteDatos: undefined,
         asignacionesHistorial: [],
       },
     }
@@ -457,6 +474,7 @@ export class FleetService {
       return {
         bus: {
           ...bus,
+          fuenteDatos: undefined,
           asignacionesHistorial: [],
         },
       }
@@ -621,6 +639,25 @@ export class FleetService {
       }
     }
 
+    if (input.empresaOperadora !== undefined)
+      data.empresaOperadora = input.empresaOperadora ? normalizeText(input.empresaOperadora) : null
+    if (input.origenDatos !== undefined) data.origenDatos = input.origenDatos
+    if (input.fuenteDatos !== undefined) data.fuenteDatos = input.fuenteDatos
+    if (input.origenDatos !== undefined || input.fuenteDatos !== undefined) {
+      const current = await this.fleetRepository.findBusSummaryById(busId)
+      if (!current) throw new AppError(404, 'BUS_NOT_FOUND', 'Bus no encontrado')
+      const source = input.fuenteDatos === undefined ? current.fuenteDatos : input.fuenteDatos
+      if (
+        (input.origenDatos ?? current.origenDatos) === 'REAL_DOCUMENTADO' &&
+        (!source || source.trim().length < 10)
+      )
+        throw new AppError(
+          400,
+          'REAL_BUS_SOURCE_REQUIRED',
+          'Indique una fuente verificable para identificar este bus como real documentado',
+        )
+    }
+
     if (input.anio !== undefined) {
       data.anio = input.anio
     }
@@ -651,6 +688,9 @@ export class FleetService {
   private createBusWhere(query: ListBusesQuery): Prisma.BusWhereInput {
     const filters: Prisma.BusWhereInput[] = []
 
+    if (query.empresaOperadora)
+      filters.push({ empresaOperadora: { contains: query.empresaOperadora, mode: 'insensitive' } })
+
     if (query.estado) {
       filters.push({
         estadoOperativo: query.estado,
@@ -672,6 +712,7 @@ export class FleetService {
 
       filters.push({
         OR: [
+          { empresaOperadora: { contains: query.busqueda, mode: 'insensitive' } },
           {
             codigoInterno: {
               contains: search,

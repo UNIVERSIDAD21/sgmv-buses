@@ -38,7 +38,7 @@ function ruleOriginLabel(origin: PreventivePlanDto['origenRegla'] | undefined) {
   return ruleOriginLabels[origin ?? 'SIN_REFERENCIA']
 }
 const fieldClass =
-  'mt-1 block h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100'
+  'mt-1 block h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-emerald-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100'
 
 function messageFrom(error: unknown) {
   return error instanceof ApiError ? error.message : 'No se pudo completar la operacion.'
@@ -508,7 +508,7 @@ function ApplyPlanDialog({
             </p>
           )}
           {eligibleBuses.map((bus) => (
-            <label key={bus.id} className="flex items-center gap-3 rounded border p-3 text-sm">
+            <label key={bus.id} className="flex items-center gap-3 rounded-sm border p-3 text-sm">
               <input
                 type="checkbox"
                 checked={busIds.includes(bus.id)}

@@ -11,6 +11,7 @@ import type {
 } from './fleet.types'
 
 interface ListBusesParams {
+  empresaOperadora?: string
   busqueda?: string
   estado?: BusStatus | ''
   limite: number
@@ -19,6 +20,9 @@ interface ListBusesParams {
 }
 
 export interface BusFormInput {
+  empresaOperadora?: string | null
+  origenDatos?: 'NO_VERIFICADO' | 'SIMULADO_SGMV' | 'REAL_DOCUMENTADO'
+  fuenteDatos?: string | null
   anio: number
   estadoOperativo?: BusStatus
   kilometrajeActual?: number
@@ -59,6 +63,9 @@ export function listBuses(params: ListBusesParams) {
   if (params.busqueda?.trim()) {
     searchParams.set('busqueda', params.busqueda.trim())
   }
+
+  if (params.empresaOperadora?.trim())
+    searchParams.set('empresaOperadora', params.empresaOperadora.trim())
 
   if (params.estado) {
     searchParams.set('estado', params.estado)

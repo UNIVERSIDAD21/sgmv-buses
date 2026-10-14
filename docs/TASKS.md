@@ -286,3 +286,19 @@ Nota: RF-05 implementa la central administrativa de repuestos para Administrador
 - [ ] Revisar diff final.
 - [ ] Commit y push.
 - [ ] Entregar resumen de módulos implementados, pruebas y pendientes.
+
+
+## Corte autorizado 2026-10-14 — Empresas y horizonte mensual
+
+Este checkpoint posterior no reabre los pendientes históricos de fases ya cerradas.
+
+- [x] Incorporar empresa y procedencia con migración aditiva y aislamiento de campos por rol.
+- [x] Registrar once referencias de rutas AMB de 2026 sin alterar las anteriores.
+- [x] Preparar el selector mensual y el horizonte de octubre de 2026 a enero de 2027.
+- [x] Simular 22 buses y 2.046 jornadas futuras con autorización expresa del propietario.
+- [x] Verificar idempotencia de carga, preservación de stock y ausencia de ejecución ficticia.
+- [x] Actualizar Tailwind y eliminar las siete alertas anteriores de dependencias.
+- [x] Validar backend 276/276 y regresión Chromium 26/26 en bases locales efímeras.
+- [ ] Completar el ensayo Neon, publicar el SHA único y comprobar cuatro roles en producción.
+
+El resultado de despliegue y la copia documental se entregan fuera del repositorio en `SGMV_ACTUALIZACION_EMPRESAS_DOCUMENTO_2026-10-14`, sin sustituir la entrega académica oficial.

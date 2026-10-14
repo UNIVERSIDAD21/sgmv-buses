@@ -569,6 +569,43 @@ describe('P4 journey frontend', () => {
     expect(screen.queryByRole('button', { name: 'Confirmar programación' })).not.toBeInTheDocument()
   })
 
+  it('selecciona meses hasta enero y exige revisar de nuevo al cambiar de mes', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-14T17:00:00Z'))
+    window.history.pushState({}, '', '/jornadas')
+    const handler = journeyHandler('DESPACHADOR')
+    const fetchMock = mockApi(async (path, init, query) => {
+      if (path === '/jornadas/periodo/previsualizar')
+        return ok({ total: 0, aptas: 0, puedeConfirmar: true, jornadas: [] })
+      return handler(path, init, query)
+    })
+    render(<App />)
+    fireEvent.change(await screen.findByLabelText('Frecuencia'), { target: { value: 'period' } })
+    fireEvent.change(screen.getByLabelText('Bus de jornada'), { target: { value: '2007' } })
+    fireEvent.change(screen.getByLabelText('Conductor de jornada'), { target: { value: '2071' } })
+    fireEvent.change(screen.getByLabelText('Mes a programar'), { target: { value: '2026-10' } })
+    expect(screen.getByLabelText('Inicio del período')).toHaveValue('2026-10-15')
+    expect(screen.getByLabelText('Fin del período')).toHaveValue('2026-10-31')
+    fireEvent.change(screen.getByLabelText('Mes a programar'), { target: { value: '2027-01' } })
+    expect(screen.getByLabelText('Inicio del período')).toHaveValue('2027-01-01')
+    expect(screen.getByLabelText('Fin del período')).toHaveValue('2027-01-31')
+    fireEvent.click(screen.getByRole('button', { name: 'Programar jornada' }))
+    expect(
+      await screen.findByRole('region', { name: 'Confirmar programación' }),
+    ).toBeInTheDocument()
+    const previewCall = fetchMock.mock.calls.find(
+      ([input]) => getPath(input) === '/jornadas/periodo/previsualizar',
+    )
+    const payload = JSON.parse(String(previewCall?.[1]?.body))
+    expect(payload).toMatchObject({ fechaInicio: '2027-01-01', fechaFin: '2027-01-31' })
+    expect(payload).not.toHaveProperty('simulacion')
+    fireEvent.change(screen.getByLabelText('Mes a programar'), { target: { value: '2026-12' } })
+    expect(screen.queryByRole('region', { name: 'Confirmar programación' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Fin del período')).toHaveValue('2026-12-31')
+    expect(
+      fetchMock.mock.calls.some(([input]) => getPath(input) === '/jornadas/periodo/confirmar'),
+    ).toBe(false)
+  })
+
   it('cambia frecuencia sin duplicar campos ni conservar una confirmación obsoleta', async () => {
     window.history.pushState({}, '', '/jornadas')
     const handler = journeyHandler('DESPACHADOR')
