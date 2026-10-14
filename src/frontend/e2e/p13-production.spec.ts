@@ -25,7 +25,11 @@ const accounts = ACADEMIC_DEMO_ACCOUNTS.map((account) => ({
   ...account,
   email: process.env[`SGMV_PROD_TEST_EMAIL_${account.role}`] ?? account.email,
   ...roleAccess[account.role],
-}))
+})).filter(
+  (account, index, list) =>
+    list.findIndex((other) => other.role === account.role && other.email === account.email) ===
+    index,
+)
 
 async function login(page: Page, email: string) {
   if (!smokePassword) {
