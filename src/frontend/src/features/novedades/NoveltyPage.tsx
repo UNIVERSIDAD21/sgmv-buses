@@ -1634,7 +1634,7 @@ function AdminView() {
         </div>
 
         <section className="surface p-4">
-          <div className="grid gap-3 lg:grid-cols-[1fr_180px_180px]">
+          <div className="grid items-end gap-3 lg:grid-cols-[1fr_180px_180px]">
             <label className="relative">
               <span className="sr-only">Buscar novedades</span>
               <Search
@@ -1667,8 +1667,9 @@ function AdminView() {
               </label>
             )}
             <label className="block">
-              <span className="sr-only">Prioridad</span>
+              <span className="mb-1 block text-xs font-medium text-slate-600">Prioridad</span>
               <select
+                aria-label="Prioridad"
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setPagina(1)
@@ -1676,7 +1677,7 @@ function AdminView() {
                 }}
                 value={prioridad}
               >
-                <option value="">Prioridad</option>
+                <option value="">Sin filtro</option>
                 {priorityOptions.map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -1751,6 +1752,7 @@ function AdminView() {
                     <th className="px-4 py-3">Bus</th>
                     <th className="px-4 py-3">Conductor</th>
                     <th className="px-4 py-3">Estado</th>
+                    <th className="px-4 py-3">Prioridad</th>
                     <th className="px-4 py-3">Clasificacion</th>
                     <th className="px-4 py-3">Impacto</th>
                     <th className="px-4 py-3">Orden</th>
@@ -1770,6 +1772,13 @@ function AdminView() {
                       <td className="px-4 py-3 text-slate-600">{novelty.conductor.nombre}</td>
                       <td className="px-4 py-3">
                         <StatusBadge status={novelty.estado} />
+                      </td>
+                      <td className="px-4 py-3">
+                        {novelty.ordenTrabajo ? (
+                          <PriorityBadge priority={novelty.ordenTrabajo.prioridad} />
+                        ) : (
+                          <span className="text-slate-500">Sin orden</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
                         {isAdmin ? (novelty.clasificacion ?? 'Pendiente') : 'Reservada'}

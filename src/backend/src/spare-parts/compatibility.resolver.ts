@@ -1,6 +1,10 @@
-import { Prisma } from '@prisma/client'
+import { Prisma, type CompatibilidadRepuesto, type Repuesto } from '@prisma/client'
 
 type Client = Prisma.TransactionClient
+type TechnicalPart = Pick<
+  Repuesto,
+  'id' | 'dimensiones' | 'especificaciones' | 'fabricante' | 'numeroParte'
+>
 
 export interface CompatibilityEvaluation {
   evidencia: Prisma.InputJsonObject
@@ -54,6 +58,17 @@ export async function resolveCompatibility(
         })
       : null)
 
+  return buildEvaluation(busId, repuestoId, bus?.modeloBusId ?? null, sparePart, rule, evaluatedAt)
+}
+
+function buildEvaluation(
+  busId: number,
+  repuestoId: number,
+  modeloBusId: number | null,
+  sparePart: Omit<TechnicalPart, 'id'> | null,
+  rule: CompatibilidadRepuesto | null,
+  evaluatedAt: Date,
+): CompatibilityEvaluation {
   if (!rule) {
     return {
       evidencia: {
@@ -63,7 +78,7 @@ export async function resolveCompatibility(
         evaluadoAt: evaluatedAt.toISOString(),
         especificacionesRepuesto: sparePart?.especificaciones ?? null,
         fabricanteRepuesto: sparePart?.fabricante ?? null,
-        modeloBusId: bus?.modeloBusId ?? null,
+        modeloBusId,
         numeroParteRepuesto: sparePart?.numeroParte ?? null,
         precedencia: 'SIN_EVIDENCIA_POSITIVA',
         repuestoId,
@@ -84,7 +99,7 @@ export async function resolveCompatibility(
       especificacionesRepuesto: sparePart?.especificaciones ?? null,
       especificacionesValidadas: rule.especificacionesValidadas,
       fabricanteRepuesto: sparePart?.fabricante ?? null,
-      modeloBusId: bus?.modeloBusId ?? null,
+      modeloBusId,
       numeroParteRepuesto: sparePart?.numeroParte ?? null,
       permitido: rule.permitido,
       precedencia: rule.busId ? 'BUS' : 'MODELO',
@@ -103,4 +118,43 @@ export async function resolveCompatibility(
     },
     resultado: rule.permitido ? 'COMPATIBLE' : 'INCOMPATIBLE',
   }
+}
+
+// Solo para consultas. El consumo confirmado sigue usando resolveCompatibility
+// con candados transaccionales y validación de la regla vigente al escribir.
+export async function resolveCompatibilityBatch<T extends TechnicalPart>(
+  tx: Client,
+  busId: number,
+  parts: T[],
+) {
+  const bus = await tx.bus.findUnique({ where: { id: busId }, select: { modeloBusId: true } })
+  const rules =
+    parts.length === 0
+      ? []
+      : await tx.compatibilidadRepuesto.findMany({
+          where: {
+            repuestoId: { in: parts.map((part) => part.id) },
+            vigente: true,
+            OR: [{ busId }, ...(bus?.modeloBusId ? [{ modeloBusId: bus.modeloBusId }] : [])],
+          },
+          orderBy: [{ version: 'desc' }, { id: 'desc' }],
+        })
+  const byBus = new Map<number, CompatibilidadRepuesto>()
+  const byModel = new Map<number, CompatibilidadRepuesto>()
+  for (const rule of rules) {
+    const map = rule.busId === busId ? byBus : byModel
+    if (!map.has(rule.repuestoId)) map.set(rule.repuestoId, rule)
+  }
+  const evaluatedAt = new Date()
+  return parts.map((part) => ({
+    ...part,
+    evaluacion: buildEvaluation(
+      busId,
+      part.id,
+      bus?.modeloBusId ?? null,
+      part,
+      byBus.get(part.id) ?? byModel.get(part.id) ?? null,
+      evaluatedAt,
+    ),
+  }))
 }

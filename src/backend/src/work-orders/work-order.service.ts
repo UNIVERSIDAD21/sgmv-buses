@@ -995,11 +995,26 @@ export class WorkOrderService {
       )
     }
 
-    const repuestos = await this.workOrderRepository.findAvailableSpareParts(
-      query.busqueda ? normalizeText(query.busqueda) : undefined,
-      query.limite,
-      order.busId,
-    )
+    let repuestos
+    try {
+      repuestos = await this.workOrderRepository.findAvailableSpareParts(
+        query.busqueda ? normalizeText(query.busqueda) : undefined,
+        query.limite,
+        order.busId,
+      )
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        ['P2028', 'P1001', 'P1002'].includes(error.code)
+      ) {
+        throw new AppError(
+          503,
+          'COMPATIBILITY_QUERY_UNAVAILABLE',
+          'No se pudo consultar la compatibilidad en este momento. Vuelva a intentarlo.',
+        )
+      }
+      throw error
+    }
 
     return {
       repuestos: repuestos.map((part) => mapAvailableSparePart(part, canViewEconomicFields(actor))),

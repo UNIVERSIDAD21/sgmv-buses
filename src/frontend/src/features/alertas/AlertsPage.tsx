@@ -258,7 +258,7 @@ export default function AlertsPage() {
             }
             value={filters.estado}
           >
-            <option value="">Todos</option>
+            <option value="">Sin filtro</option>
             {Object.entries(STATUS_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -279,7 +279,7 @@ export default function AlertsPage() {
             }
             value={filters.prioridad}
           >
-            <option value="">Todas</option>
+            <option value="">Sin filtro</option>
             {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -300,7 +300,7 @@ export default function AlertsPage() {
             }
             value={filters.tipo}
           >
-            <option value="">Todos</option>
+            <option value="">Sin filtro</option>
             {visibleTypes.map((value) => (
               <option key={value} value={value}>
                 {TYPE_LABELS[value]}

@@ -22,6 +22,7 @@ import {
 } from '../../domain/labels'
 import { ApiError } from '../../lib/api'
 import { formatNumber } from '../../lib/format'
+import { parseMileageInput } from '../../lib/numeric-input'
 import { useSession } from '../auth/session.context'
 import { listBuses } from '../flota/fleet.api'
 import type { BusSummaryDto } from '../flota/fleet.types'
@@ -73,10 +74,10 @@ const criterionOptions = Object.entries(PREVENTIVE_CRITERION_LABELS) as Array<
   [PreventiveCriterion, string]
 >
 const sortOptions: Array<[SortField, string]> = [
-  ['createdAt', 'Registro'],
+  ['createdAt', 'Fecha de registro'],
   ['estado', 'Estado'],
   ['bus', 'Bus'],
-  ['fechaProgramada', 'Fecha'],
+  ['fechaProgramada', 'Fecha programada'],
   ['kilometrajeObjetivo', 'Kilometraje'],
   ['actividad', 'Actividad'],
 ]
@@ -193,7 +194,7 @@ function ScheduleFormDialog({
 
     const normalizedTipo = normalizeText(tipo)
     const normalizedActividad = normalizeText(actividad)
-    const targetMileage = Number(kilometrajeObjetivo)
+    const targetMileage = parseMileageInput(kilometrajeObjetivo)
 
     if (!initial && !busId) {
       setValidationError('Seleccione un bus.')
@@ -215,8 +216,8 @@ function ScheduleFormDialog({
       return
     }
 
-    if (requiresMileage && (!Number.isInteger(targetMileage) || targetMileage <= 0)) {
-      setValidationError('El kilometraje objetivo debe ser un entero positivo.')
+    if (requiresMileage && targetMileage === null) {
+      setValidationError('Ingrese un kilometraje entero positivo, por ejemplo 120000 o 120.000.')
       return
     }
 
@@ -226,7 +227,7 @@ function ScheduleFormDialog({
       actividad: normalizedActividad,
       criterio,
       ...(requiresDate ? { fechaProgramada } : {}),
-      ...(requiresMileage ? { kilometrajeObjetivo: targetMileage } : {}),
+      ...(requiresMileage ? { kilometrajeObjetivo: targetMileage! } : {}),
       tipo: normalizedTipo,
     })
   }
@@ -314,11 +315,14 @@ function ScheduleFormDialog({
               Kilometraje objetivo
               <input
                 className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                min="1"
+                inputMode="numeric"
                 onChange={(event) => setKilometrajeObjetivo(event.target.value)}
-                type="number"
+                type="text"
                 value={kilometrajeObjetivo}
               />
+              <span className="mt-1 block text-xs font-normal text-slate-600">
+                Kilómetros enteros: 120000 o 120.000. Sin decimales.
+              </span>
             </label>
           )}
         </div>
@@ -884,9 +888,12 @@ export default function PreventivePage() {
               </Button>
             )}
           </div>
+          <h3 className="mt-4 text-sm font-semibold text-slate-800" id="preventive-flow-title">
+            Flujo del mantenimiento preventivo
+          </h3>
           <ol
             className="mt-4 grid gap-2 text-xs text-slate-700 sm:grid-cols-5"
-            aria-label="Ciclo preventivo"
+            aria-labelledby="preventive-flow-title"
           >
             {['Rutina', 'Mantenimiento programado', 'Orden', 'Intervención', 'Siguiente ciclo'].map(
               (step, index) => (
@@ -982,8 +989,9 @@ export default function PreventivePage() {
                   />
                 </label>
                 <label>
-                  <span className="sr-only">Bus</span>
+                  <span className="mb-1 block text-xs font-medium text-slate-600">Bus</span>
                   <select
+                    aria-label="Bus"
                     className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                     onChange={(event) => {
                       setPagina(1)
@@ -991,7 +999,7 @@ export default function PreventivePage() {
                     }}
                     value={busId}
                   >
-                    <option value="">Bus</option>
+                    <option value="">Sin filtro</option>
                     {buses.map((bus) => (
                       <option key={bus.id} value={bus.id}>
                         {bus.codigoInterno}
@@ -1000,8 +1008,9 @@ export default function PreventivePage() {
                   </select>
                 </label>
                 <label>
-                  <span className="sr-only">Criterio</span>
+                  <span className="mb-1 block text-xs font-medium text-slate-600">Criterio</span>
                   <select
+                    aria-label="Criterio"
                     className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                     onChange={(event) => {
                       setPagina(1)
@@ -1009,7 +1018,7 @@ export default function PreventivePage() {
                     }}
                     value={criterio}
                   >
-                    <option value="">Criterio</option>
+                    <option value="">Sin filtro</option>
                     {criterionOptions.map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
@@ -1018,8 +1027,9 @@ export default function PreventivePage() {
                   </select>
                 </label>
                 <label>
-                  <span className="sr-only">Ordenar por</span>
+                  <span className="mb-1 block text-xs font-medium text-slate-600">Ordenar por</span>
                   <select
+                    aria-label="Ordenar por"
                     className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                     onChange={(event) => setOrdenarPor(event.target.value as SortField)}
                     value={ordenarPor}
@@ -1032,14 +1042,15 @@ export default function PreventivePage() {
                   </select>
                 </label>
                 <label>
-                  <span className="sr-only">Direccion</span>
+                  <span className="mb-1 block text-xs font-medium text-slate-600">Direccion</span>
                   <select
+                    aria-label="Direccion"
                     className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                     onChange={(event) => setDireccion(event.target.value as 'asc' | 'desc')}
                     value={direccion}
                   >
-                    <option value="desc">Desc</option>
-                    <option value="asc">Asc</option>
+                    <option value="desc">Descendente</option>
+                    <option value="asc">Ascendente</option>
                   </select>
                 </label>
               </div>

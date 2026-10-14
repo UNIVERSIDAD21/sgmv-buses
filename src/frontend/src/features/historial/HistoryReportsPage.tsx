@@ -19,6 +19,7 @@ import { BUS_STATUS_LABELS, ORDER_STATUS_LABELS, ROLE_LABELS } from '../../domai
 import { ApiError } from '../../lib/api'
 import { formatCurrency, formatNumber } from '../../lib/format'
 import { useSession } from '../auth/session.context'
+import AdminReportDetails, { type AdminReportKind } from './AdminReportDetails'
 import {
   getBusHistory,
   getCostReport,
@@ -125,7 +126,7 @@ function Filters({
             }
             value={draft.tipo ?? ''}
           >
-            <option value="">Todos</option>
+            <option value="">Sin filtro</option>
             <option value="PREVENTIVA">Preventiva</option>
             <option value="CORRECTIVA">Correctiva</option>
           </select>
@@ -140,7 +141,7 @@ function Filters({
             }
             value={draft.estado ?? ''}
           >
-            <option value="">Todos</option>
+            <option value="">Sin filtro</option>
             {Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -184,7 +185,7 @@ function Filters({
               }
               value={draft.origen ?? ''}
             >
-              <option value="">Todos</option>
+              <option value="">Sin filtro</option>
               <option value="NOVEDAD">Novedad</option>
               <option value="PREVENTIVO">Preventivo</option>
               <option value="CORRECTIVO_DIRECTO">Correctivo directo</option>
@@ -203,7 +204,7 @@ function Filters({
               }
               value={draft.compatibilidad ?? ''}
             >
-              <option value="">Todos</option>
+              <option value="">Sin filtro</option>
               <option value="COMPATIBLE">Compatible</option>
               <option value="EXCEPCION_AUTORIZADA">Excepción autorizada</option>
               <option value="NO_EVALUADA_LEGADO">Legado no evaluado</option>
@@ -224,7 +225,7 @@ function Filters({
               }
               value={draft.novedadCriticidad ?? ''}
             >
-              <option value="">Todas</option>
+              <option value="">Sin filtro</option>
               <option value="BAJA">Baja</option>
               <option value="MEDIA">Media</option>
               <option value="ALTA">Alta</option>
@@ -246,7 +247,7 @@ function Filters({
               }
               value={draft.alertaPrioridad ?? ''}
             >
-              <option value="">Todas</option>
+              <option value="">Sin filtro</option>
               <option value="BAJA">Baja</option>
               <option value="MEDIA">Media</option>
               <option value="ALTA">Alta</option>
@@ -305,7 +306,7 @@ function Filters({
                   : String(draft.disponibilidadAlCierre)
               }
             >
-              <option value="">Todas</option>
+              <option value="">Sin filtro</option>
               <option value="true">Disponible</option>
               <option value="false">No disponible</option>
             </select>
@@ -323,7 +324,7 @@ function Filters({
               }
               value={draft.alertaEstado ?? ''}
             >
-              <option value="">Todos</option>
+              <option value="">Sin filtro</option>
               <option value="NO_LEIDA">No leída</option>
               <option value="LEIDA">Leída</option>
               <option value="ATENDIDA">Atendida</option>
@@ -765,13 +766,16 @@ function HistoryDetail({
 
 function AdminReports({
   costs,
+  filters,
   maintenance,
   parts,
 }: {
   costs: CostReportDto | null
+  filters: HistoryFilters
   maintenance: MaintenanceReportDto | null
   parts: PartsReportDto | null
 }) {
+  const [selectedReport, setSelectedReport] = useState<AdminReportKind | null>(null)
   return (
     <Section title="Informes administrativos">
       <div className="grid gap-4 p-4 xl:grid-cols-3">
@@ -784,6 +788,14 @@ function AdminReports({
             {maintenance?.paginacion.total ?? 0}
           </p>
           <p className="text-xs text-slate-500">órdenes en el período</p>
+          <Button
+            className="mt-3"
+            onClick={() => setSelectedReport('maintenance')}
+            size="sm"
+            variant="outline"
+          >
+            Ver todo el mantenimiento
+          </Button>
           <div className="mt-3 space-y-2">
             {maintenance?.registros.slice(0, 3).map((row) => (
               <div className="flex justify-between gap-3 text-xs" key={row.id}>
@@ -802,6 +814,14 @@ function AdminReports({
             {parts?.paginacion.total ?? 0}
           </p>
           <p className="text-xs text-slate-500">referencias consumidas</p>
+          <Button
+            className="mt-3"
+            onClick={() => setSelectedReport('parts')}
+            size="sm"
+            variant="outline"
+          >
+            Ver todos los repuestos
+          </Button>
           <div className="mt-3 space-y-2">
             {parts?.registros.slice(0, 3).map((row) => (
               <div className="flex justify-between gap-3 text-xs" key={row.id}>
@@ -822,6 +842,14 @@ function AdminReports({
             {formatCurrency(costs?.costoTotal ?? 0)}
           </p>
           <p className="text-xs text-slate-500">costo histórico filtrado</p>
+          <Button
+            className="mt-3"
+            onClick={() => setSelectedReport('costs')}
+            size="sm"
+            variant="outline"
+          >
+            Ver todos los costos
+          </Button>
           <div className="mt-3 space-y-2">
             {costs?.registros.slice(0, 3).map((row) => (
               <div className="flex justify-between gap-3 text-xs" key={row.busId}>
@@ -832,6 +860,14 @@ function AdminReports({
           </div>
         </div>
       </div>
+      {selectedReport && (
+        <AdminReportDetails
+          filters={filters}
+          key={`${selectedReport}:${JSON.stringify(filters)}`}
+          kind={selectedReport}
+          onClose={() => setSelectedReport(null)}
+        />
+      )}
     </Section>
   )
 }
@@ -891,9 +927,9 @@ export default function HistoryReportsPage() {
 
         if (role === 'ADMINISTRADOR') {
           const [maintenanceResult, partsResult, costsResult] = await Promise.all([
-            getMaintenanceReport(filters),
-            getPartsReport(filters),
-            getCostReport(filters),
+            getMaintenanceReport({ ...filters, pagina: 1 }),
+            getPartsReport({ ...filters, pagina: 1 }),
+            getCostReport({ ...filters, pagina: 1 }),
           ])
           if (version !== loadVersion.current) return
           setMaintenance(maintenanceResult)
@@ -1099,7 +1135,9 @@ export default function HistoryReportsPage() {
         </Section>
       )}
 
-      {isAdmin && <AdminReports costs={costs} maintenance={maintenance} parts={parts} />}
+      {isAdmin && (
+        <AdminReports costs={costs} filters={filters} maintenance={maintenance} parts={parts} />
+      )}
 
       {role === 'CONDUCTOR' && ownBuses.length > 0 && (
         <div>

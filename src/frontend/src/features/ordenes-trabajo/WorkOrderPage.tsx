@@ -146,7 +146,7 @@ const typeOptions = Object.entries(typeLabels) as Array<[WorkOrderType, string]>
 const originOptions = Object.entries(originLabels) as Array<[WorkOrderOrigin, string]>
 const priorityOptions = Object.entries(priorityLabels) as Array<[OrderPriority, string]>
 const sortOptions: Array<[SortField, string]> = [
-  ['fechaCreacion', 'Registro'],
+  ['fechaCreacion', 'Fecha de creación'],
   ['codigo', 'Codigo'],
   ['estado', 'Estado'],
   ['prioridad', 'Prioridad'],
@@ -1440,23 +1440,36 @@ function ConsumptionExceptionPanel({
   const [quantity, setQuantity] = useState('')
   const [reason, setReason] = useState('')
   const [expiresAt, setExpiresAt] = useState('')
+  const [partsSearch, setPartsSearch] = useState('')
+  const [partsLoading, setPartsLoading] = useState(true)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     if (!activeIntervention || order.estado !== 'EN_EJECUCION') return
     let active = true
-    getAvailableSpareParts(order.id)
+    Promise.resolve()
+      .then(() => {
+        if (!active) return
+        setPartsLoading(true)
+        setParts([])
+        setError(null)
+        return getAvailableSpareParts(order.id, partsSearch)
+      })
       .then((response) => {
-        if (active) setParts(response.repuestos)
+        if (active && response) setParts(response.repuestos)
       })
       .catch((loadError) => {
         if (active) setError(getErrorMessage(loadError))
       })
+      .finally(() => {
+        if (active) setPartsLoading(false)
+      })
     return () => {
       active = false
     }
-  }, [activeIntervention, order.estado, order.id])
+  }, [activeIntervention, order.estado, order.id, partsSearch, loadAttempt])
 
   if (!activeIntervention || order.estado !== 'EN_EJECUCION') return null
 
@@ -1468,7 +1481,13 @@ function ConsumptionExceptionPanel({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!partId || !Number(quantity) || Number(quantity) <= 0 || normalizeText(reason).length < 3) {
+    if (
+      partsLoading ||
+      !parts.some((part) => part.id === Number(partId)) ||
+      !Number(quantity) ||
+      Number(quantity) <= 0 ||
+      normalizeText(reason).length < 3
+    ) {
       setError('Seleccione repuesto, cantidad positiva y motivo de al menos 3 caracteres.')
       return
     }
@@ -1515,12 +1534,43 @@ function ConsumptionExceptionPanel({
           Autorizacion puntual para esta orden, intervencion, repuesto y cantidad maxima.
         </p>
       </div>
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {error && (
+        <div role="alert" className="space-y-2 text-sm text-red-700">
+          <p>{error}</p>
+          <Button onClick={() => setLoadAttempt((value) => value + 1)} size="sm" variant="outline">
+            Reintentar consulta de repuestos
+          </Button>
+        </div>
+      )}
+      <label className="block text-sm font-medium text-slate-700">
+        Buscar repuesto para excepción
+        <input
+          className="mt-1.5 h-10 w-full rounded-lg border border-amber-200 bg-white px-3 text-sm"
+          onChange={(event) => {
+            setPartId('')
+            setPartsSearch(event.target.value)
+          }}
+          placeholder="Código, nombre o categoría"
+          type="search"
+          value={partsSearch}
+        />
+      </label>
+      {partsLoading && (
+        <p aria-live="polite" className="text-sm text-amber-800">
+          Consultando repuestos y compatibilidad…
+        </p>
+      )}
+      {!partsLoading && !error && parts.length === 0 && (
+        <p role="status" className="text-sm text-amber-800">
+          No hay repuestos activos con existencia que coincidan con la búsqueda.
+        </p>
+      )}
       <form className="grid gap-3 sm:grid-cols-2" onSubmit={submit}>
         <label className="block text-sm font-medium text-slate-700">
           Repuesto
           <select
             className="mt-1.5 h-10 w-full rounded-lg border border-amber-200 bg-white px-3 text-sm"
+            disabled={partsLoading}
             onChange={(event) => setPartId(event.target.value)}
             required
             value={partId}
@@ -1565,7 +1615,12 @@ function ConsumptionExceptionPanel({
           />
         </label>
         <div className="flex items-end justify-end">
-          <Button loading={busy} type="submit" variant="secondary">
+          <Button
+            disabled={partsLoading || parts.length === 0}
+            loading={busy}
+            type="submit"
+            variant="secondary"
+          >
             Autorizar excepcion
           </Button>
         </div>
@@ -2974,8 +3029,9 @@ export default function WorkOrderPage() {
               />
             </label>
             <label>
-              <span className="sr-only">Tipo</span>
+              <span className="mb-1 block text-xs font-medium text-slate-600">Tipo</span>
               <select
+                aria-label="Tipo"
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setPagina(1)
@@ -2983,7 +3039,7 @@ export default function WorkOrderPage() {
                 }}
                 value={tipo}
               >
-                <option value="">Tipo</option>
+                <option value="">Sin filtro</option>
                 {typeOptions.map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -2992,8 +3048,9 @@ export default function WorkOrderPage() {
               </select>
             </label>
             <label>
-              <span className="sr-only">Origen</span>
+              <span className="mb-1 block text-xs font-medium text-slate-600">Origen</span>
               <select
+                aria-label="Origen"
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => {
                   setPagina(1)
@@ -3001,7 +3058,7 @@ export default function WorkOrderPage() {
                 }}
                 value={origen}
               >
-                <option value="">Origen</option>
+                <option value="">Sin filtro</option>
                 {originOptions.map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -3010,8 +3067,9 @@ export default function WorkOrderPage() {
               </select>
             </label>
             <label>
-              <span className="sr-only">Ordenar por</span>
+              <span className="mb-1 block text-xs font-medium text-slate-600">Ordenar por</span>
               <select
+                aria-label="Ordenar por"
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setOrdenarPor(event.target.value as SortField)}
                 value={ordenarPor}
@@ -3024,14 +3082,15 @@ export default function WorkOrderPage() {
               </select>
             </label>
             <label>
-              <span className="sr-only">Direccion</span>
+              <span className="mb-1 block text-xs font-medium text-slate-600">Direccion</span>
               <select
+                aria-label="Direccion"
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 onChange={(event) => setDireccion(event.target.value as 'asc' | 'desc')}
                 value={direccion}
               >
-                <option value="desc">Desc</option>
-                <option value="asc">Asc</option>
+                <option value="desc">Descendente</option>
+                <option value="asc">Ascendente</option>
               </select>
             </label>
           </div>
@@ -3039,8 +3098,9 @@ export default function WorkOrderPage() {
           {isAdmin && (
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <label>
-                <span className="sr-only">Bus</span>
+                <span className="mb-1 block text-xs font-medium text-slate-600">Bus</span>
                 <select
+                  aria-label="Bus"
                   className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => {
                     setPagina(1)
@@ -3048,7 +3108,7 @@ export default function WorkOrderPage() {
                   }}
                   value={busId}
                 >
-                  <option value="">Bus</option>
+                  <option value="">Sin filtro</option>
                   {buses.map((bus) => (
                     <option key={bus.id} value={bus.id}>
                       {bus.codigoInterno} - {bus.placa}
@@ -3057,8 +3117,9 @@ export default function WorkOrderPage() {
                 </select>
               </label>
               <label>
-                <span className="sr-only">Mecanico</span>
+                <span className="mb-1 block text-xs font-medium text-slate-600">Mecanico</span>
                 <select
+                  aria-label="Mecanico"
                   className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                   onChange={(event) => {
                     setPagina(1)
@@ -3066,7 +3127,7 @@ export default function WorkOrderPage() {
                   }}
                   value={tecnicoId}
                 >
-                  <option value="">Mecanico</option>
+                  <option value="">Sin filtro</option>
                   {mechanics.map((mechanic) => (
                     <option key={mechanic.id} value={mechanic.id}>
                       {mechanic.nombre}

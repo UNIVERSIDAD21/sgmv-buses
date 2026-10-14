@@ -21,6 +21,55 @@ afterEach(() => {
 })
 
 describe('RF-06 history and reports frontend', () => {
+  it('consulta las páginas completas de cada informe sin perder los filtros ni limitarse a tres filas', async () => {
+    window.history.pushState({}, '', '/historial')
+    const handler = historyHandler('ADMINISTRADOR')
+    const queries: string[] = []
+    mockApi(async (path, init, query) => {
+      const response = await handler(path)
+      if (!path.startsWith('/historial/informes/')) return response
+      queries.push(`${path}?${query}`)
+      const body = await response.json()
+      const page = Number(query?.get('pagina') ?? 1)
+      const source = body.data.registros[0]
+      body.data.paginacion = { limite: 10, pagina: page, total: 11, totalPaginas: 2 }
+      body.data.registros = Array.from({ length: page === 1 ? 10 : 1 }, (_, index) => ({
+        ...source,
+        id: 9000 + page * 10 + index,
+        busId: 9000 + page * 10 + index,
+        codigo: `REGISTRO-${page}-${index}`,
+        bus: `BUS-PAGINA-${page}-${index}`,
+      }))
+      return jsonResponse(body)
+    })
+    render(<App />)
+    await screen.findByRole('heading', { name: /^Informes administrativos$/i })
+    fireEvent.change(screen.getByLabelText('Tipo de orden'), { target: { value: 'PREVENTIVA' } })
+    fireEvent.click(screen.getByRole('button', { name: /Aplicar filtros/i }))
+    for (const [button, title, endpoint] of [
+      ['Ver todo el mantenimiento', 'Informe de mantenimiento', 'mantenimiento'],
+      ['Ver todos los repuestos', 'Informe de repuestos utilizados', 'repuestos'],
+      ['Ver todos los costos', 'Informe de costos por bus', 'costos'],
+    ]) {
+      fireEvent.click(screen.getByRole('button', { name: button }))
+      const dialog = await screen.findByRole('dialog', { name: title })
+      const table = await within(dialog).findByRole('table', { name: title })
+      expect(within(table).getAllByRole('row')).toHaveLength(11)
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Siguiente' }))
+      await within(dialog).findByText('Página 2 de 2')
+      expect(within(await within(dialog).findByRole('table')).getAllByRole('row')).toHaveLength(2)
+      expect(
+        queries.some(
+          (value) =>
+            value.includes(`/informes/${endpoint}?`) &&
+            value.includes('pagina=2') &&
+            value.includes('tipo=PREVENTIVA'),
+        ),
+      ).toBe(true)
+      expect(within(dialog).getByRole('button', { name: 'Siguiente' })).toBeDisabled()
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cerrar diálogo' }))
+    }
+  })
   it('opens an exact bus history received through a deep link and returns to the results', async () => {
     window.history.pushState({}, '', '/historial?detalle=2015')
     const fetchMock = mockApi(historyHandler('DESPACHADOR'))

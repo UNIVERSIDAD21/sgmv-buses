@@ -568,8 +568,9 @@ export default function UserManagementPage() {
             />
           </label>
           <label>
-            <span className="sr-only">Filtrar por rol</span>
+            <span className="mb-1 block text-xs font-medium text-slate-600">Filtrar por rol</span>
             <select
+              aria-label="Filtrar por rol"
               className="field-control"
               onChange={(event) => {
                 setRole(event.target.value as RoleCode | '')
@@ -577,7 +578,7 @@ export default function UserManagementPage() {
               }}
               value={role}
             >
-              <option value="">Todos los roles</option>
+              <option value="">Sin filtro</option>
               {roles.map((item) => (
                 <option key={item} value={item}>
                   {ROLE_LABELS[item]}
@@ -586,8 +587,11 @@ export default function UserManagementPage() {
             </select>
           </label>
           <label>
-            <span className="sr-only">Filtrar por estado</span>
+            <span className="mb-1 block text-xs font-medium text-slate-600">
+              Filtrar por estado
+            </span>
             <select
+              aria-label="Filtrar por estado"
               className="field-control"
               onChange={(event) => {
                 setState(event.target.value as UserState | '')
@@ -595,7 +599,7 @@ export default function UserManagementPage() {
               }}
               value={state}
             >
-              <option value="">Todos los estados</option>
+              <option value="">Sin filtro</option>
               {states.map((item) => (
                 <option key={item} value={item}>
                   {stateLabels[item]}

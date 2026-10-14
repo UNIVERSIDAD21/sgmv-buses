@@ -191,7 +191,7 @@ describe('RF-03 preventive maintenance frontend', () => {
       target: { value: 'Cambio aceite' },
     })
     fireEvent.change(within(mileageDialog).getByLabelText(/Kilometraje objetivo/i), {
-      target: { value: '12000' },
+      target: { value: '12.000' },
     })
     fireEvent.change(within(mileageDialog).getByLabelText(/^Actividad$/i), {
       target: { value: 'Cambio preventivo de aceite por kilometraje.' },
@@ -217,7 +217,7 @@ describe('RF-03 preventive maintenance frontend', () => {
       target: { value: '2026-09-06' },
     })
     fireEvent.change(within(combinedDialog).getByLabelText(/Kilometraje objetivo/i), {
-      target: { value: '12100' },
+      target: { value: '12.100' },
     })
     fireEvent.change(within(combinedDialog).getByLabelText(/^Actividad$/i), {
       target: { value: 'Revision combinada de frenos por fecha y kilometraje.' },
@@ -235,6 +235,8 @@ describe('RF-03 preventive maintenance frontend', () => {
     expect(createCalls).toHaveLength(3)
     expect(String(createCalls[0][1]?.body)).toContain('FECHA')
     expect(String(createCalls[1][1]?.body)).toContain('KILOMETRAJE')
+    expect(JSON.parse(String(createCalls[1][1]?.body)).kilometrajeObjetivo).toBe(12000)
+    expect(JSON.parse(String(createCalls[2][1]?.body)).kilometrajeObjetivo).toBe(12100)
     expect(String(createCalls[2][1]?.body)).toContain('FECHA_KILOMETRAJE')
     expect(String(createCalls[0][1]?.body)).not.toContain('kilometrajeActual')
   })

@@ -751,7 +751,7 @@ export default function JourneyPage() {
               }}
               value={estado}
             >
-              <option value="">Todos los estados</option>
+              <option value="">Sin filtro</option>
               {Object.entries(JOURNEY_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}

@@ -235,7 +235,7 @@ describe('RF-05 spare parts frontend', () => {
       target: { value: 'Pastilla de freno reforzada' },
     })
     fireEvent.change(within(editDialog).getByLabelText(/^Costo unitario$/i), {
-      target: { value: '125000' },
+      target: { value: '125.000' },
     })
     fireEvent.click(within(editDialog).getByRole('button', { name: /Guardar cambios/i }))
 

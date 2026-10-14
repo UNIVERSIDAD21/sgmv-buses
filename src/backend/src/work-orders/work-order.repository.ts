@@ -29,7 +29,10 @@ import {
   type PreventivePlanCycleData,
 } from '../preventive/preventive-cycle.js'
 import { reassignableWorkOrderStates } from './work-order.state.js'
-import { resolveCompatibility } from '../spare-parts/compatibility.resolver.js'
+import {
+  resolveCompatibility,
+  resolveCompatibilityBatch,
+} from '../spare-parts/compatibility.resolver.js'
 import { listDispatchProjections } from './dispatch-projection.js'
 
 type WorkOrderDbClient = Prisma.TransactionClient | typeof prisma
@@ -439,33 +442,41 @@ export class WorkOrderRepository {
   }
 
   findAvailableSpareParts(busqueda: string | undefined, take: number, busId?: number) {
-    return prisma.$transaction(async (tx) => {
-      const parts = await tx.repuesto.findMany({
-        where: {
-          estado: 'ACTIVO',
-          stockActual: { gt: 0 },
-          ...(busqueda
-            ? {
-                OR: [
-                  { codigo: { contains: busqueda, mode: 'insensitive' } },
-                  { nombre: { contains: busqueda, mode: 'insensitive' } },
-                  { categoria: { contains: busqueda, mode: 'insensitive' } },
-                ],
-              }
-            : {}),
-        },
-        select: sparePartSelect,
-        orderBy: { codigo: 'asc' },
-        take,
-      })
-      if (!busId) return parts.map((part) => ({ ...part, evaluacion: null }))
-      return Promise.all(
-        parts.map(async (part) => ({
-          ...part,
-          evaluacion: await resolveCompatibility(tx, busId, part.id),
-        })),
-      )
-    })
+    return prisma.$transaction(
+      async (tx) => {
+        const parts = await tx.repuesto.findMany({
+          where: {
+            estado: 'ACTIVO',
+            stockActual: { gt: 0 },
+            ...(busqueda
+              ? {
+                  OR: [
+                    { codigo: { contains: busqueda, mode: 'insensitive' } },
+                    { nombre: { contains: busqueda, mode: 'insensitive' } },
+                    { categoria: { contains: busqueda, mode: 'insensitive' } },
+                  ],
+                }
+              : {}),
+          },
+          select: {
+            ...sparePartSelect,
+            dimensiones: true,
+            especificaciones: true,
+            fabricante: true,
+            numeroParte: true,
+          },
+          orderBy: [{ codigo: 'asc' }, { id: 'asc' }],
+          take,
+        })
+        if (!busId) return parts.map((part) => ({ ...part, evaluacion: null }))
+        return resolveCompatibilityBatch(tx, busId, parts)
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+        maxWait: 5_000,
+        timeout: 15_000,
+      },
+    )
   }
 
   findClosedOrdersByBus(busId: number, excludeOrderId: number, take = 5) {

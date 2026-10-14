@@ -8,9 +8,16 @@ interface ModalProps {
   onClose: () => void
   subtitle?: string
   title: string
+  size?: 'default' | 'wide'
 }
 
-export default function Modal({ children, onClose, subtitle, title }: ModalProps) {
+export default function Modal({
+  children,
+  onClose,
+  subtitle,
+  title,
+  size = 'default',
+}: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const titleId = useId()
@@ -29,7 +36,7 @@ export default function Modal({ children, onClose, subtitle, title }: ModalProps
       <div
         aria-labelledby={titleId}
         aria-modal="true"
-        className="max-h-[calc(100dvh-1.5rem)] w-full max-w-xl overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl"
+        className={`max-h-[calc(100dvh-1.5rem)] w-full ${size === 'wide' ? 'max-w-5xl' : 'max-w-xl'} overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl`}
         ref={dialogRef}
         role="dialog"
         tabIndex={-1}

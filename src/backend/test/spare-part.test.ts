@@ -1,7 +1,7 @@
 import { testEntityId } from './entity-id.js'
 import { randomUUID } from 'node:crypto'
 
-import { PrismaClient, type Prisma, type Rol } from '@prisma/client'
+import { Prisma, PrismaClient, type Rol } from '@prisma/client'
 import { hash } from 'bcryptjs'
 import request from 'supertest'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -444,6 +444,60 @@ describe('RF-05 spare parts inventory API', () => {
       await prisma.$disconnect()
     }
   }, 60000)
+
+  it('consulta compatibilidad sin esperar los candados de escritura ni cambiar las reglas', async () => {
+    const part = await createSparePart({ stockActual: '5.00' })
+    const order = await createExecutingOrder(fixture)
+    const busId = (await prisma.ordenTrabajo.findUniqueOrThrow({ where: { id: order.id } })).busId
+    await allowPartForBus(part.id, busId, fixture.adminId)
+    const blocker = new PrismaClient()
+    let release!: () => void
+    let acquired!: () => void
+    const ready = new Promise<void>((resolve) => {
+      acquired = resolve
+    })
+    const unlock = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const holding = blocker.$transaction(
+      async (tx) => {
+        await tx.$executeRaw(
+          Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${`sgmv:compatibilidad:${part.id}:bus:${busId}`}, 0))`,
+        )
+        acquired()
+        await unlock
+      },
+      { timeout: 10_000 },
+    )
+    let pending: Promise<request.Response> | undefined
+    try {
+      await ready
+      pending = adminAgent
+        .get(`/ordenes-trabajo/${order.id}/repuestos-disponibles`)
+        .query({ busqueda: part.codigo })
+        .then((response) => response)
+      const response = await Promise.race([
+        pending,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+      ])
+      expect(
+        response,
+        'Un GET no debe esperar el candado de modificación de compatibilidad',
+      ).not.toBeNull()
+      expect(response!.status).toBe(200)
+      expect(response!.body.data.repuestos[0].compatibilidad.resultado).toBe('COMPATIBLE')
+      expect(
+        await prisma.compatibilidadRepuesto.count({
+          where: { repuestoId: part.id, vigente: true },
+        }),
+      ).toBe(1)
+    } finally {
+      release()
+      await holding
+      await pending
+      await blocker.$disconnect()
+    }
+  })
 
   it(
     'revierte consumo parcialmente con stock, costo, auditoría e idempotencia sin alterar el original',

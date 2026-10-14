@@ -22,6 +22,7 @@ import KeyValueFields, {
 } from '../../components/ui/KeyValueFields'
 import { ApiError } from '../../lib/api'
 import { formatCurrency, formatNumber } from '../../lib/format'
+import { normalizeDecimalInput } from '../../lib/numeric-input'
 import { useSession } from '../auth/session.context'
 import { listBuses, listModelosBus } from '../flota/fleet.api'
 import type { BusSummaryDto, ModeloBusSummaryDto } from '../flota/fleet.types'
@@ -133,11 +134,8 @@ function idempotencyKey() {
 }
 
 function parsePositive(value: string) {
-  const normalized = value.trim().replace(',', '.')
-
-  if (!/^\d{1,10}(\.\d{1,2})?$/.test(normalized)) {
-    return null
-  }
+  const normalized = normalizeDecimalInput(value)
+  if (normalized === null) return null
 
   const numeric = Number(normalized)
 
@@ -145,11 +143,8 @@ function parsePositive(value: string) {
 }
 
 function parseNonNegative(value: string) {
-  const normalized = value.trim().replace(',', '.')
-
-  if (!/^\d{1,10}(\.\d{1,2})?$/.test(normalized)) {
-    return null
-  }
+  const normalized = normalizeDecimalInput(value)
+  if (normalized === null) return null
 
   const numeric = Number(normalized)
 
@@ -848,6 +843,9 @@ function EntryForm({
       </p>
       <TextInput label="Cantidad de entrada" onChange={setCantidad} required value={cantidad} />
       <TextInput label="Costo unitario futuro" onChange={setCostoUnitario} value={costoUnitario} />
+      <p className="text-xs text-slate-600">
+        Puede escribir 120000 o 120.000; para centavos use 120.000,50.
+      </p>
       <label className="block text-sm font-medium text-slate-700">
         Motivo
         <textarea
@@ -1643,7 +1641,7 @@ export default function SparePartsPage() {
                 }}
                 value={disponibilidad}
               >
-                <option value="">Todas</option>
+                <option value="">Sin filtro</option>
                 {Object.entries(availabilityLabels).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -1661,7 +1659,7 @@ export default function SparePartsPage() {
                 }}
                 value={estado}
               >
-                <option value="">Todos</option>
+                <option value="">Sin filtro</option>
                 <option value="ACTIVO">Activo</option>
                 <option value="INACTIVO">Inactivo</option>
               </select>
@@ -1753,7 +1751,7 @@ export default function SparePartsPage() {
                 }}
                 value={movementTipo}
               >
-                <option value="">Todos</option>
+                <option value="">Sin filtro</option>
                 {Object.entries(movementLabels).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
