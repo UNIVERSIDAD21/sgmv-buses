@@ -48,11 +48,11 @@ if (!localApply && !publishedApply) {
 
   const { prisma, runInPrismaTransaction, disconnectPrisma } =
     await import('../src/prisma/client.js')
-  const { JourneyService } = await import('../src/journeys/journey.service.js')
+  const { getAvailabilityRecords } = await import('../src/availability/availability.repository.js')
+  const { assertHorizonAvailability } = await import('../src/amb/horizon-availability.js')
   const { initialPreventiveTargets } = await import('../src/preventive/preventive-cycle.js')
   const { createJourneyChangeAlert } = await import('../src/alerts/alert.service.js')
   const passwordHash = await hash(process.env.SEED_USER_PASSWORD, 10)
-  const service = new JourneyService()
   let createdJourneys = 0
   let skippedJourneys = 0
   try {
@@ -224,6 +224,50 @@ if (!localApply && !publishedApply) {
           await tx.$queryRaw`SELECT id FROM buses WHERE id = ${buses[0]!.id} FOR UPDATE`
           for (const driver of [...drivers].sort((a, b) => a.id - b.id))
             await tx.$queryRaw`SELECT id FROM usuarios WHERE id = ${driver.id} FOR UPDATE`
+          const activeDrivers = await tx.usuario.count({
+            where: {
+              id: { in: drivers.map((d) => d.id) },
+              estado: 'ACTIVO',
+              rol: { codigo: 'CONDUCTOR' },
+            },
+          })
+          const currentRoute = await tx.ruta.findUnique({
+            where: { id: route.id },
+            select: { activa: true },
+          })
+          if (activeDrivers !== drivers.length || !currentRoute?.activa)
+            throw new Error('Un conductor o la ruta dejó de estar disponible')
+          const monthSlots = company.turnos.flatMap((shift) => shift.meses[monthIndex]!.jornadas)
+          const start = new Date(Math.min(...monthSlots.map((s) => s.inicioProgramado.getTime())))
+          const end = new Date(Math.max(...monthSlots.map((s) => s.finProgramado.getTime())))
+          const availability = await getAvailabilityRecords(
+            { busId: buses[0]!.id, eventDate: start },
+            tx,
+          )
+          const reservations = await tx.jornadaOperativa.findMany({
+            where: {
+              OR: [{ busId: buses[0]!.id }, { conductorId: { in: drivers.map((d) => d.id) } }],
+              AND: {
+                OR: [
+                  {
+                    estado: { in: ['PROGRAMADA', 'EN_CURSO'] },
+                    inicioProgramado: { lt: end },
+                    finProgramado: { gt: start },
+                  },
+                  { estado: 'EN_CURSO', inicioReal: { lt: end }, finReal: null },
+                ],
+              },
+            },
+            select: {
+              busId: true,
+              conductorId: true,
+              estado: true,
+              inicioProgramado: true,
+              finProgramado: true,
+              inicioReal: true,
+              finReal: true,
+            },
+          })
           let created = 0
           let skipped = 0
           for (const [shiftIndex, shift] of company.turnos.entries()) {
@@ -257,21 +301,11 @@ if (!localApply && !publishedApply) {
               throw new Error(
                 'Período parcialmente modificado; requiere conciliación, no duplicación',
               )
-            const preview = await service.previewPeriod(
-              {
-                busId: buses[0]!.id,
-                conductorId: driver.id,
-                rutaId: route.id,
-                fechaInicio: month.fechaInicio,
-                fechaFin: month.fechaFin,
-                diasSemana: [1, 2, 3, 4, 5, 6],
-                horaInicio: shift.horaInicio,
-                horaFin: shift.horaFin,
-              },
-              dispatcher,
+            assertHorizonAvailability(
+              availability,
+              missing.map((slot) => ({ ...slot, conductorId: driver.id })),
+              reservations,
             )
-            if (!preview.puedeConfirmar)
-              throw new Error('La disponibilidad o la agenda impiden el período; revise conflictos')
             // Importación de escenario: mismas fechas validadas, integridad SQL y locks de recursos.
             // No crear recorridos, lecturas, consumos ni mantenimientos ejecutados en el futuro.
             await tx.jornadaOperativa.createMany({

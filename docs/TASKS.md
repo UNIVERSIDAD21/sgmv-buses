@@ -298,7 +298,7 @@ Este checkpoint posterior no reabre los pendientes históricos de fases ya cerra
 - [x] Simular 22 buses y 2.046 jornadas futuras con autorización expresa del propietario.
 - [x] Verificar idempotencia de carga, preservación de stock y ausencia de ejecución ficticia.
 - [x] Actualizar Tailwind y eliminar las siete alertas anteriores de dependencias.
-- [x] Validar backend 276/276 y regresión Chromium 26/26 en bases locales efímeras.
+- [x] Validar backend 282/282, interfaz 186/186 y regresión Chromium 26/26 en bases locales efímeras; seis pruebas adicionales protegen la carga por lotes.
 - [ ] Completar el ensayo Neon, publicar el SHA único y comprobar cuatro roles en producción.
 
 El resultado de despliegue y la copia documental se entregan fuera del repositorio en `SGMV_ACTUALIZACION_EMPRESAS_DOCUMENTO_2026-10-14`, sin sustituir la entrega académica oficial.
