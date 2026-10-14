@@ -15,7 +15,8 @@ const localRuntime = process.env.SGMV_LOCAL_RUNTIME === 'true'
 const runtimeValues = localRuntime
   ? { ...process.env, ...parse(readFileSync(resolve(repoRoot, '.env.local'))) }
   : process.env
-if (!localRuntime) config({ path: resolve(repoRoot, '.env'), quiet: true })
+if (!localRuntime && process.env.NODE_ENV !== 'test')
+  config({ path: resolve(repoRoot, '.env'), quiet: true })
 if (localRuntime) {
   const database = runtimeValues.DATABASE_URL
   if (

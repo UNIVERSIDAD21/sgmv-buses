@@ -1,4 +1,4 @@
-const loopbackHosts = new Set(['127.0.0.1', '::1', 'localhost'])
+const loopbackHosts = new Set(['127.0.0.1', '::1', '[::1]', 'localhost'])
 
 export function assertSafeWriteE2eTarget(baseUrl: string | undefined) {
   if (!baseUrl) {
@@ -19,7 +19,12 @@ export function assertSafeWriteE2eDatabase(databaseUrl: string | undefined) {
   }
 
   const target = new URL(databaseUrl)
-  if (!loopbackHosts.has(target.hostname)) {
-    throw new Error('E2E con escritura rechazado: la base no es local')
+  if (
+    !loopbackHosts.has(target.hostname) ||
+    !/^\/sgmv_(?:test|e2e|.*validation)_/.test(target.pathname)
+  ) {
+    throw new Error(
+      'E2E con escritura rechazado: use una base local aislada mediante npm run test:e2e:local',
+    )
   }
 }

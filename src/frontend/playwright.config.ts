@@ -9,8 +9,10 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const chromeExecutable = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
 const edgeExecutable = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
 const localBaseUrl = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
+const localApiUrl = process.env.PLAYWRIGHT_API_URL ?? 'http://localhost:4000'
 
 assertSafeWriteE2eTarget(localBaseUrl)
+assertSafeWriteE2eTarget(localApiUrl)
 assertSafeWriteE2eDatabase(process.env.DATABASE_URL)
 
 // El conjunto E2E local usa exclusivamente las cuentas académicas sembradas.
@@ -61,18 +63,18 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'npm run dev:backend:local',
+      command: 'npm --workspace @sgmv/backend run dev',
       cwd: repositoryRoot,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 60_000,
-      url: 'http://localhost:4000/health',
+      url: `${localApiUrl}/health`,
     },
     {
-      command: 'npm run dev:frontend -- --host localhost',
+      command: `npm run dev:frontend -- --host localhost --port ${new URL(localBaseUrl).port || '5173'} --strictPort`,
       cwd: repositoryRoot,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 60_000,
-      url: 'http://localhost:5173',
+      url: localBaseUrl,
     },
   ],
   workers: 1,
