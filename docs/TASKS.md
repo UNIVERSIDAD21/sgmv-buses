@@ -305,3 +305,10 @@ Este checkpoint posterior no reabre los pendientes históricos de fases ya cerra
 La publicación y medición definitivas del ajuste de lectura se cierran en el checkpoint externo del corte, después de este commit de código.
 
 El resultado de despliegue y la copia documental se entregan fuera del repositorio en `SGMV_ACTUALIZACION_EMPRESAS_DOCUMENTO_2026-10-14`, sin sustituir la entrega académica oficial.
+
+## Corrección de atención de jornadas — 16-10-2026
+
+- [x] Reproducir HTTP500/P2028 en GET /jornadas/atencion con horizonte2046.
+- [x] Sustituir consultas por registro por disponibilidad por lotes, sin alterar categorías/permisos.
+- [x] Validar regresión de 2.046 jornadas y permisos: 27/27 focales, 287/287 backend; tipos/lint/formato/build PASS.
+- [ ] Publicar reparación y repetir gates productivos sin resiembra; seguimiento en checkpoint externo.

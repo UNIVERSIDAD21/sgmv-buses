@@ -4,9 +4,10 @@ import { randomUUID } from 'node:crypto'
 import { PrismaClient, type Rol } from '@prisma/client'
 import { hash } from 'bcryptjs'
 import request from 'supertest'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { createApp } from '../src/app.js'
+import { JourneyRepository } from '../src/journeys/journey.repository.js'
 import { evaluateJourneyMileageAlerts } from '../src/alerts/alert.service.js'
 import {
   getAvailabilityRecords,
@@ -230,6 +231,63 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
       await prisma.$disconnect()
     }
   }, 60_000)
+
+  it('resuelve atención de 2046 jornadas en un lote sin perder categorías ni permisos', async () => {
+    const bus = await createBus()
+    const driver = await createDriver('atencion-masiva')
+    const admin = await prisma.usuario.findUniqueOrThrow({ where: { email: fixture.adminEmail } })
+    const start = Date.now() - 2 * 60 * 60_000
+    const rows = Array.from({ length: 2046 }, (_, index) => ({
+      id: testEntityId(),
+      busId: bus.id,
+      conductorId: driver.id,
+      programadaPorId: admin.id,
+      estado: 'PROGRAMADA' as const,
+      inicioProgramado: new Date(start + index * 24 * 60 * 60_000),
+      finProgramado: new Date(start + index * 24 * 60 * 60_000 + 60 * 60_000),
+    }))
+    created.jornadas.push(...rows.map((row) => row.id))
+    await prisma.jornadaOperativa.createMany({ data: rows })
+    const ids = new Set(rows.map((row) => Number(row.id)))
+    const agent = await loginAgent(fixture.despachadorEmail)
+    const batch = vi.spyOn(JourneyRepository.prototype, 'getAvailabilityRecordsBatch')
+    const individual = vi.spyOn(JourneyRepository.prototype, 'getAvailabilityRecords')
+    try {
+      const response = await agent.get('/jornadas/atencion').expect(200)
+      const own = response.body.data.jornadas.filter((item: { jornada: { id: number } }) =>
+        ids.has(item.jornada.id),
+      )
+      expect(own).toHaveLength(1)
+      expect(own[0]).toMatchObject({
+        categoria: 'SALIDA_SIN_CONFIRMAR',
+        jornada: { id: Number(rows[0]!.id) },
+      })
+      expect(batch).toHaveBeenCalledTimes(1)
+      expect(individual).not.toHaveBeenCalled()
+      await prisma.bus.update({
+        where: { id: bus.id },
+        data: { estadoOperativo: 'EN_MANTENIMIENTO' },
+      })
+      batch.mockClear()
+      const blocked = await agent.get('/jornadas/atencion').expect(200)
+      const affected = blocked.body.data.jornadas.filter((item: { jornada: { id: number } }) =>
+        ids.has(item.jornada.id),
+      )
+      expect(affected).toHaveLength(2046)
+      expect(affected[0].categoria).toBe('SALIDA_SIN_CONFIRMAR')
+      expect(
+        affected.slice(1).every((item: { categoria: string }) => item.categoria === 'REASIGNACION'),
+      ).toBe(true)
+      expect(batch).toHaveBeenCalledTimes(1)
+      expect(individual).not.toHaveBeenCalled()
+      const denied = await loginAgent(fixture.conductorEmail)
+      await denied.get('/jornadas/atencion').expect(403)
+    } finally {
+      batch.mockRestore()
+      individual.mockRestore()
+      await prisma.jornadaOperativa.deleteMany({ where: { id: { in: rows.map((row) => row.id) } } })
+    }
+  })
 
   it('conserva disponibilidad por bus, conductor, fecha y exclusión propia al consultar por lotes', async () => {
     const owner = await createDriver('disponibilidad-lote')

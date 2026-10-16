@@ -964,6 +964,41 @@ export class JourneyService {
     return this.repository.listOptions()
   }
 
+  private async mapJourneysBatch(
+    journeys: JourneyRecord[],
+    actor: AuthenticatedUser,
+    now: Date,
+    tx: JourneyTransaction,
+  ) {
+    const active = journeys.filter((journey) => !TERMINAL_STATES.has(journey.estado))
+    const records = await this.repository.getAvailabilityRecordsBatch(
+      active.map((journey) => ({
+        busId: journey.busId,
+        conductorId: journey.conductorId,
+        journeyId: journey.id,
+        eventDate: now,
+      })),
+      tx,
+    )
+    const byJourney = new Map(active.map((journey, index) => [journey.id, records[index]!]))
+    return journeys.map((journey) =>
+      mapJourney(
+        journey,
+        actor,
+        buildAvailability(
+          byJourney.get(journey.id) ?? {
+            bus: null,
+            conflictingJourney: null,
+            novelty: null,
+            order: null,
+            preventive: [],
+          },
+          now,
+        ),
+      ),
+    )
+  }
+
   async list(query: ListJourneysQuery, actor: AuthenticatedUser) {
     if (
       actor.rol.codigo !== 'ADMINISTRADOR' &&
@@ -1021,33 +1056,7 @@ export class JourneyService {
     ])
     const now = new Date()
     const mapped = await this.repository.transaction(async (tx) => {
-      const active = journeys.filter((journey) => !TERMINAL_STATES.has(journey.estado))
-      const records = await this.repository.getAvailabilityRecordsBatch(
-        active.map((journey) => ({
-          busId: journey.busId,
-          conductorId: journey.conductorId,
-          journeyId: journey.id,
-          eventDate: now,
-        })),
-        tx,
-      )
-      const byJourney = new Map(active.map((journey, index) => [journey.id, records[index]!]))
-      return journeys.map((journey) =>
-        mapJourney(
-          journey,
-          actor,
-          buildAvailability(
-            byJourney.get(journey.id) ?? {
-              bus: null,
-              conflictingJourney: null,
-              novelty: null,
-              order: null,
-              preventive: [],
-            },
-            now,
-          ),
-        ),
-      )
+      return this.mapJourneysBatch(journeys, actor, now, tx)
     })
 
     return {
@@ -1067,8 +1076,9 @@ export class JourneyService {
     const candidates = await this.repository.listAttentionCandidates()
     const items = await this.repository.transaction(async (tx) => {
       const result = []
-      for (const record of candidates) {
-        const journey = await this.toDto(record, actor, now, tx)
+      const journeys = await this.mapJourneysBatch(candidates, actor, now, tx)
+      for (const [index, record] of candidates.entries()) {
+        const journey = journeys[index]!
         const driverValid =
           record.conductor.estado === 'ACTIVO' && record.conductor.rol.codigo === 'CONDUCTOR'
         const category = classifyJourneyAttention(journey, driverValid, now)
