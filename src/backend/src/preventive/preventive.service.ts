@@ -409,7 +409,8 @@ export class PreventiveService {
     const filtered = mapped.filter(
       (schedule) =>
         (!query.estado || schedule.clasificacion.estado === query.estado) &&
-        (!query.requiereAtencion || schedule.clasificacion.estado !== 'VIGENTE'),
+        (!query.requiereAtencion ||
+          (schedule.activa && schedule.clasificacion.estado !== 'VIGENTE')),
     )
     const sorted = this.sortSchedules(filtered, query)
     const total = sorted.length
@@ -439,6 +440,8 @@ export class PreventiveService {
     let elegiblesParaOrden = 0
 
     for (const schedule of records) {
+      // A completed cycle remains in history, but is no longer an operational obligation.
+      if (!schedule.activa) continue
       const classification = this.classify(schedule)
       estados[classification.estado] += 1
 

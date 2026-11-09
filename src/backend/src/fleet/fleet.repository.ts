@@ -155,6 +155,7 @@ export class FleetRepository {
   countBusesWithoutDriver() {
     return prisma.bus.count({
       where: {
+        estadoOperativo: { not: 'INACTIVO' },
         asignaciones: {
           none: {
             activa: true,

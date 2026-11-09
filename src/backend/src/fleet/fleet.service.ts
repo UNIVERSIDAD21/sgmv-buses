@@ -699,6 +699,7 @@ export class FleetService {
 
     if (query.sinConductor) {
       filters.push({
+        estadoOperativo: { not: 'INACTIVO' },
         asignaciones: {
           none: {
             activa: true,

@@ -626,6 +626,40 @@ describe('RF-03 Preventive maintenance API', () => {
     await admin.get(`/mantenimiento-preventivo/programaciones/${testEntityId()}`).expect(404)
   }, 60000)
 
+  it('keeps 66 retired cycles in history without counting them as pending attention', async () => {
+    const admin = await loginAgent(fixture.adminEmail)
+    const baseline = (await admin.get('/mantenimiento-preventivo/resumen').expect(200)).body.data
+    const bus = await createBus()
+    for (let cycle = 0; cycle < 66; cycle += 1) {
+      await createSchedule(bus.id, fixture.adminId, {
+        activa: false,
+        actividad: `Ciclo histórico cerrado ${cycle}`,
+        kilometrajeObjetivo: 9000,
+      })
+    }
+    const active = await createSchedule(bus.id, fixture.adminId, {
+      kilometrajeObjetivo: 10400,
+    })
+    const summary = (await admin.get('/mantenimiento-preventivo/resumen').expect(200)).body.data
+    expect(summary.total).toBe(baseline.total + 67)
+    expect(summary.inactivas).toBe(baseline.inactivas + 66)
+    expect(summary.estados.VENCIDO).toBe(baseline.estados.VENCIDO)
+    expect(summary.estados.PROXIMO).toBe(baseline.estados.PROXIMO + 1)
+    expect(Object.values(summary.estados).reduce<number>((sum, n) => sum + Number(n), 0)).toBe(
+      summary.activas,
+    )
+    const attention = await admin
+      .get('/mantenimiento-preventivo/programaciones')
+      .query({ busId: bus.id, requiereAtencion: true, limite: 100 })
+      .expect(200)
+    expect(attention.body.data.programaciones.map((s: { id: string }) => s.id)).toEqual([active.id])
+    const history = await admin
+      .get('/mantenimiento-preventivo/programaciones')
+      .query({ busId: bus.id, activa: false, limite: 100 })
+      .expect(200)
+    expect(history.body.data.paginacion.total).toBe(66)
+  }, 60000)
+
   it('updates only allowed schedule fields and recalculates classification from the server', async () => {
     const admin = await loginAgent(fixture.adminEmail)
     const bus = await createBus({ kilometrajeActual: 10000 })

@@ -690,3 +690,7 @@ No crear RF adicionales. Autenticación, autorización, cierre de sesión, gesti
 ## 2026-10-16 — Disponibilidad por lotes en atención de jornadas
 
 La comprobación productiva aislada de GET /jornadas/atencion devolvió500 tras66,641s y un P2028 correlacionado. El listado de atención repetía disponibilidad por cada candidata dentro de la transacción de60s. Se reutiliza el mapeador por lotes de la lista, manteniendo fechas, exclusión propia, estados terminales, orden, categorías y proyección por rol. No se sube timeout ni se limita arbitrariamente la cola; no hay esquema, migraciones, seed ni cambios de reglas. Validación local: 27/27 focales y 287/287 backend, incluidos 2.046 registros y clasificación antes/después de bloqueo, permiso del Despachador y denegación al Conductor; tipos/lint/formato/build PASS. La publicación y comprobación productiva quedan en el checkpoint externo.
+
+## 2026-11-09 ? Contadores operativos y continuidad global
+
+Los ciclos inactivos permanecen historicos, pero no integran los estados del resumen ni la cola requiereAtencion. La falta de conductor se aplica a buses no inactivos, con igual filtro en lista y contador. Asignacion base RF-01 no sustituye los recursos de jornada. La aceptacion debe contrastar contadores y toda la cola, incluidas salidas futuras; HTTP 200 y coherencia de un solo grupo no acreditan actualizacion global. No hay nuevos RF, esquema, permisos ni simulador automatico. Lote adicional 0002, sin repetir 0001; ver REGULARIZACION_DEMO_2026-11-09.md.

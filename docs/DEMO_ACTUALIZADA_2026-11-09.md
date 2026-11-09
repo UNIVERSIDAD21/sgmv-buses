@@ -1,5 +1,10 @@
 # Demo SGMV — puesta al día del 9 de noviembre de 2026
 
+> **Corrección posterior:** la verificación inicial fue insuficiente para el panel
+> global. Ver [REGULARIZACION_DEMO_2026-11-09.md](REGULARIZACION_DEMO_2026-11-09.md).
+> Los casos abiertos descritos abajo pertenecen al primer corte histórico.
+> No repetir el lote inicial.
+
 Esta es una **simulación académica autorizada**, no una acreditación de recorridos, lecturas o mantenimientos de empresas reales. El período reconstruido corresponde al escenario AMB iniciado el 15 de octubre, con corte a las **13:04 del 09-11-2026, Colombia**.
 
 ## Qué contiene el escenario actualizado

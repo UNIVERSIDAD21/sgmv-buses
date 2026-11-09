@@ -613,6 +613,31 @@ describe('RF-01 Fleet API', () => {
     expect(response.body.data.asignacion).toBeNull()
   }, 60000)
 
+  it('counts unassigned active buses without turning archived vehicles into staffing tasks', async () => {
+    const admin = await loginAgent(fixture.adminEmail)
+    const before = (await admin.get('/flota/resumen').expect(200)).body.data
+    const bus = await createBus()
+    const archived = await createBus({ estadoOperativo: 'INACTIVO' })
+    const summary = (await admin.get('/flota/resumen').expect(200)).body.data
+    expect(summary.totalBuses).toBe(before.totalBuses + 2)
+    expect(summary.sinConductor).toBe(before.sinConductor + 1)
+    const filtered = await admin
+      .get('/flota/buses')
+      .query({ sinConductor: true, busqueda: bus.codigoInterno })
+      .expect(200)
+    expect(filtered.body.data.buses.map((b: { id: string }) => b.id)).toContain(bus.id)
+    const excluded = await admin
+      .get('/flota/buses')
+      .query({ sinConductor: true, busqueda: archived.codigoInterno })
+      .expect(200)
+    expect(excluded.body.data.buses).toEqual([])
+    const history = await admin
+      .get('/flota/buses')
+      .query({ estado: 'INACTIVO', busqueda: archived.codigoInterno })
+      .expect(200)
+    expect(history.body.data.buses.map((b: { id: string }) => b.id)).toContain(archived.id)
+  }, 60000)
+
   it('rolls back a transactional mileage update when history creation fails', async () => {
     const bus = await createBus({ kilometrajeActual: 31000 })
     const fakeAdmin: AuthenticatedUser = {

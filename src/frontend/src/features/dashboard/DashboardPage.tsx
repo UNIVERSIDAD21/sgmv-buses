@@ -360,7 +360,7 @@ export default function DashboardPage() {
             />
             <StatCard
               actionLabel="Revisar asignaciones"
-              description="Sin una asignación activa"
+              description="Buses activos sin una asignación activa"
               icon={<Package size={16} />}
               label="Buses sin conductor"
               note="Revise la asignación antes de programar una jornada"

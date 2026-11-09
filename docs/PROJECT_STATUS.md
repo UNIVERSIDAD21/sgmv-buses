@@ -361,3 +361,7 @@ La siguiente implementacion, solo con orden de Jefe, debe ser P9. No iniciarla n
 ## Git
 
 Jefe pidio que la documentacion Markdown para Borlty quede local y no se suba al repo. No hacer commit/push de estos `.md` sin autorizacion explicita.
+
+## Regularizacion integral de demo ? 2026-11-09
+
+El cierre inicial fue objetado por el propietario: 25 buses sin asignacion, 429 jornadas en atencion y 100 preventivos proximos/vencidos. Correccion funcional y lote adicional ensayado desde respaldo actual restaurado; no repetir el inicial. Backend 294/294, frontend 186/186, tipos/lint/build/formato PASS. Alcance en REGULARIZACION_DEMO_2026-11-09.md; publicacion y aceptacion productiva en evidencia externa correction-*.

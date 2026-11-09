@@ -321,3 +321,10 @@ El resultado de despliegue y la copia documental se entregan fuera del repositor
 - [x] Verificar Vercel READY/alias y Render LIVE en `0a68f08`;23/23 comprobaciones productivas y diez controles de coherencia sin incidencias;181 fragmentos de logs del nuevo release sin indicadores de error.
 
 Este registro sustituye únicamente los pendientes de esta intervención. La continuidad y los recibos privados están en el workspace del operador; no se reejecuta el lote para publicar el cambio de lectura.
+
+## Correccion global de demo ? 2026-11-09
+
+- [x] Confirmar los contadores denunciados en produccion y capturar el panel real.
+- [x] Restaurar un respaldo actual y ensayar el lote adicional con 14 controles globales.
+- [x] Corregir los contadores sin eliminar historia; validar 294 backend y 186 frontend, tipos/lint/build/formato.
+- [ ] Verificar SHA publicado y contadores/colas/pantallas de produccion; evidencia externa correction-*.
