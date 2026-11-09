@@ -312,3 +312,12 @@ El resultado de despliegue y la copia documental se entregan fuera del repositor
 - [x] Sustituir consultas por registro por disponibilidad por lotes, sin alterar categorías/permisos.
 - [x] Validar regresión de 2.046 jornadas y permisos: 27/27 focales, 287/287 backend; tipos/lint/formato/build PASS.
 - [ ] Publicar reparación y repetir gates productivos sin resiembra; seguimiento en checkpoint externo.
+# Continuidad operativa simulada — 09-11-2026
+
+- [x] Inventario autenticado y respaldo completo restaurado en copia aislada.
+- [x] Ensayo y aplicación del lote simulado autorizado, sin alterar cuentas, rutas o historial ajeno al escenario AMB.
+- [x] Detectar y corregir la consulta repetida que provocaba P2028 en restricciones preventivas.
+- [x] Validar 292/292 pruebas backend, tipos, lint y build; 22/22 comprobaciones de API en copia aislada.
+- [ ] Verificar la publicación de la corrección y repetir comprobaciones productivas y logs.
+
+Este registro sustituye únicamente los pendientes de esta intervención. La continuidad y los recibos privados están en el workspace del operador; no se reejecuta el lote para publicar el cambio de lectura.

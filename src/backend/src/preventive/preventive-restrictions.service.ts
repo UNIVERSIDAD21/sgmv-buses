@@ -1,5 +1,5 @@
 import { buildAvailability } from '../availability/availability.policy.js'
-import { getAvailabilityRecords } from '../availability/availability.repository.js'
+import { getAvailabilityRecordsBatch } from '../availability/availability.repository.js'
 import type { AuthenticatedUser } from '../auth/auth.types.js'
 import { prisma } from '../prisma/client.js'
 import { AppError } from '../shared/http.js'
@@ -36,24 +36,40 @@ export class PreventiveRestrictionsService {
       orderBy: [{ bus: { codigoInterno: 'asc' } }, { id: 'asc' }],
     })
 
-    const restrictions = await prisma.$transaction(async (tx) => {
+    const classified = schedules.flatMap((schedule) => {
+      if (!schedule.planMantenimientoPreventivo) return []
+      const classification = classifyPreventiveCycle(
+        {
+          fechaProgramada: schedule.fechaProgramada,
+          kilometrajeActual: schedule.bus.kilometrajeActual,
+          kilometrajeObjetivo: schedule.kilometrajeObjetivo,
+          planMantenimientoPreventivo: schedule.planMantenimientoPreventivo,
+        },
+        evaluatedAt,
+      )
+      return classification.estado === 'VIGENTE' ? [] : [{ schedule, classification }]
+    })
+
+    // Dispatch projects only operational targets. Administrator availability is
+    // resolved once per distinct bus, not through five queries per schedule.
+    const busIds = [...new Set(classified.map(({ schedule }) => schedule.busId))]
+    const records =
+      actor.rol.codigo === 'ADMINISTRADOR' && busIds.length > 0
+        ? await prisma.$transaction((tx) =>
+            getAvailabilityRecordsBatch(
+              busIds.map((busId) => ({ busId, eventDate: evaluatedAt })),
+              tx,
+            ),
+          )
+        : []
+    const availabilityByBus = new Map(busIds.map((id, index) => [id, records[index]]))
+
+    const restrictions = (() => {
       const mapped = []
-      for (const schedule of schedules) {
+      for (const { schedule, classification } of classified) {
         if (!schedule.planMantenimientoPreventivo) continue
-        const classification = classifyPreventiveCycle(
-          {
-            fechaProgramada: schedule.fechaProgramada,
-            kilometrajeActual: schedule.bus.kilometrajeActual,
-            kilometrajeObjetivo: schedule.kilometrajeObjetivo,
-            planMantenimientoPreventivo: schedule.planMantenimientoPreventivo,
-          },
-          evaluatedAt,
-        )
-        if (classification.estado === 'VIGENTE') continue
-        const availability = buildAvailability(
-          await getAvailabilityRecords({ busId: schedule.busId, eventDate: evaluatedAt }, tx),
-          evaluatedAt,
-        )
+        const record = availabilityByBus.get(schedule.busId)
+        const availability = record ? buildAvailability(record, evaluatedAt) : null
         const operational = {
           bloqueaDespacho:
             classification.estado === 'VENCIDO' &&
@@ -86,8 +102,8 @@ export class PreventiveRestrictionsService {
                 ...operational,
                 actividad: schedule.actividad,
                 disponibilidad: {
-                  causaPrincipal: availability.causaPrincipal,
-                  disponible: availability.disponible,
+                  causaPrincipal: availability!.causaPrincipal,
+                  disponible: availability!.disponible,
                 },
                 plan: {
                   bloqueaAlVencer: schedule.planMantenimientoPreventivo.bloqueaAlVencer,
@@ -100,7 +116,7 @@ export class PreventiveRestrictionsService {
         )
       }
       return mapped
-    })
+    })()
 
     return { evaluadoAt: evaluatedAt.toISOString(), restricciones: restrictions }
   }

@@ -1,5 +1,11 @@
 # Decisions Log
 
+## 2026-11-09 — Continuidad simulada y lectura de restricciones por lotes
+
+El propietario autorizó actualizar la operación pasada de la demo con casos simulados. El lote se identifica como `SIMULADO_SGMV`, conserva los registros originales y no genera ejecución futura. Se ensayó sobre un respaldo restaurado; datos privados, recibos y detalles de aplicación permanecen fuera de Git. No cambia la tesis ni el modelo académico.
+
+La comprobación productiva posterior detectó HTTP500/P2028 en `/mantenimiento-preventivo/restricciones`: se repetían lecturas de disponibilidad dentro de una transacción de cinco segundos. Se conservan clasificación, orden de resultados y DTO por rol; el Despachador no consulta disponibilidad técnica que no recibe y el Administrador recupera por lotes cada bus distinto. No se aumenta el timeout, recortan candidatos ni cambian reglas, permisos, esquema o datos. Regresión de 66 obligaciones/22 buses, permisos y campos reservados; 292/292 pruebas backend, tipos, lint y build aprobados en Windows con una base efímera aislada.
+
 Este archivo registra decisiones cerradas y evita que versiones históricas vuelvan a introducirse durante Fase 3.
 
 ---
