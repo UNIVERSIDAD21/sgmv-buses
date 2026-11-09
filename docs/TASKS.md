@@ -317,7 +317,7 @@ El resultado de despliegue y la copia documental se entregan fuera del repositor
 - [x] Inventario autenticado y respaldo completo restaurado en copia aislada.
 - [x] Ensayo y aplicación del lote simulado autorizado, sin alterar cuentas, rutas o historial ajeno al escenario AMB.
 - [x] Detectar y corregir la consulta repetida que provocaba P2028 en restricciones preventivas.
-- [x] Validar 292/292 pruebas backend, tipos, lint y build; 22/22 comprobaciones de API en copia aislada.
-- [ ] Verificar la publicación de la corrección y repetir comprobaciones productivas y logs.
+- [x] Validar 292/292 pruebas backend, tipos, lint y build; 23/23 comprobaciones de API en copia aislada.
+- [x] Verificar Vercel READY/alias y Render LIVE en `0a68f08`;23/23 comprobaciones productivas y diez controles de coherencia sin incidencias;181 fragmentos de logs del nuevo release sin indicadores de error.
 
 Este registro sustituye únicamente los pendientes de esta intervención. La continuidad y los recibos privados están en el workspace del operador; no se reejecuta el lote para publicar el cambio de lectura.
