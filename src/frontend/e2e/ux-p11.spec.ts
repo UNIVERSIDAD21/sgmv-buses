@@ -37,6 +37,39 @@ test.beforeAll(() => {
   }
 })
 
+test('P11 anuncia campos obligatorios mientras se restaura la sesión', async ({ page }) => {
+  let releaseSession!: () => void
+  const restoring = new Promise<void>((resolve) => {
+    releaseSession = resolve
+  })
+  let loginRequests = 0
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().endsWith('/auth/login')) loginRequests += 1
+  })
+  await page.route('**/auth/me', async (route) => {
+    await restoring
+    await route.continue()
+  })
+  try {
+    await page.goto('/login')
+    const email = page.getByLabel(/Correo/)
+    await expect(page.getByRole('button', { name: /Ingresar/ })).toBeDisabled()
+    await email.press('Enter')
+    await expect(page.getByRole('alert')).toContainText(/correo y contrase/i)
+    await expect(email).toBeFocused()
+    await email.fill('administrador.demo@sgmv.local')
+    const password = page.getByLabel(/Contrase/)
+    await password.fill(demoPassword!)
+    await password.press('Enter')
+    await password.press('Enter')
+    expect(loginRequests).toBe(0)
+  } finally {
+    releaseSession()
+  }
+  await expect(page.getByRole('button', { name: /Cerrar sesi/ })).toBeVisible({ timeout: 30_000 })
+  expect(loginRequests).toBe(1)
+})
+
 test('P11 teclado, lazy loading, foco y envío único', async ({ page }) => {
   let loginRequests = 0
   page.on('request', (request) => {

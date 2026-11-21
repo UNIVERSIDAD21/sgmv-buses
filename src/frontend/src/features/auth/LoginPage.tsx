@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { getDefaultPathForRole } from '../../domain/labels'
@@ -17,34 +17,54 @@ export default function LoginPage() {
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
   const errorRef = useRef<HTMLDivElement>(null)
+  const pendingKeyboardSubmit = useRef<HTMLFormElement | null>(null)
+  const isSubmitting = useRef(false)
   const { login, status, user } = useSession()
   const navigate = useNavigate()
   const location = useLocation()
   const state = location.state as LocationState | null
 
+  useEffect(() => {
+    if (status === 'loading') return
+    const form = pendingKeyboardSubmit.current
+    pendingKeyboardSubmit.current = null
+    if (!user && form?.isConnected) form.requestSubmit()
+  }, [status, user])
+
   if (user) {
     return <Navigate replace to={state?.from ?? getDefaultPathForRole()} />
   }
 
+  const validateRequiredFields = () => {
+    const missingField = !email.trim() ? emailRef : !contrasena ? passwordRef : null
+    if (!missingField) return true
+
+    setFormError('Ingrese correo y contraseña para continuar.')
+    window.requestAnimationFrame(() => missingField.current?.focus())
+    return false
+  }
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLFormElement>) => {
+    // The disabled submit button suppresses implicit Enter while the session loads.
+    if (
+      status === 'loading' &&
+      event.key === 'Enter' &&
+      !event.nativeEvent.isComposing &&
+      event.target instanceof HTMLInputElement
+    ) {
+      event.preventDefault()
+      if (!isSubmitting.current && validateRequiredFields()) {
+        pendingKeyboardSubmit.current = event.currentTarget
+      }
+    }
+  }
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (status === 'loading') {
-      return
-    }
+    if (isSubmitting.current || status === 'loading' || !validateRequiredFields()) return
 
     setFormError(null)
-
-    if (!email.trim()) {
-      setFormError('Ingrese correo y contraseña para continuar.')
-      window.requestAnimationFrame(() => emailRef.current?.focus())
-      return
-    }
-
-    if (!contrasena) {
-      setFormError('Ingrese correo y contraseña para continuar.')
-      window.requestAnimationFrame(() => passwordRef.current?.focus())
-      return
-    }
+    isSubmitting.current = true
 
     try {
       await login({ contrasena, email })
@@ -52,6 +72,8 @@ export default function LoginPage() {
     } catch {
       setFormError('No fue posible iniciar sesión con esas credenciales.')
       window.requestAnimationFrame(() => errorRef.current?.focus())
+    } finally {
+      isSubmitting.current = false
     }
   }
 
@@ -78,7 +100,7 @@ export default function LoginPage() {
             Acceso protegido por rol con sesión segura en cookie HttpOnly.
           </p>
 
-          <form className="mt-6 space-y-4" noValidate onSubmit={handleSubmit}>
+          <form className="mt-6 space-y-4" noValidate onKeyDown={handleKeyDown} onSubmit={handleSubmit}>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="email">
                 Correo electrónico
@@ -89,7 +111,10 @@ export default function LoginPage() {
                 autoComplete="email"
                 className="field-control"
                 id="email"
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  pendingKeyboardSubmit.current = null
+                  setEmail(event.target.value)
+                }}
                 placeholder="usuario@sgmv.local"
                 ref={emailRef}
                 required
@@ -111,7 +136,10 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 className="field-control"
                 id="contrasena"
-                onChange={(event) => setContrasena(event.target.value)}
+                onChange={(event) => {
+                  pendingKeyboardSubmit.current = null
+                  setContrasena(event.target.value)
+                }}
                 placeholder="Ingrese su contraseña"
                 ref={passwordRef}
                 required
