@@ -11,6 +11,7 @@ import {
 import type { AvailabilityRecords } from '../availability/availability.types.js'
 import { registerContextualMileageReading } from '../mileage/mileage.repository.js'
 import { prisma } from '../prisma/client.js'
+import { loadJourneyRelations } from './journey-read.repository.js'
 
 const userRefSelect = {
   id: true,
@@ -136,7 +137,7 @@ export class JourneyRepository {
     return getAvailabilityRecords({ busId, conductorId, eventDate, journeyId }, tx)
   }
 
-  getAvailabilityRecordsBatch(inputs: AvailabilityQuery[], tx: JourneyTransaction) {
+  getAvailabilityRecordsBatch(inputs: AvailabilityQuery[], tx: JourneyTransaction = prisma) {
     return getAvailabilityRecordsBatch(inputs, tx)
   }
 
@@ -242,13 +243,14 @@ export class JourneyRepository {
     )
   }
 
-  list(
+  async list(
     where: Prisma.JornadaOperativaWhereInput,
     orderBy: Prisma.JornadaOperativaOrderByWithRelationInput,
     skip: number,
     take: number,
   ) {
-    return prisma.jornadaOperativa.findMany({ where, include: journeyInclude, orderBy, skip, take })
+    const journeys = await prisma.jornadaOperativa.findMany({ where, orderBy, skip, take })
+    return loadJourneyRelations(prisma, journeys)
   }
 
   listReadings(journeyId: number) {

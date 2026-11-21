@@ -324,6 +324,52 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
     expect(batch[3]!.conflictingJourney).toBeNull()
   })
 
+  it('carga las mismas relaciones y tipos en la página y el detalle de cada jornada', async () => {
+    const bus = await createBus()
+    const owner = await createDriver('relaciones-pagina')
+    const route = await createRoute()
+    await prisma.ruta.update({
+      where: { id: route.id },
+      data: { longitudKmOficial: '12.345', procedencia: { ejemplo: 'verificación de página' } },
+    })
+    const dispatcher = await loginAgent(fixture.despachadorEmail)
+    const driver = await loginAgent(owner.email)
+    const active = await programJourney(dispatcher, {
+      busId: bus.id,
+      conductorId: owner.id,
+      rutaId: route.id,
+      finProgramado: past(-90),
+    })
+    expect(active.status).toBe(201)
+    const activeId = Number(active.body.data.jornada.id)
+    await driver
+      .post(`/jornadas/${activeId}/iniciar`)
+      .send({ fechaEvento: past(90).toISOString(), kilometraje: 0 })
+      .expect(200)
+    await driver
+      .post(`/jornadas/${activeId}/finalizar`)
+      .send({ fechaEvento: past(20).toISOString(), kilometraje: 1 })
+      .expect(200)
+    const upcoming = await programJourney(dispatcher, {
+      busId: bus.id,
+      conductorId: owner.id,
+      inicioProgramado: past(-120),
+      finProgramado: past(-180),
+    })
+    expect(upcoming.status).toBe(201)
+    const upcomingId = Number(upcoming.body.data.jornada.id)
+    const repository = new JourneyRepository()
+    const filter = { id: { in: [activeId, upcomingId] } }
+    const order = { inicioProgramado: 'desc' } as const
+    const reference = await Promise.all([
+      repository.findById(upcomingId),
+      repository.findById(activeId),
+    ])
+    expect(await repository.list(filter, order, 0, 2)).toEqual(reference)
+    expect(await repository.list(filter, order, 1, 1)).toEqual(reference.slice(1))
+    await expect(repository.list(filter, order, 2, 1)).resolves.toEqual([])
+  })
+
   it('mantiene una jornada real abierta como conflicto fuera del horario previsto y excluye su propia fila', async () => {
     const owner = await createDriver('abierta-lote')
     const bus = await createBus()

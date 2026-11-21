@@ -968,7 +968,7 @@ export class JourneyService {
     journeys: JourneyRecord[],
     actor: AuthenticatedUser,
     now: Date,
-    tx: JourneyTransaction,
+    tx?: JourneyTransaction,
   ) {
     const active = journeys.filter((journey) => !TERMINAL_STATES.has(journey.estado))
     const records = await this.repository.getAvailabilityRecordsBatch(
@@ -1055,9 +1055,7 @@ export class JourneyService {
       this.repository.list(where, orderBy, skip, query.limite),
     ])
     const now = new Date()
-    const mapped = await this.repository.transaction(async (tx) => {
-      return this.mapJourneysBatch(journeys, actor, now, tx)
-    })
+    const mapped = await this.mapJourneysBatch(journeys, actor, now)
 
     return {
       jornadas: mapped,
