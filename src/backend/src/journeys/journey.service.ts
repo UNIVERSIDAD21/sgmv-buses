@@ -1071,7 +1071,7 @@ export class JourneyService {
   async listAttention(actor: AuthenticatedUser) {
     ensureDispatcherOrAdmin(actor)
     const now = new Date()
-    const candidates = await this.repository.listAttentionCandidates()
+    const candidates = await this.repository.listAttentionCandidates(now)
     const items = await this.repository.transaction(async (tx) => {
       const result = []
       const journeys = await this.mapJourneysBatch(candidates, actor, now, tx)

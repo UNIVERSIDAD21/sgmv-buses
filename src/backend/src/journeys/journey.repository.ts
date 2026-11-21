@@ -1,7 +1,9 @@
 import { routeSelect, mapRouteReference } from '../amb/route-contract.js'
 import { Prisma, PrismaClient } from '@prisma/client'
+import { blockingNoveltyWhere, blockingOrderWhere } from '../availability/availability.criteria.js'
 import { buildAvailability } from '../availability/availability.policy.js'
-import { classifyPreventiveCycle } from '../preventive/preventive-cycle.js'
+import { classifyPreventiveCycle, preventiveTimeZone } from '../preventive/preventive-cycle.js'
+import { dateColumnAtTimeZone } from '../preventive/preventive.classification.js'
 
 import {
   getAvailabilityRecords,
@@ -64,9 +66,53 @@ const optionUserSelect = {
 } satisfies Prisma.UsuarioSelect
 
 export class JourneyRepository {
-  listAttentionCandidates() {
+  listAttentionCandidates(now: Date) {
+    const today = dateColumnAtTimeZone(now, preventiveTimeZone)
+    const needsOperationalReview = {
+      OR: [
+        { NOT: { conductor: { is: { estado: 'ACTIVO', rol: { codigo: 'CONDUCTOR' } } } } },
+        {
+          bus: {
+            OR: [
+              { estadoOperativo: { in: ['INACTIVO', 'FUERA_DE_SERVICIO', 'EN_MANTENIMIENTO'] } },
+              { novedades: { some: blockingNoveltyWhere } },
+              { ordenesTrabajo: { some: blockingOrderWhere } },
+              {
+                programacionesMantenimiento: {
+                  some: {
+                    activa: true,
+                    planMantenimientoPreventivo: { bloqueaAlVencer: true },
+                    // Mileage is compared with the bus snapshot by the availability policy.
+                    OR: [
+                      { fechaProgramada: { lt: today } },
+                      { kilometrajeObjetivo: { not: null } },
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ],
+    } satisfies Prisma.JornadaOperativaWhereInput
+
+    // Keep the eligibility predicate conservative. Category, order and causes still come
+    // from the domain policies. A conflict with another journey alone never queues a row.
     return prisma.jornadaOperativa.findMany({
-      where: { estado: { in: ['PROGRAMADA', 'EN_CURSO', 'INTERRUMPIDA'] } },
+      where: {
+        OR: [
+          {
+            estado: 'PROGRAMADA',
+            OR: [{ inicioReal: null, inicioProgramado: { lt: now } }, needsOperationalReview],
+          },
+          {
+            estado: 'EN_CURSO',
+            inicioReal: { not: null },
+            OR: [{ finReal: null, finProgramado: { lt: now } }, needsOperationalReview],
+          },
+          { estado: 'INTERRUMPIDA', jornadaSucesora: null, finProgramado: { gt: now } },
+        ],
+      },
       include: journeyInclude,
       orderBy: [{ inicioProgramado: 'asc' }, { id: 'asc' }],
     })

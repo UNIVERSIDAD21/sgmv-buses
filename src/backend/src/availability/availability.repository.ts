@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client'
 
+import { blockingNoveltyWhere, blockingOrderWhere } from './availability.criteria.js'
 import type { AvailabilityRecords } from './availability.types.js'
 
 export interface AvailabilityQuery {
@@ -49,18 +50,12 @@ export async function getAvailabilityRecordsBatch(
       orderBy: { id: 'asc' },
     }),
     tx.novedad.findMany({
-      where: { busId: { in: busIds }, bloqueaDisponibilidad: true, estado: 'PENDIENTE_REVISION' },
+      where: { busId: { in: busIds }, ...blockingNoveltyWhere },
       select: { id: true, busId: true },
       orderBy: { id: 'asc' },
     }),
     tx.ordenTrabajo.findMany({
-      where: {
-        busId: { in: busIds },
-        OR: [
-          { estado: { in: ['EN_EJECUCION', 'COMPLETADA_TECNICO', 'DEVUELTA_CORRECCION'] } },
-          { estado: { notIn: ['CERRADA', 'ANULADA'] }, novedad: { bloqueaDisponibilidad: true } },
-        ],
-      },
+      where: { busId: { in: busIds }, ...blockingOrderWhere },
       select: { id: true, busId: true },
       orderBy: { id: 'asc' },
     }),
@@ -154,24 +149,11 @@ export async function getAvailabilityRecords(
       select: { id: true },
     }),
     tx.novedad.findFirst({
-      where: {
-        bloqueaDisponibilidad: true,
-        busId: input.busId,
-        estado: 'PENDIENTE_REVISION',
-      },
+      where: { busId: input.busId, ...blockingNoveltyWhere },
       select: { id: true },
     }),
     tx.ordenTrabajo.findFirst({
-      where: {
-        busId: input.busId,
-        OR: [
-          { estado: { in: ['EN_EJECUCION', 'COMPLETADA_TECNICO', 'DEVUELTA_CORRECCION'] } },
-          {
-            estado: { notIn: ['CERRADA', 'ANULADA'] },
-            novedad: { bloqueaDisponibilidad: true },
-          },
-        ],
-      },
+      where: { busId: input.busId, ...blockingOrderWhere },
       select: { id: true },
     }),
     tx.programacionMantenimiento.findMany({

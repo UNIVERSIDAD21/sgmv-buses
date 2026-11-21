@@ -263,6 +263,7 @@ describe('P4 - jornadas operativas y kilometraje contextual', () => {
         jornada: { id: Number(rows[0]!.id) },
       })
       expect(batch).toHaveBeenCalledTimes(1)
+      expect(batch.mock.calls[0]![0].filter(({ journeyId }) => ids.has(journeyId!))).toHaveLength(1)
       expect(individual).not.toHaveBeenCalled()
       await prisma.bus.update({
         where: { id: bus.id },

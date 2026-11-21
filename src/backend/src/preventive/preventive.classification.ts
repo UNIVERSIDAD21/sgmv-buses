@@ -30,27 +30,23 @@ export interface PreventiveClassificationResult {
 }
 
 const millisecondsPerDay = 86_400_000
+const dateFormats = new Map<string, Intl.DateTimeFormat>()
 
-function zonedDateParts(date: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    timeZone,
-    year: 'numeric',
-  }).formatToParts(date)
+export function dateColumnAtTimeZone(date: Date, timeZone: string) {
+  let format = dateFormats.get(timeZone)
+  if (!format) {
+    format = new Intl.DateTimeFormat('en-US', {
+      day: '2-digit',
+      month: '2-digit',
+      timeZone,
+      year: 'numeric',
+    })
+    dateFormats.set(timeZone, format)
+  }
+  const parts = format.formatToParts(date)
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
 
-  return {
-    day: Number(values.day),
-    month: Number(values.month),
-    year: Number(values.year),
-  }
-}
-
-function calendarDayIndexFromZonedDate(date: Date, timeZone: string) {
-  const parts = zonedDateParts(date, timeZone)
-
-  return Math.floor(Date.UTC(parts.year, parts.month - 1, parts.day) / millisecondsPerDay)
+  return new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day)))
 }
 
 function calendarDayIndexFromDateColumn(date: Date) {
@@ -94,7 +90,7 @@ export function classifyPreventiveSchedule({
     ? (() => {
         const daysRemaining =
           calendarDayIndexFromDateColumn(fechaProgramada) -
-          calendarDayIndexFromZonedDate(now, thresholds.timeZone)
+          calendarDayIndexFromDateColumn(dateColumnAtTimeZone(now, thresholds.timeZone))
 
         return {
           estado: classifyDate(daysRemaining, thresholds.soonDays),
