@@ -66,7 +66,7 @@ const optionUserSelect = {
 } satisfies Prisma.UsuarioSelect
 
 export class JourneyRepository {
-  listAttentionCandidates(now: Date) {
+  async listAttentionCandidates(now: Date) {
     const today = dateColumnAtTimeZone(now, preventiveTimeZone)
     const needsOperationalReview = {
       OR: [
@@ -98,7 +98,7 @@ export class JourneyRepository {
 
     // Keep the eligibility predicate conservative. Category, order and causes still come
     // from the domain policies. A conflict with another journey alone never queues a row.
-    return prisma.jornadaOperativa.findMany({
+    const journeys = await prisma.jornadaOperativa.findMany({
       where: {
         OR: [
           {
@@ -113,9 +113,9 @@ export class JourneyRepository {
           { estado: 'INTERRUMPIDA', jornadaSucesora: null, finProgramado: { gt: now } },
         ],
       },
-      include: journeyInclude,
       orderBy: [{ inicioProgramado: 'asc' }, { id: 'asc' }],
     })
+    return loadJourneyRelations(prisma, journeys)
   }
 
   count(where: Prisma.JornadaOperativaWhereInput) {

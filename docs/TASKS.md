@@ -328,3 +328,9 @@ Este registro sustituye únicamente los pendientes de esta intervención. La con
 - [x] Restaurar un respaldo actual y ensayar el lote adicional con 14 controles globales.
 - [x] Corregir los contadores sin eliminar historia; validar 294 backend y 186 frontend, tipos/lint/build/formato.
 - [ ] Verificar SHA publicado y contadores/colas/pantallas de produccion; evidencia externa correction-*.
+
+## 2026-11-20 — Revalidación de RNF-02 y RNF-03
+
+- [x] Integrar la corrección de teclado y comprobar los tres casos P11 en Chrome y Edge.
+- [x] Reducir las consultas de relaciones y filtrar la cola antes de calcular disponibilidad.
+- [ ] Cotejar la versión alojada y repetir las series autenticadas de 100 jornadas y de atención.

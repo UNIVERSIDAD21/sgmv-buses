@@ -1,3 +1,5 @@
+import { performance } from 'node:perf_hooks'
+
 import type { RequestHandler } from 'express'
 
 import { sendData } from '../shared/http.js'
@@ -110,12 +112,16 @@ export class JourneyController {
 
   list: RequestHandler = async (request, response) => {
     const query = listJourneysQuerySchema.parse(request.query)
+    const startedAt = performance.now()
     const result = await this.service.list(query, request.user!)
+    response.append('Server-Timing', `journeys;dur=${(performance.now() - startedAt).toFixed(2)}`)
     sendData(response, result, 'Jornadas consultadas')
   }
 
   listAttention: RequestHandler = async (request, response) => {
+    const startedAt = performance.now()
     const result = await this.service.listAttention(request.user!)
+    response.append('Server-Timing', `journeys;dur=${(performance.now() - startedAt).toFixed(2)}`)
     sendData(response, result, 'Pendientes operativos consultados')
   }
 

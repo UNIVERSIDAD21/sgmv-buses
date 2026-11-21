@@ -1072,27 +1072,23 @@ export class JourneyService {
     ensureDispatcherOrAdmin(actor)
     const now = new Date()
     const candidates = await this.repository.listAttentionCandidates(now)
-    const items = await this.repository.transaction(async (tx) => {
-      const result = []
-      const journeys = await this.mapJourneysBatch(candidates, actor, now, tx)
-      for (const [index, record] of candidates.entries()) {
-        const journey = journeys[index]!
-        const driverValid =
-          record.conductor.estado === 'ACTIVO' && record.conductor.rol.codigo === 'CONDUCTOR'
-        const category = classifyJourneyAttention(journey, driverValid, now)
-        if (category) result.push({ categoria: category, jornada: journey })
-      }
-      return result.sort((left, right) => {
-        const leftDate =
-          left.categoria === 'CIERRE_PENDIENTE'
-            ? left.jornada.finProgramado
-            : left.jornada.inicioProgramado
-        const rightDate =
-          right.categoria === 'CIERRE_PENDIENTE'
-            ? right.jornada.finProgramado
-            : right.jornada.inicioProgramado
-        return Date.parse(leftDate) - Date.parse(rightDate) || left.jornada.id - right.jornada.id
-      })
+    const journeys = await this.mapJourneysBatch(candidates, actor, now)
+    const items = journeys.flatMap((journey, index) => {
+      const { conductor } = candidates[index]!
+      const driverValid = conductor.estado === 'ACTIVO' && conductor.rol.codigo === 'CONDUCTOR'
+      const category = classifyJourneyAttention(journey, driverValid, now)
+      return category ? [{ categoria: category, jornada: journey }] : []
+    })
+    items.sort((left, right) => {
+      const leftDate =
+        left.categoria === 'CIERRE_PENDIENTE'
+          ? left.jornada.finProgramado
+          : left.jornada.inicioProgramado
+      const rightDate =
+        right.categoria === 'CIERRE_PENDIENTE'
+          ? right.jornada.finProgramado
+          : right.jornada.inicioProgramado
+      return Date.parse(leftDate) - Date.parse(rightDate) || left.jornada.id - right.jornada.id
     })
     return {
       jornadas: items,

@@ -694,3 +694,9 @@ La comprobación productiva aislada de GET /jornadas/atencion devolvió500 tras6
 ## 2026-11-09 ? Contadores operativos y continuidad global
 
 Los ciclos inactivos permanecen historicos, pero no integran los estados del resumen ni la cola requiereAtencion. La falta de conductor se aplica a buses no inactivos, con igual filtro en lista y contador. Asignacion base RF-01 no sustituye los recursos de jornada. La aceptacion debe contrastar contadores y toda la cola, incluidas salidas futuras; HTTP 200 y coherencia de un solo grupo no acreditan actualizacion global. No hay nuevos RF, esquema, permisos ni simulador automatico. Lote adicional 0002, sin repetir 0001; ver REGULARIZACION_DEMO_2026-11-09.md.
+
+## 2026-11-20 — Latencia de jornadas y validación de teclado
+
+Las consultas de jornadas cargan las relaciones seleccionadas en una consulta SQL parametrizada. La cola filtra antes de consultar el detalle. El filtro conserva todo caso que pueda resultar pendiente y el dominio sigue determinando categoría, causas y orden. Las lecturas de disponibilidad de estos dos GET se ejecutan sin una transacción interactiva. Las operaciones de escritura conservan sus transacciones y bloqueos. La cabecera `Server-Timing` de ambos GET mide la ejecución del servicio de jornadas.
+
+El formulario de acceso valida campos vacíos mientras se restaura la sesión y difiere un envío válido por teclado hasta completar esa restauración. Las pruebas cubren foco, aviso y envío único en Chrome y Edge.
